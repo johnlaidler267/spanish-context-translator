@@ -52,7 +52,7 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
       <div className="min-h-screen flex flex-col items-center justify-center px-6 md:px-8">
       <div className="w-full max-w-[800px]">
         {/* Logo and tagline */}
-        <div className="hero-mark text-center relative entry-1" style={{ paddingBottom: "64px" }}>
+        <div className="hero-mark text-center relative entry-1" style={{ paddingBottom: "32px" }}>
           <div className="inline-flex items-center justify-center gap-5 logo-lockup">
             <img src="/logo.png" alt="Lector" className="logo-icon h-12 md:h-14 w-auto" />
             <h1 className="wordmark font-serif text-4xl md:text-5xl font-medium" style={{ marginTop: "-4px" }}>
@@ -66,9 +66,13 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
 
         {/* Input, button, sample — unified column */}
         <div className="space-y-4">
-          {/* Input box */}
+          {/* Input box with corner ornaments */}
           <div className="relative entry-2">
             <div className="textarea-wrapper">
+              <span className="corner corner-tl" aria-hidden />
+              <span className="corner corner-tr" aria-hidden />
+              <span className="corner corner-bl" aria-hidden />
+              <span className="corner corner-br" aria-hidden />
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -112,7 +116,7 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
           <img src="/filigree-divider.svg" alt="" className="filigree-divider mx-auto mt-4 mb-0" aria-hidden />
 
           {/* Sample text preview */}
-          <div className="sample-text rounded-md bg-muted/30 px-7 py-6 entry-4 transition-all duration-250 ease-in-out hover:-translate-y-0.5" style={{ boxShadow: "0 10px 30px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.04)" }}>
+          <div className="sample-text px-2 py-4 entry-4 transition-all duration-250 ease-in-out" style={{ borderTop: "1px solid rgba(196,138,122,0.18)" }}>
             <p className="metadata-label text-[11px] font-medium uppercase tracking-[0.08em] mb-3">
               Sample text
             </p>

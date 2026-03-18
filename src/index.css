@@ -103,14 +103,14 @@ article span {
 /* Drop cap — true drop into text flow, dusty rose with depth */
 .sample-paragraph::first-letter {
   float: left;
-  font-size: 3.6rem;
-  line-height: 0.78;
-  padding: 5px 10px 0 0;
+  font-size: 3.5rem;
+  line-height: 0.8;
+  padding: 4px 10px 0 0;
   color: #7a6040;
-  font-family: var(--font-serif), Georgia, serif;
-  font-style: normal;
-  font-weight: 600;
-  text-shadow: 1px 1px 3px rgba(122, 96, 64, 0.18);
+  font-family: Georgia, var(--font-serif), serif;
+  font-style: normal !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 3px rgba(122, 96, 64, 0.15);
 }
 
 /* Tilde watermark — faint oversized flourish */
@@ -184,13 +184,29 @@ article span {
   position: relative;
   background-color: #ffffff;
   border-radius: 4px;
-  border: 1px solid #ccc2b8;
+  border: 1px solid rgba(204, 194, 184, 0.4);
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 .textarea-wrapper:focus-within {
-  border-color: #a07060;
-  box-shadow: 0 0 0 3px rgba(158, 88, 67, 0.1);
+  border-color: rgba(160, 112, 96, 0.35);
+  box-shadow: 0 0 0 3px rgba(158, 88, 67, 0.08);
 }
+
+/* Corner ornaments — terracotta L-brackets */
+.corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: #C48A7A;
+  border-style: solid;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 2;
+}
+.corner-tl { top: -1px;    left: -1px;  border-width: 1.5px 0 0 1.5px; }
+.corner-tr { top: -1px;    right: -1px; border-width: 1.5px 1.5px 0 0; }
+.corner-bl { bottom: -1px; left: -1px;  border-width: 0 0 1.5px 1.5px; }
+.corner-br { bottom: -1px; right: -1px; border-width: 0 1.5px 1.5px 0; }
 
 /* Textarea field — clean writing surface */
 .textarea-field {
