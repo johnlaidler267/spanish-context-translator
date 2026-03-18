@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <!--
+    Andalusian star lattice � 8-pointed khatam tile.
+    Opacity baked in so it stays subtle regardless of CSS stacking.
+  -->
+  <g opacity="0.032" fill="none" stroke="#7B5C3E" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 8-pointed star at center (50,50) -->
+    <polygon points="
+      50,22 57,36 72,29 65,44
+      79,50 65,56 72,71 57,64
+      50,78 43,64 28,71 35,56
+      21,50 35,44 28,29 43,36
+    "/>
+    <!-- Inner octagon -->
+    <polygon points="
+      50,34 58,38 63,46 63,54
+      58,62 50,66 42,62 37,54
+      37,46 42,38
+    "/>
+    <!-- Corner quarter-stars (to tile seamlessly) -->
+    <!-- Top-left -->
+    <polygon points="0,0 7,14 21,7 14,21 28,28 14,35 21,50 7,43 0,57"/>
+    <!-- Top-right -->
+    <polygon points="100,0 93,14 79,7 86,21 72,28 86,35 79,50 93,43 100,57"/>
+    <!-- Bottom-left -->
+    <polygon points="0,100 7,86 21,93 14,79 28,72 14,65 21,50 7,57 0,43"/>
+    <!-- Bottom-right -->
+    <polygon points="100,100 93,86 79,93 86,79 72,72 86,65 79,50 93,57 100,43"/>
+  </g>
+</svg>

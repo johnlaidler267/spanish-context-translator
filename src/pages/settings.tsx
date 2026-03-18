@@ -127,7 +127,7 @@ export default function SettingsPage() {
                   key={plan.id}
                   className={`relative bg-card border transition-all ${
                     plan.popular
-                      ? "border-primary shadow-lg shadow-primary/5"
+                      ? "border-primary shadow-sm"
                       : "border-border hover:border-border/80"
                   }`}
                 >

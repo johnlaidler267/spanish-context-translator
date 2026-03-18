@@ -29,11 +29,12 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
 
     const rect = chunkRef.current.getBoundingClientRect()
     const spaceAbove = rect.top
-    const popupHeight = 140
+    const spaceBelow = window.innerHeight - rect.bottom
+    const popupHeight = 130
     const popupWidth = 288 // w-72 = 18rem = 288px
-    
-    // Vertical position
-    if (spaceAbove < popupHeight + 20) {
+
+    // Prefer above; only fall back to below if the popup would clip off the viewport top
+    if (spaceAbove < popupHeight + 16 && spaceBelow >= popupHeight + 16) {
       setPopupPosition("below")
     } else {
       setPopupPosition("above")
@@ -72,10 +73,10 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
         onMouseLeave={onDeactivate}
         className={cn(
           "cursor-pointer transition-all duration-200 rounded-sm px-0.5 -mx-0.5",
-          "underline underline-offset-2 decoration-2",
-          isActive 
-            ? "bg-primary/15 text-foreground decoration-primary" 
-            : "decoration-transparent hover:bg-muted hover:decoration-muted-foreground/40"
+          "underline underline-offset-2 decoration-[1.5px]",
+          isActive
+            ? "bg-primary/10 text-foreground decoration-[#9E5843]/70"
+            : "decoration-transparent hover:bg-muted hover:decoration-[#C48A7A]/45"
         )}
       >
         {chunk.text}
@@ -86,46 +87,67 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
           ref={popupRef}
           data-popup
           className={cn(
-            "absolute z-50 block w-64 md:w-72 p-4 bg-popover border border-border rounded-lg shadow-xl",
-            "animate-in fade-in-0 zoom-in-95 duration-150",
-            popupPosition === "above" 
-              ? "bottom-full mb-2" 
+            "absolute z-50 block w-64 md:w-72 p-3 rounded-md",
+            "animate-in zoom-in-95 duration-150",
+            popupPosition === "above"
+              ? "bottom-full mb-2"
               : "top-full mt-2"
           )}
           style={{
+            backgroundColor: "rgb(248, 245, 239)",
+            opacity: 1,
+            border: "1px solid rgba(158, 88, 67, 0.22)",
+            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)",
             left: `calc(50% + ${popupOffset}px)`,
-            transform: 'translateX(-50%)'
+            transform: "translateX(-50%)",
           }}
           onMouseEnter={onActivate}
           onMouseLeave={onDeactivate}
         >
           {/* Arrow */}
-          <span 
+          <span
             className={cn(
-              "absolute block w-3 h-3 bg-popover border-border rotate-45",
-              popupPosition === "above" 
-                ? "bottom-0 translate-y-1/2 border-r border-b" 
+              "absolute block w-3 h-3 rotate-45",
+              popupPosition === "above"
+                ? "bottom-0 translate-y-1/2 border-r border-b"
                 : "top-0 -translate-y-1/2 border-l border-t"
             )}
             style={{
+              backgroundColor: "rgb(248, 245, 239)",
+              borderColor: "rgba(158, 88, 67, 0.22)",
               left: `calc(50% - ${popupOffset}px)`,
               transform: `translateX(-50%) rotate(45deg) ${popupPosition === "above" ? "translateY(50%)" : "translateY(-50%)"}`
             }}
           />
           
-          {/* Content */}
+          {/* Content — text colors hardcoded since bg is always light cream */}
           <span className="relative block">
-            <span className="block text-lg font-serif font-medium text-foreground leading-snug">
+            <span className="block text-lg font-serif font-medium leading-snug" style={{ color: "#2C1A10" }}>
               {chunk.meaning}
             </span>
-            {chunk.literal && (
-              <span className="block mt-2 text-sm text-muted-foreground">
-                <span className="font-medium">Literal:</span> {chunk.literal}
-              </span>
-            )}
-            {chunk.grammar && (
-              <span className="block mt-1.5 text-sm italic text-muted-foreground/80">
-                {chunk.grammar}
+
+            {(chunk.literal || chunk.grammar) && (
+              <span className="block mt-2 pt-2" style={{ borderTop: "1px solid rgba(158, 88, 67, 0.12)" }}>
+                {chunk.literal && (
+                  <span className="block text-sm" style={{ color: "#4A3328" }}>
+                    <span
+                      className="font-sans uppercase tracking-[0.08em] text-[10px] mr-1"
+                      style={{ color: "#bdb9b1" }}
+                    >Literal</span>
+                    <span className="mr-1" style={{ color: "#C48A7A", opacity: 0.45 }}>·</span>
+                    {chunk.literal}
+                  </span>
+                )}
+                {chunk.grammar && (
+                  <span className={`block text-sm italic ${chunk.literal ? "mt-1.5" : ""}`} style={{ color: "#4A3328" }}>
+                    <span
+                      className="font-sans not-italic uppercase tracking-[0.08em] text-[10px] mr-1"
+                      style={{ color: "#bdb9b1" }}
+                    >Note</span>
+                    <span className="mr-1" style={{ color: "#C48A7A", opacity: 0.45 }}>·</span>
+                    {chunk.grammar}
+                  </span>
+                )}
               </span>
             )}
           </span>

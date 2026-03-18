@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+  <g fill="none" stroke="#C48A7A" stroke-width="0.5" opacity="0.04">
+    <!-- Diamond outline -->
+    <path d="M60 14 L106 60 L60 106 L14 60 Z"/>
+    <!-- Inner dot -->
+    <circle cx="60" cy="60" r="3" fill="#C48A7A" stroke="none"/>
+    <!-- Cardinal dots -->
+    <circle cx="14"  cy="60" r="1.5" fill="#C48A7A" stroke="none"/>
+    <circle cx="106" cy="60" r="1.5" fill="#C48A7A" stroke="none"/>
+    <circle cx="60"  cy="14" r="1.5" fill="#C48A7A" stroke="none"/>
+    <circle cx="60"  cy="106" r="1.5" fill="#C48A7A" stroke="none"/>
+  </g>
+</svg>

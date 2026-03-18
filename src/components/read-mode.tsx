@@ -81,7 +81,7 @@ export function ReadMode({ sentences }: ReadModeProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-6 md:px-8">
       {/* Sentence display */}
-      <div className="flex-1 flex items-center justify-center w-full max-w-4xl pt-16">
+      <div className="flex-1 flex items-center justify-center w-full pt-16" style={{ maxWidth: "700px" }}>
         <span className="block font-serif text-3xl md:text-5xl lg:text-6xl leading-snug md:leading-tight text-center text-foreground text-balance selection:bg-primary/20">
           {currentSentence.chunks.map((chunk, index) => (
             <span key={chunk.id}>

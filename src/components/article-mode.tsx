@@ -32,8 +32,8 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
   }, [handleGlobalClick])
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-6 md:px-8 pt-24 pb-16">
-      <article className="font-serif text-2xl md:text-[32px] leading-relaxed md:leading-[1.8] text-foreground selection:bg-primary/20">
+    <div className="w-full mx-auto px-6 md:px-8 pt-24 pb-16" style={{ maxWidth: "700px" }}>
+      <article className="font-serif text-xl md:text-2xl leading-[1.75] md:leading-[1.85] text-foreground/90 selection:bg-primary/20">
         {chunks.map((chunk, index) => (
           <span key={chunk.id}>
             <TextChunk

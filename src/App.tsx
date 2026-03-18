@@ -1,20 +1,27 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import React, { useState, useCallback } from "react"
 import { LandingScreen } from "./components/landing-screen"
 import { LoadingOverlay } from "./components/loading-overlay"
 import { ReadingHeader } from "./components/reading-header"
 import { ArticleContent } from "./components/article-content"
 import { ReadMode } from "./components/read-mode"
+import { SubscriptionLapsedModal } from "./components/subscription-lapsed-modal"
+import { LockedView } from "./components/locked-view"
+import { useSubscription } from "./contexts/subscription-context"
 import { translate } from "./lib/translate"
 import type { ReconciledItem } from "./lib/translate"
 import type { ViewMode } from "./components/mode-toggle"
+import type { ReadingTheme } from "./components/theme-toggle"
 
 type AppState = "landing" | "loading" | "reading"
 
 export default function App() {
+  const { isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
+
   const [appState, setAppState] = useState<AppState>("landing")
   const [viewMode, setViewMode] = useState<ViewMode>("article")
+  const [readingTheme, setReadingTheme] = useState<ReadingTheme>("light")
   const [reconciled, setReconciled] = useState<ReconciledItem[] | null>(null)
   const [sentences, setSentences] = useState<
     { id: number; chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> }[]
@@ -26,6 +33,7 @@ export default function App() {
   const handleTextSubmit = useCallback(
     async (text: string) => {
       if (!text.trim()) return
+      if (isLapsed) return // Blocked — server will also reject
       if (!apiKey) {
         setError("Missing VITE_GROQ_API_KEY. Add it to your .env file.")
         return
@@ -43,7 +51,7 @@ export default function App() {
         setAppState("landing")
       }
     },
-    [apiKey]
+    [apiKey, isLapsed]
   )
 
   const handleBack = useCallback(() => {
@@ -53,6 +61,26 @@ export default function App() {
     setError("")
     setViewMode("article")
   }, [])
+
+  // Subscription lockout (App only renders for route "/")
+  if (isLapsed) {
+    return (
+      <>
+        {!popupDismissed && (
+          <SubscriptionLapsedModal onDismiss={dismissPopup} />
+        )}
+        <LockedView />
+      </>
+    )
+  }
+
+  if (subscriptionLoading) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </main>
+    )
+  }
 
   if (appState === "landing" || appState === "loading") {
     return (
@@ -71,8 +99,8 @@ export default function App() {
   const hasSentences = sentences && sentences.length > 0
 
   return (
-    <main className="min-h-screen bg-background">
-      <ReadingHeader mode={viewMode} onModeChange={setViewMode} onBack={handleBack} />
+    <main className={`min-h-screen bg-background ${readingTheme !== "light" ? readingTheme : ""}`}>
+      <ReadingHeader mode={viewMode} onModeChange={setViewMode} onBack={handleBack} theme={readingTheme} onThemeChange={setReadingTheme} />
       <div className="animate-fade-in-up">
         {viewMode === "article" && reconciled ? (
           <ArticleContent items={reconciled} />

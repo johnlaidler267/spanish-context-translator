@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MainHeader } from "./main-header"
@@ -10,8 +10,29 @@ interface LandingScreenProps {
   isLoading: boolean
 }
 
+const PLACEHOLDERS = [
+  "Pega un texto… o deja que el idioma te encuentre.",
+  "Un párrafo de tu libro favorito…",
+  "Una carta, un artículo, una canción perdida…",
+  "El español te espera aquí.",
+]
+
 export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
   const [text, setText] = useState("")
+  const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const [placeholderVisible, setPlaceholderVisible] = useState(true)
+
+  useEffect(() => {
+    if (text) return
+    const cycle = setInterval(() => {
+      setPlaceholderVisible(false)
+      setTimeout(() => {
+        setPlaceholderIndex(i => (i + 1) % PLACEHOLDERS.length)
+        setPlaceholderVisible(true)
+      }, 400)
+    }, 3500)
+    return () => clearInterval(cycle)
+  }, [text])
 
   const sampleText = `El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles. Ella pensaba en su abuela, quien siempre le contaba historias de este lugar mágico.`
 
@@ -29,57 +50,78 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
     <>
       <MainHeader />
       <div className="min-h-screen flex flex-col items-center justify-center px-6 md:px-8">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-[800px]">
         {/* Logo and tagline */}
-        <div className="text-center mb-10 md:mb-12">
-          <div className="flex items-center justify-center gap-4 mb-3 md:mb-4">
-            <img src="/logo.png" alt="Lector" className="h-12 md:h-14 w-auto" />
-            <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight text-foreground">
+        <div className="hero-mark text-center relative entry-1" style={{ paddingBottom: "64px" }}>
+          <div className="inline-flex items-center justify-center gap-5 logo-lockup">
+            <img src="/logo.png" alt="Lector" className="logo-icon h-12 md:h-14 w-auto" />
+            <h1 className="wordmark font-serif text-4xl md:text-5xl font-medium" style={{ marginTop: "-4px" }}>
               Lector
             </h1>
           </div>
-          <p className="mt-3 md:mt-4 text-lg md:text-xl text-muted-foreground font-sans">
+          <p className="subtitle font-sans" style={{ marginTop: "14px" }}>
             Read Spanish with confidence
           </p>
         </div>
 
-        {/* Text input */}
+        {/* Input, button, sample — unified column */}
         <div className="space-y-4">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Paste your Spanish text here..."
-            className="w-full h-48 md:h-56 px-5 py-4 text-lg font-serif bg-card border border-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground/60 transition-shadow"
-            disabled={isLoading}
-          />
+          {/* Input box */}
+          <div className="relative entry-2">
+            <div className="textarea-wrapper">
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={PLACEHOLDERS[placeholderIndex]}
+                className={`textarea-field ${placeholderVisible ? "placeholder:opacity-50" : "placeholder:opacity-0"} placeholder:transition-opacity placeholder:duration-400`}
+                disabled={isLoading}
+              />
+            </div>
+            <p className="word-counter select-none absolute mt-2 right-0">
+              <span className="word-counter-label">words</span>
+              <span className="word-counter-value">{text.trim() ? text.trim().split(/\s+/).length.toString().padStart(2, "0") : "00"}</span>
+            </p>
+          </div>
 
-          {/* CTA Button */}
-          <Button
-            onClick={handleSubmit}
-            disabled={!text.trim() || isLoading}
-            className="w-full h-14 text-lg font-sans font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-all disabled:opacity-50"
-          >
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <span className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                Processing...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                Start Reading
-                <ArrowRight className="h-5 w-5" />
-              </span>
-            )}
-          </Button>
-
-          {/* Secondary option */}
-          <div className="text-center pt-2">
-            <button
-              onClick={handleTrySample}
-              disabled={isLoading}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-muted-foreground/40 hover:decoration-foreground/40 disabled:opacity-50"
+          {/* CTA — same width as input */}
+          <div className="space-y-2 pt-3 entry-3">
+            <Button
+              onClick={handleSubmit}
+              disabled={!text.trim() || isLoading}
+              className="btn-cta group/btn w-full h-14 text-lg font-sans font-medium relative disabled:opacity-40 bg-[#C48A7A]"
+              style={{ color: "#2C1A10" }}
             >
-              Or try a sample text
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-5 w-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(44,26,16,0.25)", borderTopColor: "#2C1A10" }} />
+                  Processing...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2 relative z-10">
+                  <span>Start Reading</span>
+                  <ArrowRight className="h-5 w-5 transition-transform ease-in-out duration-[220ms] group-hover/btn:translate-x-[4px]" />
+                </span>
+              )}
+            </Button>
+            <p className="text-[10px] italic text-muted-foreground/60 mt-4 text-center">
+              Supports Spanish dialects from Spain, Mexico, and Latin America.
+            </p>
+          </div>
+
+          {/* Filigree divider */}
+          <img src="/filigree-divider.svg" alt="" className="filigree-divider mx-auto mt-4 mb-0" aria-hidden />
+
+          {/* Sample text preview */}
+          <div className="sample-text rounded-md bg-muted/30 px-7 py-6 entry-4 transition-all duration-250 ease-in-out hover:-translate-y-0.5" style={{ boxShadow: "0 10px 30px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.04)" }}>
+            <p className="metadata-label text-[11px] font-medium uppercase tracking-[0.08em] mb-3">
+              Sample text
+            </p>
+            <button onClick={handleTrySample} disabled={isLoading} className="text-left w-full group">
+              <p className="sample-paragraph font-serif text-[15px] text-foreground/80 leading-[1.6] group-hover:text-foreground/95 transition-colors overflow-hidden italic">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
+              <span className="sample-link text-sm text-primary mt-2 inline-flex items-center gap-1">
+                Try this sample
+                <span className="inline-block transition-transform ease-out duration-200 group-hover:translate-x-[3px]">→</span>
+              </span>
             </button>
           </div>
         </div>

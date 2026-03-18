@@ -4,66 +4,308 @@
 
 @layer base {
   :root {
-    --font-sans: "Source Sans 3", "Geist", -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-serif: "Source Serif 4", Georgia, serif;
-    /* Warm cream light theme */
-    --background: oklch(0.975 0.008 85);
-    --foreground: oklch(0.18 0.01 45);
-    --card: oklch(0.99 0.005 85);
-    --card-foreground: oklch(0.18 0.01 45);
-    --popover: oklch(0.995 0.003 85);
-    --popover-foreground: oklch(0.18 0.01 45);
-    --primary: oklch(0.52 0.12 35);
-    --primary-foreground: oklch(0.99 0.005 85);
-    --secondary: oklch(0.94 0.015 85);
-    --secondary-foreground: oklch(0.25 0.015 45);
-    --muted: oklch(0.92 0.012 85);
-    --muted-foreground: oklch(0.45 0.02 45);
-    --accent: oklch(0.58 0.1 35);
-    --accent-foreground: oklch(0.99 0.005 85);
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-serif: "Playfair Display", Georgia, serif;
+    /* Warm Iberian paper — muted clay & dusty gold */
+    --background: #f8f5ef;
+    --foreground: #2b1f17;
+    --card: #f4f0e8;
+    --card-foreground: #2b1f17;
+    --popover: #f9f6f0;
+    --popover-foreground: #2b1f17;
+    --primary: #c48a7a;          /* muted terracotta */
+    --primary-foreground: #f8f5ef;
+    --secondary: #ede7da;
+    --secondary-foreground: #4a3828;
+    --muted: #e8e0d0;
+    --muted-foreground: #7a6a58;
+    --accent: #b5975a;           /* dusty gold */
+    --accent-foreground: #f8f5ef;
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.88 0.015 85);
-    --input: oklch(0.92 0.01 85);
-    --ring: oklch(0.52 0.12 35);
+    --border: #ddd4c5;
+    --input: #ede7da;
+    --ring: #c48a7a;
     --radius: 0.5rem;
     --radius-sm: calc(var(--radius) - 4px);
   }
 
+  /* Sunset — apricot-peach bg, mocha text, full terracotta accent */
+  .sepia {
+    --background: #f4e6d6;
+    --foreground: #5c4033;
+    --card: #f0dfc8;
+    --card-foreground: #5c4033;
+    --popover: #f7ead8;
+    --popover-foreground: #5c4033;
+    --primary: #c48a7a;
+    --primary-foreground: #f4e6d6;
+    --secondary: #e8d2bb;
+    --secondary-foreground: #5c4033;
+    --muted: #ecdbc6;
+    --muted-foreground: #8a6650;
+    --accent: #c48a7a;
+    --accent-foreground: #f4e6d6;
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: #d4b99a;
+    --input: #e8d2bb;
+    --ring: #c48a7a;
+  }
+
+  /* Dark — warm charcoal, cream text, desaturated terracotta */
   .dark {
-    --background: oklch(0.16 0.01 45);
-    --foreground: oklch(0.94 0.008 85);
-    --card: oklch(0.19 0.01 45);
-    --card-foreground: oklch(0.94 0.008 85);
-    --popover: oklch(0.22 0.01 45);
-    --popover-foreground: oklch(0.94 0.008 85);
-    --primary: oklch(0.68 0.12 35);
-    --primary-foreground: oklch(0.16 0.01 45);
-    --secondary: oklch(0.25 0.01 45);
-    --secondary-foreground: oklch(0.88 0.008 85);
-    --muted: oklch(0.28 0.01 45);
-    --muted-foreground: oklch(0.62 0.015 85);
-    --accent: oklch(0.62 0.1 35);
-    --accent-foreground: oklch(0.16 0.01 45);
+    --background: #1a1a1a;
+    --foreground: #eae0d5;
+    --card: #222220;
+    --card-foreground: #eae0d5;
+    --popover: #252523;
+    --popover-foreground: #eae0d5;
+    --primary: #b06b56;
+    --primary-foreground: #1a1a1a;
+    --secondary: #2a2a28;
+    --secondary-foreground: #c8bdb4;
+    --muted: #252523;
+    --muted-foreground: #8a8078;
+    --accent: #b06b56;
+    --accent-foreground: #1a1a1a;
     --destructive: oklch(0.396 0.141 25.723);
-    --border: oklch(0.3 0.01 45);
-    --input: oklch(0.25 0.01 45);
-    --ring: oklch(0.68 0.12 35);
+    --border: #333230;
+    --input: #2a2a28;
+    --ring: #b06b56;
   }
 }
 
 @keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-in-up 0.5s ease-in-out both;
+}
+
+/* Staggered page entry */
+.entry-1 { animation: fade-in-up 0.45s ease-in-out both; }
+.entry-2 { animation: fade-in-up 0.45s 0.08s ease-in-out both; }
+.entry-3 { animation: fade-in-up 0.45s 0.16s ease-in-out both; }
+.entry-4 { animation: fade-in-up 0.45s 0.24s ease-in-out both; }
+
+/* Editorial typography — headings tracking, body opacity & line-height */
+h1, h2, h3 {
+  letter-spacing: 0.03em;
+}
+
+article p,
+article span {
+  line-height: 1.75;
+  opacity: 0.88;
+}
+
+/* Drop cap — true drop into text flow, dusty rose with depth */
+.sample-paragraph::first-letter {
+  float: left;
+  font-size: 3.6rem;
+  line-height: 0.78;
+  padding: 5px 10px 0 0;
+  color: #7a6040;
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: normal;
+  font-weight: 600;
+  text-shadow: 1px 1px 3px rgba(122, 96, 64, 0.18);
+}
+
+/* Tilde watermark — faint oversized flourish */
+.tilde-watermark {
+  font-family: var(--font-serif);
+  font-size: clamp(8rem, 25vw, 14rem);
+  font-weight: 300;
+  color: oklch(0.92 0.015 85);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.logo-lockup {
+  margin-bottom: 0;
+}
+
+.wordmark {
+  color: #3d2e25;
+  letter-spacing: 0.13em;
+  text-rendering: optimizeLegibility;
+}
+
+/* CTA button — clay artifact, tactile depth */
+.btn-cta {
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  transition: all 220ms ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.07);
+}
+.btn-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.12);
+}
+.btn-cta:active:not(:disabled) {
+  transform: translateY(0);
+  filter: brightness(0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.btn-cta > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Button noise texture — warm grain overlay */
+.btn-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  background-size: 80px 80px;
+  background-repeat: repeat;
+  pointer-events: none;
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+  z-index: 0;
+}
+
+
+/* Textarea wrapper — recessed white tray */
+.textarea-wrapper {
+  position: relative;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #ccc2b8;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+.textarea-wrapper:focus-within {
+  border-color: #a07060;
+  box-shadow: 0 0 0 3px rgba(158, 88, 67, 0.1);
+}
+
+/* Textarea field — clean writing surface */
+.textarea-field {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 11rem;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  padding: 20px 22px;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--foreground);
+  resize: none;
+  outline: none;
+  caret-color: var(--primary);
+  z-index: 1;
+}
+@media (min-width: 768px) {
+  .textarea-field { height: 13rem; }
+}
+
+/* Azulejo divider — geometric Moorish-inspired */
+.filigree-divider {
+  display: block;
+  width: 220px;
+  height: auto;
+  opacity: 0.85;
+}
+
+/* Folio number — bottom-right of text input, pencil grey metadata */
+.folio-number {
+  font-family: "Courier New", monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #bdb9b1;
+  text-transform: uppercase;
+}
+
+/* Metadata label — Sample Text, etc. pencil grey */
+.metadata-label {
+  color: #bdb9b1;
+  letter-spacing: 0.08em;
+}
+
+/* Subtitle — recede behind the wordmark */
+.subtitle {
+  color: #5c4f45;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* Logo icon — rounded, physical book-spine feel */
+.logo-icon {
+  border-radius: 8px;
+  filter: sepia(0.08) saturate(0.9) brightness(1.02) contrast(0.94);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  transition: filter 280ms ease, transform 280ms ease, box-shadow 280ms ease;
+}
+.logo-icon:hover {
+  filter: sepia(0.12) saturate(0.92) brightness(1.03) contrast(0.94);
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* Word counter — muted rose, tiny caps */
+.word-counter {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.word-counter-label {
+  font-family: "Courier New", monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #9e6b5a;
+  opacity: 0.75;
+}
+.word-counter-value {
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #9e6b5a;
+  opacity: 0.8;
+}
+
+
+/* "Try this sample" — underline animates in from left */
+.sample-link {
+  position: relative;
+}
+.sample-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 1px;
+  background-color: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease-out;
+}
+.group:hover .sample-link::after {
+  transform: scaleX(1);
 }
 
 @layer base {
@@ -71,8 +313,17 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: #f8f5ef;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.47 0 0 0 0 0.33 0 0 0 0 0.22 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E"),
+      url("https://www.transparenttextures.com/patterns/p6-mini.png"),
+      url("/moorish-pattern.svg");
+    background-repeat: repeat, repeat, repeat;
+    background-size: 200px 200px, auto, 100px 100px;
+    @apply text-foreground;
     font-family: var(--font-sans);
+    font-feature-settings: "liga" 1, "kern" 1;
     min-height: 100vh;
+    position: relative;
   }
 }
