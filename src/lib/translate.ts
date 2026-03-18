@@ -1,10 +1,9 @@
-import { useState, useRef } from 'react'
-import { jsonrepair } from 'jsonrepair'
+import { jsonrepair } from "jsonrepair"
 
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const MODEL = 'openai/gpt-oss-120b'
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+const MODEL = "openai/gpt-oss-120b"
 
-const PROMPT = (input) => `You are a Spanish language expert helping an English speaker understand Spanish text deeply.
+const PROMPT = (input: string) => `You are a Spanish language expert helping an English speaker understand Spanish text deeply.
 
 You will break the input text into chunks so the reader can hover each one in sequence and mentally assemble the English sentence as they go — like translating in their own head, chunk by chunk.
 
@@ -14,7 +13,7 @@ For each chunk return:
 - "literal": word-for-word translation, even if unnatural
 - "note": a brief grammatical explanation for non-obvious chunks — null if the chunk is straightforward
 
-DEFAULT: One word per chunk. Only group when splitting would actively mislead the reader.
+DEFAULT: Only group when the words make more sense together.
 
 Study these examples carefully and match this behavior exactly:
 
@@ -33,8 +32,7 @@ OUTPUT: [
   { "chunk": "la", "meaning": "[to] her", "literal": "the", "note": null },
   { "chunk": "llamaba", "meaning": "[he] called", "literal": "called", "note": null }
 ]
-- note: add the [] surrounding the word to indicate that it is a pronoun or verb, and assume that prounoun based on the context of the sentence.
-when its not clear, do [he/her] or [himself/herself]
+- note: wrap any English word in [] if it has no corresponding Spanish word in the chunk. Whether that's an implied pronoun, a preposition absorbed into context, or a grammatical particle that just doesn't exist in Spanish.
 
 INPUT: "bajo pena de perjurio ante el Senado"
 OUTPUT: [
@@ -232,187 +230,120 @@ Every word in the input must appear in the output. Do not stop early — complet
 
 Text: "${input}"`
 
-function reconcileChunks(chunks, originalText) {
-  const result = []
+export type RawChunk = {
+  chunk: string
+  meaning: string
+  literal?: string
+  note?: string
+}
+
+export type ReconciledChunk = {
+  type: "chunk"
+  chunk: string
+  meaning: string
+  literal?: string
+  note?: string
+}
+
+export type ReconciledText = {
+  type: "text"
+  text: string
+}
+
+export type ReconciledItem = ReconciledChunk | ReconciledText
+
+function reconcileChunks(
+  chunks: RawChunk[],
+  originalText: string
+): ReconciledItem[] {
+  const result: ReconciledItem[] = []
   let pos = 0
 
   for (const chunk of chunks) {
     const idx = originalText.indexOf(chunk.chunk, pos)
     if (idx === -1) {
-      result.push({ type: 'chunk', ...chunk })
+      result.push({ type: "chunk", ...chunk })
       continue
     }
     if (idx > pos) {
-      result.push({ type: 'text', text: originalText.slice(pos, idx) })
+      result.push({ type: "text", text: originalText.slice(pos, idx) })
     }
-    result.push({ type: 'chunk', ...chunk })
+    result.push({ type: "chunk", ...chunk })
     pos = idx + chunk.chunk.length
   }
 
   if (pos < originalText.length) {
-    result.push({ type: 'text', text: originalText.slice(pos) })
+    result.push({ type: "text", text: originalText.slice(pos) })
   }
 
   return result
 }
 
-function matchCase(text, reference) {
-  if (!text) return text
-  const startsUpper = reference[0] === reference[0].toUpperCase() && reference[0] !== reference[0].toLowerCase()
-  return startsUpper ? text : text[0].toLowerCase() + text.slice(1)
-}
+function splitIntoSentences(items: ReconciledItem[]) {
+  const sentences: { id: number; chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> }[] = []
+  let currentChunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> = []
+  let chunkId = 0
 
-function Chunk({ chunk, meaning, literal, note }) {
-  const [visible, setVisible] = useState(false)
-  const timerRef = useRef(null)
-
-  const show = () => {
-    clearTimeout(timerRef.current)
-    setVisible(true)
-  }
-  const hide = () => {
-    timerRef.current = setTimeout(() => setVisible(false), 120)
-  }
-
-  return (
-    <span
-      className="chunk-wrap"
-      onMouseEnter={show}
-      onMouseLeave={hide}
-    >
-      {visible && (
-        <span className="tooltip">
-          <span className="tooltip-meaning">{matchCase(meaning, chunk)}</span>
-          <span className="tooltip-divider" />
-          <span className="tooltip-literal">{matchCase(literal, chunk)}</span>
-          {note && (
-            <>
-              <span className="tooltip-divider" />
-              <span className="tooltip-note">💡 {note}</span>
-            </>
-          )}
-        </span>
-      )}
-      <span className="chunk-pill">{chunk}</span>
-    </span>
-  )
-}
-
-export default function App() {
-  const [input, setInput] = useState('')
-  const [chunks, setChunks] = useState([])
-  const [translatedInput, setTranslatedInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY
-
-  async function translate() {
-    if (!input.trim()) return
-    setError('')
-    setChunks([])
-    setTranslatedInput('')
-    setLoading(true)
-    const frozenInput = input.trim()
-
-    try {
-      const res = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [{ role: 'user', content: PROMPT(frozenInput) }],
-          temperature: 0.2,
-          max_tokens: 16000,
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.error?.message || `HTTP ${res.status}`)
-      }
-
-      const data = await res.json()
-      let raw = data.choices?.[0]?.message?.content?.trim() ?? ''
-      console.log('LLM raw response:', raw)
-
-      // strip markdown fences if present
-      raw = raw.replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim()
-
-      // extract the JSON array even if there's extra text around it
-      const match = raw.match(/\[[\s\S]*\]/)
-      if (!match) throw new Error('No JSON array found in response')
-
-      const repaired = jsonrepair(match[0])
-      const parsed = JSON.parse(repaired)
-      setChunks(parsed)
-      setTranslatedInput(frozenInput)
-    } catch (e) {
-      setError(e.message || 'Something went wrong.')
-    } finally {
-      setLoading(false)
+  for (const item of items) {
+    if (item.type === "text") continue
+    const chunkData = {
+      id: chunkId++,
+      text: item.chunk,
+      meaning: item.meaning,
+      literal: item.literal,
+      grammar: item.note,
+    }
+    currentChunks.push(chunkData)
+    const endsSentence = /[.!?]$/.test(item.chunk.trim())
+    if (endsSentence && currentChunks.length > 0) {
+      sentences.push({ id: sentences.length, chunks: currentChunks })
+      currentChunks = []
     }
   }
+  if (currentChunks.length > 0) {
+    sentences.push({ id: sentences.length, chunks: currentChunks })
+  }
+  return sentences
+}
 
-  const handleKey = (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') translate()
+export async function translate(
+  input: string,
+  apiKey: string
+): Promise<{ reconciled: ReconciledItem[]; sentences: ReturnType<typeof splitIntoSentences> }> {
+  const res = await fetch(GROQ_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [{ role: "user", content: PROMPT(input) }],
+      temperature: 0.2,
+      max_tokens: 16000,
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(
+      (err as { error?: { message?: string } })?.error?.message || `HTTP ${res.status}`
+    )
   }
 
-  return (
-    <div className="app">
-      <header className="header">
-        <div className="header-icon">🇪🇸</div>
-        <div>
-          <h1 className="header-title">Spanish In-Context Translator</h1>
-          <p className="header-sub">Hover any chunk to see its meaning</p>
-        </div>
-      </header>
+  const data = await res.json()
+  let raw =
+    data.choices?.[0]?.message?.content?.trim() ?? ""
 
-      <main className="main">
-        <div className="card input-card">
-          <label className="label">Spanish text</label>
-          <textarea
-            className="textarea"
-            placeholder="Paste Spanish text here…"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            rows={5}
-          />
-          <div className="input-footer">
-            <span className="hint">Ctrl+Enter to translate</span>
-            <button
-              className="btn"
-              onClick={translate}
-              disabled={loading || !input.trim()}
-            >
-              {loading ? <span className="spinner" /> : 'Translate'}
-            </button>
-          </div>
-        </div>
+  raw = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim()
 
-        {error && (
-          <div className="error-banner">
-            ⚠️ {error}
-          </div>
-        )}
+  const match = raw.match(/\[[\s\S]*\]/)
+  if (!match) throw new Error("No JSON array found in response")
 
-        {chunks.length > 0 && (
-          <div className="card result-card">
-            <label className="label">Result</label>
-            <div className="result-text">
-              {reconcileChunks(chunks, translatedInput).map((item, i) =>
-                item.type === 'chunk'
-                  ? <Chunk key={i} {...item} />
-                  : <span key={i}>{item.text}</span>
-              )}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  )
+  const repaired = jsonrepair(match[0])
+  const parsed: RawChunk[] = JSON.parse(repaired)
+  const reconciled = reconcileChunks(parsed, input)
+  const sentences = splitIntoSentences(reconciled)
+
+  return { reconciled, sentences }
 }
