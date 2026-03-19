@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">
+  <!--
+    Topographic contour lines via feTurbulence + feComponentTransfer spikes.
+    stitchTiles="stitch" makes the noise field wrap seamlessly at tile edges.
+    tableValues creates thin spikes in the grayscale lookup = contour lines
+    at regular "elevation" intervals.
+  -->
+  <defs>
+    <filter id="topo" x="0" y="0" width="800" height="600"
+            primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+
+      <!-- Organic multi-octave noise field -->
+      <feTurbulence
+        type="turbulence"
+        baseFrequency="0.006 0.008"
+        numOctaves="5"
+        seed="14"
+        stitchTiles="stitch"
+        result="noise"
+      />
+
+      <!-- Desaturate to grayscale elevation map -->
+      <feColorMatrix type="saturate" values="0" in="noise" result="gray"/>
+
+      <!--
+        Spike lookup table: 30 values, spike of 0.85 at every 5th step.
+        This produces ~6 contour lines across the full grayscale range.
+        Spike width = 1 step / 30 H thin line.
+      -->
+      <feComponentTransfer in="gray" result="contours">
+        <feFuncR type="table" tableValues="
+          0 0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+        "/>
+        <feFuncG type="table" tableValues="
+          0 0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+        "/>
+        <feFuncB type="table" tableValues="
+          0 0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+          0 0 0 0 0.85
+        "/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+
+  <!-- Warm taupe lines, overall very low opacity -->
+  <rect width="800" height="600"
+        fill="#6b5a48"
+        filter="url(#topo)"
+        opacity="0.038"/>
+</svg>

@@ -76,7 +76,7 @@ export default function App() {
 
   if (subscriptionLoading) {
     return (
-      <main className="min-h-screen bg-background flex items-center justify-center">
+      <main className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
       </main>
     )
@@ -84,7 +84,7 @@ export default function App() {
 
   if (appState === "landing" || appState === "loading") {
     return (
-      <main className="min-h-screen bg-background">
+      <main className="min-h-screen bg-transparent">
         {appState === "loading" && <LoadingOverlay />}
         <LandingScreen onSubmit={handleTextSubmit} isLoading={appState === "loading"} />
         {error && (

@@ -333,16 +333,17 @@ article span {
     background-color: #f8f5ef;
   }
   #root {
-    background-color: #f8f5ef;
+    /* transparent so body background-image shows through */
+    background-color: transparent;
     min-height: 100vh;
   }
   body {
     background-color: #f8f5ef;
     background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.47 0 0 0 0 0.33 0 0 0 0 0.22 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E"),
-      url("/moorish-pattern.svg");
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.47 0 0 0 0 0.33 0 0 0 0 0.22 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E"),
+      url("/topo-pattern.svg");
     background-repeat: repeat, repeat;
-    background-size: 200px 200px, 100px 100px;
+    background-size: 200px 200px, 800px 600px;
     @apply text-foreground;
     font-family: var(--font-sans);
     font-feature-settings: "liga" 1, "kern" 1;
