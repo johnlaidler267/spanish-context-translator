@@ -1,7 +1,7 @@
 import { jsonrepair } from "jsonrepair"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-const MODEL = "llama-3.1-8b-instant"
+const MODEL = "openai/gpt-oss-120b"
 
 const PROMPT = (input: string) => `You are a Spanish language expert helping an English speaker understand Spanish text deeply.
 
@@ -47,7 +47,7 @@ OUTPUT: [
 
 INPUT: "Wendy se ha enfrentado a una campaña publicitaria"
 OUTPUT: [
-  { "chunk": "Wendy", "meaning": "Wendy", "literal": "Wendy", "note": person's name },
+  { "chunk": "Wendy", "meaning": "Wendy", "literal": "Wendy", "note": "person's name" },
   { "chunk": "se", "meaning": "herself", "literal": "herself", "note": "Reflexive pronoun — indicates the subject is acting on herself." },
   { "chunk": "ha", "meaning": "has", "literal": "has", "note": null },
   { "chunk": "enfrentado", "meaning": "faced", "literal": "confronted", "note": null },
@@ -68,6 +68,7 @@ INPUT: "era poco probable que"
 OUTPUT: [
   { "chunk": "era", "meaning": "was", "literal": "was", "note": null },
   { "chunk": "poco probable que", "meaning": "unlikely that", "literal": "little probable that", "note": null }
+]
 
 INPUT: "dar su brazo a torcer"
 OUTPUT: [
@@ -144,8 +145,8 @@ OUTPUT: [
 
 INPUT: "lo que"
 OUTPUT: [
-  {"chunk": "lo que", "meaning": "what", "literal": "what", "note": null 
-}
+  { "chunk": "lo que", "meaning": "what", "literal": "what", "note": null }
+]
 
 INPUT: "había dado su visto bueno a una serie de declaraciones"
 OUTPUT: [

@@ -22,12 +22,40 @@ interface ReadModeProps {
   sentences: Sentence[]
 }
 
+const MAX_WORDS_PER_PAGE = 20
+
+function buildPages(sentences: Sentence[]): ChunkData[][] {
+  const pages: ChunkData[][] = []
+  let current: ChunkData[] = []
+  let wordCount = 0
+
+  for (const sentence of sentences) {
+    for (const chunk of sentence.chunks) {
+      const words = chunk.text.trim().split(/\s+/).filter(w => /\w/.test(w)).length
+
+      // If adding this chunk exceeds the limit and we already have content, flush
+      if (wordCount + words > MAX_WORDS_PER_PAGE && current.length > 0) {
+        pages.push(current)
+        current = []
+        wordCount = 0
+      }
+
+      current.push(chunk)
+      wordCount += words
+    }
+  }
+
+  if (current.length > 0) pages.push(current)
+  return pages
+}
+
 export function ReadMode({ sentences }: ReadModeProps) {
+  const pages = buildPages(sentences)
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
   const [activeChunkId, setActiveChunkId] = useState<number | null>(null)
 
-  const currentSentence = sentences[currentSentenceIndex]
-  const totalSentences = sentences.length
+  const currentSentence = { chunks: pages[currentSentenceIndex] ?? [] }
+  const totalSentences = pages.length
 
   // Handle click outside to dismiss popup on mobile
   const handleGlobalClick = useCallback((e: MouseEvent) => {

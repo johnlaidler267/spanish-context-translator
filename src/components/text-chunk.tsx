@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
 interface ChunkData {
@@ -17,54 +18,132 @@ interface TextChunkProps {
   onDeactivate: () => void
 }
 
+interface PopupCoords {
+  anchorTop: number   // viewport y of the word's top edge
+  anchorBottom: number // viewport y of the word's bottom edge
+  left: number
+  placement: "above" | "below"
+}
+
+const POPUP_WIDTH = 288
+const POPUP_EST_HEIGHT = 120 // only used for placement decision, not positioning
+
+const isPunctuation = (text: string) => /^[^\w\u00C0-\u024F]+$/.test(text.trim())
+
 export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChunkProps) {
-  const [popupPosition, setPopupPosition] = useState<"above" | "below">("above")
-  const [popupOffset, setPopupOffset] = useState(0)
+  if (isPunctuation(chunk.text)) {
+    return <span>{chunk.text}</span>
+  }
+  const [coords, setCoords] = useState<PopupCoords | null>(null)
   const chunkRef = useRef<HTMLSpanElement>(null)
-  const popupRef = useRef<HTMLSpanElement>(null)
 
-  // Calculate popup position to avoid screen edge clipping
-  const calculatePopupPosition = useCallback(() => {
+  const calculateCoords = useCallback(() => {
     if (!chunkRef.current) return
-
     const rect = chunkRef.current.getBoundingClientRect()
+    const chunkCenter = rect.left + rect.width / 2
+    const padding = 16
+
+    // Clamp horizontal so popup never clips viewport edge
+    let left = chunkCenter
+    if (left - POPUP_WIDTH / 2 < padding) left = POPUP_WIDTH / 2 + padding
+    if (left + POPUP_WIDTH / 2 > window.innerWidth - padding) left = window.innerWidth - padding - POPUP_WIDTH / 2
+
     const spaceAbove = rect.top
     const spaceBelow = window.innerHeight - rect.bottom
-    const popupHeight = 130
-    const popupWidth = 288 // w-72 = 18rem = 288px
+    const placement =
+      spaceAbove < POPUP_EST_HEIGHT + 16 && spaceBelow >= POPUP_EST_HEIGHT + 16 ? "below" : "above"
 
-    // Prefer above; only fall back to below if the popup would clip off the viewport top
-    if (spaceAbove < popupHeight + 16 && spaceBelow >= popupHeight + 16) {
-      setPopupPosition("below")
-    } else {
-      setPopupPosition("above")
-    }
-    
-    // Horizontal offset to prevent edge clipping
-    const chunkCenter = rect.left + rect.width / 2
-    const viewportWidth = window.innerWidth
-    const halfPopup = popupWidth / 2
-    const padding = 16
-    
-    if (chunkCenter - halfPopup < padding) {
-      // Too close to left edge
-      setPopupOffset(halfPopup - chunkCenter + padding)
-    } else if (chunkCenter + halfPopup > viewportWidth - padding) {
-      // Too close to right edge
-      setPopupOffset(viewportWidth - padding - chunkCenter - halfPopup)
-    } else {
-      setPopupOffset(0)
-    }
+    setCoords({ anchorTop: rect.top, anchorBottom: rect.bottom, left, placement })
   }, [])
 
   useEffect(() => {
-    if (isActive) {
-      calculatePopupPosition()
+    if (isActive) calculateCoords()
+    else setCoords(null)
+  }, [isActive, calculateCoords])
+
+  // Recompute on scroll/resize so popup tracks the word
+  useEffect(() => {
+    if (!isActive) return
+    window.addEventListener("scroll", calculateCoords, { passive: true })
+    window.addEventListener("resize", calculateCoords)
+    return () => {
+      window.removeEventListener("scroll", calculateCoords)
+      window.removeEventListener("resize", calculateCoords)
     }
-  }, [isActive, calculatePopupPosition])
+  }, [isActive, calculateCoords])
+
+  const popup = coords && (
+    <div
+      data-popup
+      onMouseEnter={onActivate}
+      onMouseLeave={onDeactivate}
+      style={{
+        position: "fixed",
+        // "above": anchor bottom of popup 10px above word top, using translateY(-100%)
+        // "below": anchor top of popup 10px below word bottom
+        top: coords.placement === "above"
+          ? coords.anchorTop - 10
+          : coords.anchorBottom + 10,
+        left: coords.left,
+        width: POPUP_WIDTH,
+        transform: coords.placement === "above"
+          ? "translateX(-50%) translateY(-100%)"
+          : "translateX(-50%)",
+        zIndex: 9999,
+        backgroundColor: "#F5F1EB",
+        border: "1px solid rgba(158, 88, 67, 0.25)",
+        borderRadius: "4px",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.08)",
+        padding: "12px 14px",
+      }}
+    >
+      {/* Arrow caret */}
+      <div
+        style={{
+          position: "absolute",
+          width: 10,
+          height: 10,
+          backgroundColor: "#F5F1EB",
+          borderLeft: "1px solid rgba(158,88,67,0.25)",
+          borderTop: "1px solid rgba(158,88,67,0.25)",
+          left: "50%",
+          transform: coords.placement === "above"
+            ? "translateX(-50%) translateY(50%) rotate(45deg)"
+            : "translateX(-50%) translateY(-50%) rotate(45deg)",
+          ...(coords.placement === "above"
+            ? { bottom: 0, borderLeft: "none", borderTop: "none", borderRight: "1px solid rgba(158,88,67,0.25)", borderBottom: "1px solid rgba(158,88,67,0.25)" }
+            : { top: 0, borderRight: "none", borderBottom: "none", borderLeft: "1px solid rgba(158,88,67,0.25)", borderTop: "1px solid rgba(158,88,67,0.25)" }),
+        }}
+      />
+
+      {/* Meaning */}
+      <p style={{ fontSize: "1.05rem", fontFamily: "var(--font-serif)", fontWeight: 600, color: "#1C1008", lineHeight: 1.3, margin: 0 }}>
+        {chunk.meaning}
+      </p>
+
+      {(chunk.literal || chunk.grammar) && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(158,88,67,0.14)" }}>
+          {chunk.literal && (
+            <p style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "#3D2418" }}>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#b0a090" }}>Literal</span>
+              <span style={{ margin: "0 5px", color: "#C48A7A", opacity: 0.5 }}>·</span>
+              {chunk.literal}
+            </p>
+          )}
+          {chunk.grammar && (
+            <p style={{ margin: 0, fontSize: "0.8rem", fontStyle: "italic", color: "#3D2418" }}>
+              <span style={{ fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#b0a090" }}>Note</span>
+              <span style={{ margin: "0 5px", color: "#C48A7A", opacity: 0.5 }}>·</span>
+              {chunk.grammar}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
 
   return (
-    <span className="relative inline">
+    <span style={{ position: "relative", display: "inline" }}>
       <span
         ref={chunkRef}
         data-chunk
@@ -81,78 +160,8 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
       >
         {chunk.text}
       </span>
-      
-      {isActive && (
-        <span
-          ref={popupRef}
-          data-popup
-          className={cn(
-            "absolute z-50 block w-64 md:w-72 p-3 rounded-md",
-            "animate-in zoom-in-95 duration-150",
-            popupPosition === "above"
-              ? "bottom-full mb-2"
-              : "top-full mt-2"
-          )}
-          style={{
-            backgroundColor: "rgb(248, 245, 239)",
-            opacity: 1,
-            border: "1px solid rgba(158, 88, 67, 0.22)",
-            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)",
-            left: `calc(50% + ${popupOffset}px)`,
-            transform: "translateX(-50%)",
-          }}
-          onMouseEnter={onActivate}
-          onMouseLeave={onDeactivate}
-        >
-          {/* Arrow */}
-          <span
-            className={cn(
-              "absolute block w-3 h-3 rotate-45",
-              popupPosition === "above"
-                ? "bottom-0 translate-y-1/2 border-r border-b"
-                : "top-0 -translate-y-1/2 border-l border-t"
-            )}
-            style={{
-              backgroundColor: "rgb(248, 245, 239)",
-              borderColor: "rgba(158, 88, 67, 0.22)",
-              left: `calc(50% - ${popupOffset}px)`,
-              transform: `translateX(-50%) rotate(45deg) ${popupPosition === "above" ? "translateY(50%)" : "translateY(-50%)"}`
-            }}
-          />
-          
-          {/* Content — text colors hardcoded since bg is always light cream */}
-          <span className="relative block">
-            <span className="block text-lg font-serif font-medium leading-snug" style={{ color: "#2C1A10" }}>
-              {chunk.meaning}
-            </span>
 
-            {(chunk.literal || chunk.grammar) && (
-              <span className="block mt-2 pt-2" style={{ borderTop: "1px solid rgba(158, 88, 67, 0.12)" }}>
-                {chunk.literal && (
-                  <span className="block text-sm" style={{ color: "#4A3328" }}>
-                    <span
-                      className="font-sans uppercase tracking-[0.08em] text-[10px] mr-1"
-                      style={{ color: "#bdb9b1" }}
-                    >Literal</span>
-                    <span className="mr-1" style={{ color: "#C48A7A", opacity: 0.45 }}>·</span>
-                    {chunk.literal}
-                  </span>
-                )}
-                {chunk.grammar && (
-                  <span className={`block text-sm italic ${chunk.literal ? "mt-1.5" : ""}`} style={{ color: "#4A3328" }}>
-                    <span
-                      className="font-sans not-italic uppercase tracking-[0.08em] text-[10px] mr-1"
-                      style={{ color: "#bdb9b1" }}
-                    >Note</span>
-                    <span className="mr-1" style={{ color: "#C48A7A", opacity: 0.45 }}>·</span>
-                    {chunk.grammar}
-                  </span>
-                )}
-              </span>
-            )}
-          </span>
-        </span>
-      )}
+      {typeof document !== "undefined" && popup && createPortal(popup, document.body)}
     </span>
   )
 }

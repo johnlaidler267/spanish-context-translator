@@ -52,10 +52,10 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
       <div className="min-h-screen flex flex-col items-center justify-center px-6 md:px-8">
       <div className="w-full max-w-[800px]">
         {/* Logo and tagline */}
-        <div className="hero-mark text-center relative entry-1" style={{ paddingBottom: "32px" }}>
-          <div className="inline-flex items-center justify-center gap-5 logo-lockup">
-            <img src="/logo.png" alt="Lector" className="logo-icon h-12 md:h-14 w-auto" />
-            <h1 className="wordmark font-serif text-4xl md:text-5xl font-medium" style={{ marginTop: "-4px" }}>
+        <div className="hero-mark text-center relative entry-1 pt-16 md:pt-0" style={{ paddingBottom: "32px" }}>
+          <div className="inline-flex items-center justify-center flex-nowrap gap-3 md:gap-5 logo-lockup">
+            <img src="/logo.png" alt="Lector" className="logo-icon h-7 sm:h-9 md:h-11 w-auto flex-shrink-0" />
+            <h1 className="wordmark font-serif text-3xl sm:text-4xl md:text-5xl font-medium whitespace-nowrap" style={{ marginTop: "-4px" }}>
               Lector
             </h1>
           </div>
@@ -92,7 +92,7 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
             <Button
               onClick={handleSubmit}
               disabled={!text.trim() || isLoading}
-              className="btn-cta group/btn w-full h-14 text-lg font-sans font-medium relative disabled:opacity-40 bg-[#C48A7A]"
+              className="btn-cta group/btn w-full h-14 text-lg font-serif font-medium relative disabled:opacity-40 bg-[#C48A7A]"
               style={{ color: "#2C1A10" }}
             >
               {isLoading ? (
@@ -101,27 +101,27 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
                   Processing...
                 </span>
               ) : (
-                <span className="flex items-center justify-center gap-2 relative z-10">
-                  <span>Start Reading</span>
-                  <ArrowRight className="h-5 w-5 transition-transform ease-in-out duration-[220ms] group-hover/btn:translate-x-[4px]" />
+                <span className="flex items-center justify-center gap-1.5 relative z-10">
+                  <span className="uppercase tracking-[0.12em] text-base font-semibold" style={{ fontVariant: "small-caps" }}>Start Reading</span>
+                  <ArrowRight className="h-4 w-4 transition-transform ease-in-out duration-[220ms] group-hover/btn:translate-x-[4px]" />
                 </span>
               )}
             </Button>
-            <p className="text-[10px] italic text-muted-foreground/60 mt-4 text-center">
+            <p className="text-center w-full mt-2 font-serif italic" style={{ fontSize: "0.72rem", color: "#a89a8d", letterSpacing: "0.01em" }}>
               Supports Spanish dialects from Spain, Mexico, and Latin America.
             </p>
           </div>
 
           {/* Filigree divider */}
-          <img src="/filigree-divider.svg" alt="" className="filigree-divider mx-auto mt-4 mb-0" aria-hidden />
+          <img src="/filigree-divider.svg" alt="" className="filigree-divider mx-auto mt-2 mb-0" aria-hidden />
 
           {/* Sample text preview */}
-          <div className="sample-text px-2 py-4 entry-4 transition-all duration-250 ease-in-out" style={{ borderTop: "1px solid rgba(196,138,122,0.18)" }}>
+          <div className="sample-text px-2 py-4 entry-4 transition-all duration-250 ease-in-out">
             <p className="metadata-label text-[11px] font-medium uppercase tracking-[0.08em] mb-3">
               Sample text
             </p>
             <button onClick={handleTrySample} disabled={isLoading} className="text-left w-full group">
-              <p className="sample-paragraph font-serif text-[15px] text-foreground/80 leading-[1.6] group-hover:text-foreground/95 transition-colors overflow-hidden italic">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
+              <p className="sample-paragraph font-serif text-[15px] text-foreground/80 leading-[1.6] group-hover:text-foreground/95 transition-colors overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
               <span className="sample-link text-sm text-primary mt-2 inline-flex items-center gap-1">
                 Try this sample
                 <span className="inline-block transition-transform ease-out duration-200 group-hover:translate-x-[3px]">→</span>
