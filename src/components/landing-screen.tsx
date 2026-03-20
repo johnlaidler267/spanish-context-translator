@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { Dices } from "lucide-react"
 import { MainHeader } from "./main-header"
-import { generateRandomSpanish } from "@/lib/translate"
+import { appendTranscriptToField, generateRandomSpanish } from "@/lib/translate"
+import { VoiceInputButton } from "./voice-input-button"
 import type { ReadingTheme } from "./theme-toggle"
 
 interface LandingScreenProps {
@@ -154,6 +155,11 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
                   <path d="M12 19V5M5 12l7-7 7 7" />
                 </svg>
               </button>
+              <VoiceInputButton
+                apiKey={apiKey}
+                disabled={isLoading}
+                onTranscript={(t) => setText((prev) => appendTranscriptToField(prev, t))}
+              />
             </div>
             <div className="flex w-full items-center justify-end">
               <p className="word-counter select-none min-w-0" aria-live="polite">

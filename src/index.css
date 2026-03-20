@@ -187,6 +187,14 @@ article span {
 .dark .dice-btn:hover          { color: #c97a5a; background: rgba(201,122,90,0.06); }
 .dark .submit-arrow-btn        { background: #3a332e; color: #f7f3ee; }
 .dark .submit-arrow-btn:hover  { background: #c97a5a; }
+.dark .voice-mic-btn           { color: rgba(58, 51, 46, 0.32); }
+.dark .voice-mic-btn:hover:not(:disabled),
+.dark .voice-mic-btn:focus-visible:not(:disabled) {
+  color: rgba(58, 51, 46, 0.52);
+  background: rgba(201, 122, 90, 0.06);
+}
+.dark .voice-mic-btn--recording { color: #c97a5a; }
+.dark .voice-input-feedback    { color: rgba(58, 51, 46, 0.45); }
 
 /* ── outside the box: light cream on dark bg ── */
 .dark .word-counter-label,
@@ -335,11 +343,11 @@ article span {
     0 0 0 2px rgba(201, 122, 90, 0.15);
 }
 
-/* Submit arrow button — floats in lower-right of textarea */
+/* Submit arrow — left of mic (mic stays bottom-right) */
 .submit-arrow-btn {
   position: absolute;
   bottom: 12px;
-  right: 12px;
+  right: 60px;
   width: 36px;
   height: 36px;
   display: flex;
@@ -368,6 +376,107 @@ article span {
   transform: scale(0.95);
 }
 
+/* Voice input — mic inside textarea, bottom-right (40×40 tap target) */
+.voice-input-wrap {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: min(160px, 45vw);
+}
+
+.voice-mic-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: rgba(58, 51, 46, 0.32);
+  background: transparent;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    opacity 0.18s ease,
+    transform 0.12s ease;
+}
+
+.voice-mic-btn:hover:not(:disabled),
+.voice-mic-btn:focus-visible:not(:disabled) {
+  color: rgba(58, 51, 46, 0.48);
+  background: rgba(201, 122, 90, 0.06);
+  outline: none;
+}
+
+.voice-mic-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(201, 122, 90, 0.25);
+}
+
+.voice-mic-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.voice-mic-btn--recording {
+  color: #c97a5a;
+  animation: voice-mic-pulse 1.5s infinite ease-in-out;
+}
+
+.voice-mic-btn--busy {
+  animation: none;
+}
+
+.voice-mic-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.voice-mic-icon--spin {
+  animation: spin 0.75s linear infinite;
+}
+
+.voice-mic-glow {
+  position: absolute;
+  inset: 2px;
+  border-radius: 10px;
+  box-shadow: 0 0 12px rgba(201, 122, 90, 0.35);
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+@keyframes voice-mic-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+.voice-input-feedback {
+  font-size: 0.7rem;
+  line-height: 1.25;
+  text-align: right;
+  color: rgba(58, 51, 46, 0.48);
+  pointer-events: none;
+  text-wrap: balance;
+}
+
 /* Corner ornaments — terracotta L-brackets */
 .corner {
   position: absolute;
@@ -394,7 +503,7 @@ article span {
   border: none;
   background: transparent;
   border-radius: 4px;
-  padding: 24px;
+  padding: 24px 7rem 24px 24px;
   font-family: var(--font-serif);
   font-size: 1.05rem;
   line-height: 1.75;
@@ -414,7 +523,7 @@ article span {
   position: absolute;
   top: 0;
   left: 0;
-  padding: 24px;
+  padding: 24px 7rem 24px 24px;
   pointer-events: none;
   font-family: var(--font-serif);
   font-size: 1.05rem;
@@ -432,12 +541,53 @@ article span {
 
 @media (max-width: 767px) {
   .textarea-field {
-    padding: 18px 20px;
+    /* Slightly less right padding — icons are scaled down below */
+    padding: 18px 6rem 18px 20px;
   }
   .textarea-wrapper .animated-placeholder {
-    padding: 18px 20px;
+    padding: 18px 6rem 18px 20px;
     font-size: 0.95rem;
     line-height: 1.65;
+  }
+
+  .submit-arrow-btn {
+    right: 56px;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+  }
+  .submit-arrow-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .voice-mic-btn {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    border-radius: 9px;
+  }
+  .voice-mic-icon {
+    width: 19px;
+    height: 19px;
+  }
+  .voice-mic-glow {
+    inset: 1px;
+    border-radius: 9px;
+  }
+
+  .dice-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .dice-icon {
+    width: 18px;
+    height: 18px;
+  }
+  .dice-spinner {
+    width: 12px;
+    height: 12px;
   }
 }
 

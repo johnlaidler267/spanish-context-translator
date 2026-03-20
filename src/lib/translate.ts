@@ -402,3 +402,42 @@ Return only the Spanish text. No translation, no explanation, no quotes.`,
   const data = await res.json()
   return data.choices[0].message.content.trim()
 }
+
+const GROQ_TRANSCRIBE_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
+
+/** Spanish-first speech-to-text via Groq Whisper (same API key as chat). */
+export async function transcribeAudioWithGroq(
+  apiKey: string,
+  audioBlob: Blob,
+  filename = "recording.webm",
+): Promise<string> {
+  const form = new FormData()
+  form.append("file", audioBlob, filename)
+  form.append("model", "whisper-large-v3-turbo")
+  form.append("language", "es")
+  form.append("response_format", "json")
+
+  const res = await fetch(GROQ_TRANSCRIBE_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+  })
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "")
+    throw new Error(err || `Transcription failed: ${res.status}`)
+  }
+
+  const data = (await res.json()) as { text?: string }
+  return (data.text ?? "").trim()
+}
+
+/** Join transcribed phrase to existing textarea value with a space when needed */
+export function appendTranscriptToField(previous: string, addition: string): string {
+  const add = addition.trim()
+  if (!add) return previous
+  const prev = previous
+  if (!prev.trim()) return add
+  const needsSpace = !/\s$/.test(prev) && !/^\s/.test(add)
+  return prev + (needsSpace ? " " : "") + add
+}
