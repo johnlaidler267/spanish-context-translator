@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
 import { Dices } from "lucide-react"
 import { MainHeader } from "./main-header"
 import { generateRandomSpanish } from "@/lib/translate"
@@ -77,7 +76,10 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
   return (
     <>
       <MainHeader theme={theme} onThemeChange={onThemeChange} />
-      <div className="landing-page min-h-screen flex flex-col items-center justify-center px-6 md:px-8" style={{ position: "relative" }}>
+      <div
+        className="landing-page flex flex-col items-stretch md:items-center md:justify-center min-h-[100dvh] md:min-h-screen px-6 md:px-8"
+        style={{ position: "relative" }}
+      >
         <img
           src={theme === "dark" ? "/landing-bg-dark.png" : "/landing-bg.png"}
           aria-hidden
@@ -95,16 +97,19 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
             zIndex: 0,
           }}
         />
-      <div className="landing-column w-full max-w-[800px]" style={{ position: "relative", zIndex: 1 }}>
-        {/* Logo and tagline — pb-8 = 32px (4×8) */}
-        <div className="hero-mark hero-mark--literary text-center relative entry-1 pt-16 md:pt-0 pb-8">
+      <div
+        className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 md:flex-none md:justify-start"
+        style={{ position: "relative", zIndex: 1 }}
+      >
+        {/* Mobile: greeting centered in space above composer; composer pinned to bottom via mt-auto */}
+        <div className="hero-mark hero-mark--literary text-center relative entry-1 flex flex-col flex-1 justify-center items-center min-h-0 md:flex-none md:block md:pb-8 pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] md:pt-0 pb-6 md:pb-8">
           <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl" style={{ lineHeight: "1.15" }}>
             Hola, ready to read?
           </h1>
         </div>
 
-        {/* Main stack: 24px (3×8) — room to breathe around ornament */}
-        <div className="flex flex-col gap-6 w-full">
+        {/* Composer + extras: thumb zone on mobile; centered stack on desktop */}
+        <div className="flex flex-col gap-6 w-full mt-auto md:mt-0 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom,0px))] md:pb-0">
           {/* Composer: input + word count share width; 8px between */}
           <div className="entry-2 flex flex-col gap-2 w-full">
             <div className="textarea-wrapper w-full">
@@ -150,26 +155,23 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
                 </svg>
               </button>
             </div>
-            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2">
-              <span aria-hidden className="min-w-0" />
-              <div className="plan-badge">
-                <span className="plan-badge-plan">Free plan</span>
-                <span className="plan-badge-dot" aria-hidden>·</span>
-                <Link to="/upgrade" className="plan-badge-upgrade">
-                  Upgrade
-                </Link>
-              </div>
-              <p className="word-counter select-none justify-self-end min-w-0" aria-live="polite">
+            <div className="flex w-full items-center justify-end">
+              <p className="word-counter select-none min-w-0" aria-live="polite">
                 <span className="word-counter-label">words</span>
                 <span className="word-counter-value">{text.trim() ? text.trim().split(/\s+/).length.toString().padStart(2, "0") : "00"}</span>
               </p>
             </div>
           </div>
 
-          <img src="/filigree-divider.svg" alt="" className="filigree-divider mx-auto shrink-0" aria-hidden />
+          <img
+            src="/filigree-divider.svg"
+            alt=""
+            className="filigree-divider mx-auto shrink-0 hidden md:block"
+            aria-hidden
+          />
 
-          {/* Sample excerpt */}
-          <div className="sample-text w-full entry-4 mt-3">
+          {/* Sample excerpt — desktop/tablet only */}
+          <div className="sample-text w-full entry-4 mt-3 hidden md:block">
             <p className="sample-excerpt-label">Sample text</p>
             <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
               <p className="sample-paragraph font-serif text-[15px] overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>

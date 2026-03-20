@@ -15,7 +15,7 @@ export function MainHeader({ theme, onThemeChange }: MainHeaderProps) {
       <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/50 to-transparent h-20" />
       <div className="relative flex items-center justify-between h-14 px-5 md:px-8">
         <img src="/logo.png" alt="Lector" className="pointer-events-none h-8 w-auto" />
-        <div className="flex items-center gap-1 pointer-events-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
           <button
             onClick={() => onThemeChange(theme === "light" ? "dark" : "light")}
             className="theme-toggle-btn flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ease-in-out text-foreground hover:bg-black/5 dark:hover:bg-white/10"
@@ -32,6 +32,13 @@ export function MainHeader({ theme, onThemeChange }: MainHeaderProps) {
           >
             <User className="h-4 w-4" />
           </Link>
+          <div className="plan-badge plan-badge--header">
+            <span className="plan-badge-plan">Free plan</span>
+            <span className="plan-badge-dot" aria-hidden>·</span>
+            <Link to="/upgrade" className="plan-badge-upgrade">
+              Upgrade
+            </Link>
+          </div>
         </div>
       </div>
     </header>
