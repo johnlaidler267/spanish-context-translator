@@ -28,10 +28,26 @@ interface PopupCoords {
 const POPUP_WIDTH = 288
 const POPUP_EST_HEIGHT = 120 // only used for placement decision, not positioning
 
-const isPunctuation = (text: string) => /^[^\w\u00C0-\u024F]+$/.test(text.trim())
+/** True if chunk is only punctuation/symbols — should sit flush after the previous word in read mode */
+export function isPunctuationOnly(text: string): boolean {
+  const t = text.trim()
+  if (!t) return false
+  return /^[^\w\u00C0-\u024F]+$/.test(t)
+}
+
+/** Punctuation-only chunks that still need a normal space from the previous token (e.g. ". ¿Cómo…") */
+const OPENING_PUNCT_RE = /^[¿¡(«"“‘\u201C\u2018]/
+
+/** If true, read mode should not insert a gap before this chunk (fixes "word ," → "word,") */
+export function shouldGlueAfterPriorChunk(nextChunkText: string): boolean {
+  if (!isPunctuationOnly(nextChunkText)) return false
+  const t = nextChunkText.trim()
+  if (OPENING_PUNCT_RE.test(t)) return false
+  return true
+}
 
 export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChunkProps) {
-  if (isPunctuation(chunk.text)) {
+  if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text}</span>
   }
   const [coords, setCoords] = useState<PopupCoords | null>(null)

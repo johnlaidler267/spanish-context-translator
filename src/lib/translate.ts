@@ -1,7 +1,7 @@
 import { jsonrepair } from "jsonrepair"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-const MODEL = "openai/gpt-oss-120b"
+const MODEL = "llama-3.1-8b-instant"
 
 const PROMPT = (input: string) => `You are a Spanish language expert helping an English speaker understand Spanish text deeply.
 

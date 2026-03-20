@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { TextChunk } from "./text-chunk"
+import { TextChunk, shouldGlueAfterPriorChunk } from "./text-chunk"
 import { Button } from "@/components/ui/button"
 
 interface ChunkData {
@@ -111,17 +111,23 @@ export function ReadMode({ sentences }: ReadModeProps) {
       {/* Sentence display */}
       <div className="flex-1 flex items-center justify-center w-full pt-16" style={{ maxWidth: "700px" }}>
         <span className="block font-serif text-3xl md:text-5xl lg:text-6xl leading-snug md:leading-tight text-center text-foreground text-balance selection:bg-primary/20">
-          {currentSentence.chunks.map((chunk, index) => (
-            <span key={chunk.id}>
-              <TextChunk
-                chunk={chunk}
-                isActive={activeChunkId === chunk.id}
-                onActivate={() => setActiveChunkId(chunk.id)}
-                onDeactivate={() => setActiveChunkId(null)}
-              />
-              {index < currentSentence.chunks.length - 1 && " "}
-            </span>
-          ))}
+          {currentSentence.chunks.map((chunk, index) => {
+            const next = currentSentence.chunks[index + 1]
+            /* Avoid "word ,"; keep space before ¿ ( after . etc. */
+            const gapAfter =
+              next != null && !shouldGlueAfterPriorChunk(next.text) ? " " : ""
+            return (
+              <span key={chunk.id}>
+                <TextChunk
+                  chunk={chunk}
+                  isActive={activeChunkId === chunk.id}
+                  onActivate={() => setActiveChunkId(chunk.id)}
+                  onDeactivate={() => setActiveChunkId(null)}
+                />
+                {gapAfter}
+              </span>
+            )
+          })}
         </span>
       </div>
 
