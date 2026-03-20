@@ -19,14 +19,19 @@ interface TextChunkProps {
 }
 
 interface PopupCoords {
-  anchorTop: number   // viewport y of the word's top edge
-  anchorBottom: number // viewport y of the word's bottom edge
-  left: number
+  anchorTop: number
+  anchorBottom: number
+  /** Viewport X: left edge of the tooltip box */
+  tooltipLeft: number
+  /** Tooltip-local X: horizontal center of the arrow (points at word center) */
+  arrowCenterX: number
   placement: "above" | "below"
 }
 
 const POPUP_WIDTH = 288
-const POPUP_EST_HEIGHT = 120 // only used for placement decision, not positioning
+const POPUP_EST_HEIGHT = 120
+/** Keep arrow diamond inside tooltip; min distance from edge to arrow center (px) */
+const ARROW_EDGE_INSET = 12
 
 /** True if chunk is only punctuation/symbols — should sit flush after the previous word in read mode */
 export function isPunctuationOnly(text: string): boolean {
@@ -56,20 +61,36 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
   const calculateCoords = useCallback(() => {
     if (!chunkRef.current) return
     const rect = chunkRef.current.getBoundingClientRect()
-    const chunkCenter = rect.left + rect.width / 2
     const padding = 16
+    const vw = window.innerWidth
+    const tooltipWidth = POPUP_WIDTH
 
-    // Clamp horizontal so popup never clips viewport edge
-    let left = chunkCenter
-    if (left - POPUP_WIDTH / 2 < padding) left = POPUP_WIDTH / 2 + padding
-    if (left + POPUP_WIDTH / 2 > window.innerWidth - padding) left = window.innerWidth - padding - POPUP_WIDTH / 2
+    // Pin: horizontal anchor on the word (slight left bias reads natural on small spans)
+    const wordCenterX = rect.left + rect.width * 0.48
+
+    // Bubble: shift horizontally to stay in viewport; not necessarily centered under word
+    let tooltipLeft = wordCenterX - tooltipWidth / 2
+    tooltipLeft = Math.max(padding, Math.min(tooltipLeft, vw - padding - tooltipWidth))
+
+    // Arrow: stays under wordCenterX; clamp within tooltip so it doesn’t clip
+    const rawArrowCenter = wordCenterX - tooltipLeft
+    const arrowCenterX = Math.max(
+      ARROW_EDGE_INSET,
+      Math.min(tooltipWidth - ARROW_EDGE_INSET, rawArrowCenter),
+    )
 
     const spaceAbove = rect.top
     const spaceBelow = window.innerHeight - rect.bottom
     const placement =
       spaceAbove < POPUP_EST_HEIGHT + 16 && spaceBelow >= POPUP_EST_HEIGHT + 16 ? "below" : "above"
 
-    setCoords({ anchorTop: rect.top, anchorBottom: rect.bottom, left, placement })
+    setCoords({
+      anchorTop: rect.top,
+      anchorBottom: rect.bottom,
+      tooltipLeft,
+      arrowCenterX,
+      placement,
+    })
   }, [])
 
   useEffect(() => {
@@ -95,16 +116,14 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
       onMouseLeave={onDeactivate}
       style={{
         position: "fixed",
-        // "above": anchor bottom of popup 10px above word top, using translateY(-100%)
-        // "below": anchor top of popup 10px below word bottom
-        top: coords.placement === "above"
-          ? coords.anchorTop - 10
-          : coords.anchorBottom + 10,
-        left: coords.left,
+        top:
+          coords.placement === "above"
+            ? coords.anchorTop - 10
+            : coords.anchorBottom + 10,
+        left: coords.tooltipLeft,
         width: POPUP_WIDTH,
-        transform: coords.placement === "above"
-          ? "translateX(-50%) translateY(-100%)"
-          : "translateX(-50%)",
+        boxSizing: "border-box",
+        transform: coords.placement === "above" ? "translateY(-100%)" : "none",
         zIndex: 9999,
         backgroundColor: "#f4efe9",
         border: "1px solid rgba(201, 122, 90, 0.28)",
@@ -113,16 +132,16 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
         padding: "12px 14px",
       }}
     >
-      {/* Arrow caret */}
+      {/* Arrow: horizontal position tracks word; bubble may shift — arrow stays pinned in tooltip-local X */}
       <div
         style={{
           position: "absolute",
           width: 10,
           height: 10,
+          left: coords.arrowCenterX,
           backgroundColor: "#f4efe9",
           borderLeft: "1px solid rgba(201,122,90,0.28)",
           borderTop: "1px solid rgba(201,122,90,0.28)",
-          left: "50%",
           transform: coords.placement === "above"
             ? "translateX(-50%) translateY(50%) rotate(45deg)"
             : "translateX(-50%) translateY(-50%) rotate(45deg)",
