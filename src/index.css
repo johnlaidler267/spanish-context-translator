@@ -543,7 +543,7 @@ article span {
   .textarea-field {
     /* Compact on mobile (~¼ prior vh caps); word count hidden */
     height: auto;
-    min-height: min(13.65dvh, 5.8rem);
+    min-height: min(17.65dvh, 7.8rem);
     max-height: min(17.85dvh, 7.9rem);
     /* Slightly less right padding — icons are scaled down below */
     padding: 18px 6rem 18px 16px;
