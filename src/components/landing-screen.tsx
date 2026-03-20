@@ -1,13 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { Dices } from "lucide-react"
 import { MainHeader } from "./main-header"
 import { generateRandomSpanish } from "@/lib/translate"
+import type { ReadingTheme } from "./theme-toggle"
 
 interface LandingScreenProps {
   onSubmit: (text: string) => void
   isLoading: boolean
+  theme: ReadingTheme
+  onThemeChange: (theme: ReadingTheme) => void
 }
 
 const PLACEHOLDERS = [
@@ -21,7 +25,7 @@ const PLACEHOLDERS = [
   "Paste a conversation…",
 ]
 
-export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
+export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: LandingScreenProps) {
   const [text, setText] = useState("")
   const [isRolling, setIsRolling] = useState(false)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
@@ -72,10 +76,10 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
 
   return (
     <>
-      <MainHeader />
+      <MainHeader theme={theme} onThemeChange={onThemeChange} />
       <div className="landing-page min-h-screen flex flex-col items-center justify-center px-6 md:px-8" style={{ position: "relative" }}>
         <img
-          src="/landing-bg.png"
+          src={theme === "dark" ? "/landing-bg-dark.png" : "/landing-bg.png"}
           aria-hidden
           style={{
             position: "absolute",
@@ -84,7 +88,9 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
             height: "100%",
             objectFit: "cover",
             objectPosition: "center",
-            opacity: 0.22,
+            opacity: theme === "dark" ? 0.35 : 0.22,
+            /* Dark: subtle blur (~¼ of prior 9.2px) */
+            filter: theme === "dark" ? "blur(2.3px)" : "none",
             pointerEvents: "none",
             zIndex: 0,
           }}
@@ -144,10 +150,20 @@ export function LandingScreen({ onSubmit, isLoading }: LandingScreenProps) {
                 </svg>
               </button>
             </div>
-            <p className="word-counter select-none text-right" aria-live="polite">
-              <span className="word-counter-label">words</span>
-              <span className="word-counter-value">{text.trim() ? text.trim().split(/\s+/).length.toString().padStart(2, "0") : "00"}</span>
-            </p>
+            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <span aria-hidden className="min-w-0" />
+              <div className="plan-badge">
+                <span className="plan-badge-plan">Free plan</span>
+                <span className="plan-badge-dot" aria-hidden>·</span>
+                <Link to="/upgrade" className="plan-badge-upgrade">
+                  Upgrade
+                </Link>
+              </div>
+              <p className="word-counter select-none justify-self-end min-w-0" aria-live="polite">
+                <span className="word-counter-label">words</span>
+                <span className="word-counter-value">{text.trim() ? text.trim().split(/\s+/).length.toString().padStart(2, "0") : "00"}</span>
+              </p>
+            </div>
           </div>
 
           <img src="/filigree-divider.svg" alt="" className="filigree-divider mx-auto shrink-0" aria-hidden />

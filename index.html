@@ -13,6 +13,16 @@
       rel="stylesheet"
     />
     <title>Lector — Spanish Reading Companion</title>
+    <!-- Apply saved theme before paint (key must match src/lib/theme-storage.ts) -->
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem("lector-reading-theme") === "dark") {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="font-sans antialiased">
     <div id="root"></div>

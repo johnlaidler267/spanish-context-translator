@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback } from "react"
+import React, { useState, useCallback, useEffect } from "react"
 import { LandingScreen } from "./components/landing-screen"
 import { LoadingOverlay } from "./components/loading-overlay"
 import { ReadingHeader } from "./components/reading-header"
@@ -13,6 +13,7 @@ import { translate } from "./lib/translate"
 import type { ReconciledItem } from "./lib/translate"
 import type { ViewMode } from "./components/mode-toggle"
 import type { ReadingTheme } from "./components/theme-toggle"
+import { getStoredReadingTheme, setStoredReadingTheme } from "./lib/theme-storage"
 
 type AppState = "landing" | "loading" | "reading"
 
@@ -21,7 +22,13 @@ export default function App() {
 
   const [appState, setAppState] = useState<AppState>("landing")
   const [viewMode, setViewMode] = useState<ViewMode>("article")
-  const [readingTheme, setReadingTheme] = useState<ReadingTheme>("light")
+  const [readingTheme, setReadingTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
+  const appTheme = readingTheme
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", appTheme === "dark")
+    setStoredReadingTheme(appTheme)
+  }, [appTheme])
   const [reconciled, setReconciled] = useState<ReconciledItem[] | null>(null)
   const [sentences, setSentences] = useState<
     { id: number; chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> }[]
@@ -86,7 +93,7 @@ export default function App() {
     return (
       <main className="min-h-screen bg-transparent">
         {appState === "loading" && <LoadingOverlay />}
-        <LandingScreen onSubmit={handleTextSubmit} isLoading={appState === "loading"} />
+        <LandingScreen onSubmit={handleTextSubmit} isLoading={appState === "loading"} theme={appTheme} onThemeChange={setReadingTheme} />
         {error && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-3 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg text-sm max-w-md">
             ⚠️ {error}
@@ -99,7 +106,7 @@ export default function App() {
   const hasSentences = sentences && sentences.length > 0
 
   return (
-    <main className={`min-h-screen bg-background ${readingTheme !== "light" ? readingTheme : ""}`}>
+    <main className="min-h-screen bg-background">
       <ReadingHeader mode={viewMode} onModeChange={setViewMode} onBack={handleBack} theme={readingTheme} onThemeChange={setReadingTheme} />
       <div className="animate-fade-in-up">
         {viewMode === "article" && reconciled ? (

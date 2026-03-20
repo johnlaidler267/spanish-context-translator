@@ -350,21 +350,31 @@ export async function translate(
   return { reconciled, sentences }
 }
 
-const RANDOM_TOPICS = [
-  "a market scene in a Spanish city",
-  "a memory of childhood summers",
-  "a conversation between two old friends",
-  "a description of a rainy afternoon",
-  "a letter never sent",
-  "a traveller arriving in a new place",
-  "the smell of food cooking",
-  "a quiet Sunday morning",
-  "a night at a flamenco show",
-  "losing something important",
+const RANDOM_STYLES = [
+  "a WhatsApp message from a worried mother",
+  "the opening lines of a novel set in Seville",
+  "a teenager's diary entry",
+  "a letter from someone who just moved cities",
+  "overheard conversation on a Madrid metro",
+  "a food critic reviewing a tiny restaurant",
+  "a text message argument between siblings",
+  "a fisherman describing the sea at dawn",
+  "a grandmother's recipe with personal asides",
+  "a man watching his neighbourhood change",
+  "a child explaining something they misunderstood",
+  "a heartfelt wedding toast that goes slightly off-script",
+  "a lonely traveller writing in their journal",
+  "a street vendor's sales pitch with hidden poetry",
+  "a detective's internal monologue at a crime scene",
+  "a botanist describing a plant they've just discovered",
+  "two neighbours arguing over a wall",
+  "a professor losing their train of thought mid-lecture",
+  "a love letter that never got sent",
+  "someone describing a dream that felt too real",
 ]
 
 export async function generateRandomSpanish(apiKey: string): Promise<string> {
-  const topic = RANDOM_TOPICS[Math.floor(Math.random() * RANDOM_TOPICS.length)]
+  const style = RANDOM_STYLES[Math.floor(Math.random() * RANDOM_STYLES.length)]
   const res = await fetch(GROQ_API_URL, {
     method: "POST",
     headers: {
@@ -376,11 +386,14 @@ export async function generateRandomSpanish(apiKey: string): Promise<string> {
       messages: [
         {
           role: "user",
-          content: `Write a single short paragraph in natural, everyday Spanish (3–5 sentences) about: ${topic}. 
-Return only the Spanish paragraph — no translation, no explanation, no quotes.`,
+          content: `Write a short paragraph in natural Spanish (3–5 sentences) in this style or voice: ${style}.
+
+Be creative — vary your vocabulary, rhythm, and register to match the voice. 
+Use authentic Spanish expressions where they fit naturally.
+Return only the Spanish text. No translation, no explanation, no quotes.`,
         },
       ],
-      temperature: 0.9,
+      temperature: 1.1,
       max_tokens: 300,
     }),
   })

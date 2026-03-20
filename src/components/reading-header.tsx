@@ -39,14 +39,16 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
             onClick={() => {
               onThemeChange(theme === "light" ? "dark" : "light")
             }}
-            className="flex items-center justify-center w-9 h-9 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="theme-toggle-btn flex items-center justify-center w-9 h-9 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
             aria-label="Cycle reading theme"
           >
-            {theme === "light" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {theme === "light"
+              ? <Sun className="sun-icon h-4 w-4" />
+              : <Moon className="moon-icon h-4 w-4" />}
           </button>
           <Link
             to="/settings"
-            className="flex items-center justify-center w-9 h-9 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="profile-btn flex items-center justify-center w-9 h-9 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
             aria-label="Settings"
           >
             <User className="h-4 w-4" />
