@@ -29,32 +29,33 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="pointer-events-auto text-foreground hover:bg-muted/50 -ml-2"
+          className="pointer-events-auto text-foreground hover:bg-muted/50 -ml-2 min-h-11 min-w-11 max-md:min-h-[2.75rem] max-md:min-w-[2.75rem] max-md:px-3 max-md:h-11 max-md:w-11 [&_svg]:max-md:h-5 [&_svg]:max-md:w-5"
         >
-          <ArrowLeft className="h-4 w-4 mr-1.5" />
+          <ArrowLeft className="h-4 w-4 mr-1.5 max-md:mr-0" />
           <span className="hidden sm:inline text-sm font-sans">Inicio</span>
         </Button>
 
         {/* Right side: Mode toggle + Theme + Profile */}
-        <div className="pointer-events-auto flex items-center gap-3">
+        <div className="pointer-events-auto flex items-center gap-2 md:gap-3">
           <ModeToggle mode={mode} onModeChange={onModeChange} />
           <button
+            type="button"
             onClick={() => {
               onThemeChange(theme === "light" ? "dark" : "light")
             }}
-            className="theme-toggle-btn flex items-center justify-center w-9 h-9 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="theme-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
             aria-label="Cycle reading theme"
           >
             {theme === "light"
-              ? <Sun className="sun-icon h-4 w-4" />
-              : <Moon className="moon-icon h-4 w-4" />}
+              ? <Sun className="sun-icon h-4 w-4 max-md:h-5 max-md:w-5" />
+              : <Moon className="moon-icon h-4 w-4 max-md:h-5 max-md:w-5" />}
           </button>
           <Link
             to="/settings"
-            className="profile-btn flex items-center justify-center w-9 h-9 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="profile-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
             aria-label="Settings"
           >
-            <User className="h-4 w-4" />
+            <User className="h-4 w-4 max-md:h-5 max-md:w-5" />
           </Link>
         </div>
       </div>

@@ -43,7 +43,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
 
   return (
     <div
-      className="w-full mx-auto px-6 md:px-8 md:pt-24 max-md:pt-[calc(env(safe-area-inset-top,0px)+6rem)] pb-16"
+      className="w-full mx-auto px-6 md:px-8 md:pt-24 max-md:pt-[calc(env(safe-area-inset-top,0px)+7.75rem)] pb-16"
       style={{ maxWidth: "700px" }}
     >
       <article

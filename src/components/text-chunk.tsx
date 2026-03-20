@@ -236,12 +236,12 @@ export function TextChunk({
         }}
         className={cn(
           "cursor-pointer transition-all duration-200 ease-in-out rounded-sm px-0.5 -mx-0.5",
-          "underline underline-offset-2 decoration-[1.5px]",
+          /* Underline only when pinned (double-tap / double-click) — avoids iOS :hover sticky underline on single tap */
           isPinned
-            ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
+            ? "underline underline-offset-2 decoration-[1.5px] bg-primary/10 text-foreground decoration-[#c97a5a]/75"
             : isTouchHighlight
-              ? "bg-muted text-foreground decoration-transparent"
-              : "decoration-transparent hover:bg-muted hover:decoration-[#c97a5a]/45",
+              ? "bg-muted text-foreground"
+              : "[@media(hover:hover)]:hover:bg-muted",
         )}
       >
         {chunk.text}
