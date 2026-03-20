@@ -107,7 +107,7 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
     <>
       <MainHeader theme={theme} onThemeChange={onThemeChange} />
       <div
-        className="landing-page flex flex-col items-stretch md:items-center md:justify-center min-h-[100dvh] md:min-h-screen px-3 md:px-8"
+        className="landing-page flex flex-col items-stretch md:items-center md:justify-center min-h-[100dvh] max-md:min-h-0 max-md:flex-1 max-md:h-full max-md:overflow-hidden px-3 md:px-8"
         style={{ position: "relative" }}
       >
         <img
@@ -128,7 +128,7 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
           }}
         />
       <div
-        className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 md:flex-none md:justify-start gap-4 md:gap-6 pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] md:pt-0"
+        className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto max-md:overflow-x-hidden md:flex-none md:justify-start gap-4 md:gap-6 pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] md:pt-0"
         style={{ position: "relative", zIndex: 1 }}
       >
         {/* Hero — mobile: fills space above composer; desktop: top */}

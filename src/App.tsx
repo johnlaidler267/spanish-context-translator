@@ -69,21 +69,24 @@ export default function App() {
     setViewMode("article")
   }, [])
 
+  const viewportMain =
+    "min-h-screen max-md:min-h-0 max-md:h-full max-md:flex-1 max-md:flex max-md:flex-col max-md:overflow-hidden"
+
   // Subscription lockout (App only renders for route "/")
   if (isLapsed) {
     return (
-      <>
+      <div className={`min-h-screen bg-background ${viewportMain}`}>
         {!popupDismissed && (
           <SubscriptionLapsedModal onDismiss={dismissPopup} />
         )}
         <LockedView />
-      </>
+      </div>
     )
   }
 
   if (subscriptionLoading) {
     return (
-      <main className="min-h-screen bg-transparent flex items-center justify-center">
+      <main className="min-h-screen bg-transparent flex items-center justify-center md:min-h-0 md:h-full md:flex-1 md:overflow-hidden">
         <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
       </main>
     )
@@ -91,7 +94,7 @@ export default function App() {
 
   if (appState === "landing" || appState === "loading") {
     return (
-      <main className="min-h-screen bg-transparent">
+      <main className={`min-h-screen bg-transparent ${viewportMain}`}>
         {appState === "loading" && <LoadingOverlay />}
         <LandingScreen onSubmit={handleTextSubmit} isLoading={appState === "loading"} theme={appTheme} onThemeChange={setReadingTheme} />
         {error && (
@@ -106,9 +109,11 @@ export default function App() {
   const hasSentences = sentences && sentences.length > 0
 
   return (
-    <main className="min-h-screen bg-background">
-      <ReadingHeader mode={viewMode} onModeChange={setViewMode} onBack={handleBack} theme={readingTheme} onThemeChange={setReadingTheme} />
-      <div className="animate-fade-in-up">
+    <main className={`min-h-screen bg-background ${viewportMain}`}>
+      <div className="shrink-0">
+        <ReadingHeader mode={viewMode} onModeChange={setViewMode} onBack={handleBack} theme={readingTheme} onThemeChange={setReadingTheme} />
+      </div>
+      <div className="max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden animate-fade-in-up">
         {viewMode === "article" && reconciled ? (
           <ArticleContent items={reconciled} />
         ) : hasSentences ? (

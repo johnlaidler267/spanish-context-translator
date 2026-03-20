@@ -70,7 +70,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background relative max-md:h-full max-md:min-h-0 max-md:flex max-md:flex-col max-md:overflow-hidden">
       <img
         src={theme === "dark" ? "/upgrade-bg-dark.png" : "/upgrade-bg.png"}
         alt=""
@@ -89,8 +89,10 @@ export default function UpgradePage() {
           zIndex: 0,
         }}
       />
-      <MainHeader theme={theme} onThemeChange={setTheme} />
-      <main className="relative z-[1] pt-20 pb-16 px-4 md:px-6">
+      <div className="shrink-0 relative z-[1]">
+        <MainHeader theme={theme} onThemeChange={setTheme} />
+      </div>
+      <main className="relative z-[1] pt-20 pb-16 px-4 md:px-6 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden">
         <div className="max-w-4xl mx-auto">
           <Link
             to="/"

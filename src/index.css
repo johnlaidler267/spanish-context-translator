@@ -10,6 +10,35 @@ body.read-mode-touch-exploring {
   overscroll-behavior: none;
 }
 
+/* Mobile: lock document to viewport — reduces rubber-band bounce; scroll inside panels */
+@media (max-width: 767px) {
+  html {
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    height: 100%;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  #root {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .app-viewport {
+    flex: 1 1 0;
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+}
+
 @layer base {
   :root {
     /* Editorial / literary — quiet bookstore, not startup */
@@ -202,7 +231,11 @@ article span {
 .dark .sample-excerpt-label    { color: rgba(234,224,213,0.5); }
 .dark .sample-paragraph        { color: rgba(234,224,213,0.85); }
 .dark .sample-link             { color: rgba(234,224,213,0.75); }
-.dark .filigree-divider        { filter: invert(1) brightness(1.4); opacity: 0.7; }
+/* Don’t invert — invert turns terracotta SVG into muddy blue; keep warm ink */
+.dark .filigree-divider {
+  opacity: 0.62;
+  filter: brightness(1.2) saturate(0.92);
+}
 
 /* Landing page background image — faded behind content */
 .landing-page {

@@ -20,10 +20,12 @@ export default function SettingsPage() {
   }, [theme])
 
   return (
-    <div className="min-h-screen bg-background">
-      <MainHeader theme={theme} onThemeChange={setTheme} />
+    <div className="min-h-screen bg-background max-md:h-full max-md:min-h-0 max-md:flex max-md:flex-col max-md:overflow-hidden">
+      <div className="shrink-0">
+        <MainHeader theme={theme} onThemeChange={setTheme} />
+      </div>
 
-      <main className="pt-20 pb-16 px-4 md:px-8">
+      <main className="pt-20 pb-16 px-4 md:px-8 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden">
         <div className="max-w-5xl mx-auto">
           <Link
             to="/"

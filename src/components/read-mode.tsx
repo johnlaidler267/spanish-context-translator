@@ -212,7 +212,7 @@ export function ReadMode({ sentences }: ReadModeProps) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-6 md:px-8">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] max-md:min-h-0 max-md:h-full px-6 md:px-8">
       <div className="flex-1 flex items-center justify-center w-full pt-16" style={{ maxWidth: "700px" }}>
         <div
           ref={touchSurfaceRef}

@@ -11,11 +11,13 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <SubscriptionProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/upgrade" element={<UpgradePage />} />
-        </Routes>
+        <div className="app-viewport">
+          <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/upgrade" element={<UpgradePage />} />
+          </Routes>
+        </div>
       </BrowserRouter>
     </SubscriptionProvider>
   </StrictMode>,

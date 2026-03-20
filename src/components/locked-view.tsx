@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 
 export function LockedView() {
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen max-md:min-h-0 max-md:flex-1 max-md:h-full bg-background flex flex-col items-center justify-center px-6">
       <div className="max-w-sm text-center">
         <h1 className="font-serif text-2xl font-medium text-foreground">
           Subscription ended
