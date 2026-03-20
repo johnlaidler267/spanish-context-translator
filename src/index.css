@@ -203,7 +203,6 @@ article span {
 .dark .sample-paragraph        { color: rgba(234,224,213,0.85); }
 .dark .sample-link             { color: rgba(234,224,213,0.75); }
 .dark .filigree-divider        { filter: invert(1) brightness(1.4); opacity: 0.7; }
-.dark .hero-mark::before       { background: radial-gradient(ellipse at center, rgba(26,26,26,0.6) 30%, transparent 75%); }
 
 /* Landing page background image — faded behind content */
 .landing-page {
@@ -225,24 +224,9 @@ article span {
   z-index: 1;
 }
 
-/* Hero — very subtle blur spot behind logo only */
+/* Hero — no backdrop blur (removed: slow on mobile, visible during theme transitions) */
 .hero-mark {
   position: relative;
-}
-.hero-mark::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  background: radial-gradient(ellipse at center, rgba(247,243,238,0.5) 30%, transparent 75%);
-  pointer-events: none;
-  z-index: 0;
-}
-.hero-mark > * {
-  position: relative;
-  z-index: 1;
 }
 
 /* Hero — half-title page rhythm */
@@ -544,7 +528,7 @@ article span {
     /* Compact on mobile (~¼ prior vh caps); word count hidden */
     height: auto;
     min-height: min(17.65dvh, 7.8rem);
-    max-height: min(17.85dvh, 7.9rem);
+    max-height: min(25.85dvh, 9.9rem);
     /* Slightly less right padding — icons are scaled down below */
     padding: 18px 6rem 18px 16px;
   }
