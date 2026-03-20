@@ -349,3 +349,43 @@ export async function translate(
 
   return { reconciled, sentences }
 }
+
+const RANDOM_TOPICS = [
+  "a market scene in a Spanish city",
+  "a memory of childhood summers",
+  "a conversation between two old friends",
+  "a description of a rainy afternoon",
+  "a letter never sent",
+  "a traveller arriving in a new place",
+  "the smell of food cooking",
+  "a quiet Sunday morning",
+  "a night at a flamenco show",
+  "losing something important",
+]
+
+export async function generateRandomSpanish(apiKey: string): Promise<string> {
+  const topic = RANDOM_TOPICS[Math.floor(Math.random() * RANDOM_TOPICS.length)]
+  const res = await fetch(GROQ_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        {
+          role: "user",
+          content: `Write a single short paragraph in natural, everyday Spanish (3–5 sentences) about: ${topic}. 
+Return only the Spanish paragraph — no translation, no explanation, no quotes.`,
+        },
+      ],
+      temperature: 0.9,
+      max_tokens: 300,
+    }),
+  })
+
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  const data = await res.json()
+  return data.choices[0].message.content.trim()
+}

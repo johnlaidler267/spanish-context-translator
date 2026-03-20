@@ -1,10 +1,10 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { ArrowLeft, Moon, Sun, Sunset, User } from "lucide-react"
+import { ArrowLeft, Moon, Sun, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ModeToggle, type ViewMode } from "./mode-toggle"
-import { ThemeToggle, type ReadingTheme } from "./theme-toggle"
+import { type ReadingTheme } from "./theme-toggle"
 
 interface ReadingHeaderProps {
   mode: ViewMode
@@ -26,32 +26,27 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="pointer-events-auto text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 -ml-2"
+          className="pointer-events-auto text-foreground hover:bg-muted/50 -ml-2"
         >
           <ArrowLeft className="h-4 w-4 mr-1.5" />
           <span className="hidden sm:inline text-sm font-sans">Inicio</span>
         </Button>
 
-        {/* Right side: Theme circles + Mode toggle + Profile */}
+        {/* Right side: Mode toggle + Theme + Profile */}
         <div className="pointer-events-auto flex items-center gap-3">
-          <ThemeToggle theme={theme} onThemeChange={onThemeChange} />
-          <div className="w-px h-4 bg-border/50" aria-hidden />
           <ModeToggle mode={mode} onModeChange={onModeChange} />
           <button
             onClick={() => {
-              const next: Record<ReadingTheme, ReadingTheme> = { light: "sepia", sepia: "dark", dark: "light" }
-              onThemeChange(next[theme])
+              onThemeChange(theme === "light" ? "dark" : "light")
             }}
-            className="flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
             aria-label="Cycle reading theme"
           >
-            {theme === "light" && <Sun className="h-4 w-4" />}
-            {theme === "sepia" && <Sunset className="h-4 w-4" />}
-            {theme === "dark"  && <Moon className="h-4 w-4" />}
+            {theme === "light" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <Link
             to="/settings"
-            className="flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
             aria-label="Settings"
           >
             <User className="h-4 w-4" />

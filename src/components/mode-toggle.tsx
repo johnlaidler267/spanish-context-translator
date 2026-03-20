@@ -19,7 +19,7 @@ export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
           "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all duration-200 ease-in-out",
           mode === "article"
             ? "bg-[#c97a5a] text-white font-semibold shadow-[inset_0_1px_2px_rgba(255,255,255,0.12)]"
-            : "font-medium text-muted-foreground border border-border/60 hover:text-foreground hover:border-border"
+            : "font-medium text-foreground border border-border/60 hover:border-border"
         )}
       >
         <FileText className="h-4 w-4" />
@@ -31,7 +31,7 @@ export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
           "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all duration-200 ease-in-out",
           mode === "read"
             ? "bg-[#c97a5a] text-white font-semibold shadow-[inset_0_1px_2px_rgba(255,255,255,0.12)]"
-            : "font-medium text-muted-foreground border border-border/60 hover:text-foreground hover:border-border"
+            : "font-medium text-foreground border border-border/60 hover:border-border"
         )}
       >
         <BookOpen className="h-4 w-4" />

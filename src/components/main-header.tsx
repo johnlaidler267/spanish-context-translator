@@ -7,7 +7,8 @@ export function MainHeader() {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
       <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/50 to-transparent h-20" />
-      <div className="relative flex items-center justify-end h-14 px-5 md:px-8">
+      <div className="relative flex items-center justify-between h-14 px-5 md:px-8">
+        <img src="/logo.png" alt="Lector" className="pointer-events-none h-8 w-auto" />
         <Link
           to="/settings"
           className="pointer-events-auto flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ease-in-out"

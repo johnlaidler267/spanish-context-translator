@@ -71,13 +71,13 @@
     --primary: #b06b56;
     --primary-foreground: #1a1a1a;
     --secondary: #2a2a28;
-    --secondary-foreground: #c8bdb4;
+    --secondary-foreground: #ddd4c8;
     --muted: #252523;
-    --muted-foreground: #8a8078;
+    --muted-foreground: #b0a89e;
     --accent: #b06b56;
     --accent-foreground: #1a1a1a;
     --destructive: oklch(0.396 0.141 25.723);
-    --border: #333230;
+    --border: #4a4744;
     --input: #2a2a28;
     --ring: #b06b56;
   }
@@ -147,12 +147,42 @@ article span {
 
 /* Landing page background image — faded behind content */
 .landing-page {
-  background-image:
-    linear-gradient(rgba(247, 243, 238, 0.78), rgba(247, 243, 238, 0.78)),
-    url("/landing-bg.png");
-  background-size: auto, cover;
-  background-position: center, center;
-  background-repeat: no-repeat, no-repeat;
+  position: relative;
+}
+.landing-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: 0;
+}
+.landing-page > *:not(.landing-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero — very subtle blur spot behind logo only */
+.hero-mark {
+  position: relative;
+}
+.hero-mark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: radial-gradient(ellipse at center, rgba(247,243,238,0.5) 30%, transparent 75%);
+  pointer-events: none;
+  z-index: 0;
+}
+.hero-mark > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Hero — half-title page rhythm */
@@ -253,6 +283,39 @@ article span {
     0 0 0 2px rgba(201, 122, 90, 0.15);
 }
 
+/* Submit arrow button — floats in lower-right of textarea */
+.submit-arrow-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3a332e;
+  color: #f7f3ee;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.85) translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease, background 0.15s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+.submit-arrow-btn--visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+.submit-arrow-btn:hover {
+  background: #c97a5a;
+}
+.submit-arrow-btn:active {
+  transform: scale(0.95);
+}
+
 /* Corner ornaments — terracotta L-brackets */
 .corner {
   position: absolute;
@@ -290,11 +353,82 @@ article span {
   transition: all var(--transition-restraint);
 }
 .textarea-field::placeholder {
-  color: rgba(58, 51, 46, 0.418); /* +10% so invite stays readable */
-  font-weight: 400;
+  color: transparent;
+}
+
+/* Animated cycling placeholder overlay */
+.animated-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 24px;
+  pointer-events: none;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: rgba(58, 51, 46, 0.38);
+  transition: opacity 0.4s ease;
+  z-index: 1;
+  user-select: none;
 }
 @media (min-width: 768px) {
   .textarea-field { height: 18rem; }
+}
+
+/* Dice roll button */
+@keyframes dice-roll {
+  0%   { transform: rotate(0deg) scale(1); }
+  20%  { transform: rotate(-20deg) scale(1.15); }
+  50%  { transform: rotate(15deg) scale(0.95); }
+  75%  { transform: rotate(-8deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.dice-btn {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: rgba(58, 51, 46, 0.3);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  z-index: 2;
+  transition: color var(--transition-restraint), background var(--transition-restraint);
+}
+.dice-btn:hover {
+  color: #c97a5a;
+  background: rgba(201, 122, 90, 0.06);
+}
+.dice-btn:hover .dice-icon {
+  animation: dice-roll 0.45s ease;
+}
+.dice-btn:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+.dice-icon {
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+}
+.dice-spinner {
+  display: block;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid rgba(201, 122, 90, 0.25);
+  border-top-color: #c97a5a;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Filigree — whisper, not performance (~20% lighter + slightly smaller motif) */
@@ -407,6 +541,11 @@ article span {
   border-radius: 2px;
 }
 
+
+/* Torn paper sample section */
+.sample-paper {
+  background: #e8e0d4;
+}
 /* “Try this sample →” — quiet default, accent + hairline on hover */
 .sample-link {
   position: relative;
