@@ -50,7 +50,7 @@ export function SubscriptionLapsedModal({ onDismiss }: SubscriptionLapsedModalPr
 
         <button
           onClick={onDismiss}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-200 ease-in-out"
           aria-label="Dismiss"
         >
           <X className="h-4 w-4" />

@@ -13,7 +13,7 @@ For each chunk return:
 - "literal": word-for-word translation, even if unnatural
 - "note": a brief grammatical explanation for non-obvious chunks — null if the chunk is straightforward
 
-DEFAULT: Only group when the words make more sense together.
+DEFAULT: Usually, words should be seperated individually, or in the smallest logical group. Only group when the words make more sense together.
 
 Study these examples carefully and match this behavior exactly:
 
@@ -78,8 +78,9 @@ OUTPUT: [
 INPUT: "Nos vamos campeones"
 OUTPUT: [
   { "chunk": "Nos vamos", "meaning": "we're leaving", "literal": "we are leaving", "note": null },
-  { "chunk": "campeones", "meaning": "(as) champions", "literal": "champions", "note": null }
+  { "chunk": "campeones", "meaning": "[as] champions", "literal": "champions", "note": null }
 ]
+note: wrap any English word in [] if it has no corresponding Spanish word in the chunk. Whether that's an implied pronoun, a preposition absorbed into context, or a grammatical particle that just doesn't exist in Spanish.
 
 INPUT: "insistiera"
 OUTPUT: [

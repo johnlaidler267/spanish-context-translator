@@ -10,8 +10,8 @@ export function MainHeader() {
       <div className="relative flex items-center justify-end h-14 px-5 md:px-8">
         <Link
           to="/settings"
-          className="pointer-events-auto flex items-center justify-center w-8 h-8 rounded-full transition-colors"
-          style={{ color: "#8a7a6e" }}
+          className="pointer-events-auto flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ease-in-out"
+              style={{ color: "#605850" }}
           onMouseEnter={e => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.05)")}
           onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
           aria-label="Settings"

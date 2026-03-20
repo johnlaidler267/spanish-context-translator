@@ -90,8 +90,8 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
           ? "translateX(-50%) translateY(-100%)"
           : "translateX(-50%)",
         zIndex: 9999,
-        backgroundColor: "#F5F1EB",
-        border: "1px solid rgba(158, 88, 67, 0.25)",
+        backgroundColor: "#f4efe9",
+        border: "1px solid rgba(201, 122, 90, 0.28)",
         borderRadius: "4px",
         boxShadow: "0 4px 20px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.08)",
         padding: "12px 14px",
@@ -103,37 +103,37 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
           position: "absolute",
           width: 10,
           height: 10,
-          backgroundColor: "#F5F1EB",
-          borderLeft: "1px solid rgba(158,88,67,0.25)",
-          borderTop: "1px solid rgba(158,88,67,0.25)",
+          backgroundColor: "#f4efe9",
+          borderLeft: "1px solid rgba(201,122,90,0.28)",
+          borderTop: "1px solid rgba(201,122,90,0.28)",
           left: "50%",
           transform: coords.placement === "above"
             ? "translateX(-50%) translateY(50%) rotate(45deg)"
             : "translateX(-50%) translateY(-50%) rotate(45deg)",
           ...(coords.placement === "above"
-            ? { bottom: 0, borderLeft: "none", borderTop: "none", borderRight: "1px solid rgba(158,88,67,0.25)", borderBottom: "1px solid rgba(158,88,67,0.25)" }
-            : { top: 0, borderRight: "none", borderBottom: "none", borderLeft: "1px solid rgba(158,88,67,0.25)", borderTop: "1px solid rgba(158,88,67,0.25)" }),
+            ? { bottom: 0, borderLeft: "none", borderTop: "none", borderRight: "1px solid rgba(201,122,90,0.28)", borderBottom: "1px solid rgba(201,122,90,0.28)" }
+            : { top: 0, borderRight: "none", borderBottom: "none", borderLeft: "1px solid rgba(201,122,90,0.28)", borderTop: "1px solid rgba(201,122,90,0.28)" }),
         }}
       />
 
       {/* Meaning */}
-      <p style={{ fontSize: "1.05rem", fontFamily: "var(--font-serif)", fontWeight: 600, color: "#1C1008", lineHeight: 1.3, margin: 0 }}>
+      <p style={{ fontSize: "1.05rem", fontFamily: "var(--font-serif)", fontWeight: 600, color: "#3a332e", lineHeight: 1.3, margin: 0 }}>
         {chunk.meaning}
       </p>
 
       {(chunk.literal || chunk.grammar) && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(158,88,67,0.14)" }}>
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(201,122,90,0.16)" }}>
           {chunk.literal && (
-            <p style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "#3D2418" }}>
-              <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#b0a090" }}>Literal</span>
-              <span style={{ margin: "0 5px", color: "#C48A7A", opacity: 0.5 }}>·</span>
+            <p style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "#454039" }}>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Literal</span>
+              <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
               {chunk.literal}
             </p>
           )}
           {chunk.grammar && (
-            <p style={{ margin: 0, fontSize: "0.8rem", fontStyle: "italic", color: "#3D2418" }}>
-              <span style={{ fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#b0a090" }}>Note</span>
-              <span style={{ margin: "0 5px", color: "#C48A7A", opacity: 0.5 }}>·</span>
+            <p style={{ margin: 0, fontSize: "0.8rem", fontStyle: "italic", color: "#454039" }}>
+              <span style={{ fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Note</span>
+              <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
               {chunk.grammar}
             </p>
           )}
@@ -151,11 +151,11 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
         onMouseEnter={onActivate}
         onMouseLeave={onDeactivate}
         className={cn(
-          "cursor-pointer transition-all duration-200 rounded-sm px-0.5 -mx-0.5",
+          "cursor-pointer transition-all duration-200 ease-in-out rounded-sm px-0.5 -mx-0.5",
           "underline underline-offset-2 decoration-[1.5px]",
           isActive
-            ? "bg-primary/10 text-foreground decoration-[#9E5843]/70"
-            : "decoration-transparent hover:bg-muted hover:decoration-[#C48A7A]/45"
+            ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
+            : "decoration-transparent hover:bg-muted hover:decoration-[#c97a5a]/45"
         )}
       >
         {chunk.text}

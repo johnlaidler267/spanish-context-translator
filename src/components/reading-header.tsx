@@ -42,7 +42,7 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
               const next: Record<ReadingTheme, ReadingTheme> = { light: "sepia", sepia: "dark", dark: "light" }
               onThemeChange(next[theme])
             }}
-            className="flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
             aria-label="Cycle reading theme"
           >
             {theme === "light" && <Sun className="h-4 w-4" />}
@@ -51,7 +51,7 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
           </button>
           <Link
             to="/settings"
-            className="flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
             aria-label="Settings"
           >
             <User className="h-4 w-4" />

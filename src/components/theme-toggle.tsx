@@ -10,7 +10,7 @@ interface ThemeToggleProps {
 }
 
 const THEMES: { id: ReadingTheme; label: string; bg: string; ring: string }[] = [
-  { id: "light", label: "Light",  bg: "bg-[#F8F5EF]",  ring: "ring-[#ddd4c5]" },
+  { id: "light", label: "Light",  bg: "bg-[#f7f3ee]",  ring: "ring-[#c97a5a]/35" },
   { id: "sepia", label: "Sunset", bg: "bg-[#F4E6D6]",  ring: "ring-[#c4967a]" },
   { id: "dark",  label: "Dark",   bg: "bg-[#1A1A1A]",  ring: "ring-[#4a4642]" },
 ]
@@ -24,7 +24,7 @@ export function ThemeToggle({ theme, onThemeChange }: ThemeToggleProps) {
           onClick={() => onThemeChange(t.id)}
           aria-label={t.label}
           className={cn(
-            "w-4 h-4 rounded-full border border-black/10 transition-all duration-200",
+            "w-4 h-4 rounded-full border border-black/10 transition-all duration-200 ease-in-out",
             t.bg,
             theme === t.id
               ? `ring-2 ring-offset-1 ${t.ring} scale-110`

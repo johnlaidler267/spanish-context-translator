@@ -70,7 +70,7 @@ export default function SettingsPage() {
         <div className="max-w-4xl mx-auto">
           <Link
             to="/"
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
+            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to reading
@@ -125,7 +125,7 @@ export default function SettingsPage() {
               {plans.map((plan) => (
                 <Card
                   key={plan.id}
-                  className={`relative bg-card border transition-all ${
+                  className={`relative bg-card border transition-all duration-200 ease-in-out ${
                     plan.popular
                       ? "border-primary shadow-sm"
                       : "border-border hover:border-border/80"

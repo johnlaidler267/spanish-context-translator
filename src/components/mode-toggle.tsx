@@ -16,9 +16,9 @@ export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
       <button
         onClick={() => onModeChange("article")}
         className={cn(
-          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all",
+          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all duration-200 ease-in-out",
           mode === "article"
-            ? "bg-[#C48A7A] text-white font-semibold shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]"
+            ? "bg-[#c97a5a] text-white font-semibold shadow-[inset_0_1px_2px_rgba(255,255,255,0.12)]"
             : "font-medium text-muted-foreground border border-border/60 hover:text-foreground hover:border-border"
         )}
       >
@@ -28,9 +28,9 @@ export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
       <button
         onClick={() => onModeChange("read")}
         className={cn(
-          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all",
+          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all duration-200 ease-in-out",
           mode === "read"
-            ? "bg-[#C48A7A] text-white font-semibold shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]"
+            ? "bg-[#c97a5a] text-white font-semibold shadow-[inset_0_1px_2px_rgba(255,255,255,0.12)]"
             : "font-medium text-muted-foreground border border-border/60 hover:text-foreground hover:border-border"
         )}
       >

@@ -1,29 +1,21 @@
 <svg width="220" height="20" viewBox="0 0 220 20" xmlns="http://www.w3.org/2000/svg">
-  <!-- Rules -->
-  <line x1="0"   y1="10" x2="72"  y2="10" stroke="#C48A7A" stroke-width="0.5" opacity="0.35"/>
-  <line x1="148" y1="10" x2="220" y2="10" stroke="#C48A7A" stroke-width="0.5" opacity="0.35"/>
+  <!-- End caps + rules -->
+  <circle cx="4"   cy="10" r="1.25" fill="#C97A5A" opacity="0.24"/>
+  <circle cx="216" cy="10" r="1.25" fill="#C97A5A" opacity="0.24"/>
+  <line x1="0"   y1="10" x2="72"  y2="10" stroke="#C97A5A" stroke-width="0.45" opacity="0.28"/>
+  <line x1="148" y1="10" x2="220" y2="10" stroke="#C97A5A" stroke-width="0.45" opacity="0.28"/>
 
-  <!-- Left small diamond -->
-  <path d="M 68 10 L 73 5 L 78 10 L 73 15 Z" fill="none" stroke="#C48A7A" stroke-width="0.8" opacity="0.55"/>
-
-  <!-- Left secondary rule -->
-  <line x1="80" y1="10" x2="90" y2="10" stroke="#C48A7A" stroke-width="0.5" opacity="0.3"/>
-
-  <!-- Center 8-pointed star (mini khatam) -->
-  <polygon points="
-    110,4  112.5,7.5  116,4  116,8.5
-    119.5,10  116,11.5  116,16  112.5,12.5
-    110,16  107.5,12.5  104,16  104,11.5
-    100.5,10  104,8.5  104,4  107.5,7.5
-  " fill="#C48A7A" opacity="0.6"/>
-
-  <!-- Right secondary rule -->
-  <line x1="130" y1="10" x2="140" y2="10" stroke="#C48A7A" stroke-width="0.5" opacity="0.3"/>
-
-  <!-- Right small diamond -->
-  <path d="M 142 10 L 147 5 L 152 10 L 147 15 Z" fill="none" stroke="#C48A7A" stroke-width="0.8" opacity="0.55"/>
-
-  <!-- End dots -->
-  <circle cx="4"   cy="10" r="1.5" fill="#C48A7A" opacity="0.3"/>
-  <circle cx="216" cy="10" r="1.5" fill="#C48A7A" opacity="0.3"/>
+  <!-- Center ornaments — scaled down ~12% from focal point -->
+  <g transform="translate(110,10) scale(0.88) translate(-110,-10)">
+    <path d="M 68 10 L 73 5 L 78 10 L 73 15 Z" fill="none" stroke="#C97A5A" stroke-width="0.7" opacity="0.44"/>
+    <line x1="80" y1="10" x2="90" y2="10" stroke="#C97A5A" stroke-width="0.45" opacity="0.24"/>
+    <polygon points="
+      110,4  112.5,7.5  116,4  116,8.5
+      119.5,10  116,11.5  116,16  112.5,12.5
+      110,16  107.5,12.5  104,16  104,11.5
+      100.5,10  104,8.5  104,4  107.5,7.5
+    " fill="#C97A5A" opacity="0.48"/>
+    <line x1="130" y1="10" x2="140" y2="10" stroke="#C97A5A" stroke-width="0.45" opacity="0.24"/>
+    <path d="M 142 10 L 147 5 L 152 10 L 147 15 Z" fill="none" stroke="#C97A5A" stroke-width="0.7" opacity="0.44"/>
+  </g>
 </svg>
