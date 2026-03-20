@@ -199,31 +199,68 @@ article span {
   opacity: 0.75;
 }
 .dark .textarea-wrapper {
-  /* Warm ivory paper — matches landing textbox in dark mode */
-  background-color: #f2ebe3;
-  border-color: rgba(0,0,0,0.088);
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+  background-color: #141414;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
 }
-/* ── textarea zone: paper surface, same ink/controls as light mode inside ── */
 .dark .textarea-wrapper:focus-within {
-  border-color: #c97a5a;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05), 0 0 0 2px rgba(201,122,90,0.15);
+  border-color: rgba(200, 195, 185, 0.35);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.45),
+    0 0 0 2px rgba(200, 195, 185, 0.12);
 }
-.dark .textarea-field          { color: #3a332e; }
-.dark .animated-placeholder    { color: rgba(58,51,46,0.38); }
-.dark .corner                  { border-color: #c97a5a; }
-.dark .dice-btn                { color: rgba(58,51,46,0.35); }
-.dark .dice-btn:hover          { color: #c97a5a; background: rgba(201,122,90,0.06); }
-.dark .submit-arrow-btn        { background: #3a332e; color: #f7f3ee; }
-.dark .submit-arrow-btn:hover  { background: #c97a5a; }
-.dark .voice-mic-btn           { color: rgba(58, 51, 46, 0.32); }
+.dark .textarea-field {
+  color: #d8d4ce;
+  caret-color: #c4bfb7;
+}
+.dark .textarea-field::selection {
+  background: rgba(201, 122, 90, 0.35);
+  color: #f5f2ed;
+}
+.dark .animated-placeholder {
+  color: rgba(200, 196, 188, 0.42);
+}
+.dark .corner {
+  border-color: rgba(200, 195, 185, 0.38);
+  opacity: 0.65;
+}
+.dark .dice-btn {
+  color: rgba(210, 206, 198, 0.55);
+}
+.dark .dice-btn:hover {
+  color: rgba(235, 232, 226, 0.92);
+  background: rgba(255, 255, 255, 0.06);
+}
+.dark .submit-arrow-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ebe8e2;
+}
+.dark .submit-arrow-btn:hover {
+  background: rgba(201, 122, 90, 0.45);
+  color: #1a1a1a;
+}
+.dark .voice-mic-btn {
+  color: rgba(200, 196, 188, 0.58);
+}
 .dark .voice-mic-btn:hover:not(:disabled),
 .dark .voice-mic-btn:focus-visible:not(:disabled) {
-  color: rgba(58, 51, 46, 0.52);
-  background: rgba(201, 122, 90, 0.06);
+  color: rgba(232, 228, 220, 0.9);
+  background: rgba(255, 255, 255, 0.06);
 }
-.dark .voice-mic-btn--recording { color: #c97a5a; }
-.dark .voice-input-feedback    { color: rgba(58, 51, 46, 0.45); }
+.dark .voice-mic-btn--recording {
+  color: #e8a88c;
+}
+.dark .voice-input-feedback {
+  color: rgba(190, 186, 178, 0.65);
+}
+.dark .dice-spinner {
+  border-color: rgba(220, 216, 208, 0.22);
+  border-top-color: rgba(232, 224, 210, 0.9);
+}
+.dark .voice-mic-glow {
+  box-shadow: 0 0 14px rgba(232, 168, 140, 0.22);
+  opacity: 0.42;
+}
 
 /* ── outside the box: light cream on dark bg ── */
 .dark .word-counter-label,
