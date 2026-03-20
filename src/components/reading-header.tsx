@@ -17,10 +17,13 @@ interface ReadingHeaderProps {
 export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange }: ReadingHeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
-      {/* Subtle gradient fade */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/40 to-transparent h-24" />
-      
-      <div className="relative flex items-center justify-between px-4 md:px-6 pt-4">
+      {/* Subtle gradient fade — tall enough for notch + controls */}
+      <div
+        className="absolute inset-x-0 top-0 bg-gradient-to-b from-background/80 via-background/40 to-transparent md:h-24"
+        style={{ minHeight: "calc(6rem + env(safe-area-inset-top, 0px))" }}
+      />
+
+      <div className="relative flex items-center justify-between px-4 md:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))]">
         {/* Back button */}
         <Button
           variant="ghost"

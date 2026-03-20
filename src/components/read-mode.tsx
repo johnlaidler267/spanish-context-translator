@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { TextChunk, shouldGlueAfterPriorChunk } from "./text-chunk"
 import { Button } from "@/components/ui/button"
@@ -52,21 +52,35 @@ function buildPages(sentences: Sentence[]): ChunkData[][] {
 export function ReadMode({ sentences }: ReadModeProps) {
   const pages = buildPages(sentences)
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
-  const [activeChunkId, setActiveChunkId] = useState<number | null>(null)
+  const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
+  const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
 
-  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(setActiveChunkId, [
+  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(setExploringChunkId, [
     currentSentenceIndex,
   ])
+
+  const effectivePopupId = useMemo(
+    () => (exploringChunkId != null ? exploringChunkId : pinnedChunkId),
+    [exploringChunkId, pinnedChunkId],
+  )
 
   const currentSentence = { chunks: pages[currentSentenceIndex] ?? [] }
   const totalSentences = pages.length
 
-  const handleGlobalClick = useCallback((e: MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (!target.closest("[data-chunk]") && !target.closest("[data-popup]")) {
-      setActiveChunkId(null)
-    }
+  const clearChunkUi = useCallback(() => {
+    setExploringChunkId(null)
+    setPinnedChunkId(null)
   }, [])
+
+  const handleGlobalClick = useCallback(
+    (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest("[data-chunk]") && !target.closest("[data-popup]")) {
+        clearChunkUi()
+      }
+    },
+    [clearChunkUi],
+  )
 
   useEffect(() => {
     document.addEventListener("click", handleGlobalClick)
@@ -79,38 +93,41 @@ export function ReadMode({ sentences }: ReadModeProps) {
         e.preventDefault()
         if (currentSentenceIndex > 0) {
           setCurrentSentenceIndex(prev => prev - 1)
-          setActiveChunkId(null)
+          clearChunkUi()
         }
       } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault()
         if (currentSentenceIndex < totalSentences - 1) {
           setCurrentSentenceIndex(prev => prev + 1)
-          setActiveChunkId(null)
+          clearChunkUi()
         }
       }
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [currentSentenceIndex, totalSentences])
+  }, [currentSentenceIndex, totalSentences, clearChunkUi])
 
   const goToPrevious = () => {
     if (currentSentenceIndex > 0) {
       setCurrentSentenceIndex(currentSentenceIndex - 1)
-      setActiveChunkId(null)
+      clearChunkUi()
     }
   }
 
   const goToNext = () => {
     if (currentSentenceIndex < totalSentences - 1) {
       setCurrentSentenceIndex(currentSentenceIndex + 1)
-      setActiveChunkId(null)
+      clearChunkUi()
     }
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] max-md:min-h-0 max-md:h-full px-6 md:px-8">
-      <div className="flex-1 flex items-center justify-center w-full pt-16" style={{ maxWidth: "700px" }}>
+      <div
+        className="flex-1 flex items-center justify-center w-full md:pt-16 max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.75rem))]"
+        style={{ maxWidth: "700px" }}
+      >
         <div
           ref={touchSurfaceRef}
           className={`block w-full font-serif text-3xl md:text-5xl lg:text-6xl leading-snug md:leading-tight text-center text-foreground text-balance selection:bg-primary/20 ${
@@ -125,9 +142,16 @@ export function ReadMode({ sentences }: ReadModeProps) {
               <span key={chunk.id}>
                 <TextChunk
                   chunk={chunk}
-                  isActive={activeChunkId === chunk.id}
-                  onActivate={() => setActiveChunkId(chunk.id)}
-                  onDeactivate={() => setActiveChunkId(null)}
+                  popupChunkId={effectivePopupId}
+                  isTouchHighlight={exploringChunkId === chunk.id}
+                  isPinned={pinnedChunkId === chunk.id}
+                  onActivate={() => setExploringChunkId(chunk.id)}
+                  onDeactivate={() => {
+                    if (pinnedChunkId !== chunk.id) setExploringChunkId(null)
+                  }}
+                  onPinToggle={() =>
+                    setPinnedChunkId(prev => (prev === chunk.id ? null : chunk.id))
+                  }
                 />
                 {gapAfter}
               </span>

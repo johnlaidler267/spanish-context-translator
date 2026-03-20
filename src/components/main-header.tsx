@@ -12,8 +12,11 @@ interface MainHeaderProps {
 export function MainHeader({ theme, onThemeChange }: MainHeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
-      <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/50 to-transparent h-20" />
-      <div className="relative flex items-center justify-between h-14 px-5 md:px-8">
+      <div
+        className="absolute inset-x-0 top-0 bg-gradient-to-b from-background/90 via-background/50 to-transparent md:h-20"
+        style={{ minHeight: "calc(5rem + env(safe-area-inset-top, 0px))" }}
+      />
+      <div className="relative flex items-center justify-between min-h-14 px-5 md:px-8 pt-[env(safe-area-inset-top,0px)]">
         <img src="/logo.png" alt="Lector" className="pointer-events-none h-8 w-auto" />
         <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
           <button

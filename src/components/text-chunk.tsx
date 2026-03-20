@@ -13,9 +13,16 @@ interface ChunkData {
 
 interface TextChunkProps {
   chunk: ChunkData
-  isActive: boolean
+  /** Which chunk shows the popup (finger exploration wins over pinned) */
+  popupChunkId: number | null
+  /** Finger is on this chunk (mobile touch explore) — gray highlight */
+  isTouchHighlight: boolean
+  /** Double-tap pin — terracotta underline + tooltip stays after lift */
+  isPinned: boolean
   onActivate: () => void
   onDeactivate: () => void
+  /** Pin / unpin on double-tap (touch) or double-click (desktop) */
+  onPinToggle?: () => void
 }
 
 interface PopupCoords {
@@ -51,12 +58,24 @@ export function shouldGlueAfterPriorChunk(nextChunkText: string): boolean {
   return true
 }
 
-export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChunkProps) {
+export function TextChunk({
+  chunk,
+  popupChunkId,
+  isTouchHighlight,
+  isPinned,
+  onActivate,
+  onDeactivate,
+  onPinToggle,
+}: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text}</span>
   }
+
+  const isPopupOpen = popupChunkId === chunk.id
   const [coords, setCoords] = useState<PopupCoords | null>(null)
   const chunkRef = useRef<HTMLSpanElement>(null)
+  const lastTapRef = useRef<{ t: number } | null>(null)
+  const tapResetTimerRef = useRef<number | null>(null)
 
   const calculateCoords = useCallback(() => {
     if (!chunkRef.current) return
@@ -65,14 +84,11 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
     const vw = window.innerWidth
     const tooltipWidth = POPUP_WIDTH
 
-    // Pin: horizontal anchor on the word (slight left bias reads natural on small spans)
     const wordCenterX = rect.left + rect.width * 0.48
 
-    // Bubble: shift horizontally to stay in viewport; not necessarily centered under word
     let tooltipLeft = wordCenterX - tooltipWidth / 2
     tooltipLeft = Math.max(padding, Math.min(tooltipLeft, vw - padding - tooltipWidth))
 
-    // Arrow: stays under wordCenterX; clamp within tooltip so it doesn’t clip
     const rawArrowCenter = wordCenterX - tooltipLeft
     const arrowCenterX = Math.max(
       ARROW_EDGE_INSET,
@@ -94,20 +110,49 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
   }, [])
 
   useEffect(() => {
-    if (isActive) calculateCoords()
+    if (isPopupOpen) calculateCoords()
     else setCoords(null)
-  }, [isActive, calculateCoords])
+  }, [isPopupOpen, calculateCoords])
 
-  // Recompute on scroll/resize so popup tracks the word
   useEffect(() => {
-    if (!isActive) return
+    if (!isPopupOpen) return
     window.addEventListener("scroll", calculateCoords, { passive: true })
     window.addEventListener("resize", calculateCoords)
     return () => {
       window.removeEventListener("scroll", calculateCoords)
       window.removeEventListener("resize", calculateCoords)
     }
-  }, [isActive, calculateCoords])
+  }, [isPopupOpen, calculateCoords])
+
+  useEffect(() => {
+    return () => {
+      if (tapResetTimerRef.current != null) window.clearTimeout(tapResetTimerRef.current)
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault()
+      if (!onPinToggle) return
+      const now = Date.now()
+      if (lastTapRef.current && now - lastTapRef.current.t < 420) {
+        onPinToggle()
+        lastTapRef.current = null
+        if (tapResetTimerRef.current != null) {
+          window.clearTimeout(tapResetTimerRef.current)
+          tapResetTimerRef.current = null
+        }
+      } else {
+        lastTapRef.current = { t: now }
+        if (tapResetTimerRef.current != null) window.clearTimeout(tapResetTimerRef.current)
+        tapResetTimerRef.current = window.setTimeout(() => {
+          lastTapRef.current = null
+          tapResetTimerRef.current = null
+        }, 450)
+      }
+    },
+    [onPinToggle],
+  )
 
   const popup = coords && (
     <div
@@ -132,7 +177,6 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
         padding: "12px 14px",
       }}
     >
-      {/* Arrow: horizontal position tracks word; bubble may shift — arrow stays pinned in tooltip-local X */}
       <div
         style={{
           position: "absolute",
@@ -151,7 +195,6 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
         }}
       />
 
-      {/* Meaning */}
       <p style={{ fontSize: "1.05rem", fontFamily: "var(--font-serif)", fontWeight: 600, color: "#3a332e", lineHeight: 1.3, margin: 0 }}>
         {chunk.meaning}
       </p>
@@ -186,16 +229,19 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
         onClick={onActivate}
         onMouseEnter={onActivate}
         onMouseLeave={onDeactivate}
-        onTouchEnd={(e) => {
-          /* Stops the synthetic click after touch — prevents reopening tooltip on thumb lift */
+        onTouchEnd={handleTouchEnd}
+        onDoubleClick={(e) => {
           e.preventDefault()
+          onPinToggle?.()
         }}
         className={cn(
           "cursor-pointer transition-all duration-200 ease-in-out rounded-sm px-0.5 -mx-0.5",
           "underline underline-offset-2 decoration-[1.5px]",
-          isActive
+          isPinned
             ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
-            : "decoration-transparent hover:bg-muted hover:decoration-[#c97a5a]/45"
+            : isTouchHighlight
+              ? "bg-muted text-foreground decoration-transparent"
+              : "decoration-transparent hover:bg-muted hover:decoration-[#c97a5a]/45",
         )}
       >
         {chunk.text}

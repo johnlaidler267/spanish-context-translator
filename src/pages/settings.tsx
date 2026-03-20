@@ -25,7 +25,7 @@ export default function SettingsPage() {
         <MainHeader theme={theme} onThemeChange={setTheme} />
       </div>
 
-      <main className="pt-20 pb-16 px-4 md:px-8 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden">
+      <main className="md:pt-20 max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] pb-16 px-4 md:px-8 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden">
         <div className="max-w-5xl mx-auto">
           <Link
             to="/"

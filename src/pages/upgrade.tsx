@@ -92,7 +92,7 @@ export default function UpgradePage() {
       <div className="shrink-0 relative z-[1]">
         <MainHeader theme={theme} onThemeChange={setTheme} />
       </div>
-      <main className="relative z-[1] pt-20 pb-16 px-4 md:px-6 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden">
+      <main className="relative z-[1] md:pt-20 max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] pb-16 px-4 md:px-6 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden">
         <div className="max-w-4xl mx-auto">
           <Link
             to="/"
