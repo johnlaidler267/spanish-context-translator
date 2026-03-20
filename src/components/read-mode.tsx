@@ -123,7 +123,7 @@ export function ReadMode({ sentences }: ReadModeProps) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] max-md:min-h-0 max-md:h-full px-6 md:px-8">
+    <div className="flex flex-col items-center justify-center min-h-[calc(var(--app-vh,100dvh)-5rem)] max-md:min-h-0 max-md:flex-1 px-6 md:px-8">
       <div
         className="flex-1 flex items-center justify-center w-full md:pt-16 max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.75rem))]"
         style={{ maxWidth: "700px" }}

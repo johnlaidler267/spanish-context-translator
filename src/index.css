@@ -10,27 +10,25 @@ body.read-mode-touch-exploring {
   overscroll-behavior: none;
 }
 
-/* Mobile: lock document to viewport — reduces rubber-band bounce; scroll inside panels */
+/* Mobile: use min-height (not fixed height) + --app-vh from ViewportSync — avoids stale 100vh / chrome jumps */
 @media (max-width: 767px) {
   html {
-    height: 100%;
+    min-height: var(--app-vh, 100dvh);
     overflow: hidden;
   }
   body {
-    height: 100%;
-    max-height: 100dvh;
+    min-height: var(--app-vh, 100dvh);
     overflow: hidden;
     overscroll-behavior: none;
   }
   #root {
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
+    min-height: var(--app-vh, 100dvh);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
   .app-viewport {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     width: 100%;
     min-height: 0;
     display: flex;
@@ -975,15 +973,26 @@ article span {
 }
 
 @layer base {
+  /* Initial --app-vh before JS; ViewportSync overwrites with visualViewport height (px) */
+  :root {
+    --app-vh: 100svh;
+  }
+  @supports (height: 100dvh) {
+    :root {
+      --app-vh: 100dvh;
+    }
+  }
+
   * {
     @apply border-border;
   }
   html {
     background-color: var(--background);
+    min-height: var(--app-vh, 100dvh);
   }
   #root {
     background-color: transparent;
-    min-height: 100vh;
+    min-height: var(--app-vh, 100dvh);
     position: relative;
     z-index: 1;
   }
@@ -993,7 +1002,7 @@ article span {
     @apply text-foreground;
     font-family: var(--font-sans);
     font-feature-settings: "liga" 1, "kern" 1;
-    min-height: 100vh;
+    min-height: var(--app-vh, 100dvh);
     position: relative;
     isolation: isolate;
   }

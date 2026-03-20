@@ -3,6 +3,10 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      minHeight: {
+        /** Synced via --app-vh (visualViewport + route changes); falls back to dynamic viewport units */
+        app: "var(--app-vh, 100dvh)",
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",

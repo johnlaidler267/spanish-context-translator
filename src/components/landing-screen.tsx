@@ -65,10 +65,13 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
   useEffect(() => {
     const onResize = () => fitMobileTextareaHeight()
     window.addEventListener("resize", onResize)
+    const vv = window.visualViewport
+    vv?.addEventListener("resize", onResize)
     const mq = window.matchMedia(MOBILE_TEXTAREA_MQ)
     mq.addEventListener("change", onResize)
     return () => {
       window.removeEventListener("resize", onResize)
+      vv?.removeEventListener("resize", onResize)
       mq.removeEventListener("change", onResize)
     }
   }, [fitMobileTextareaHeight])
@@ -107,7 +110,7 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
     <>
       <MainHeader theme={theme} onThemeChange={onThemeChange} />
       <div
-        className="landing-page flex flex-col items-stretch md:items-center md:justify-center min-h-[100dvh] max-md:min-h-0 max-md:flex-1 max-md:h-full max-md:overflow-hidden px-3 md:px-8"
+        className="landing-page flex flex-col items-stretch md:items-center md:justify-center min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
         style={{ position: "relative" }}
       >
         <img

@@ -70,7 +70,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background relative max-md:h-full max-md:min-h-0 max-md:flex max-md:flex-col max-md:overflow-hidden">
+    <div className="min-h-app bg-background relative max-md:min-h-0 max-md:flex max-md:flex-1 max-md:flex-col max-md:overflow-hidden">
       <img
         src={theme === "dark" ? "/upgrade-bg-dark.png" : "/upgrade-bg.png"}
         alt=""

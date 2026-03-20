@@ -70,12 +70,12 @@ export default function App() {
   }, [])
 
   const viewportMain =
-    "min-h-screen max-md:min-h-0 max-md:h-full max-md:flex-1 max-md:flex max-md:flex-col max-md:overflow-hidden"
+    "min-h-app max-md:min-h-0 max-md:flex-1 max-md:flex max-md:flex-col max-md:overflow-hidden"
 
   // Subscription lockout (App only renders for route "/")
   if (isLapsed) {
     return (
-      <div className={`min-h-screen bg-background ${viewportMain}`}>
+      <div className={`min-h-app bg-background ${viewportMain}`}>
         {!popupDismissed && (
           <SubscriptionLapsedModal onDismiss={dismissPopup} />
         )}
@@ -86,7 +86,7 @@ export default function App() {
 
   if (subscriptionLoading) {
     return (
-      <main className="min-h-screen bg-transparent flex items-center justify-center md:min-h-0 md:h-full md:flex-1 md:overflow-hidden">
+      <main className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden">
         <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
       </main>
     )
@@ -94,7 +94,7 @@ export default function App() {
 
   if (appState === "landing" || appState === "loading") {
     return (
-      <main className={`min-h-screen bg-transparent ${viewportMain}`}>
+      <main className={`min-h-app bg-transparent ${viewportMain}`}>
         {appState === "loading" && <LoadingOverlay />}
         <LandingScreen onSubmit={handleTextSubmit} isLoading={appState === "loading"} theme={appTheme} onThemeChange={setReadingTheme} />
         {error && (
@@ -109,7 +109,7 @@ export default function App() {
   const hasSentences = sentences && sentences.length > 0
 
   return (
-    <main className={`min-h-screen bg-background ${viewportMain}`}>
+    <main className={`min-h-app bg-background ${viewportMain}`}>
       <div className="shrink-0">
         <ReadingHeader mode={viewMode} onModeChange={setViewMode} onBack={handleBack} theme={readingTheme} onThemeChange={setReadingTheme} />
       </div>

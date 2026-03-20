@@ -20,7 +20,7 @@ export default function SettingsPage() {
   }, [theme])
 
   return (
-    <div className="min-h-screen bg-background max-md:h-full max-md:min-h-0 max-md:flex max-md:flex-col max-md:overflow-hidden">
+    <div className="min-h-app bg-background max-md:min-h-0 max-md:flex max-md:flex-1 max-md:flex-col max-md:overflow-hidden">
       <div className="shrink-0">
         <MainHeader theme={theme} onThemeChange={setTheme} />
       </div>
