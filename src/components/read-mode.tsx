@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { TextChunk, shouldGlueAfterPriorChunk } from "./text-chunk"
 import { Button } from "@/components/ui/button"
+import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
 
 interface ChunkData {
   id: number
@@ -23,17 +24,6 @@ interface ReadModeProps {
 }
 
 const MAX_WORDS_PER_PAGE = 20
-
-function getChunkIdFromPoint(clientX: number, clientY: number): number | null {
-  const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
-  if (!el) return null
-  const hit = el.closest("[data-chunk-id]") as HTMLElement | null
-  if (!hit) return null
-  const raw = hit.getAttribute("data-chunk-id")
-  if (raw == null) return null
-  const id = Number(raw)
-  return Number.isFinite(id) ? id : null
-}
 
 function buildPages(sentences: Sentence[]): ChunkData[][] {
   const pages: ChunkData[][] = []
@@ -63,34 +53,15 @@ export function ReadMode({ sentences }: ReadModeProps) {
   const pages = buildPages(sentences)
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
   const [activeChunkId, setActiveChunkId] = useState<number | null>(null)
-  const [touchExploring, setTouchExploring] = useState(false)
 
-  const touchSurfaceRef = useRef<HTMLDivElement>(null)
-  const touchExploringRef = useRef(false)
-  const rafRef = useRef<number | null>(null)
-  const pendingPointRef = useRef<{ x: number; y: number } | null>(null)
-  const lastEmittedIdRef = useRef<number | null>(null)
-  const suppressNextClickRef = useRef(false)
+  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(setActiveChunkId, [
+    currentSentenceIndex,
+  ])
 
   const currentSentence = { chunks: pages[currentSentenceIndex] ?? [] }
   const totalSentences = pages.length
 
-  useEffect(() => {
-    if (touchExploring) {
-      document.body.classList.add("read-mode-touch-exploring")
-      document.documentElement.style.overflow = "hidden"
-    } else {
-      document.body.classList.remove("read-mode-touch-exploring")
-      document.documentElement.style.overflow = ""
-    }
-    return () => {
-      document.body.classList.remove("read-mode-touch-exploring")
-      document.documentElement.style.overflow = ""
-    }
-  }, [touchExploring])
-
   const handleGlobalClick = useCallback((e: MouseEvent) => {
-    if (suppressNextClickRef.current) return
     const target = e.target as HTMLElement
     if (!target.closest("[data-chunk]") && !target.closest("[data-popup]")) {
       setActiveChunkId(null)
@@ -101,80 +72,6 @@ export function ReadMode({ sentences }: ReadModeProps) {
     document.addEventListener("click", handleGlobalClick)
     return () => document.removeEventListener("click", handleGlobalClick)
   }, [handleGlobalClick])
-
-  useLayoutEffect(() => {
-    const el = touchSurfaceRef.current
-    if (!el) return
-
-    const runHitTest = () => {
-      const p = pendingPointRef.current
-      if (!p || !touchExploringRef.current) return
-      const id = getChunkIdFromPoint(p.x, p.y)
-      if (id === null) return
-      if (lastEmittedIdRef.current === id) return
-      lastEmittedIdRef.current = id
-      setActiveChunkId(id)
-    }
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return
-      const t = e.touches[0]
-      const id = getChunkIdFromPoint(t.clientX, t.clientY)
-      if (id === null) return
-
-      touchExploringRef.current = true
-      setTouchExploring(true)
-      lastEmittedIdRef.current = id
-      setActiveChunkId(id)
-      pendingPointRef.current = { x: t.clientX, y: t.clientY }
-    }
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (!touchExploringRef.current || e.touches.length !== 1) return
-      e.preventDefault()
-      const t = e.touches[0]
-      pendingPointRef.current = { x: t.clientX, y: t.clientY }
-
-      if (rafRef.current != null) return
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = null
-        runHitTest()
-      })
-    }
-
-    const endTouchExploration = () => {
-      if (!touchExploringRef.current) return
-      touchExploringRef.current = false
-      setTouchExploring(false)
-      lastEmittedIdRef.current = null
-      setActiveChunkId(null)
-      pendingPointRef.current = null
-      if (rafRef.current != null) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
-      suppressNextClickRef.current = true
-      window.setTimeout(() => {
-        suppressNextClickRef.current = false
-      }, 450)
-    }
-
-    el.addEventListener("touchstart", onTouchStart, { passive: true })
-    el.addEventListener("touchmove", onTouchMove, { passive: false })
-    el.addEventListener("touchend", endTouchExploration)
-    el.addEventListener("touchcancel", endTouchExploration)
-
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart)
-      el.removeEventListener("touchmove", onTouchMove)
-      el.removeEventListener("touchend", endTouchExploration)
-      el.removeEventListener("touchcancel", endTouchExploration)
-      touchExploringRef.current = false
-      setTouchExploring(false)
-      document.body.classList.remove("read-mode-touch-exploring")
-      document.documentElement.style.overflow = ""
-    }
-  }, [currentSentenceIndex])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -186,6 +186,10 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
         onClick={onActivate}
         onMouseEnter={onActivate}
         onMouseLeave={onDeactivate}
+        onTouchEnd={(e) => {
+          /* Stops the synthetic click after touch — prevents reopening tooltip on thumb lift */
+          e.preventDefault()
+        }}
         className={cn(
           "cursor-pointer transition-all duration-200 ease-in-out rounded-sm px-0.5 -mx-0.5",
           "underline underline-offset-2 decoration-[1.5px]",
