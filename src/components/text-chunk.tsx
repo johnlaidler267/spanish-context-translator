@@ -163,6 +163,7 @@ export function TextChunk({ chunk, isActive, onActivate, onDeactivate }: TextChu
       <span
         ref={chunkRef}
         data-chunk
+        data-chunk-id={chunk.id}
         onClick={onActivate}
         onMouseEnter={onActivate}
         onMouseLeave={onDeactivate}

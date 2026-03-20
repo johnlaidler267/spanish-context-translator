@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Read mode: touch-drag “hover” — popup must not steal elementFromPoint */
+body.read-mode-touch-exploring [data-popup] {
+  pointer-events: none;
+}
+body.read-mode-touch-exploring {
+  overscroll-behavior: none;
+}
+
 @layer base {
   :root {
     /* Editorial / literary — quiet bookstore, not startup */
