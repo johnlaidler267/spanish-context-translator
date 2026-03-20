@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react"
 import { Dices } from "lucide-react"
 import { MainHeader } from "./main-header"
 import { appendTranscriptToField, generateRandomSpanish } from "@/lib/translate"
@@ -25,8 +25,11 @@ const PLACEHOLDERS = [
   "Paste a conversation…",
 ]
 
+const MOBILE_TEXTAREA_MQ = "(max-width: 767px)"
+
 export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: LandingScreenProps) {
   const [text, setText] = useState("")
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [isRolling, setIsRolling] = useState(false)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [placeholderVisible, setPlaceholderVisible] = useState(true)
@@ -43,6 +46,32 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
     }, 3000)
     return () => clearInterval(interval)
   }, [text])
+
+  const fitMobileTextareaHeight = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    if (!window.matchMedia(MOBILE_TEXTAREA_MQ).matches) {
+      el.style.removeProperty("height")
+      return
+    }
+    el.style.height = "auto"
+    el.style.height = `${el.scrollHeight}px`
+  }, [])
+
+  useLayoutEffect(() => {
+    fitMobileTextareaHeight()
+  }, [text, fitMobileTextareaHeight])
+
+  useEffect(() => {
+    const onResize = () => fitMobileTextareaHeight()
+    window.addEventListener("resize", onResize)
+    const mq = window.matchMedia(MOBILE_TEXTAREA_MQ)
+    mq.addEventListener("change", onResize)
+    return () => {
+      window.removeEventListener("resize", onResize)
+      mq.removeEventListener("change", onResize)
+    }
+  }, [fitMobileTextareaHeight])
 
   const apiKey = import.meta.env.VITE_GROQ_API_KEY
 
@@ -124,6 +153,7 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
               <span className="corner corner-bl" aria-hidden />
               <span className="corner corner-br" aria-hidden />
               <textarea
+                ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={handleKeyDown}
