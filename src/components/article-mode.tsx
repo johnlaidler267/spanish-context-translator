@@ -56,6 +56,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
         {chunks.map((chunk, index) => (
           <span key={chunk.id}>
             <TextChunk
+              variant="article"
               chunk={chunk}
               popupChunkId={effectivePopupId}
               isTouchHighlight={exploringChunkId === chunk.id}

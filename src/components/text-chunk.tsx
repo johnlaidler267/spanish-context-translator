@@ -23,6 +23,11 @@ interface TextChunkProps {
   onDeactivate: () => void
   /** Pin / unpin on double-tap (touch) or double-click (desktop) */
   onPinToggle?: () => void
+  /**
+   * Article body text is smaller — use a longer gap + stem so the tooltip clears the finger.
+   * Read mode keeps a compact callout.
+   */
+  variant?: "article" | "read"
 }
 
 interface PopupCoords {
@@ -39,6 +44,11 @@ const POPUP_WIDTH = 288
 const POPUP_EST_HEIGHT = 120
 /** Keep arrow diamond inside tooltip; min distance from edge to arrow center (px) */
 const ARROW_EDGE_INSET = 12
+
+/** Vertical gap from word to tooltip (article: farther so finger doesn’t cover the card) */
+const GAP_FROM_WORD: Record<"article" | "read", number> = { read: 10, article: 36 }
+/** Diamond “arrow” size (px); article uses a larger tip + gap so the callout clears the finger */
+const ARROW_BOX: Record<"article" | "read", number> = { read: 10, article: 15 }
 
 /** True if chunk is only punctuation/symbols — should sit flush after the previous word in read mode */
 export function isPunctuationOnly(text: string): boolean {
@@ -66,6 +76,7 @@ export function TextChunk({
   onActivate,
   onDeactivate,
   onPinToggle,
+  variant = "read",
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text}</span>
@@ -83,6 +94,8 @@ export function TextChunk({
     const padding = 16
     const vw = window.innerWidth
     const tooltipWidth = POPUP_WIDTH
+    const gap = GAP_FROM_WORD[variant]
+    const edgeClearance = 16 + gap
 
     const wordCenterX = rect.left + rect.width * 0.48
 
@@ -98,7 +111,9 @@ export function TextChunk({
     const spaceAbove = rect.top
     const spaceBelow = window.innerHeight - rect.bottom
     const placement =
-      spaceAbove < POPUP_EST_HEIGHT + 16 && spaceBelow >= POPUP_EST_HEIGHT + 16 ? "below" : "above"
+      spaceAbove < POPUP_EST_HEIGHT + edgeClearance && spaceBelow >= POPUP_EST_HEIGHT + edgeClearance
+        ? "below"
+        : "above"
 
     setCoords({
       anchorTop: rect.top,
@@ -107,7 +122,7 @@ export function TextChunk({
       arrowCenterX,
       placement,
     })
-  }, [])
+  }, [variant])
 
   useEffect(() => {
     if (isPopupOpen) calculateCoords()
@@ -154,6 +169,10 @@ export function TextChunk({
     [onPinToggle],
   )
 
+  const gap = GAP_FROM_WORD[variant]
+  const arrowSize = ARROW_BOX[variant]
+  const stemLen = variant === "article" ? 20 : 0
+
   const popup = coords && (
     <div
       data-popup
@@ -163,8 +182,8 @@ export function TextChunk({
         position: "fixed",
         top:
           coords.placement === "above"
-            ? coords.anchorTop - 10
-            : coords.anchorBottom + 10,
+            ? coords.anchorTop - gap
+            : coords.anchorBottom + gap,
         left: coords.tooltipLeft,
         width: POPUP_WIDTH,
         boxSizing: "border-box",
@@ -175,13 +194,47 @@ export function TextChunk({
         borderRadius: "4px",
         boxShadow: "0 4px 20px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.08)",
         padding: "12px 14px",
+        overflow: "visible",
       }}
     >
+      {/* Article: thin stem from card toward the word so the tooltip sits clearly above/below the finger */}
+      {stemLen > 0 && coords.placement === "above" && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: coords.arrowCenterX,
+            transform: "translateX(-50%)",
+            top: "100%",
+            width: 2,
+            height: stemLen,
+            marginTop: -1,
+            borderRadius: 1,
+            background: "linear-gradient(to bottom, rgba(201,122,90,0.4), rgba(201,122,90,0.22))",
+          }}
+        />
+      )}
+      {stemLen > 0 && coords.placement === "below" && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: coords.arrowCenterX,
+            transform: "translateX(-50%)",
+            bottom: "100%",
+            width: 2,
+            height: stemLen,
+            marginBottom: -1,
+            borderRadius: 1,
+            background: "linear-gradient(to top, rgba(201,122,90,0.4), rgba(201,122,90,0.22))",
+          }}
+        />
+      )}
       <div
         style={{
           position: "absolute",
-          width: 10,
-          height: 10,
+          width: arrowSize,
+          height: arrowSize,
           left: coords.arrowCenterX,
           backgroundColor: "#f4efe9",
           borderLeft: "1px solid rgba(201,122,90,0.28)",
@@ -190,8 +243,20 @@ export function TextChunk({
             ? "translateX(-50%) translateY(50%) rotate(45deg)"
             : "translateX(-50%) translateY(-50%) rotate(45deg)",
           ...(coords.placement === "above"
-            ? { bottom: 0, borderLeft: "none", borderTop: "none", borderRight: "1px solid rgba(201,122,90,0.28)", borderBottom: "1px solid rgba(201,122,90,0.28)" }
-            : { top: 0, borderRight: "none", borderBottom: "none", borderLeft: "1px solid rgba(201,122,90,0.28)", borderTop: "1px solid rgba(201,122,90,0.28)" }),
+            ? {
+                bottom: stemLen,
+                borderLeft: "none",
+                borderTop: "none",
+                borderRight: "1px solid rgba(201,122,90,0.28)",
+                borderBottom: "1px solid rgba(201,122,90,0.28)",
+              }
+            : {
+                top: stemLen,
+                borderRight: "none",
+                borderBottom: "none",
+                borderLeft: "1px solid rgba(201,122,90,0.28)",
+                borderTop: "1px solid rgba(201,122,90,0.28)",
+              }),
         }}
       />
 

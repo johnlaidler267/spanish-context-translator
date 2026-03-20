@@ -62,6 +62,7 @@ export function ArticleContent({ items }: ArticleContentProps) {
           return (
             <span key={i}>
               <TextChunk
+                variant="article"
                 chunk={chunkData}
                 popupChunkId={effectivePopupId}
                 isTouchHighlight={exploringChunkId === id}
