@@ -566,7 +566,8 @@ article span {
   border: none;
   background: transparent;
   border-radius: 4px;
-  padding: 24px 7rem 24px 24px;
+  /* Bottom padding clears dice / submit / mic (positioned absolute on wrapper) */
+  padding: 24px 7rem 4.5rem 24px;
   font-family: var(--font-serif);
   font-size: 1.05rem;
   line-height: 1.75;
@@ -586,7 +587,7 @@ article span {
   position: absolute;
   top: 0;
   left: 0;
-  padding: 24px 7rem 24px 24px;
+  padding: 24px 7rem 4.5rem 24px;
   pointer-events: none;
   font-family: var(--font-serif);
   font-size: 1.05rem;
@@ -611,11 +612,11 @@ article span {
     overflow-y: auto;
     /* Avoid animating height — can feel sluggish when auto-growing */
     transition: color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
-    /* Slightly less right padding — icons are scaled down below */
-    padding: 18px 6rem 18px 16px;
+    /* Slightly less right padding — icons are scaled down below; large bottom pad so text never sits under tools */
+    padding: 18px 6rem 4.25rem 16px;
   }
   .textarea-wrapper .animated-placeholder {
-    padding: 18px 6rem 18px 16px;
+    padding: 18px 6rem 4.25rem 16px;
     font-size: 0.95rem;
     line-height: 1.65;
   }

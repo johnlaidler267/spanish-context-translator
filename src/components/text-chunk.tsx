@@ -15,9 +15,9 @@ interface TextChunkProps {
   chunk: ChunkData
   /** Which chunk shows the popup (finger exploration wins over pinned) */
   popupChunkId: number | null
-  /** Finger is on this chunk (mobile touch explore) — gray highlight */
+  /** Active chunk (tap/hover) — underline */
   isTouchHighlight: boolean
-  /** Double-tap pin — terracotta underline + tooltip stays after lift */
+  /** Double-tap / double-click pin — terracotta highlight + tooltip stays after lift */
   isPinned: boolean
   onActivate: () => void
   onDeactivate: () => void
@@ -301,12 +301,12 @@ export function TextChunk({
         }}
         className={cn(
           "cursor-pointer transition-all duration-200 ease-in-out rounded-sm px-0.5 -mx-0.5",
-          /* Underline only when pinned (double-tap / double-click) — avoids iOS :hover sticky underline on single tap */
+          /* Touch/hover: underline. Double-tap/click pin: terracotta highlight on top of that. */
           isPinned
             ? "underline underline-offset-2 decoration-[1.5px] bg-primary/10 text-foreground decoration-[#c97a5a]/75"
             : isTouchHighlight
-              ? "bg-muted text-foreground"
-              : "[@media(hover:hover)]:hover:bg-muted",
+              ? "underline underline-offset-2 decoration-[1.5px] text-foreground decoration-[#c97a5a]/60"
+              : "decoration-transparent",
         )}
       >
         {chunk.text}
