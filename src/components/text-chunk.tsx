@@ -283,7 +283,7 @@ export function TextChunk({
         className={cn(
           /* Keep underline in the tree so decoration-color can fade (snap-off feels harsh) */
           "cursor-pointer rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[1.5px]",
-          "transition-[text-decoration-color,background-color] duration-300 ease-out",
+          "transition-[text-decoration-color,background-color] duration-700 ease-out md:duration-300",
           isPinned
             ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
             : isTouchHighlight
