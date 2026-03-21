@@ -1,7 +1,7 @@
 import { jsonrepair } from "jsonrepair"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-const MODEL = "llama-3.1-8b-instant"
+const MODEL = "openai/gpt-oss-120b"
 
 const PROMPT = (input: string) => `You are a Spanish language expert helping an English speaker understand Spanish text deeply.
 
@@ -254,6 +254,22 @@ export type ReconciledText = {
 
 export type ReconciledItem = ReconciledChunk | ReconciledText
 
+/**
+ * If reconcile ever yields two chunks in a row with no `type: "text"` between them,
+ * insert a space when both sides look like word characters (avoids "palabrapalabra" glitches).
+ */
+export function gapBetweenReconciledChunks(
+  prev: ReconciledChunk,
+  next: ReconciledChunk,
+): string {
+  const a = prev.chunk
+  const b = next.chunk
+  if (/\s$/.test(a) || /^\s/.test(b)) return ""
+  const word = /[\w\u00C0-\u024F]/
+  if (word.test(a.slice(-1)) && word.test(b.charAt(0))) return " "
+  return ""
+}
+
 function reconcileChunks(
   chunks: RawChunk[],
   originalText: string
@@ -285,22 +301,32 @@ function splitIntoSentences(items: ReconciledItem[]) {
   const sentences: { id: number; chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> }[] = []
   let currentChunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> = []
   let chunkId = 0
+  /** Spaces / punctuation between chunks live in `type: "text"` items — must merge into chunk text or read mode glues words together */
+  let pendingBetween = ""
 
   for (const item of items) {
-    if (item.type === "text") continue
+    if (item.type === "text") {
+      pendingBetween += item.text
+      continue
+    }
     const chunkData = {
       id: chunkId++,
-      text: item.chunk,
+      text: pendingBetween + item.chunk,
       meaning: item.meaning,
       literal: item.literal,
       grammar: item.note,
     }
+    pendingBetween = ""
     currentChunks.push(chunkData)
     const endsSentence = /[.!?]$/.test(item.chunk.trim())
     if (endsSentence && currentChunks.length > 0) {
       sentences.push({ id: sentences.length, chunks: currentChunks })
       currentChunks = []
     }
+  }
+  if (pendingBetween && currentChunks.length > 0) {
+    const last = currentChunks[currentChunks.length - 1]!
+    last.text += pendingBetween
   }
   if (currentChunks.length > 0) {
     sentences.push({ id: sentences.length, chunks: currentChunks })

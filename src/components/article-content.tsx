@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { TextChunk } from "./text-chunk"
-import type { ReconciledItem } from "@/lib/translate"
+import { gapBetweenReconciledChunks, type ReconciledItem } from "@/lib/translate"
 import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
 import { cn } from "@/lib/utils"
 
@@ -51,6 +51,9 @@ export function ArticleContent({ items }: ArticleContentProps) {
           if (item.type === "text") {
             return <span key={i}>{item.text}</span>
           }
+          const prev = i > 0 ? items[i - 1] : null
+          const gap =
+            prev?.type === "chunk" ? gapBetweenReconciledChunks(prev, item) : ""
           const id = chunkId++
           const chunkData = {
             id,
@@ -61,6 +64,7 @@ export function ArticleContent({ items }: ArticleContentProps) {
           }
           return (
             <span key={i}>
+              {gap ? <span aria-hidden="true">{gap}</span> : null}
               <TextChunk
                 variant="article"
                 chunk={chunkData}
