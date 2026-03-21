@@ -123,11 +123,9 @@ export function ReadMode({ sentences }: ReadModeProps) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-5rem)] max-md:min-h-0 max-md:flex-1 px-6 md:px-8">
-      <div
-        className="flex-1 flex items-center justify-center w-full md:pt-16 max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.75rem))]"
-        style={{ maxWidth: "700px" }}
-      >
+    <div className="flex w-full flex-col max-md:h-full max-md:min-h-0 max-md:flex-1 md:min-h-[calc(100dvh-5rem)] px-6 md:px-8">
+      {/* flex-1 + justify-center: sentence sits mid viewport; nav stays at bottom (shrink-0) */}
+      <div className="mx-auto flex w-full min-h-0 max-w-[700px] flex-1 flex-col items-center justify-center max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] md:pt-16">
         <div
           ref={touchSurfaceRef}
           className={`block w-full font-serif text-3xl md:text-5xl lg:text-6xl leading-snug md:leading-tight text-center text-foreground text-balance selection:bg-primary/20 ${
@@ -160,7 +158,7 @@ export function ReadMode({ sentences }: ReadModeProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-8 pb-12 pt-8">
+      <div className="flex shrink-0 items-center justify-center gap-8 pb-12 pt-8">
         <Button
           variant="ghost"
           size="icon"

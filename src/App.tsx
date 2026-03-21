@@ -113,7 +113,7 @@ export default function App() {
       <div className="shrink-0">
         <ReadingHeader mode={viewMode} onModeChange={setViewMode} onBack={handleBack} theme={readingTheme} onThemeChange={setReadingTheme} />
       </div>
-      <div className="max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden animate-fade-in-up">
+      <div className="max-md:flex max-md:flex-col max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden animate-fade-in-up">
         {viewMode === "article" && reconciled ? (
           <ArticleContent items={reconciled} />
         ) : hasSentences ? (
