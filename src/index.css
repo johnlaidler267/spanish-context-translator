@@ -759,6 +759,19 @@ article span {
     font-size: 0.78rem;
   }
 }
+
+/* Landing header: full-width plan strip under logo row (mobile only; desktop uses inline pill) */
+@media (max-width: 767px) {
+  .plan-badge--mobile-bar {
+    width: 100%;
+    justify-content: center;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
 .dark .plan-badge              { background: rgba(234,224,213,0.06); border-color: rgba(234,224,213,0.15); }
 .dark .plan-badge-plan         { color: rgba(234,224,213,0.55); }
 .dark .plan-badge-dot          { color: rgba(234,224,213,0.3); }
