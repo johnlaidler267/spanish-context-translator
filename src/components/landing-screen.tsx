@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react"
+import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { Dices } from "lucide-react"
 import { MainHeader } from "./main-header"
 import { appendTranscriptToField, generateRandomSpanish } from "@/lib/translate"
@@ -34,6 +35,12 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [placeholderVisible, setPlaceholderVisible] = useState(true)
   const [focused, setFocused] = useState(false)
+
+  /* Extend overflow unlock while landing enter animation runs (mobile shell clips transforms otherwise). */
+  useEffect(() => {
+    beginRouteTransition(560)
+    return () => cancelRouteTransition()
+  }, [])
 
   useEffect(() => {
     if (text) return

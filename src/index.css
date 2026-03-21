@@ -77,6 +77,21 @@ body.read-mode-touch-exploring {
     min-height: 0;
     height: auto !important;
   }
+
+  /*
+   * Route transitions / landing enter: temporarily allow overflow so
+   * View Transitions pseudo-elements and translateY aren’t clipped (fixes glitchy edges).
+   */
+  html.app-route-transition,
+  html.app-route-transition body,
+  html.app-route-transition #root,
+  html.app-route-transition .app-viewport {
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+  html.app-route-transition body {
+    overscroll-behavior: none;
+  }
 }
 
 @layer base {
