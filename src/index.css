@@ -46,6 +46,37 @@ body.read-mode-touch-exploring {
     flex-direction: column;
     overflow: hidden;
   }
+
+  /*
+   * /upgrade: allow vertical page scroll on mobile. Rest of app keeps overflow:hidden
+   * on #root to avoid accidental rubber-banding; this route opts in to body scroll.
+   */
+  html.mobile-scroll-upgrade {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  html.mobile-scroll-upgrade body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+  }
+  html.mobile-scroll-upgrade #root {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+  html.mobile-scroll-upgrade .app-viewport {
+    overflow: visible !important;
+    flex: 0 0 auto !important;
+    width: 100%;
+    min-height: 0;
+    height: auto !important;
+  }
 }
 
 @layer base {
