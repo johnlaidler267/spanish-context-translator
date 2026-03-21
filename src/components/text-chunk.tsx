@@ -171,7 +171,14 @@ export function TextChunk({
 
   const gap = GAP_FROM_WORD[variant]
   const arrowSize = ARROW_BOX[variant]
-  const stemLen = variant === "article" ? 20 : 0
+
+  /**
+   * Inner padding so the title/body never sit under the rotated diamond (half sits inside the card).
+   * Finger clearance vs the word uses `gap` only — no separate stem (stem + % positioning broke on “below”).
+   */
+  const tailInset = arrowSize + 10
+  const pad = 12
+  const padX = 14
 
   const popup = coords && (
     <div
@@ -193,65 +200,39 @@ export function TextChunk({
         border: "1px solid rgba(201, 122, 90, 0.28)",
         borderRadius: "4px",
         boxShadow: "0 4px 20px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.08)",
-        padding: "12px 14px",
+        padding:
+          coords.placement === "below"
+            ? `${pad + tailInset}px ${padX}px ${pad}px ${padX}px`
+            : `${pad}px ${padX}px ${pad + tailInset}px ${padX}px`,
         overflow: "visible",
       }}
     >
-      {/* Article: thin stem from card toward the word so the tooltip sits clearly above/below the finger */}
-      {stemLen > 0 && coords.placement === "above" && (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: coords.arrowCenterX,
-            transform: "translateX(-50%)",
-            top: "100%",
-            width: 2,
-            height: stemLen,
-            marginTop: -1,
-            borderRadius: 1,
-            background: "linear-gradient(to bottom, rgba(201,122,90,0.4), rgba(201,122,90,0.22))",
-          }}
-        />
-      )}
-      {stemLen > 0 && coords.placement === "below" && (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: coords.arrowCenterX,
-            transform: "translateX(-50%)",
-            bottom: "100%",
-            width: 2,
-            height: stemLen,
-            marginBottom: -1,
-            borderRadius: 1,
-            background: "linear-gradient(to top, rgba(201,122,90,0.4), rgba(201,122,90,0.22))",
-          }}
-        />
-      )}
+      {/* Single diamond straddling the card edge — center on border so it meets the gap to the word cleanly */}
       <div
+        aria-hidden
         style={{
           position: "absolute",
           width: arrowSize,
           height: arrowSize,
           left: coords.arrowCenterX,
+          zIndex: 2,
           backgroundColor: "#f4efe9",
           borderLeft: "1px solid rgba(201,122,90,0.28)",
           borderTop: "1px solid rgba(201,122,90,0.28)",
-          transform: coords.placement === "above"
-            ? "translateX(-50%) translateY(50%) rotate(45deg)"
-            : "translateX(-50%) translateY(-50%) rotate(45deg)",
+          transform:
+            coords.placement === "above"
+              ? "translateX(-50%) translateY(50%) rotate(45deg)"
+              : "translateX(-50%) translateY(-50%) rotate(45deg)",
           ...(coords.placement === "above"
             ? {
-                bottom: stemLen,
+                bottom: 0,
                 borderLeft: "none",
                 borderTop: "none",
                 borderRight: "1px solid rgba(201,122,90,0.28)",
                 borderBottom: "1px solid rgba(201,122,90,0.28)",
               }
             : {
-                top: stemLen,
+                top: 0,
                 borderRight: "none",
                 borderBottom: "none",
                 borderLeft: "1px solid rgba(201,122,90,0.28)",
@@ -300,13 +281,14 @@ export function TextChunk({
           onPinToggle?.()
         }}
         className={cn(
-          "cursor-pointer transition-all duration-200 ease-in-out rounded-sm px-0.5 -mx-0.5",
-          /* Touch/hover: underline. Double-tap/click pin: terracotta highlight on top of that. */
+          /* Keep underline in the tree so decoration-color can fade (snap-off feels harsh) */
+          "cursor-pointer rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[1.5px]",
+          "transition-[text-decoration-color,background-color] duration-300 ease-out",
           isPinned
-            ? "underline underline-offset-2 decoration-[1.5px] bg-primary/10 text-foreground decoration-[#c97a5a]/75"
+            ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
             : isTouchHighlight
-              ? "underline underline-offset-2 decoration-[1.5px] text-foreground decoration-[#c97a5a]/60"
-              : "decoration-transparent",
+              ? "text-foreground decoration-[#c97a5a]/60 bg-transparent"
+              : "text-foreground decoration-transparent",
         )}
       >
         {chunk.text}
