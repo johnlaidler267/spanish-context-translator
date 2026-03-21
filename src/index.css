@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Shell height: CSS viewport units only — do NOT bind to visualViewport.height (keyboard shrinks it and creates a gap below). */
+@layer utilities {
+  .min-h-app {
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+}
+
 /* Read mode: touch-drag “hover” — popup must not steal elementFromPoint */
 body.read-mode-touch-exploring [data-popup] {
   pointer-events: none;
@@ -10,19 +18,22 @@ body.read-mode-touch-exploring {
   overscroll-behavior: none;
 }
 
-/* Mobile: use min-height (not fixed height) + --app-vh from ViewportSync — avoids stale 100vh / chrome jumps */
+/* Mobile: min-height with dvh/svh — no JS pixel height (keyboard-safe) */
 @media (max-width: 767px) {
   html {
-    min-height: var(--app-vh, 100dvh);
+    min-height: 100svh;
+    min-height: 100dvh;
     overflow: hidden;
   }
   body {
-    min-height: var(--app-vh, 100dvh);
+    min-height: 100svh;
+    min-height: 100dvh;
     overflow: hidden;
     overscroll-behavior: none;
   }
   #root {
-    min-height: var(--app-vh, 100dvh);
+    min-height: 100svh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -973,26 +984,18 @@ article span {
 }
 
 @layer base {
-  /* Initial --app-vh before JS; ViewportSync overwrites with visualViewport height (px) */
-  :root {
-    --app-vh: 100svh;
-  }
-  @supports (height: 100dvh) {
-    :root {
-      --app-vh: 100dvh;
-    }
-  }
-
   * {
     @apply border-border;
   }
   html {
     background-color: var(--background);
-    min-height: var(--app-vh, 100dvh);
+    min-height: 100svh;
+    min-height: 100dvh;
   }
   #root {
     background-color: transparent;
-    min-height: var(--app-vh, 100dvh);
+    min-height: 100svh;
+    min-height: 100dvh;
     position: relative;
     z-index: 1;
   }
@@ -1002,7 +1005,8 @@ article span {
     @apply text-foreground;
     font-family: var(--font-sans);
     font-feature-settings: "liga" 1, "kern" 1;
-    min-height: var(--app-vh, 100dvh);
+    min-height: 100svh;
+    min-height: 100dvh;
     position: relative;
     isolation: isolate;
   }
