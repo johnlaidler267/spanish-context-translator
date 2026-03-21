@@ -108,7 +108,7 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
 
   return (
     <>
-      <MainHeader theme={theme} onThemeChange={onThemeChange} />
+      <MainHeader theme={theme} onThemeChange={onThemeChange} showPlanBanner />
       <div
         className="landing-page flex flex-col items-stretch md:items-center md:justify-center min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
         style={{ position: "relative" }}

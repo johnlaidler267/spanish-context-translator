@@ -70,7 +70,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="min-h-app bg-background relative max-md:min-h-0 max-md:flex max-md:flex-1 max-md:flex-col max-md:overflow-hidden">
+    <div className="min-h-app bg-background relative max-md:min-h-0 max-md:h-full max-md:flex max-md:flex-1 max-md:flex-col max-md:overflow-hidden">
       <img
         src={theme === "dark" ? "/upgrade-bg-dark.png" : "/upgrade-bg.png"}
         alt=""
@@ -92,8 +92,11 @@ export default function UpgradePage() {
       <div className="shrink-0 relative z-[1]">
         <MainHeader theme={theme} onThemeChange={setTheme} />
       </div>
-      <main className="relative z-[1] md:pt-20 max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] pb-16 px-4 md:px-6 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden">
-        <div className="max-w-4xl mx-auto">
+      <main
+        className="relative z-[1] md:pt-20 max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] pb-16 px-4 md:px-6 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto max-md:overscroll-y-contain max-md:touch-pan-y"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        <div className="max-w-4xl mx-auto overflow-x-hidden">
           <Link
             to="/"
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8"
