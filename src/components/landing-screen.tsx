@@ -107,7 +107,7 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
   }
 
   return (
-    <>
+    <div className="landing-route-shell landing-route-enter flex w-full flex-col min-h-app max-md:min-h-0 max-md:flex-1">
       <MainHeader theme={theme} onThemeChange={onThemeChange} showPlanBanner />
       <div
         className="landing-page flex flex-col items-stretch md:items-center md:justify-center min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
@@ -221,6 +221,6 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
         </div>
       </div>
       </div>
-    </>
+    </div>
   )
 }

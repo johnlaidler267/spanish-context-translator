@@ -169,6 +169,26 @@ body.read-mode-touch-exploring {
   animation: fade-in-up 0.2s ease-out both;
 }
 
+/* Landing — route enter (settings/upgrade → home, or back from reading) */
+@keyframes landing-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.landing-route-enter {
+  animation: landing-route-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-route-enter {
+    animation: none;
+  }
+}
+
 /* Staggered page entry — same 200ms cap */
 .entry-1 { animation: fade-in-up 0.2s ease-out both; }
 .entry-2 { animation: fade-in-up 0.2s 0.04s ease-out both; }

@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
 import { ArrowLeft, Check, BookOpen, Zap, Crown } from "lucide-react"
+import { BackToHomeLink } from "@/components/back-to-home-link"
 import { MainHeader } from "@/components/main-header"
 import type { ReadingTheme } from "@/components/theme-toggle"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
@@ -100,13 +100,10 @@ export default function UpgradePage() {
       </div>
       <main className="relative z-[1] md:pt-20 max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] pb-16 px-4 md:px-6">
         <div className="max-w-4xl mx-auto overflow-x-hidden">
-          <Link
-            to="/"
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8"
-          >
+          <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
-          </Link>
+          </BackToHomeLink>
 
           <div className="mb-10 text-center">
             <h1 className="font-serif text-3xl md:text-4xl font-medium text-foreground">
