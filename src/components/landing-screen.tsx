@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { Dices } from "lucide-react"
 import { MainHeader } from "./main-header"
@@ -25,8 +25,6 @@ const PLACEHOLDERS = [
   "Try something from the news…",
   "Paste a conversation…",
 ]
-
-const MOBILE_TEXTAREA_MQ = "(max-width: 767px)"
 
 export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: LandingScreenProps) {
   const [text, setText] = useState("")
@@ -53,35 +51,6 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
     }, 3000)
     return () => clearInterval(interval)
   }, [text])
-
-  const fitMobileTextareaHeight = useCallback(() => {
-    const el = textareaRef.current
-    if (!el) return
-    if (!window.matchMedia(MOBILE_TEXTAREA_MQ).matches) {
-      el.style.removeProperty("height")
-      return
-    }
-    el.style.height = "auto"
-    el.style.height = `${el.scrollHeight}px`
-  }, [])
-
-  useLayoutEffect(() => {
-    fitMobileTextareaHeight()
-  }, [text, fitMobileTextareaHeight])
-
-  useEffect(() => {
-    const onResize = () => fitMobileTextareaHeight()
-    window.addEventListener("resize", onResize)
-    const vv = window.visualViewport
-    vv?.addEventListener("resize", onResize)
-    const mq = window.matchMedia(MOBILE_TEXTAREA_MQ)
-    mq.addEventListener("change", onResize)
-    return () => {
-      window.removeEventListener("resize", onResize)
-      vv?.removeEventListener("resize", onResize)
-      mq.removeEventListener("change", onResize)
-    }
-  }, [fitMobileTextareaHeight])
 
   const apiKey = import.meta.env.VITE_GROQ_API_KEY
 
@@ -162,49 +131,57 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
               <span className="corner corner-tr" aria-hidden />
               <span className="corner corner-bl" aria-hidden />
               <span className="corner corner-br" aria-hidden />
-              <textarea
-                ref={textareaRef}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                placeholder=""
-                className="textarea-field"
-                disabled={isLoading}
-              />
-              {!text && !focused && (
-                <span className="animated-placeholder" style={{ opacity: placeholderVisible ? 1 : 0 }}>
-                  {PLACEHOLDERS[placeholderIndex]}
-                </span>
-              )}
-              <button
-                onClick={handleDiceRoll}
-                disabled={isRolling}
-                className="dice-btn"
-                aria-label="Generate a random Spanish paragraph"
-              >
-                {isRolling ? (
-                  <span className="dice-spinner" />
-                ) : (
-                  <Dices className="dice-icon" />
+              <div className="textarea-input-area">
+                <textarea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  placeholder=""
+                  className="textarea-field"
+                  disabled={isLoading}
+                />
+                {!text && !focused && (
+                  <span className="animated-placeholder" style={{ opacity: placeholderVisible ? 1 : 0 }}>
+                    {PLACEHOLDERS[placeholderIndex]}
+                  </span>
                 )}
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={!text.trim() || isLoading}
-                className={`submit-arrow-btn ${text.trim() ? "submit-arrow-btn--visible" : ""}`}
-                aria-label="Start reading"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-                  <path d="M12 19V5M5 12l7-7 7 7" />
-                </svg>
-              </button>
-              <VoiceInputButton
-                apiKey={apiKey}
-                disabled={isLoading}
-                onTranscript={(t) => setText((prev) => appendTranscriptToField(prev, t))}
-              />
+              </div>
+              <div className="textarea-toolbar" aria-label="Composer actions">
+                <button
+                  type="button"
+                  onClick={handleDiceRoll}
+                  disabled={isRolling}
+                  className="dice-btn"
+                  aria-label="Generate a random Spanish paragraph"
+                >
+                  {isRolling ? (
+                    <span className="dice-spinner" />
+                  ) : (
+                    <Dices className="dice-icon" />
+                  )}
+                </button>
+                <div className="textarea-toolbar-right">
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={!text.trim() || isLoading}
+                    className={`submit-arrow-btn ${text.trim() ? "submit-arrow-btn--visible" : ""}`}
+                    aria-label="Start reading"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
+                  </button>
+                  <VoiceInputButton
+                    apiKey={apiKey}
+                    disabled={isLoading}
+                    onTranscript={(t) => setText((prev) => appendTranscriptToField(prev, t))}
+                  />
+                </div>
+              </div>
             </div>
             <div className="hidden md:flex w-full items-center justify-end">
               <p className="word-counter select-none min-w-0" aria-live="polite">
