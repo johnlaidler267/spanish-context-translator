@@ -19,7 +19,7 @@ createRoot(document.getElementById('root')).render(
             <img
               src="/mobile-corner-letter.png"
               alt=""
-              className="block h-auto w-full object-contain object-left-top opacity-[0.2] dark:opacity-[0.12]"
+              className="block h-auto w-full object-contain object-left-top opacity-[0.2] dark:opacity-[0.05]"
             />
           </div>
           <Routes>

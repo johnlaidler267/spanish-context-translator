@@ -110,6 +110,11 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
         <img
           src={theme === "dark" ? "/landing-bg-dark.png" : "/landing-bg.png"}
           aria-hidden
+          className={
+            theme === "dark"
+              ? "max-md:[filter:none] md:[filter:blur(2.3px)]"
+              : "[filter:none]"
+          }
           style={{
             position: "absolute",
             inset: 0,
@@ -117,9 +122,7 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
             height: "100%",
             objectFit: "cover",
             objectPosition: "center",
-            opacity: theme === "dark" ? 0.35 : 0.22,
-            /* Dark: subtle blur (~¼ of prior 9.2px) */
-            filter: theme === "dark" ? "blur(2.3px)" : "none",
+            opacity: theme === "dark" ? 0.13 : 0.22,
             pointerEvents: "none",
             zIndex: 0,
           }}
