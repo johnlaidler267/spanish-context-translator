@@ -1,7 +1,27 @@
 import { jsonrepair } from "jsonrepair"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-const MODEL = "openai/gpt-oss-120b"
+const MODEL = "llama-3.1-8b-instant"
+
+async function parseGroqJsonErrorBody(res: Response): Promise<string> {
+  try {
+    const j = (await res.json()) as { error?: { message?: string }; message?: string }
+    return j?.error?.message ?? j?.message ?? ""
+  } catch {
+    return ""
+  }
+}
+
+function throwGroqChatHttpError(res: Response, detail: string): never {
+  if (res.status === 429) {
+    throw new Error(
+      detail
+        ? `Rate limit reached: ${detail}`
+        : "Rate limit reached (HTTP 429). Please wait a moment and try again.",
+    )
+  }
+  throw new Error(detail || `HTTP ${res.status}`)
+}
 
 const PROMPT = (input: string) => `You are a Spanish language expert helping an English speaker understand Spanish text deeply.
 
@@ -297,7 +317,7 @@ function reconcileChunks(
   return result
 }
 
-function splitIntoSentences(items: ReconciledItem[]) {
+export function splitIntoSentences(items: ReconciledItem[]) {
   const sentences: { id: number; chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> }[] = []
   let currentChunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> = []
   let chunkId = 0
@@ -334,10 +354,101 @@ function splitIntoSentences(items: ReconciledItem[]) {
   return sentences
 }
 
-export async function translate(
+/**
+ * Words per LLM request (Article pagination + Read-mode preloads both use this; Read UI is still sentence-by-sentence).
+ * ~60 mobile / ~115 desktop — one article “screen” without scroll.
+ */
+export const PAGE_SIZE_WORDS_MOBILE = 60
+export const PAGE_SIZE_WORDS_DESKTOP = 115
+
+export type PageSplitLimits = {
+  maxWords: number
+  maxChars: number
+}
+
+/** Secondary cap (chars) so one very long sentence doesn’t dominate a page. */
+export function pageCharCapForWordLimit(maxWords: number): number {
+  return Math.round(maxWords * 24)
+}
+
+export function resolvePageSplitLimits(isMobileViewport: boolean): PageSplitLimits {
+  const maxWords = isMobileViewport ? PAGE_SIZE_WORDS_MOBILE : PAGE_SIZE_WORDS_DESKTOP
+  return { maxWords, maxChars: pageCharCapForWordLimit(maxWords) }
+}
+
+function countWordsInSentence(s: string): number {
+  return s.trim().split(/\s+/).filter((w) => /\p{L}/u.test(w)).length
+}
+
+/**
+ * Split source Spanish into sentences without cutting mid-sentence.
+ * Uses `Intl.Segmenter` when available (es).
+ */
+export function splitSourceIntoSentences(text: string): string[] {
+  const t = text.trim()
+  if (!t) return []
+  try {
+    const Seg = (
+      Intl as unknown as {
+        Segmenter?: new (locales: string, options: { granularity: string }) => { segment: (s: string) => Iterable<{ segment: string }> }
+      }
+    ).Segmenter
+    if (Seg) {
+      const seg = new Seg("es", { granularity: "sentence" })
+      return [...seg.segment(t)]
+        .map((x) => x.segment.trim())
+        .filter(Boolean)
+    }
+  } catch {
+    /* fall through */
+  }
+  return t
+    .split(/(?<=[.!?…])\s+/u)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+/**
+ * Group sentences into pages; each page is `string[]` (full sentences only).
+ */
+export function buildSentencePages(sentences: string[], limits: PageSplitLimits): string[][] {
+  if (sentences.length === 0) return []
+  const { maxWords: PAGE_SIZE_WORDS, maxChars: PAGE_SIZE_CHARS } = limits
+  const pages: string[][] = []
+  let cur: string[] = []
+  let words = 0
+  let chars = 0
+
+  for (const sent of sentences) {
+    const w = countWordsInSentence(sent)
+    const c = sent.length
+    const sep = cur.length > 0 ? 1 : 0
+    if (
+      cur.length > 0 &&
+      (words + w > PAGE_SIZE_WORDS || chars + sep + c > PAGE_SIZE_CHARS)
+    ) {
+      pages.push(cur)
+      cur = []
+      words = 0
+      chars = 0
+    }
+    cur.push(sent)
+    words += w
+    chars += c + sep
+  }
+  if (cur.length) pages.push(cur)
+  return pages
+}
+
+export function pageSourceText(pageSentences: string[]): string {
+  return pageSentences.join(" ")
+}
+
+/** Single LLM call: chunk JSON → reconciled items for one page of source text. */
+export async function translatePageText(
   input: string,
-  apiKey: string
-): Promise<{ reconciled: ReconciledItem[]; sentences: ReturnType<typeof splitIntoSentences> }> {
+  apiKey: string,
+): Promise<ReconciledItem[]> {
   const res = await fetch(GROQ_API_URL, {
     method: "POST",
     headers: {
@@ -353,15 +464,12 @@ export async function translate(
   })
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(
-      (err as { error?: { message?: string } })?.error?.message || `HTTP ${res.status}`
-    )
+    const detail = await parseGroqJsonErrorBody(res)
+    throwGroqChatHttpError(res, detail)
   }
 
   const data = await res.json()
-  let raw =
-    data.choices?.[0]?.message?.content?.trim() ?? ""
+  let raw = data.choices?.[0]?.message?.content?.trim() ?? ""
 
   raw = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim()
 
@@ -370,9 +478,157 @@ export async function translate(
 
   const repaired = jsonrepair(match[0])
   const parsed: RawChunk[] = JSON.parse(repaired)
-  const reconciled = reconcileChunks(parsed, input)
-  const sentences = splitIntoSentences(reconciled)
+  return reconcileChunks(parsed, input)
+}
 
+export type PageSentenceRange = { pageIndex: number; start: number; end: number }
+
+export type ReadSentence = {
+  id: number
+  /** Which LLM / article page this step came from (preload ranges use this). */
+  sourcePageIndex: number
+  chunks: Array<{
+    id: number
+    text: string
+    meaning: string
+    literal?: string
+    grammar?: string
+  }>
+}
+
+/**
+ * Max words per Read-mode step on narrow viewports — same prev/next as desktop, smaller bites.
+ * (LLM still uses PAGE_SIZE_WORDS_MOBILE per request; this only splits display steps.)
+ */
+export const READ_MODE_WORDS_PER_STEP_MOBILE = 18
+
+function countWordsInText(s: string): number {
+  return s.trim().split(/\s+/).filter((w) => /\p{L}/u.test(w)).length
+}
+
+/** Concatenate translated pages into one Read-mode sentence list (stable chunk ids). */
+export function mergeReconciledPagesToSentences(
+  pages: ReconciledItem[][],
+): ReadSentence[] {
+  const out: ReadSentence[] = []
+  let chunkId = 0
+  for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+    const reconciled = pages[pageIndex]!
+    const sents = splitIntoSentences(reconciled)
+    for (const s of sents) {
+      out.push({
+        id: out.length,
+        sourcePageIndex: pageIndex,
+        chunks: s.chunks.map((c) => ({ ...c, id: chunkId++ })),
+      })
+    }
+  }
+  return out.map((s, i) => ({ ...s, id: i }))
+}
+
+/**
+ * Split long read steps at chunk boundaries so each step stays under `maxWords` (mobile).
+ * Single chunks that alone exceed the budget stay as one step.
+ */
+export function subdivideReadStepsForMobile(
+  sentences: ReadSentence[],
+  maxWordsPerStep: number,
+): ReadSentence[] {
+  const out: ReadSentence[] = []
+  let nextId = 0
+  let chunkId = 0
+
+  for (const sent of sentences) {
+    const chunks = sent.chunks
+    const totalWords = chunks.reduce((sum, c) => sum + countWordsInText(c.text), 0)
+    if (totalWords <= maxWordsPerStep || chunks.length === 0) {
+      out.push({
+        id: nextId++,
+        sourcePageIndex: sent.sourcePageIndex,
+        chunks: chunks.map((c) => ({ ...c, id: chunkId++ })),
+      })
+      continue
+    }
+
+    let run: ReadSentence["chunks"] = []
+    let runWords = 0
+    for (const c of chunks) {
+      const w = countWordsInText(c.text)
+      if (run.length > 0 && runWords + w > maxWordsPerStep) {
+        out.push({
+          id: nextId++,
+          sourcePageIndex: sent.sourcePageIndex,
+          chunks: run.map((x) => ({ ...x, id: chunkId++ })),
+        })
+        run = []
+        runWords = 0
+      }
+      run.push(c)
+      runWords += w
+    }
+    if (run.length > 0) {
+      out.push({
+        id: nextId++,
+        sourcePageIndex: sent.sourcePageIndex,
+        chunks: run.map((x) => ({ ...x, id: chunkId++ })),
+      })
+    }
+  }
+  return out
+}
+
+/** Preload ranges in *display step* indices, after any mobile subdivision. */
+export function pageStepRangesFromSentences(sentences: ReadSentence[]): PageSentenceRange[] {
+  if (sentences.length === 0) return []
+  const maxPage = Math.max(...sentences.map((s) => s.sourcePageIndex))
+  const ranges: PageSentenceRange[] = []
+  for (let p = 0; p <= maxPage; p++) {
+    const idxs: number[] = []
+    sentences.forEach((s, i) => {
+      if (s.sourcePageIndex === p) idxs.push(i)
+    })
+    if (idxs.length === 0) continue
+    const start = Math.min(...idxs)
+    const end = Math.max(...idxs) + 1
+    ranges.push({ pageIndex: p, start, end })
+  }
+  return ranges
+}
+
+export function sentenceCountsPerReconciledPage(
+  reconciledPages: ReconciledItem[][],
+): number[] {
+  return reconciledPages.map((r) => splitIntoSentences(r).length)
+}
+
+export function cumulativePageSentenceRanges(counts: number[]): PageSentenceRange[] {
+  let offset = 0
+  return counts.map((n, pageIndex) => {
+    const start = offset
+    offset += n
+    return { pageIndex, start, end: offset }
+  })
+}
+
+/** How many pages starting from 0 are successfully loaded (stops at first gap). */
+export function countConsecutiveLoadedPages(
+  getPage: (i: number) => ReconciledItem[] | null,
+  totalPages: number,
+): number {
+  let n = 0
+  for (let i = 0; i < totalPages; i++) {
+    if (getPage(i) != null) n++
+    else break
+  }
+  return n
+}
+
+export async function translate(
+  input: string,
+  apiKey: string,
+): Promise<{ reconciled: ReconciledItem[]; sentences: ReturnType<typeof splitIntoSentences> }> {
+  const reconciled = await translatePageText(input, apiKey)
+  const sentences = splitIntoSentences(reconciled)
   return { reconciled, sentences }
 }
 
@@ -424,7 +680,10 @@ Return only the Spanish text. No translation, no explanation, no quotes.`,
     }),
   })
 
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  if (!res.ok) {
+    const detail = await parseGroqJsonErrorBody(res)
+    throwGroqChatHttpError(res, detail)
+  }
   const data = await res.json()
   return data.choices[0].message.content.trim()
 }
@@ -451,6 +710,20 @@ export async function transcribeAudioWithGroq(
 
   if (!res.ok) {
     const err = await res.text().catch(() => "")
+    if (res.status === 429) {
+      let detail = ""
+      try {
+        const j = JSON.parse(err) as { error?: { message?: string } }
+        detail = j?.error?.message ?? ""
+      } catch {
+        /* ignore */
+      }
+      throw new Error(
+        detail
+          ? `Rate limit reached: ${detail}`
+          : "Rate limit reached (HTTP 429). Please wait a moment and try again.",
+      )
+    }
     throw new Error(err || `Transcription failed: ${res.status}`)
   }
 

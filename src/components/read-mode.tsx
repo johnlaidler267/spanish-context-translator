@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { TextChunk, shouldGlueAfterPriorChunk } from "./text-chunk"
 import { Button } from "@/components/ui/button"
 import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
+import type { PageSentenceRange } from "@/lib/translate"
 
 interface ChunkData {
   id: number
@@ -20,43 +21,31 @@ interface Sentence {
 }
 
 interface ReadModeProps {
+  /** Increment when starting a new reading session (resets sentence index). */
+  readingSessionKey?: number
+  /** One step per item; desktop ≈ one grammatical sentence. Mobile may split long sentences into smaller chunk groups. */
   sentences: Sentence[]
+  /**
+   * Per LLM page → global sentence index range (pages = article-mode word caps at submit).
+   * Midpoint crossing preloads the next LLM page.
+   */
+  sentenceRangesByPage?: PageSentenceRange[]
+  onRequestPreloadPage?: (pageIndex: number) => void
 }
 
-const MAX_WORDS_PER_PAGE = 20
-
-function buildPages(sentences: Sentence[]): ChunkData[][] {
-  const pages: ChunkData[][] = []
-  let current: ChunkData[] = []
-  let wordCount = 0
-
-  for (const sentence of sentences) {
-    for (const chunk of sentence.chunks) {
-      const words = chunk.text.trim().split(/\s+/).filter(w => /\w/.test(w)).length
-
-      if (wordCount + words > MAX_WORDS_PER_PAGE && current.length > 0) {
-        pages.push(current)
-        current = []
-        wordCount = 0
-      }
-
-      current.push(chunk)
-      wordCount += words
-    }
-  }
-
-  if (current.length > 0) pages.push(current)
-  return pages
-}
-
-export function ReadMode({ sentences }: ReadModeProps) {
-  const pages = buildPages(sentences)
+export function ReadMode({
+  readingSessionKey = 0,
+  sentences,
+  sentenceRangesByPage,
+  onRequestPreloadPage,
+}: ReadModeProps) {
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
 
   const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(setExploringChunkId, [
     currentSentenceIndex,
+    sentences,
   ])
 
   const effectivePopupId = useMemo(
@@ -64,8 +53,31 @@ export function ReadMode({ sentences }: ReadModeProps) {
     [exploringChunkId, pinnedChunkId],
   )
 
-  const currentSentence = { chunks: pages[currentSentenceIndex] ?? [] }
-  const totalSentences = pages.length
+  const currentSentence = sentences[currentSentenceIndex] ?? { id: 0, chunks: [] as ChunkData[] }
+  const totalSentences = sentences.length
+
+  useEffect(() => {
+    setCurrentSentenceIndex(0)
+  }, [readingSessionKey])
+
+  useEffect(() => {
+    setCurrentSentenceIndex((i) =>
+      sentences.length === 0 ? 0 : Math.min(i, Math.max(0, sentences.length - 1)),
+    )
+  }, [sentences.length])
+
+  useEffect(() => {
+    if (!onRequestPreloadPage || !sentenceRangesByPage?.length) return
+    const rb = sentenceRangesByPage.find(
+      r => currentSentenceIndex >= r.start && currentSentenceIndex < r.end,
+    )
+    if (!rb) return
+    const span = rb.end - rb.start
+    const mid = rb.start + Math.floor(span / 2)
+    if (currentSentenceIndex >= mid) {
+      onRequestPreloadPage(rb.pageIndex + 1)
+    }
+  }, [currentSentenceIndex, sentenceRangesByPage, onRequestPreloadPage])
 
   const clearChunkUi = useCallback(() => {
     setExploringChunkId(null)
@@ -132,7 +144,7 @@ export function ReadMode({ sentences }: ReadModeProps) {
             touchExploring ? "touch-none select-none" : ""
           }`}
         >
-          {currentSentence.chunks.map((chunk, index) => {
+          {currentSentence.chunks.map((chunk: ChunkData, index: number) => {
             const next = currentSentence.chunks[index + 1]
             const gapAfter =
               next != null && !shouldGlueAfterPriorChunk(next.text) ? " " : ""
