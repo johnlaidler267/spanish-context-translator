@@ -11,15 +11,20 @@ createRoot(document.getElementById('root')).render(
     <SubscriptionProvider>
       <BrowserRouter>
         <div className="app-viewport">
-          {/* Mobile: faded letter fragment behind all routes (fixed, no hit-target) */}
+          {/* Faded letter fragment — light / dark PNG swap; all viewports */}
           <div
-            className="pointer-events-none fixed top-0 left-0 z-0 hidden max-md:block w-[min(60vw,20.5rem)] select-none"
+            className="pointer-events-none fixed top-0 left-0 z-0 block w-[min(60vw,20.5rem)] select-none"
             aria-hidden
           >
             <img
               src="/mobile-corner-letter.png"
               alt=""
-              className="block h-auto w-full object-contain object-left-top opacity-[0.2] dark:opacity-[0.05]"
+              className="block h-auto w-full object-contain object-left-top opacity-[0.2] dark:hidden"
+            />
+            <img
+              src="/mobile-corner-letter-dark.png"
+              alt=""
+              className="hidden h-auto w-full object-contain object-left-top dark:block opacity-[0.17]"
             />
           </div>
           <Routes>
