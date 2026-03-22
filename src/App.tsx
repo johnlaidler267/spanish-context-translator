@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
+import { Navigate, Route, Routes } from "react-router-dom"
+import SettingsPage from "@/pages/settings"
 import { LandingScreen } from "./components/landing-screen"
 import { LoadingOverlay } from "./components/loading-overlay"
 import { ReadingHeader } from "./components/reading-header"
@@ -231,167 +233,179 @@ export default function App() {
     )
   }
 
-  if (appState === "landing" || appState === "loading") {
-    return (
-      <main className={`min-h-app bg-transparent ${viewportMain}`}>
-        {appState === "loading" && <LoadingOverlay />}
-        <LandingScreen
-          onSubmit={handleTextSubmit}
-          isLoading={appState === "loading"}
-          theme={appTheme}
-          onThemeChange={setReadingTheme}
-        />
-        {rateLimitMessage && (
-          <RateLimitModal message={rateLimitMessage} onDismiss={dismissRateLimitModal} />
-        )}
-        {error && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-3 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg text-sm max-w-md">
-            ⚠️ {error}
-          </div>
-        )}
+  const landingHome = (
+    <main className={`min-h-app bg-transparent ${viewportMain}`}>
+      {appState === "loading" && <LoadingOverlay />}
+      <LandingScreen
+        onSubmit={handleTextSubmit}
+        isLoading={appState === "loading"}
+        theme={appTheme}
+        onThemeChange={setReadingTheme}
+      />
+      {rateLimitMessage && (
+        <RateLimitModal message={rateLimitMessage} onDismiss={dismissRateLimitModal} />
+      )}
+      {error && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-3 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg text-sm max-w-md">
+          ⚠️ {error}
+        </div>
+      )}
+    </main>
+  )
+
+  let readingHome: React.ReactNode = null
+  if (appState === "reading") {
+    const cache = cacheRef.current
+    const consecutive = countConsecutiveLoadedPages((i) => cache.getPage(i), totalPages)
+    const loadedReconciled: ReconciledItem[][] = []
+    for (let i = 0; i < consecutive; i++) {
+      const p = cache.getPage(i)
+      if (p) loadedReconciled.push(p)
+    }
+    const readSentencesMerged = mergeReconciledPagesToSentences(loadedReconciled)
+    const readSentences = readLayoutMobile
+      ? subdivideReadStepsForMobile(readSentencesMerged, READ_MODE_WORDS_PER_STEP_MOBILE)
+      : readSentencesMerged
+    const sentenceRangesByPage = pageStepRangesFromSentences(readSentences)
+
+    const articleItems = cache.getPage(articlePageIndex)
+    const articleErrRaw = cache.getError(articlePageIndex)
+    const articleErr =
+      articleErrRaw && !isRateLimitApiMessage(articleErrRaw) ? articleErrRaw : null
+    const articleLoading =
+      cache.isLoading(articlePageIndex) && articleItems == null && articleErrRaw == null
+
+    const nextIdx = articlePageIndex + 1
+    const nextPageOpen =
+      articlePageIndex >= totalPages - 1 ||
+      cache.getPage(nextIdx) != null ||
+      cache.getError(nextIdx) != null
+    const nextPageLoading =
+      articlePageIndex < totalPages - 1 &&
+      cache.isLoading(nextIdx) &&
+      cache.getPage(nextIdx) == null &&
+      cache.getError(nextIdx) == null
+
+    const goArticlePrev = () => {
+      if (articlePageIndex <= 0) return
+      setArticlePageIndex((p) => p - 1)
+    }
+
+    const goArticleNext = () => {
+      if (articlePageIndex >= totalPages - 1) return
+      if (!nextPageOpen) return
+      setArticlePageIndex((p) => p + 1)
+    }
+
+    const hasSentences = readSentences.length > 0
+
+    readingHome = (
+      <main className={`min-h-app bg-background ${viewportMain}`}>
+        <div className="shrink-0">
+          <ReadingHeader
+            mode={viewMode}
+            onModeChange={setViewMode}
+            onBack={handleBack}
+            theme={readingTheme}
+            onThemeChange={setReadingTheme}
+          />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden animate-fade-in-up">
+          {viewMode === "article" && totalPages > 0 ? (
+            <div className="flex w-full min-h-0 flex-1 flex-col">
+              <ArticleContent
+                items={articleItems}
+                loading={articleLoading}
+                errorMessage={articleErr ?? null}
+                onRetry={articleErr ? retryArticlePage : undefined}
+                pageKey={articlePageIndex}
+                pagination={
+                  totalPages > 1
+                    ? {
+                        pageIndex: articlePageIndex,
+                        pageCount: totalPages,
+                        onPrevious: goArticlePrev,
+                        onNext: goArticleNext,
+                        nextPageLoading,
+                        nextPageOpen,
+                      }
+                    : null
+                }
+              />
+            </div>
+          ) : hasSentences ? (
+            <div className="flex w-full min-h-0 flex-1 flex-col">
+              <ReadMode
+                readingSessionKey={readingSessionId}
+                sentences={readSentences}
+                sentenceRangesByPage={sentenceRangesByPage}
+                onRequestPreloadPage={onRequestPreloadPage}
+              />
+              {readBlockedError &&
+                firstMissingPageIndex != null &&
+                !isRateLimitApiMessage(readBlockedError) && (
+                  <div className="shrink-0 border-t border-border/60 bg-muted/30 px-4 py-3 text-center">
+                    <p className="text-sm text-muted-foreground mb-2 font-sans">{readBlockedError}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (!apiKey) return
+                        rateLimitModalSuppressedRef.current = false
+                        const c = cacheRef.current
+                        const idx = firstMissingPageIndex
+                        c.clearPage(idx)
+                        void c
+                          .loadPage(idx, pageSourceText(sourcePages[idx]!), apiKey, translatePageText)
+                          .then(bump)
+                          .catch(bump)
+                      }}
+                    >
+                      Retry loading next section
+                    </Button>
+                  </div>
+                )}
+            </div>
+          ) : totalPages > 0 ? (
+            <div className="flex w-full min-h-0 flex-1 flex-col">
+              <ArticleContent
+                items={cache.getPage(0)}
+                loading={cache.isLoading(0) && cache.getPage(0) == null}
+                errorMessage={(() => {
+                  const e = cache.getError(0)
+                  return e && !isRateLimitApiMessage(e) ? e : null
+                })()}
+                onRetry={
+                  cache.getError(0) && apiKey && !isRateLimitApiMessage(cache.getError(0)!)
+                    ? () => {
+                        rateLimitModalSuppressedRef.current = false
+                        cache.clearPage(0)
+                        void cache
+                          .loadPage(0, pageSourceText(sourcePages[0]!), apiKey, translatePageText)
+                          .then(bump)
+                          .catch(bump)
+                      }
+                    : undefined
+                }
+                pageKey={0}
+                pagination={null}
+              />
+            </div>
+          ) : null}
+        </div>
       </main>
     )
   }
 
-  const cache = cacheRef.current
-  const consecutive = countConsecutiveLoadedPages((i) => cache.getPage(i), totalPages)
-  const loadedReconciled: ReconciledItem[][] = []
-  for (let i = 0; i < consecutive; i++) {
-    const p = cache.getPage(i)
-    if (p) loadedReconciled.push(p)
-  }
-  const readSentencesMerged = mergeReconciledPagesToSentences(loadedReconciled)
-  const readSentences = readLayoutMobile
-    ? subdivideReadStepsForMobile(readSentencesMerged, READ_MODE_WORDS_PER_STEP_MOBILE)
-    : readSentencesMerged
-  const sentenceRangesByPage = pageStepRangesFromSentences(readSentences)
-
-  const articleItems = cache.getPage(articlePageIndex)
-  const articleErrRaw = cache.getError(articlePageIndex)
-  const articleErr =
-    articleErrRaw && !isRateLimitApiMessage(articleErrRaw) ? articleErrRaw : null
-  const articleLoading =
-    cache.isLoading(articlePageIndex) && articleItems == null && articleErrRaw == null
-
-  const nextIdx = articlePageIndex + 1
-  const nextPageOpen =
-    articlePageIndex >= totalPages - 1 ||
-    cache.getPage(nextIdx) != null ||
-    cache.getError(nextIdx) != null
-  const nextPageLoading =
-    articlePageIndex < totalPages - 1 &&
-    cache.isLoading(nextIdx) &&
-    cache.getPage(nextIdx) == null &&
-    cache.getError(nextIdx) == null
-
-  const goArticlePrev = () => {
-    if (articlePageIndex <= 0) return
-    setArticlePageIndex((p) => p - 1)
-  }
-
-  const goArticleNext = () => {
-    if (articlePageIndex >= totalPages - 1) return
-    if (!nextPageOpen) return
-    setArticlePageIndex((p) => p + 1)
-  }
-
-  const hasSentences = readSentences.length > 0
+  const indexElement =
+    appState === "landing" || appState === "loading" ? landingHome : readingHome ?? landingHome
 
   return (
-    <main className={`min-h-app bg-background ${viewportMain}`}>
-      <div className="shrink-0">
-        <ReadingHeader
-          mode={viewMode}
-          onModeChange={setViewMode}
-          onBack={handleBack}
-          theme={readingTheme}
-          onThemeChange={setReadingTheme}
-        />
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden animate-fade-in-up">
-        {viewMode === "article" && totalPages > 0 ? (
-          <div className="flex w-full min-h-0 flex-1 flex-col">
-          <ArticleContent
-            items={articleItems}
-            loading={articleLoading}
-            errorMessage={articleErr ?? null}
-            onRetry={articleErr ? retryArticlePage : undefined}
-            pageKey={articlePageIndex}
-            pagination={
-              totalPages > 1
-                ? {
-                    pageIndex: articlePageIndex,
-                    pageCount: totalPages,
-                    onPrevious: goArticlePrev,
-                    onNext: goArticleNext,
-                    nextPageLoading,
-                    nextPageOpen,
-                  }
-                : null
-            }
-          />
-          </div>
-        ) : hasSentences ? (
-          <div className="flex w-full min-h-0 flex-1 flex-col">
-            <ReadMode
-              readingSessionKey={readingSessionId}
-              sentences={readSentences}
-              sentenceRangesByPage={sentenceRangesByPage}
-              onRequestPreloadPage={onRequestPreloadPage}
-            />
-            {readBlockedError &&
-              firstMissingPageIndex != null &&
-              !isRateLimitApiMessage(readBlockedError) && (
-              <div className="shrink-0 border-t border-border/60 bg-muted/30 px-4 py-3 text-center">
-                <p className="text-sm text-muted-foreground mb-2 font-sans">{readBlockedError}</p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    if (!apiKey) return
-                    rateLimitModalSuppressedRef.current = false
-                    const c = cacheRef.current
-                    const idx = firstMissingPageIndex
-                    c.clearPage(idx)
-                    void c
-                      .loadPage(idx, pageSourceText(sourcePages[idx]!), apiKey, translatePageText)
-                      .then(bump)
-                      .catch(bump)
-                  }}
-                >
-                  Retry loading next section
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : totalPages > 0 ? (
-          <div className="flex w-full min-h-0 flex-1 flex-col">
-          <ArticleContent
-            items={cache.getPage(0)}
-            loading={cache.isLoading(0) && cache.getPage(0) == null}
-            errorMessage={(() => {
-              const e = cache.getError(0)
-              return e && !isRateLimitApiMessage(e) ? e : null
-            })()}
-            onRetry={
-              cache.getError(0) && apiKey && !isRateLimitApiMessage(cache.getError(0)!)
-                ? () => {
-                    rateLimitModalSuppressedRef.current = false
-                    cache.clearPage(0)
-                    void cache
-                      .loadPage(0, pageSourceText(sourcePages[0]!), apiKey, translatePageText)
-                      .then(bump)
-                      .catch(bump)
-                  }
-                : undefined
-            }
-            pageKey={0}
-            pagination={null}
-          />
-          </div>
-        ) : null}
-      </div>
-    </main>
+    <Routes>
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/" element={indexElement} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }

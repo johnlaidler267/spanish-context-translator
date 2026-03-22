@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout-fix"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { Dices } from "lucide-react"
 import { MainHeader } from "./main-header"
@@ -29,6 +30,8 @@ const PLACEHOLDERS = [
 export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: LandingScreenProps) {
   const [text, setText] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const landingColumnRef = useRef<HTMLDivElement>(null)
+  useVirtualKeyboardLayoutFix(landingColumnRef)
   const [isRolling, setIsRolling] = useState(false)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [placeholderVisible, setPlaceholderVisible] = useState(true)
@@ -81,6 +84,21 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
   const handleTrySample = () => {
     onSubmit(sampleText)
   }
+
+  /** iOS/Android: when keyboard closes, clear stale scroll offset that leaves a bottom gap */
+  const nudgeScrollAfterKeyboard = useCallback(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    const root = document.getElementById("root")
+    if (root instanceof HTMLElement && root.scrollTop) root.scrollTop = 0
+    const col = landingColumnRef.current
+    if (col && col.scrollTop < 160) col.scrollTop = 0
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0)
+      requestAnimationFrame(() => window.scrollTo(0, 0))
+    })
+  }, [])
 
   return (
     <div className="landing-route-shell landing-route-enter flex w-full flex-col min-h-app max-md:min-h-0 max-md:flex-1">
@@ -138,7 +156,10 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={handleKeyDown}
                   onFocus={() => setFocused(true)}
-                  onBlur={() => setFocused(false)}
+                  onBlur={() => {
+                    setFocused(false)
+                    window.setTimeout(nudgeScrollAfterKeyboard, 50)
+                  }}
                   placeholder=""
                   className="textarea-field"
                   disabled={isLoading}
