@@ -32,6 +32,8 @@ export default {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         serif: ["var(--font-serif)", "Georgia", "serif"],
         display: ["var(--font-display)", "Georgia", "serif"],
+        /** Header wordmark — soft serif, pairs with Playfair + Source Sans */
+        fraunces: ["Fraunces", "var(--font-display)", "Georgia", "serif"],
       },
       keyframes: {
         "accordion-down": {

@@ -57,7 +57,15 @@ export function MainHeader({
       />
       <div className={showPlanBanner ? "relative flex flex-col" : "relative"}>
         <div className="flex items-center justify-between min-h-14 px-5 md:px-8 pt-[env(safe-area-inset-top,0px)]">
-          <img src="/logo.png" alt="Lector" className="pointer-events-none h-8 w-auto" />
+          <Link
+            to="/"
+            className="pointer-events-auto min-w-0 shrink select-none"
+            aria-label="Lectura.ai — home"
+          >
+            <span className="font-fraunces text-[1.2rem] font-semibold leading-none tracking-[-0.03em] text-foreground antialiased max-md:text-[1.15rem] md:text-[1.35rem] [font-feature-settings:'kern'_1,'liga'_1]">
+              Lectura
+            </span>
+          </Link>
           <div className="flex items-center gap-2 md:gap-3 pointer-events-auto shrink-0">
             <button
               onClick={() => onThemeChange(theme === "light" ? "dark" : "light")}

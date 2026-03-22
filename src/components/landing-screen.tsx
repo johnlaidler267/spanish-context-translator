@@ -130,6 +130,14 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
       >
         {/* Hero — mobile: fills space above composer; desktop: top */}
         <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center items-center min-h-0 md:flex-none md:block md:pb-8 pt-2 md:pt-0 pb-2 md:pb-8">
+          <img
+            src="/landing-hero-books.png"
+            alt=""
+            width={72}
+            height={72}
+            className="md:hidden mx-auto mb-2 w-[min(25vw,5rem)] h-auto max-h-16 object-contain object-center select-none pointer-events-none"
+            aria-hidden
+          />
           <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl" style={{ lineHeight: "1.15" }}>
             Hola, ready to read?
           </h1>
