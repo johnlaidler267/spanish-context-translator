@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { TextChunk } from "./text-chunk"
 import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
 import { cn } from "@/lib/utils"
+import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 
 interface ChunkData {
   id: number
@@ -43,8 +44,11 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
 
   return (
     <div
-      className="w-full mx-auto px-6 md:px-8 md:pt-24 max-md:pt-[calc(env(safe-area-inset-top,0px)+7.75rem)] pb-16"
-      style={{ maxWidth: "700px" }}
+      className="w-full mx-auto px-6 md:px-8 md:pt-24 max-md:pt-[calc(env(safe-area-inset-top,0px)+var(--reading-content-top))] pb-16"
+      style={{
+        maxWidth: "700px",
+        ["--reading-content-top" as string]: `${READING_CONTENT_TOP_MOBILE_REM}rem`,
+      }}
     >
       <article
         ref={touchSurfaceRef}

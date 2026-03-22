@@ -7,6 +7,7 @@ import { gapBetweenReconciledChunks, type ReconciledItem } from "@/lib/translate
 import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 
 export type ArticlePaginationState = {
   pageIndex: number
@@ -69,13 +70,16 @@ export function ArticleContent({
   return (
     <div
       className={cn(
-        "w-full mx-auto px-6 md:px-8 md:pt-24 max-md:pt-[calc(env(safe-area-inset-top,0px)+7.75rem)] pb-10 md:pb-16",
+        "w-full mx-auto px-6 md:px-8 md:pt-24 max-md:pt-[calc(env(safe-area-inset-top,0px)+var(--reading-content-top))] pb-10 md:pb-16",
         "flex w-full flex-1 flex-col min-h-0",
         /* Stretch column to viewport under header (mobile + desktop) */
         "max-md:min-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom,0px))]",
         "md:min-h-[calc(100dvh-7.25rem)]",
       )}
-      style={{ maxWidth: "700px" }}
+      style={{
+        maxWidth: "700px",
+        ["--reading-content-top" as string]: `${READING_CONTENT_TOP_MOBILE_REM}rem`,
+      }}
     >
       <article
         ref={touchSurfaceRef}
