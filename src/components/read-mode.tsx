@@ -140,7 +140,7 @@ export function ReadMode({
       <div className="mx-auto flex w-full min-h-0 max-w-[700px] flex-1 flex-col items-center justify-center max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] md:pt-16">
         <div
           ref={touchSurfaceRef}
-          className={`block w-full font-serif text-3xl md:text-5xl lg:text-6xl leading-snug md:leading-tight text-center text-foreground text-balance selection:bg-primary/20 ${
+          className={`block w-full font-serif text-3xl md:text-5xl lg:text-6xl max-md:leading-[1.52] md:leading-tight text-center text-foreground text-balance selection:bg-primary/20 ${
             touchExploring ? "touch-none select-none" : ""
           }`}
         >
