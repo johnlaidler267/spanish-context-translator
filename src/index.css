@@ -906,6 +906,12 @@ article span {
   color: #c97a5a;
   text-decoration-color: #c97a5a;
 }
+.plan-badge-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
 /* Header pill: compact on small screens, full size from md */
 .plan-badge--header {
   padding: 3px 8px;
@@ -929,17 +935,37 @@ article span {
   }
 }
 
-/* Landing header: full-width plan strip under logo row (mobile only; desktop uses inline pill) */
+/* Landing header: centered pill chip under logo row (mobile only) */
 @media (max-width: 767px) {
-  .plan-badge--mobile-bar {
+  .plan-badge--mobile-chip {
     width: 100%;
-    justify-content: center;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    max-width: min(20.5rem, calc(100vw - 2rem));
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border-radius: 9999px;
+    padding: 9px 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   }
+  .plan-badge--mobile-chip .plan-badge-upgrade {
+    flex-shrink: 0;
+    text-decoration: none;
+    font-weight: 600;
+    color: #b86b4e;
+    text-underline-offset: unset;
+  }
+  .plan-badge--mobile-chip .plan-badge-upgrade:hover {
+    color: #a35d42;
+  }
+}
+.dark .plan-badge--mobile-chip {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.dark .plan-badge--mobile-chip .plan-badge-upgrade {
+  color: #d4a088;
+}
+.dark .plan-badge--mobile-chip .plan-badge-upgrade:hover {
+  color: #e8b89a;
 }
 .dark .plan-badge              { background: rgba(234,224,213,0.06); border-color: rgba(234,224,213,0.15); }
 .dark .plan-badge-plan         { color: rgba(234,224,213,0.55); }

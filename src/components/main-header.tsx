@@ -14,9 +14,11 @@ interface MainHeaderProps {
 function PlanBadgeContent() {
   return (
     <>
-      <span className="plan-badge-plan">Free plan</span>
-      <span className="plan-badge-dot" aria-hidden>
-        ·
+      <span className="plan-badge-lead">
+        <span className="plan-badge-plan">Free plan</span>
+        <span className="plan-badge-dot" aria-hidden>
+          ·
+        </span>
       </span>
       <Link to="/upgrade" className="plan-badge-upgrade">
         Upgrade
@@ -36,7 +38,7 @@ export function MainHeader({
         className={
           "absolute inset-x-0 top-0 bg-gradient-to-b from-background/90 via-background/50 to-transparent md:h-20 " +
           (showPlanBanner
-            ? "max-md:min-h-[calc(8rem+env(safe-area-inset-top,0px))]"
+            ? "max-md:min-h-[calc(7rem+env(safe-area-inset-top,0px))]"
             : "max-md:min-h-[calc(5rem+env(safe-area-inset-top,0px))]")
         }
       />
@@ -68,8 +70,8 @@ export function MainHeader({
           </div>
         </div>
         {showPlanBanner && (
-          <div className="pointer-events-auto md:hidden w-full border-t border-[rgba(58,51,46,0.1)] dark:border-[rgba(234,224,213,0.12)]">
-            <div className="plan-badge plan-badge--header plan-badge--mobile-bar">
+          <div className="pointer-events-auto md:hidden flex justify-center px-4 pb-2 pt-0.5">
+            <div className="plan-badge plan-badge--header plan-badge--mobile-chip">
               <PlanBadgeContent />
             </div>
           </div>
