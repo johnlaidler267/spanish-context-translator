@@ -83,8 +83,8 @@ export function MainHeader({
           </div>
         </div>
         {showPlanBanner && (
-          <div className="pointer-events-auto md:hidden flex justify-center px-4 pb-2 pt-0.5">
-            <div className="plan-badge plan-badge--header plan-badge--mobile-chip">
+          <div className="pointer-events-auto md:hidden w-full px-2.5 pb-2 pt-0.5">
+            <div className="plan-badge plan-badge--header plan-badge--mobile-chip w-full">
               <PlanBadgeContent />
             </div>
           </div>
