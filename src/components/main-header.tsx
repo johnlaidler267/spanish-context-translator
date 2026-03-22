@@ -9,6 +9,11 @@ interface MainHeaderProps {
   onThemeChange: (theme: ReadingTheme) => void
   /** Free plan pill + mobile strip — landing only */
   showPlanBanner?: boolean
+  /**
+   * `fixed` — default; overlays scroll (landing). `stacked` — in-flow height so scroll regions
+   * below (e.g. /upgrade) never sit under the bar.
+   */
+  variant?: "fixed" | "stacked"
 }
 
 function PlanBadgeContent() {
@@ -31,9 +36,17 @@ export function MainHeader({
   theme,
   onThemeChange,
   showPlanBanner = false,
+  variant = "fixed",
 }: MainHeaderProps) {
+  const stacked = variant === "stacked"
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
+    <header
+      className={
+        stacked
+          ? "relative z-40 w-full shrink-0 pointer-events-none min-h-[calc(5rem+env(safe-area-inset-top,0px))] md:min-h-20"
+          : "fixed top-0 left-0 right-0 z-40 pointer-events-none"
+      }
+    >
       <div
         className={
           "absolute inset-x-0 top-0 bg-gradient-to-b from-background/90 via-background/50 to-transparent md:h-20 " +
