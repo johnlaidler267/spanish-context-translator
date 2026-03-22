@@ -14,16 +14,29 @@ interface ReadingHeaderProps {
   onThemeChange: (theme: ReadingTheme) => void
 }
 
+/** Taller on mobile so texture + gradient read as one band below the toolbar */
+const HEADER_BAND_MOBILE = "calc(35rem + env(safe-area-inset-top, 0px))"
+
 export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange }: ReadingHeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
-      {/* Subtle gradient fade — tall enough for notch + controls */}
+    <header
+      className="fixed top-0 left-0 right-0 z-40 pointer-events-none"
+      style={{ ["--reading-band-mobile" as string]: HEADER_BAND_MOBILE }}
+    >
+      {/* Mobile only: canvas/paper strip behind gradient + controls */}
+      <img
+        src="/reading-header-texture.png"
+        alt=""
+        aria-hidden
+        className="hidden max-md:block absolute inset-x-0 top-0 z-0 w-full object-cover object-top opacity-[0.20] dark:opacity-[0.28] select-none"
+        style={{ height: HEADER_BAND_MOBILE, minHeight: HEADER_BAND_MOBILE }}
+      />
+      {/* Subtle gradient fade — matches mobile band; compact bar on md+ */}
       <div
-        className="absolute inset-x-0 top-0 bg-gradient-to-b from-background/80 via-background/40 to-transparent md:h-24"
-        style={{ minHeight: "calc(6rem + env(safe-area-inset-top, 0px))" }}
+        className="absolute inset-x-0 top-0 z-[1] bg-gradient-to-b from-background/80 via-background/40 to-transparent max-md:min-h-[var(--reading-band-mobile)] md:min-h-24 md:h-24"
       />
 
-      <div className="relative flex items-center justify-between px-4 md:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))]">
+      <div className="relative z-[2] flex items-center justify-between px-4 md:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))]">
         {/* Back button */}
         <Button
           variant="ghost"

@@ -101,7 +101,8 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
   }, [])
 
   return (
-    <div className="landing-route-shell landing-route-enter flex w-full flex-col min-h-app max-md:min-h-0 max-md:flex-1">
+    <>
+    <div className="landing-route-shell landing-route-enter relative z-10 flex w-full flex-col min-h-app max-md:min-h-0 max-md:flex-1">
       <MainHeader theme={theme} onThemeChange={onThemeChange} showPlanBanner />
       <div
         className="landing-page flex flex-col items-stretch md:items-center md:justify-center min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
@@ -129,7 +130,7 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
         />
       <div
         className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto max-md:overflow-x-hidden md:flex-none md:justify-start gap-4 md:gap-6 max-md:pt-[max(7.5rem,calc(env(safe-area-inset-top,0px)+5.75rem))] md:pt-0"
-        style={{ position: "relative", zIndex: 1 }}
+        style={{ position: "relative", zIndex: 2 }}
       >
         {/* Hero — mobile: fills space above composer; desktop: top */}
         <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center items-center min-h-0 md:flex-none md:block md:pb-8 pt-2 md:pt-0 pb-2 md:pb-8">
@@ -238,5 +239,13 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
       </div>
       </div>
     </div>
+    {/* Outside .landing-route-enter: transform on that ancestor breaks viewport-fixed; z-0 paints under shell z-10 */}
+    <img
+      src="/landing-branch-botanical.png"
+      alt=""
+      aria-hidden
+      className="pointer-events-none hidden max-md:block max-md:fixed max-md:z-0 max-md:bottom-0 max-md:right-0 max-md:w-[min(75vw,35rem)] max-md:max-h-[min(50vh,30rem)] h-auto max-md:object-contain max-md:object-right-bottom opacity-[0.8] dark:opacity-[0.0] select-none"
+    />
+    </>
   )
 }

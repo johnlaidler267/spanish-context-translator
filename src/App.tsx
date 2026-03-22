@@ -47,6 +47,12 @@ export default function App() {
     setStoredReadingTheme(appTheme)
   }, [appTheme])
 
+  /** Hide shell top-left letter art (main.jsx) during article / read — not on landing */
+  useEffect(() => {
+    document.documentElement.classList.toggle("lector-reading-session", appState === "reading")
+    return () => document.documentElement.classList.remove("lector-reading-session")
+  }, [appState])
+
   const cacheRef = useRef(new TranslationCache())
   /**
    * LLM batching only: same sentence-boundary pages for Article and Read mode

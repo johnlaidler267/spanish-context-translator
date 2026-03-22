@@ -13,7 +13,7 @@ createRoot(document.getElementById('root')).render(
         <div className="app-viewport">
           {/* Faded letter fragment — light / dark PNG swap; all viewports */}
           <div
-            className="pointer-events-none fixed top-0 left-0 z-0 block w-[min(60vw,20.5rem)] select-none"
+            className="global-corner-letter pointer-events-none fixed top-0 left-0 z-0 block w-[min(60vw,20.5rem)] select-none"
             aria-hidden
           >
             <img

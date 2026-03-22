@@ -18,6 +18,11 @@ body.read-mode-touch-exploring {
   overscroll-behavior: none;
 }
 
+/* Article / read: hide global top-left letter (main.jsx) — toggled from App.tsx */
+html.lector-reading-session .global-corner-letter {
+  display: none !important;
+}
+
 /* Mobile: min-height with dvh/svh — no JS pixel height (keyboard-safe) */
 @media (max-width: 767px) {
   html {
