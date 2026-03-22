@@ -48,6 +48,36 @@ body.read-mode-touch-exploring {
   }
 
   /*
+   * /upgrade: page scrolls on mobile (html/body). Fixed header + main padding clears overlay at top.
+   */
+  html.mobile-scroll-upgrade {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  html.mobile-scroll-upgrade body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+  }
+  html.mobile-scroll-upgrade #root {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+  html.mobile-scroll-upgrade .app-viewport {
+    overflow: visible !important;
+    flex: 0 0 auto !important;
+    width: 100%;
+    min-height: 0;
+    height: auto !important;
+  }
+
+  /*
    * Route transitions / landing enter: temporarily allow overflow so
    * View Transitions pseudo-elements and translateY aren’t clipped (fixes glitchy edges).
    */

@@ -60,6 +60,11 @@ export default function UpgradePage() {
     setStoredReadingTheme(theme)
   }, [theme])
 
+  useEffect(() => {
+    document.documentElement.classList.add("mobile-scroll-upgrade")
+    return () => document.documentElement.classList.remove("mobile-scroll-upgrade")
+  }, [])
+
   const handleSelectPlan = (planId: PlanType) => {
     if (planId === currentPlan) return
     setIsProcessing(planId)
@@ -70,7 +75,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="min-h-app bg-background relative max-md:min-h-0 max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col max-md:overflow-hidden">
+    <div className="min-h-app bg-background relative max-md:min-h-0">
       <img
         src={theme === "dark" ? "/upgrade-bg-dark.png" : "/upgrade-bg.png"}
         alt=""
@@ -90,9 +95,9 @@ export default function UpgradePage() {
         }}
       />
       <div className="shrink-0 relative z-[1]">
-        <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
+        <MainHeader theme={theme} onThemeChange={setTheme} />
       </div>
-      <main className="relative z-[1] flex-1 min-h-0 max-md:overflow-y-auto overflow-x-hidden pb-16 px-4 md:px-6">
+      <main className="relative z-[1] overflow-x-hidden pb-16 px-4 md:px-6 md:pt-20 max-md:pt-[calc(5rem+env(safe-area-inset-top,0px))]">
         <div className="max-w-4xl mx-auto overflow-x-hidden">
           <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8">
             <ArrowLeft className="h-4 w-4 mr-2" />
