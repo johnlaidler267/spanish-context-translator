@@ -145,7 +145,7 @@ export function ArticleContent({
       </article>
 
       {pagination && pagination.pageCount > 1 && (
-        <footer className="mt-auto flex shrink-0 items-center justify-between gap-4 border-t border-border/60 pt-8">
+        <footer className="mt-auto flex shrink-0 items-center justify-between gap-4 border-t border-border/60 max-md:border-t-0 pt-8">
           <Button
             type="button"
             variant="ghost"
