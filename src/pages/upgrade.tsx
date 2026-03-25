@@ -14,45 +14,63 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  TIER_IDS,
+  getTier,
+  formatPrice,
+  type TierId,
+  type TierConfig,
+} from "@/lib/tiers"
 
-type PlanType = "free" | "pro" | "unlimited"
+// ─── UI-only: icons don't belong in the data config ──────────────────────────
 
-const plans = [
-  {
-    id: "free" as PlanType,
-    name: "Free",
-    icon: <BookOpen className="h-5 w-5" />,
-    price: "$0",
-    period: "/month",
-    description: "Perfect for getting started",
-    features: ["5 texts per month", "Basic chunk translations", "Article mode"],
-    popular: false,
-  },
-  {
-    id: "pro" as PlanType,
-    name: "Pro",
-    icon: <Zap className="h-5 w-5" />,
-    price: "$9",
-    period: "/month",
-    description: "For regular readers",
-    features: ["50 texts per month", "Full translations", "Article & Read modes", "Priority support"],
-    popular: true,
-  },
-  {
-    id: "unlimited" as PlanType,
-    name: "Unlimited",
-    icon: <Crown className="h-5 w-5" />,
-    price: "$29",
-    period: "/month",
-    description: "For power users",
-    features: ["Unlimited texts", "All Pro features", "API access", "Dedicated support"],
-    popular: false,
-  },
-]
+const TIER_ICONS: Record<TierId, React.ReactNode> = {
+  free:      <BookOpen className="h-5 w-5" />,
+  pro:       <Zap className="h-5 w-5" />,
+  unlimited: <Crown className="h-5 w-5" />,
+}
+
+/** Derive human-readable bullet points from a tier's limits + feature flags. */
+function tierBullets(tier: TierConfig): string[] {
+  const { limits, features } = tier
+  const bullets: string[] = []
+
+  // Limits
+  bullets.push(
+    limits.textsPerMonth === null
+      ? "Unlimited texts per month"
+      : `${limits.textsPerMonth} texts per month`,
+  )
+
+  if (limits.charsPerSubmission !== null) {
+    bullets.push(
+      `Up to ${limits.charsPerSubmission.toLocaleString()} characters per submission`,
+    )
+  }
+
+  if (limits.savedTranslations === null) {
+    bullets.push("Unlimited saved translations")
+  } else if (limits.savedTranslations > 0) {
+    bullets.push(`${limits.savedTranslations} saved translations`)
+  }
+
+  // Feature flags — only list enabled ones
+  if (features.articleMode)        bullets.push("Article mode")
+  if (features.readMode)           bullets.push("Read mode")
+  if (features.voiceInput)         bullets.push("Voice input")
+  if (features.exportTranslations) bullets.push("Export translations")
+  if (features.apiAccess)          bullets.push("API access")
+  if (features.prioritySupport)    bullets.push("Priority support")
+  if (features.dedicatedSupport)   bullets.push("Dedicated support")
+
+  return bullets
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UpgradePage() {
-  const [currentPlan] = useState<PlanType>("free")
-  const [isProcessing, setIsProcessing] = useState<PlanType | null>(null)
+  const [currentPlan] = useState<TierId>("free")
+  const [isProcessing, setIsProcessing] = useState<TierId | null>(null)
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
 
   useEffect(() => {
@@ -66,7 +84,7 @@ export default function UpgradePage() {
     return () => document.documentElement.classList.remove("mobile-scroll-upgrade")
   }, [])
 
-  const handleSelectPlan = (planId: PlanType) => {
+  const handleSelectPlan = (planId: TierId) => {
     if (planId === currentPlan) return
     setIsProcessing(planId)
     setTimeout(() => {
@@ -89,7 +107,6 @@ export default function UpgradePage() {
           objectFit: "cover",
           objectPosition: "center",
           opacity: theme === "dark" ? 0.28 : 0.15,
-          /* Same subtle blur as landing page dark mode */
           filter: theme === "dark" ? "blur(2.3px)" : "none",
           pointerEvents: "none",
           zIndex: 0,
@@ -115,66 +132,71 @@ export default function UpgradePage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            {plans.map((plan) => (
-              <Card
-                key={plan.id}
-                className={`relative bg-card border transition-all duration-200 ease-in-out ${
-                  plan.popular
-                    ? "border-primary shadow-sm"
-                    : "border-border hover:border-border/80"
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="px-3 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full">
-                      Most Popular
-                    </span>
-                  </div>
-                )}
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                    {plan.icon}
-                    <span className="text-sm font-medium">{plan.name}</span>
-                  </div>
-                  <CardTitle className="flex items-baseline gap-1">
-                    <span className="text-3xl font-serif text-foreground">{plan.price}</span>
-                    <span className="text-sm text-muted-foreground">{plan.period}</span>
-                  </CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    {plan.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <ul className="space-y-2.5 mb-6">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                        <span className="text-foreground">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    onClick={() => handleSelectPlan(plan.id)}
-                    disabled={plan.id === currentPlan || isProcessing !== null}
-                    variant={
-                      plan.id === currentPlan ? "outline" : plan.popular ? "default" : "secondary"
-                    }
-                    className="w-full"
-                  >
-                    {isProcessing === plan.id ? (
-                      <span className="flex items-center gap-2">
-                        <span className="h-4 w-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                        Processing...
+            {TIER_IDS.map((id) => {
+              const tier = getTier(id)
+              const price = formatPrice(tier.pricing.monthly.amountCents)
+              const bullets = tierBullets(tier)
+              const isCurrent = id === currentPlan
+
+              return (
+                <Card
+                  key={id}
+                  className={`relative bg-card border transition-all duration-200 ease-in-out ${
+                    tier.highlighted
+                      ? "border-primary shadow-sm"
+                      : "border-border hover:border-border/80"
+                  }`}
+                >
+                  {tier.badge && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="px-3 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full">
+                        {tier.badge}
                       </span>
-                    ) : plan.id === currentPlan ? (
-                      "Current plan"
-                    ) : (
-                      `Upgrade to ${plan.name}`
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                    </div>
+                  )}
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                      {TIER_ICONS[id]}
+                      <span className="text-sm font-medium">{tier.name}</span>
+                    </div>
+                    <CardTitle className="flex items-baseline gap-1">
+                      <span className="text-3xl font-serif text-foreground">{price}</span>
+                      <span className="text-sm text-muted-foreground">/month</span>
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground">
+                      {tier.tagline}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <ul className="space-y-2.5 mb-6">
+                      {bullets.map((bullet) => (
+                        <li key={bullet} className="flex items-start gap-2 text-sm">
+                          <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <span className="text-foreground">{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      onClick={() => handleSelectPlan(id)}
+                      disabled={isCurrent || isProcessing !== null}
+                      variant={isCurrent ? "outline" : tier.highlighted ? "default" : "secondary"}
+                      className="w-full"
+                    >
+                      {isProcessing === id ? (
+                        <span className="flex items-center gap-2">
+                          <span className="h-4 w-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                          Processing...
+                        </span>
+                      ) : isCurrent ? (
+                        "Current plan"
+                      ) : (
+                        `Upgrade to ${tier.name}`
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         </div>
       </main>
