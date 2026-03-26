@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import { checkSubscriptionStatus, type SubscriptionStatus } from "@/lib/subscription"
+import { supabase } from "@/lib/supabase"
 
 interface SubscriptionContextValue {
   status: SubscriptionStatus | null
@@ -41,6 +42,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     recheck()
+  }, [recheck])
+
+  // Re-check whenever the Supabase session changes (sign in / sign out)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      recheck()
+    })
+    return () => subscription.unsubscribe()
   }, [recheck])
 
   // Re-trigger popup when user returns to app (tab focus, navigate back)

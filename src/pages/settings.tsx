@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, LogOut, User, Mail } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
 import { MainHeader } from "@/components/main-header"
 import { SubscriptionStatus } from "@/components/subscription-status"
+import { Button } from "@/components/ui/button"
 import type { ReadingTheme } from "@/components/theme-toggle"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
+import { useAuth } from "@/contexts/auth-context"
 
 const TABS = ["General", "Account", "Billing"] as const
 type SettingsTab = (typeof TABS)[number]
@@ -15,6 +17,14 @@ type SettingsTab = (typeof TABS)[number]
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("General")
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
+  const [signingOut, setSigningOut] = useState(false)
+  const { user, signOut, openAuthModal } = useAuth()
+
+  const handleSignOut = async () => {
+    setSigningOut(true)
+    await signOut()
+    setSigningOut(false)
+  }
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark")
@@ -77,12 +87,66 @@ export default function SettingsPage() {
               )}
               {activeTab === "Account" && (
                 <section aria-labelledby="settings-account-heading">
-                  <h2 id="settings-account-heading" className="text-lg font-medium text-foreground mb-4">
+                  <h2 id="settings-account-heading" className="text-lg font-medium text-foreground mb-6">
                     Account
                   </h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Email, password, and profile details will appear here.
-                  </p>
+
+                  {user ? (
+                    <div className="space-y-6">
+                      {/* Email */}
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                          <Mail className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                            Email
+                          </p>
+                          <p className="text-sm text-foreground font-sans break-all">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* User ID (helpful for support) */}
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                            Account ID
+                          </p>
+                          <p className="text-xs text-muted-foreground font-mono break-all">
+                            {user.id}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Sign out */}
+                      <div className="pt-2 border-t border-border">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 text-muted-foreground hover:text-foreground"
+                          onClick={handleSignOut}
+                          disabled={signingOut}
+                        >
+                          <LogOut className="h-4 w-4" />
+                          {signingOut ? "Signing out…" : "Sign out"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        You're not signed in. Sign in to save your reading history and manage your plan.
+                      </p>
+                      <Button onClick={() => openAuthModal("signup")} className="gap-2">
+                        Sign in / Sign up
+                      </Button>
+                    </div>
+                  )}
                 </section>
               )}
               {activeTab === "Billing" && (

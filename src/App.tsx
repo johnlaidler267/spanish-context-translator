@@ -31,11 +31,14 @@ import { getStoredReadingTheme, setStoredReadingTheme } from "./lib/theme-storag
 import { Button } from "./components/ui/button"
 import { RateLimitModal } from "./components/rate-limit-modal"
 import { isRateLimitApiMessage } from "./lib/api-errors"
+import { useAuth } from "./contexts/auth-context"
+import { hasReachedGuestLimit, incrementGuestUses } from "./lib/guest-usage"
 
 type AppState = "landing" | "loading" | "reading"
 
 export default function App() {
   const { isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
+  const { user, isLoading: authLoading, openAuthModal } = useAuth()
 
   const [appState, setAppState] = useState<AppState>("landing")
   const [viewMode, setViewMode] = useState<ViewMode>("article")
@@ -84,6 +87,13 @@ export default function App() {
     async (text: string) => {
       if (!text.trim()) return
       if (isLapsed) return
+
+      // Gate unauthenticated users after GUEST_LIMIT free uses
+      if (!user && hasReachedGuestLimit()) {
+        openAuthModal("limit")
+        return
+      }
+
       if (!apiKey) {
         setError("Missing VITE_GROQ_API_KEY. Add it to your .env file.")
         return
@@ -112,6 +122,9 @@ export default function App() {
         await cacheRef.current.loadPage(0, pageSourceText(pages[0]!), apiKey, translatePageText)
         bump()
         setAppState("reading")
+
+        // Increment guest counter after a successful submission
+        if (!user) incrementGuestUses()
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Something went wrong."
         if (isRateLimitApiMessage(msg)) {
@@ -122,7 +135,7 @@ export default function App() {
         setAppState("landing")
       }
     },
-    [apiKey, isLapsed, bump],
+    [apiKey, isLapsed, user, openAuthModal, bump],
   )
 
   const handleBack = useCallback(() => {
@@ -231,7 +244,7 @@ export default function App() {
     )
   }
 
-  if (subscriptionLoading) {
+  if (authLoading || subscriptionLoading) {
     return (
       <main className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden">
         <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
