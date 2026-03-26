@@ -17,6 +17,9 @@ export const TIERS_CONFIG_VERSION = "1.0.0"
 
 export type TierId = "free" | "pro" | "unlimited"
 
+/** Re-exported here so UI files can import billing interval from one place. */
+export type { DbBillingInterval } from "@/lib/db.types"
+
 /** Ordered list — use for rendering plan grids in sequence. */
 export const TIER_IDS: TierId[] = ["free", "pro", "unlimited"]
 
@@ -46,6 +49,12 @@ export interface TierPricing {
 export interface TierLimits {
   /** Max translation submissions per calendar month. */
   textsPerMonth: number | null
+  /**
+   * Max translation submissions per calendar day (UTC).
+   * Provides a rate-limiting guardrail for free-tier users beyond the monthly cap.
+   * null = no daily cap.
+   */
+  textsPerDay: number | null
   /** Max chunks returned in a single translation request. */
   chunksPerRequest: number | null
   /** Max source-text pages processed per submission. */
@@ -83,6 +92,20 @@ export interface TierConfig {
   pricing: TierPricing
   limits: TierLimits
   features: TierFeatureFlags
+  /**
+   * Number of trial days for first-time subscribers on this tier.
+   * 0 = no trial offered (free tier, or if you want to disable trials).
+   * Checked by create-checkout-session; ignored for users who have
+   * already used a trial (has_used_trial = true).
+   */
+  trialDays: number
+  /**
+   * Limit overrides applied ONLY during the trial period.
+   * If absent, full tier limits apply during trial (recommended).
+   * Useful when you want to give a taste but still cap usage (e.g. 10 texts
+   * during trial instead of the full 50).
+   */
+  trialLimitOverrides?: Partial<TierLimits>
   /** Optional badge text rendered on the pricing card ("Most Popular", "Best Value", …). */
   badge?: string
   /** Whether to visually highlight this card as the recommended tier. */
@@ -103,10 +126,11 @@ export const TIERS: Record<TierId, TierConfig> = {
       annual:  { amountCents: 0, stripePriceId: null, savingsPercent: 0 },
     },
     limits: {
-      textsPerMonth:    5,
-      chunksPerRequest: 80,
+      textsPerMonth:      5,
+      textsPerDay:        1,
+      chunksPerRequest:   80,
       pagesPerSubmission: 1,
-      savedTranslations: 0,
+      savedTranslations:  0,
       charsPerSubmission: 1_000,
     },
     features: {
@@ -118,6 +142,7 @@ export const TIERS: Record<TierId, TierConfig> = {
       prioritySupport:    false,
       dedicatedSupport:   false,
     },
+    trialDays: 0,     // No trial on free — it IS the free tier
     highlighted: false,
   },
 
@@ -132,10 +157,11 @@ export const TIERS: Record<TierId, TierConfig> = {
       annual:  { amountCents: 7_900, stripePriceId: "price_REPLACE_PRO_ANNUAL", savingsPercent: 27 },
     },
     limits: {
-      textsPerMonth:    50,
-      chunksPerRequest: null,
+      textsPerMonth:      50,
+      textsPerDay:        null,
+      chunksPerRequest:   null,
       pagesPerSubmission: 10,
-      savedTranslations: 200,
+      savedTranslations:  200,
       charsPerSubmission: 10_000,
     },
     features: {
@@ -147,6 +173,7 @@ export const TIERS: Record<TierId, TierConfig> = {
       prioritySupport:    true,
       dedicatedSupport:   false,
     },
+    trialDays: 7,
     badge: "Most Popular",
     highlighted: true,
   },
@@ -162,10 +189,11 @@ export const TIERS: Record<TierId, TierConfig> = {
       annual:  { amountCents: 24_900, stripePriceId: "price_REPLACE_UNLIMITED_ANNUAL", savingsPercent: 29 },
     },
     limits: {
-      textsPerMonth:    null,
-      chunksPerRequest: null,
+      textsPerMonth:      null,
+      textsPerDay:        null,
+      chunksPerRequest:   null,
       pagesPerSubmission: null,
-      savedTranslations: null,
+      savedTranslations:  null,
       charsPerSubmission: null,
     },
     features: {
@@ -177,6 +205,7 @@ export const TIERS: Record<TierId, TierConfig> = {
       prioritySupport:    true,
       dedicatedSupport:   true,
     },
+    trialDays: 7,
     badge: "Best Value",
     highlighted: false,
   },

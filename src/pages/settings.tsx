@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
 import { MainHeader } from "@/components/main-header"
+import { SubscriptionStatus } from "@/components/subscription-status"
 import type { ReadingTheme } from "@/components/theme-toggle"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
 
@@ -86,18 +87,10 @@ export default function SettingsPage() {
               )}
               {activeTab === "Billing" && (
                 <section aria-labelledby="settings-billing-heading">
-                  <h2 id="settings-billing-heading" className="text-lg font-medium text-foreground mb-4">
+                  <h2 id="settings-billing-heading" className="text-lg font-medium text-foreground mb-6">
                     Billing
                   </h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                    Manage your plan and payment method.
-                  </p>
-                  <Link
-                    to="/upgrade"
-                    className="inline-flex text-sm font-medium text-primary underline underline-offset-2 decoration-primary/40 hover:decoration-primary"
-                  >
-                    View plans and upgrade
-                  </Link>
+                  <SubscriptionStatus />
                 </section>
               )}
             </div>
