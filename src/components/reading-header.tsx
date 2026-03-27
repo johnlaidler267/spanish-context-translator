@@ -22,25 +22,6 @@ const HEADER_BAND_MOBILE = `calc(${READING_HEADER_BAND_REM}rem + env(safe-area-i
 export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange }: ReadingHeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
-      {/* Mobile only: texture — clipped band; image shifted up so lower part of asset fills the strip */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-0 hidden max-md:block overflow-hidden"
-        style={{ height: HEADER_BAND_MOBILE, minHeight: HEADER_BAND_MOBILE }}
-      >
-        <img
-          src={theme === "dark" ? "/reading-header-texture-dark.png" : "/reading-header-texture.png"}
-          alt=""
-          aria-hidden
-          className={cn(
-            "absolute left-0 right-0 w-full object-cover object-top select-none",
-            theme === "dark" ? "opacity-[0.38]" : "opacity-[0.20]",
-          )}
-          style={{
-            top: -READING_HEADER_TEXTURE_SHIFT_UP_PX,
-            height: `calc(100% + ${READING_HEADER_TEXTURE_SHIFT_UP_PX}px)`,
-          }}
-        />
-      </div>
       {/* Mobile: gradient height = HEADER_BAND_MOBILE (inline). Desktop: short bar only. */}
       <div
         className="absolute inset-x-0 top-0 z-[1] bg-gradient-to-b from-background/80 via-background/40 to-transparent md:hidden"

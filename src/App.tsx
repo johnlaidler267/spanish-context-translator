@@ -36,6 +36,9 @@ import { hasReachedGuestLimit, incrementGuestUses } from "./lib/guest-usage"
 
 type AppState = "landing" | "loading" | "reading"
 
+// Disable all usage limits when running on localhost so dev is uninterrupted.
+const IS_LOCAL_DEV = import.meta.env.DEV
+
 export default function App() {
   const { isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
   const { user, isLoading: authLoading, openAuthModal } = useAuth()
@@ -86,10 +89,10 @@ export default function App() {
   const handleTextSubmit = useCallback(
     async (text: string) => {
       if (!text.trim()) return
-      if (isLapsed) return
+      if (!IS_LOCAL_DEV && isLapsed) return
 
       // Gate unauthenticated users after GUEST_LIMIT free uses
-      if (!user && hasReachedGuestLimit()) {
+      if (!IS_LOCAL_DEV && !user && hasReachedGuestLimit()) {
         openAuthModal("limit")
         return
       }
@@ -235,7 +238,7 @@ export default function App() {
       ? cacheRef.current.getError(firstMissingPageIndex)
       : undefined
 
-  if (isLapsed) {
+  if (!IS_LOCAL_DEV && isLapsed) {
     return (
       <div className={`min-h-app bg-background ${viewportMain}`}>
         {!popupDismissed && <SubscriptionLapsedModal onDismiss={dismissPopup} />}
@@ -319,7 +322,14 @@ export default function App() {
     const hasSentences = readSentences.length > 0
 
     readingHome = (
-      <main className={`min-h-app bg-background ${viewportMain}`}>
+      <main
+        className={`min-h-app bg-background ${viewportMain}`}
+        style={readingTheme === "light" ? {
+          backgroundImage: "url(/paper-texture.png)",
+          backgroundSize: "600px auto",
+          backgroundBlendMode: "multiply",
+        } : undefined}
+      >
         <div className="shrink-0">
           <ReadingHeader
             mode={viewMode}
