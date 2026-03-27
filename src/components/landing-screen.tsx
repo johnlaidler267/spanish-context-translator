@@ -139,11 +139,11 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
             alt=""
             width={72}
             height={72}
-            className="md:hidden mx-auto mb-2 w-[min(35vw,15rem)] h-auto max-h-18 object-contain object-center select-none pointer-events-none"
+            className="md:hidden mx-auto mb-2 w-[min(35vw,15rem)] h-auto max-h-18 object-contain object-center select-none pointer-events-none animate-levitate"
             aria-hidden
           />
           <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl" style={{ lineHeight: "1.15" }}>
-            Hola, ready to read?
+            <em>Hola</em>, ready to read?
           </h1>
         </div>
 

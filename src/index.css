@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes levitate {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-3px); }
+}
+
+.animate-levitate {
+  animation: levitate 4s ease-in-out infinite;
+}
+
 /* Shell height: CSS viewport units only — do NOT bind to visualViewport.height (keyboard shrinks it and creates a gap below). */
 @layer utilities {
   .min-h-app {
@@ -403,14 +412,12 @@ article span {
 .wordmark::after {
   content: "";
   position: absolute;
-  left: 2%;
-  right: 2%;
-  /* -0.12em pulls it just below the descender line, never touching glyphs */
+  left: 1%;
+  right: 1%;
   bottom: -0.14em;
   height: 3px;
   z-index: 0;
   pointer-events: none;
-  /* Slight taper on ends for brush feel */
   border-radius: 40% 60% 45% 55% / 80% 80% 80% 80%;
   background: linear-gradient(
     90deg,
