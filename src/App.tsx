@@ -325,9 +325,8 @@ export default function App() {
       <main
         className={`min-h-app bg-background ${viewportMain}`}
         style={readingTheme === "light" ? {
-          backgroundImage: "url(/paper-texture.png)",
-          backgroundSize: "600px auto",
-          backgroundBlendMode: "multiply",
+          backgroundImage: "linear-gradient(rgba(255,252,247,0.5), rgba(255,252,247,0.5)), url(/paper-texture.png)",
+          backgroundSize: "auto, 600px auto",
         } : undefined}
       >
         <div className="shrink-0">

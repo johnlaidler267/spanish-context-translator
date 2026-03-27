@@ -42,6 +42,14 @@ export function AuthModal() {
   const [errMsg,  setErrMsg ] = useState("")
   const [oauthLoading, setOAuthLoading] = useState(false)
 
+  // Prevent background scroll / viewport shift while modal is open
+  useEffect(() => {
+    if (!authModalOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => { document.body.style.overflow = prev }
+  }, [authModalOpen])
+
   if (!authModalOpen) return null
 
   const copy = COPY[authModalReason]
@@ -163,8 +171,8 @@ export function AuthModal() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  autoFocus
-                  className="w-full pl-9 pr-3 py-2.5 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                  style={{ fontSize: "16px" }}
                 />
               </div>
 
