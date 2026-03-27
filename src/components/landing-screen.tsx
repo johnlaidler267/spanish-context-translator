@@ -239,13 +239,6 @@ export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: Lan
       </div>
       </div>
     </div>
-    {/* Outside .landing-route-enter: transform on that ancestor breaks viewport-fixed; z-0 paints under shell z-10 */}
-    <img
-      src="/landing-branch-botanical.png"
-      alt=""
-      aria-hidden
-      className="pointer-events-none hidden max-md:block max-md:fixed max-md:z-0 max-md:bottom-0 max-md:right-0 max-md:w-[min(75vw,35rem)] max-md:max-h-[min(50vh,30rem)] h-auto max-md:object-contain max-md:object-right-bottom opacity-[0.8] dark:opacity-[0.0] select-none"
-    />
     </>
   )
 }
