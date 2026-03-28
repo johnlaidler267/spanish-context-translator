@@ -42,6 +42,15 @@ export interface CheckoutResult {
   type: "checkout" | "portal"
 }
 
+export interface ConfirmCheckoutResult {
+  planId: string
+  status: string
+  billingInterval: string | null
+  currentPeriodEnd: string | null
+  trialEnd: string | null
+  hasStripeSubscription: boolean
+}
+
 export class CheckoutError extends Error {
   constructor(
     message: string,
@@ -126,7 +135,7 @@ export async function startCheckout(options: CheckoutOptions): Promise<CheckoutR
   const { stripePriceId, redirect = true } = options
 
   const origin = window.location.origin
-  const successUrl = options.successUrl ?? `${origin}/?checkout=success`
+  const successUrl = options.successUrl ?? `${origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`
   const cancelUrl  = options.cancelUrl  ?? `${origin}/upgrade`
 
   const accessToken = await getBearerTokenForEdgeFunctions(
@@ -198,11 +207,47 @@ export function didReturnFromCheckout(): boolean {
   return params.get("checkout") === "success"
 }
 
+/** Stripe appends this when success_url includes `session_id={CHECKOUT_SESSION_ID}`. */
+export function getReturnedCheckoutSessionId(): string | null {
+  const params = new URLSearchParams(window.location.search)
+  return params.get("session_id")
+}
+
 /**
  * Clean up the ?checkout= query param from the URL without a page reload.
  */
 export function clearCheckoutParam(): void {
   const url = new URL(window.location.href)
   url.searchParams.delete("checkout")
+  url.searchParams.delete("session_id")
   window.history.replaceState({}, "", url.toString())
+}
+
+/**
+ * Confirm a successful Stripe Checkout return and sync the authoritative
+ * subscription snapshot into `user_subscriptions`, without waiting on webhook timing.
+ */
+export async function confirmCheckoutSession(sessionId?: string): Promise<ConfirmCheckoutResult> {
+  const accessToken = await getBearerTokenForEdgeFunctions("You must be signed in.")
+
+  const { data, error: fnError } = await supabase.functions.invoke("confirm-checkout-session", {
+    body: sessionId ? { sessionId } : {},
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+
+  if (fnError) throw await checkoutErrorFromInvoke(fnError)
+
+  const payload = data as Partial<ConfirmCheckoutResult> & { error?: string }
+  if (!payload || payload.error || !payload.planId) {
+    throw new CheckoutError(payload?.error ?? "Unexpected response confirming checkout", 500)
+  }
+
+  return {
+    planId: payload.planId,
+    status: payload.status ?? "active",
+    billingInterval: payload.billingInterval ?? null,
+    currentPeriodEnd: payload.currentPeriodEnd ?? null,
+    trialEnd: payload.trialEnd ?? null,
+    hasStripeSubscription: payload.hasStripeSubscription ?? true,
+  }
 }

@@ -11,6 +11,9 @@ verify_jwt = false
 [functions.create-portal-session]
 verify_jwt = false
 
+[functions.confirm-checkout-session]
+verify_jwt = false
+
 # Stripe calls this URL — no user JWT.
 [functions.stripe-webhook]
 verify_jwt = false

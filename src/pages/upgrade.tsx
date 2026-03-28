@@ -26,7 +26,15 @@ import {
   type TierConfig,
   type DbBillingInterval,
 } from "@/lib/tiers"
-import { startCheckout, openBillingPortal, didReturnFromCheckout, clearCheckoutParam, CheckoutError } from "@/lib/checkout"
+import {
+  startCheckout,
+  openBillingPortal,
+  didReturnFromCheckout,
+  getReturnedCheckoutSessionId,
+  clearCheckoutParam,
+  confirmCheckoutSession,
+  CheckoutError,
+} from "@/lib/checkout"
 import {
   cancelSubscription,
   reactivateSubscription,
@@ -35,6 +43,7 @@ import {
 } from "@/lib/subscription"
 import { PlanChangeDialog } from "@/components/plan-change-dialog"
 import { supabase } from "@/lib/supabase"
+import { useSubscription } from "@/contexts/subscription-context"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -82,8 +91,8 @@ async function fetchSubSnapshot(userId: string): Promise<SubSnapshot | null> {
   }
 }
 
-/** Poll until the plan matches `expectedPlan` or we run out of attempts. */
-async function pollForActivePlan(
+/** Poll until the webhook has synced any access-granting paid plan. */
+async function pollForSyncedPaidPlan(
   userId: string,
   maxAttempts = 8,
   intervalMs = 2_000,
@@ -91,7 +100,13 @@ async function pollForActivePlan(
   for (let i = 0; i < maxAttempts; i++) {
     if (i > 0) await new Promise(r => setTimeout(r, intervalMs))
     const snap = await fetchSubSnapshot(userId)
-    if (snap && snap.status === "active") return snap
+    if (
+      snap &&
+      snap.planId !== "free" &&
+      (snap.status === "active" || snap.status === "trialing" || snap.hasStripeSubscription)
+    ) {
+      return snap
+    }
   }
   return null
 }
@@ -319,6 +334,7 @@ interface PendingAction {
 }
 
 export default function UpgradePage() {
+  const { recheck } = useSubscription()
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [interval, setInterval] = useState<DbBillingInterval>("monthly")
   const [sub, setSub] = useState<SubSnapshot | null>(null)
@@ -347,7 +363,26 @@ export default function UpgradePage() {
   const loadSub = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSubLoading(false); return }
-    const snap = await fetchSubSnapshot(user.id)
+    let snap = await fetchSubSnapshot(user.id)
+
+    // Fallback: if the DB still says "free", try syncing from Stripe directly.
+    if (!snap || snap.planId === "free") {
+      try {
+        const confirmed = await confirmCheckoutSession()
+        snap = {
+          planId: confirmed.planId as TierId,
+          status: confirmed.status,
+          billingInterval: (confirmed.billingInterval as DbBillingInterval) ?? null,
+          currentPeriodEnd: confirmed.currentPeriodEnd,
+          cancelAtPeriodEnd: false,
+          hasStripeSubscription: confirmed.hasStripeSubscription,
+          trialEnd: confirmed.trialEnd,
+        }
+      } catch {
+        // No synced Stripe subscription yet — keep the DB snapshot as-is.
+      }
+    }
+
     setSub(snap)
     setSubLoading(false)
     // Pre-select the billing interval that matches the user's current plan
@@ -359,18 +394,51 @@ export default function UpgradePage() {
   // ── Handle Stripe redirect-back ────────────────────────────────────────────
   useEffect(() => {
     if (!didReturnFromCheckout()) return
-    clearCheckoutParam()
     setShowSuccess(true)
     setConfirmingActivation(true)
 
-    // Poll until the webhook has updated the DB
+    // Poll until the webhook has updated the DB, then refresh global subscription state.
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
-      const updated = await pollForActivePlan(user.id)
-      if (updated) setSub(updated)
-      setConfirmingActivation(false)
+      if (!user) {
+        setConfirmingActivation(false)
+        return
+      }
+
+      try {
+        const sessionId = getReturnedCheckoutSessionId()
+        try {
+          const confirmed = await confirmCheckoutSession(sessionId ?? undefined)
+          setSub((prev) => ({
+            planId: confirmed.planId as TierId,
+            status: confirmed.status,
+            billingInterval: (confirmed.billingInterval as DbBillingInterval) ?? prev?.billingInterval ?? null,
+            currentPeriodEnd: confirmed.currentPeriodEnd,
+            cancelAtPeriodEnd: prev?.cancelAtPeriodEnd ?? false,
+            hasStripeSubscription: confirmed.hasStripeSubscription,
+            trialEnd: confirmed.trialEnd,
+          }))
+          if (confirmed.billingInterval === "monthly" || confirmed.billingInterval === "annual") {
+            setInterval(confirmed.billingInterval)
+          }
+        } catch (e) {
+          const msg = e instanceof CheckoutError ? e.message : "Could not confirm your subscription yet."
+          setCheckoutError(msg)
+        }
+
+        const updated = await pollForSyncedPaidPlan(user.id)
+        if (updated) {
+          setSub(updated)
+          if (updated.billingInterval) setInterval(updated.billingInterval)
+        } else {
+          await loadSub()
+        }
+        await recheck()
+        clearCheckoutParam()
+      } finally {
+        setConfirmingActivation(false)
+      }
     })
-  }, [])
+  }, [loadSub, recheck])
 
   // ── Reactivation ───────────────────────────────────────────────────────────
   const handleReactivate = useCallback(async () => {
@@ -470,7 +538,7 @@ export default function UpgradePage() {
       try {
         await startCheckout({
           stripePriceId: priceId ?? "",
-          successUrl: `${window.location.origin}/upgrade?checkout=success`,
+          successUrl: `${window.location.origin}/upgrade?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl:  window.location.href,
         })
       } catch (e) {
