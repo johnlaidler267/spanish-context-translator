@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { X, Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth, type AuthModalReason } from "@/contexts/auth-context"
-import { GUEST_LIMIT } from "@/lib/guest-usage"
+import { GUEST_LIMIT, clearGuestUses } from "@/lib/guest-usage"
 
 // ─── Google icon (inline SVG — no extra dep) ─────────────────────────────────
 
@@ -193,6 +193,20 @@ export function AuthModal() {
                   : "Send magic link"}
               </Button>
             </form>
+
+            {import.meta.env.DEV && authModalReason === "limit" && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mt-3 border-amber-500/50 text-amber-700 dark:text-amber-400"
+                onClick={() => {
+                  clearGuestUses()
+                  handleClose()
+                }}
+              >
+                Continue without signing in (dev only)
+              </Button>
+            )}
 
             <p className="mt-4 text-center text-xs text-muted-foreground">
               By signing up you agree to our{" "}
