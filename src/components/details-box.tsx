@@ -9,7 +9,7 @@
 
 import { X, BookOpen, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { type DetailState, groupFormsByInfinitive } from "@/hooks/use-chunk-details"
+import { type DetailState } from "@/hooks/use-chunk-details"
 
 interface DetailsBoxProps {
   activeChunk: string | null
@@ -49,21 +49,22 @@ export function DetailsBox({
           "shadow-[0_-4px_24px_rgba(0,0,0,0.10)]",
         )}
       >
-        {/* Header row */}
-        <div className="flex items-start gap-3 px-5 pt-4 pb-3">
-          <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-[#c97a5a] opacity-80" aria-hidden />
+        {/* Header: leading-snug (avoids descender clip) + slight -translate-y vs book icon */}
+        <div className="flex items-center gap-3 px-5 pt-4 pb-3">
+          <BookOpen className="h-4 w-4 shrink-0 text-[#c97a5a] opacity-80 block" aria-hidden />
           <span
-            className="flex-1 min-w-0 font-serif text-lg leading-snug text-foreground truncate"
+            className="flex-1 min-w-0 font-serif text-lg leading-snug text-foreground truncate -translate-y-[3px]"
             title={activeChunk ?? ""}
           >
             {activeChunk}
           </span>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close details"
             className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4 block" />
           </button>
         </div>
 
@@ -92,78 +93,41 @@ export function DetailsBox({
 // ─── Detail content renderers ─────────────────────────────────────────────────
 
 function DetailContent({ detail }: { detail: DetailState }) {
-  if (detail.type === "llm") {
-    return (
-      <p className="text-sm font-sans text-foreground/85 leading-relaxed">
-        {detail.text}
-      </p>
-    )
-  }
-
-  const { data } = detail
-
-  // Particle / phrase
-  if (data.kind === "particle" || data.kind === "phrase") {
-    return (
-      <div className="space-y-1">
-        <span className="inline-block text-[0.6rem] uppercase tracking-widest text-muted-foreground font-sans">
-          {data.kind === "phrase" ? "Expression" : "Function word"}
-        </span>
-        <p className="text-sm font-sans text-foreground/85 leading-relaxed">{data.note}</p>
-      </div>
-    )
-  }
-
-  // Verb form(s)
-  if (data.kind === "verb" && data.forms && data.forms.length > 0) {
-    const grouped = groupFormsByInfinitive(data.forms)
-
+  if (detail.type === "llm_verb") {
     return (
       <div className="space-y-3">
-        {[...grouped.entries()].map(([infinitive, forms]) => {
-          // Show the most specific / useful form first (unique tense + person combos)
-          const uniqueForms = forms.filter(
-            (f, i, a) => a.findIndex(x => x.tense === f.tense && x.person === f.person) === i,
-          )
-
-          return (
-            <div key={infinitive}>
-              {/* Infinitive label */}
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="text-[0.6rem] uppercase tracking-widest text-muted-foreground font-sans">
-                  verb
-                </span>
-                <span className="text-[0.6rem] text-[rgba(201,122,90,0.6)] font-sans">·</span>
-                <span className="text-xs font-serif font-semibold text-[#c97a5a]">
-                  {infinitive}
-                </span>
-              </div>
-
-              {/* Tense rows */}
-              <div className="space-y-1">
-                {uniqueForms.slice(0, 3).map((f, i) => (
-                  <div key={i} className="flex items-baseline gap-2 text-sm font-sans">
-                    <span className="text-foreground/85 leading-snug">{f.tense}</span>
-                    {f.person !== "non-finite" && (
-                      <>
-                        <span className="text-muted-foreground/50 text-[0.65rem]">·</span>
-                        <span className="text-muted-foreground text-xs">{f.person}</span>
-                      </>
-                    )}
-                  </div>
-                ))}
-                {uniqueForms.length > 3 && (
-                  <p className="text-xs text-muted-foreground font-sans">
-                    +{uniqueForms.length - 3} more form{uniqueForms.length - 3 !== 1 ? "s" : ""}
-                  </p>
-                )}
-              </div>
-            </div>
-          )
-        })}
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span className="text-[0.65rem] uppercase tracking-widest text-muted-foreground font-sans leading-snug">
+            verb
+          </span>
+          <span className="text-[0.65rem] text-[rgba(201,122,90,0.6)] font-sans leading-snug" aria-hidden>
+            ·
+          </span>
+          <span className="text-xs font-serif font-semibold text-[#c97a5a] leading-snug -translate-y-[2px]">
+            {detail.infinitive}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm font-sans">
+          <span className="text-foreground/85 leading-snug">{detail.tense}</span>
+          {detail.person !== "—" && (
+            <>
+              <span className="text-muted-foreground/50 text-[0.65rem]">·</span>
+              <span className="text-muted-foreground text-xs">{detail.person}</span>
+            </>
+          )}
+        </div>
+        {detail.contextNote && (
+          <p className="text-sm font-sans text-foreground/85 leading-relaxed pt-0.5">
+            {detail.contextNote}
+          </p>
+        )}
       </div>
     )
   }
 
-  return null
+  return (
+    <p className="text-sm font-sans text-foreground/85 leading-relaxed">
+      {detail.text}
+    </p>
+  )
 }

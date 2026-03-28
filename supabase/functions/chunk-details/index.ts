@@ -1,35 +1,37 @@
 /**
  * chunk-details Edge Function
  *
- * POST { chunk: string, sentence: string }
- * → { detail: string }
+ * POST { chunk: string, sentence?: string }
+ * → JSON body: either
+ *   { "kind":"verb", "infinitive", "tense", "person", "contextNote" }
+ *   or { "kind":"other", "explanation" }
  *
- * Calls Groq with a fast small model to produce a 2–3 sentence grammar explanation
- * of the given Spanish word/phrase in the context of its surrounding sentence.
- *
- * Auth is optional — unauthenticated (guest) users are allowed since we rely on
- * the client-side static lookup as the first gate.
- *
- * Set GROQ_API_KEY in Supabase project secrets.
+ * The app currently calls Groq from the browser; this function mirrors that
+ * contract for server-side / mobile clients. Set GROQ_API_KEY in Supabase secrets.
  */
 
 import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const MODEL = "llama-3.1-8b-instant"
-const MAX_TOKENS = 160
+const MAX_TOKENS = 280
 
-const SYSTEM_PROMPT = `You are a concise Spanish grammar tutor helping an English speaker understand a Spanish text.
+const SYSTEM_PROMPT = `You are a Spanish grammar assistant for English speakers reading native Spanish.
 
-When given a Spanish word or short phrase and the sentence it appears in, explain in 2–3 short sentences:
-1. What it means in this specific context.
-2. Its grammatical form (e.g., tense, mood, person for verbs; or word class for others).
-3. One practical usage note — why this form or word is used here, not a generic definition.
+You MUST respond with a single JSON object only — no markdown, no code fences, no text before or after.
+
+Two shapes:
+
+1) If the clicked word/phrase is a conjugated finite verb form (e.g. "fue", "había", "dice", "pensaban"), use:
+{"kind":"verb","infinitive":"<dictionary infinitive, e.g. ser>","tense":"<e.g. preterite, imperfect, present indicative>","person":"<e.g. third person singular>","contextNote":"<one or two short sentences in plain English: what it means here and why this form>"}
+
+2) Otherwise (nouns, adjectives, adverbs, prepositions, fixed expressions, etc.):
+{"kind":"other","explanation":"<2–3 short sentences in plain English: meaning in context, grammatical role, one practical note — no bullets, under 120 words>"}
 
 Rules:
-- Write in plain English. No markdown, no bullet points, no headers.
-- Be direct and specific. Avoid padding like "Great question!" or "In Spanish, …"
-- 2–3 sentences maximum. Stay under 120 words.`
+- For "verb", infinitive must be the correct lemma (e.g. fue → ser, hizo → hacer).
+- Use clear English labels for tense and person.
+- JSON must be valid. Escape quotes inside strings. No trailing commas.`
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return handleCorsPreflightRequest()
@@ -83,7 +85,7 @@ Deno.serve(async (req: Request) => {
         { role: "user",   content: userMessage },
       ],
       max_tokens: MAX_TOKENS,
-      temperature: 0.3,
+      temperature: 0.2,
     }),
   })
 
@@ -101,10 +103,23 @@ Deno.serve(async (req: Request) => {
   }
 
   const data = (await groqRes.json()) as GroqResponse
-  const detail = data.choices?.[0]?.message?.content?.trim() ?? ""
+  const raw = data.choices?.[0]?.message?.content?.trim() ?? ""
+
+  let cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim()
+  try {
+    const parsed = JSON.parse(cleaned) as Record<string, unknown>
+    if (parsed?.kind === "verb" || parsed?.kind === "other") {
+      return new Response(JSON.stringify(parsed), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    }
+  } catch {
+    /* fall through */
+  }
 
   return new Response(
-    JSON.stringify({ detail }),
+    JSON.stringify({ kind: "other", explanation: raw || "No explanation returned." }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
   )
 })

@@ -3,22 +3,25 @@
  *
  * Provides `fetchDetails(chunk, sentence)` and the resulting state.
  *
- * Decision order:
- *  1. In-memory cache (instant)
- *  2. Static lookup via chunk-details.ts / @jirimracek/conjugate-esp (sync, < 1 ms after first call)
- *  3. LLM edge function fallback (~200 ms)
+ * All lookups go through the LLM (Groq). No static reverse-conjugation table.
  *
- * The returned `detail` is a structured object that <DetailsBox> renders.
+ * The model returns JSON: either a conjugated-verb analysis (infinitive, tense,
+ * person, context note) or a plain explanation for non-verb tokens.
  */
 
 import { useCallback, useRef, useState } from "react"
-import { lookupChunk, type StaticDetail, type VerbFormInfo } from "@/lib/chunk-details"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type DetailState =
-  | { type: "static"; data: StaticDetail }
-  | { type: "llm";    text: string }
+  | {
+      type: "llm_verb"
+      infinitive: string
+      tense: string
+      person: string
+      contextNote: string
+    }
+  | { type: "llm"; text: string }
 
 export interface ChunkDetailsState {
   /** The raw Spanish text of the currently selected chunk. */
@@ -26,33 +29,137 @@ export interface ChunkDetailsState {
   detail:      DetailState | null
   loading:     boolean
   error:       string | null
-  /** Open the details box for a chunk. Triggers lookup + optional LLM. */
+  /** Open the details box for a chunk. Triggers LLM lookup. */
   fetchDetails: (chunk: string, sentence: string) => void
   /** Dismiss / close the details box. */
   close: () => void
 }
 
+// ─── LLM JSON shape ───────────────────────────────────────────────────────────
+
+interface LlmVerbPayload {
+  kind:       "verb"
+  infinitive: string
+  tense:      string
+  person:     string
+  contextNote: string
+}
+
+interface LlmOtherPayload {
+  kind:         "other"
+  explanation: string
+}
+
+type LlmPayload = LlmVerbPayload | LlmOtherPayload
+
+function parseChunkDetailJson(raw: string): DetailState {
+  let cleaned = raw.trim()
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim()
+
+  let obj: unknown
+  try {
+    obj = JSON.parse(cleaned)
+  } catch {
+    return { type: "llm", text: raw }
+  }
+
+  if (!obj || typeof obj !== "object") return { type: "llm", text: raw }
+  const o = obj as Record<string, unknown>
+
+  if (o.kind === "verb") {
+    const infinitive = typeof o.infinitive === "string" ? o.infinitive.trim() : ""
+    if (!infinitive) return { type: "llm", text: raw }
+
+    return {
+      type: "llm_verb",
+      infinitive,
+      tense: typeof o.tense === "string" && o.tense.trim() ? o.tense.trim() : "—",
+      person: typeof o.person === "string" && o.person.trim() ? o.person.trim() : "—",
+      contextNote:
+        typeof o.contextNote === "string" && o.contextNote.trim()
+          ? o.contextNote.trim()
+          : typeof o.explanation === "string"
+            ? o.explanation.trim()
+            : "",
+    }
+  }
+
+  if (o.kind === "other") {
+    const explanation =
+      typeof o.explanation === "string" && o.explanation.trim()
+        ? o.explanation.trim()
+        : raw
+    return { type: "llm", text: explanation }
+  }
+
+  return { type: "llm", text: raw }
+}
+
+function payloadToDetail(p: LlmPayload): DetailState {
+  if (p.kind === "verb") {
+    return {
+      type: "llm_verb",
+      infinitive: p.infinitive,
+      tense: p.tense || "—",
+      person: p.person || "—",
+      contextNote: p.contextNote || "",
+    }
+  }
+  return { type: "llm", text: p.explanation || "" }
+}
+
+function detailToCacheValue(d: DetailState): string {
+  if (d.type === "llm_verb") {
+    const p: LlmVerbPayload = {
+      kind: "verb",
+      infinitive: d.infinitive,
+      tense: d.tense,
+      person: d.person,
+      contextNote: d.contextNote,
+    }
+    return JSON.stringify(p)
+  }
+  const p: LlmOtherPayload = { kind: "other", explanation: d.text }
+  return JSON.stringify(p)
+}
+
+function cacheValueToDetail(cached: string): DetailState {
+  try {
+    const p = JSON.parse(cached) as LlmPayload
+    if (p && typeof p === "object" && (p.kind === "verb" || p.kind === "other")) {
+      return payloadToDetail(p)
+    }
+  } catch { /* fall through */ }
+  return parseChunkDetailJson(cached)
+}
+
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
-/** Keyed by `chunk|sentence` for LLM results; `chunk` alone for static hits. */
 const llmCache = new Map<string, string>()
 
-// ─── Direct Groq call (mirrors translate.ts pattern) ─────────────────────────
+// ─── Groq ─────────────────────────────────────────────────────────────────────
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const GROQ_MODEL   = "llama-3.1-8b-instant"
 
-const SYSTEM_PROMPT =
-  `You are a concise Spanish grammar tutor helping an English speaker read native Spanish text.
+const SYSTEM_PROMPT = `You are a Spanish grammar assistant for English speakers reading native Spanish.
 
-When given a Spanish word or short phrase and the sentence it appears in, explain in 2–3 short sentences:
-1. What it means in this specific context.
-2. Its grammatical form (tense, mood, person for verbs; word class for others).
-3. One practical note — why this form appears here, not a generic definition.
+You MUST respond with a single JSON object only — no markdown, no code fences, no text before or after.
 
-Rules: plain English, no markdown, no bullet points, 2–3 sentences max, under 120 words.`
+Two shapes:
 
-async function callGroqDirectly(chunk: string, sentence: string): Promise<string> {
+1) If the clicked word/phrase is a conjugated finite verb form (e.g. "fue", "había", "dice", "pensaban"), use:
+{"kind":"verb","infinitive":"<dictionary infinitive, e.g. ser>","tense":"<e.g. preterite, imperfect, present indicative>","person":"<e.g. third person singular>","contextNote":"<one or two short sentences in plain English: what it means here and why this form>"}
+
+2) Otherwise (nouns, adjectives, adverbs, prepositions, fixed expressions, gerunds as nouns, infinitives cited as such, etc.):
+{"kind":"other","explanation":"<2–3 short sentences in plain English: meaning in context, grammatical role, one practical note — same style as a good tutor, no bullets, under 120 words>"}
+
+Rules:
+- For "verb", infinitive must be the correct lemma (e.g. fue → ser, hizo → hacer).
+- Use clear English labels for tense and person (not abbreviations only).
+- JSON must be valid. Escape quotes inside strings. No trailing commas.`
+
+async function callGroqForChunk(chunk: string, sentence: string): Promise<DetailState> {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY as string
   if (!apiKey) throw new Error("VITE_GROQ_API_KEY not set")
 
@@ -72,8 +179,8 @@ async function callGroqDirectly(chunk: string, sentence: string): Promise<string
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user",   content: userMessage },
       ],
-      max_tokens: 160,
-      temperature: 0.3,
+      max_tokens: 280,
+      temperature: 0.2,
     }),
   })
 
@@ -84,7 +191,8 @@ async function callGroqDirectly(chunk: string, sentence: string): Promise<string
 
   type GroqResponse = { choices?: Array<{ message?: { content?: string } }> }
   const data = await res.json() as GroqResponse
-  return data.choices?.[0]?.message?.content?.trim() ?? ""
+  const raw = data.choices?.[0]?.message?.content?.trim() ?? ""
+  return parseChunkDetailJson(raw)
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -95,7 +203,6 @@ export function useChunkDetails(): ChunkDetailsState {
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState<string | null>(null)
 
-  /** Tracks in-flight request so stale responses from previous clicks are dropped. */
   const requestIdRef = useRef(0)
 
   const fetchDetails = useCallback((chunk: string, sentence: string) => {
@@ -105,32 +212,22 @@ export function useChunkDetails(): ChunkDetailsState {
     setActiveChunk(chunk)
     setError(null)
 
-    // 1. Static lookup (synchronous — may trigger reverse-map build on first call)
-    const staticResult = lookupChunk(chunk)
-    if (staticResult) {
-      setDetail({ type: "static", data: staticResult })
-      setLoading(false)
-      return
-    }
-
-    // 2. LLM cache hit
     const cacheKey = `${chunk}|${sentence}`
     const cached = llmCache.get(cacheKey)
     if (cached) {
-      setDetail({ type: "llm", text: cached })
+      setDetail(cacheValueToDetail(cached))
       setLoading(false)
       return
     }
 
-    // 3. LLM edge function
     setDetail(null)
     setLoading(true)
 
-    callGroqDirectly(chunk, sentence)
-      .then(text => {
-        if (requestIdRef.current !== reqId) return // stale
-        llmCache.set(cacheKey, text)
-        setDetail({ type: "llm", text })
+    callGroqForChunk(chunk, sentence)
+      .then(result => {
+        if (requestIdRef.current !== reqId) return
+        llmCache.set(cacheKey, detailToCacheValue(result))
+        setDetail(result)
         setLoading(false)
       })
       .catch(err => {
@@ -142,7 +239,7 @@ export function useChunkDetails(): ChunkDetailsState {
   }, [])
 
   const close = useCallback(() => {
-    requestIdRef.current++ // cancel any in-flight request
+    requestIdRef.current++
     setActiveChunk(null)
     setDetail(null)
     setLoading(false)
@@ -150,19 +247,4 @@ export function useChunkDetails(): ChunkDetailsState {
   }, [])
 
   return { activeChunk, detail, loading, error, fetchDetails, close }
-}
-
-// ─── Formatting helpers (used by DetailsBox) ─────────────────────────────────
-
-/** Collapse duplicate verb form entries to show unique infinitives only. */
-export function groupFormsByInfinitive(
-  forms: VerbFormInfo[],
-): Map<string, VerbFormInfo[]> {
-  const map = new Map<string, VerbFormInfo[]>()
-  for (const f of forms) {
-    let arr = map.get(f.infinitive)
-    if (!arr) { arr = []; map.set(f.infinitive, arr) }
-    arr.push(f)
-  }
-  return map
 }

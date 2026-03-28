@@ -1,12 +1,8 @@
 /**
- * Chunk detail lookup — static (reverse conjugation table) + particle supplement.
+ * Static chunk lookup — reverse conjugation table + particle supplement.
  *
- * On the first call, `buildReverseMap()` iterates COMMON_VERBS through
- * @jirimracek/conjugate-esp and builds a Map<normalizedForm, VerbFormInfo[]>.
- * Subsequent lookups are instant (Map.get).
- *
- * Non-verb function words (prepositions, particles, pronouns) are handled by
- * PARTICLE_NOTES, a compact inline record.
+ * The reading UI (`useChunkDetails`) uses the LLM only; this module is kept for
+ * experiments or future reuse. `lookupChunk()` is not called from the app shell.
  */
 
 import { Conjugator, type Result } from "@jirimracek/conjugate-esp"
