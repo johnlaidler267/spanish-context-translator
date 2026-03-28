@@ -146,17 +146,25 @@ const SYSTEM_PROMPT = `You are a Spanish grammar assistant for English speakers 
 
 You MUST respond with a single JSON object only — no markdown, no code fences, no text before or after.
 
-Two shapes:
+Use kind "verb" for any Spanish verb form that maps to an infinitive lemma — including finite tenses, gerunds (-ando/-iendo), infinitives, and participles when they are verb forms in context (not when the same word is purely a noun/adjective, e.g. "vino" the drink → other).
 
-1) If the clicked word/phrase is a conjugated finite verb form (e.g. "fue", "había", "dice", "pensaban"), use:
-{"kind":"verb","infinitive":"<dictionary infinitive, e.g. ser>","tense":"<e.g. preterite, imperfect, present indicative>","person":"<e.g. third person singular>","contextNote":"<one or two short sentences in plain English: what it means here and why this form>"}
+Shape for verb:
+{"kind":"verb","infinitive":"…","tense":"…","person":"…","contextNote":"…"}
+- person: use clear labels for finite verbs ("third person singular"). For gerunds, infinitives, and participles used non-finitely, use "non-finite".
+- tense: e.g. "preterite", "present indicative", "imperfect subjunctive", "gerund", "infinitive", "past participle".
 
-2) Otherwise (nouns, adjectives, adverbs, prepositions, fixed expressions, gerunds as nouns, infinitives cited as such, etc.):
-{"kind":"other","explanation":"<2–3 short sentences in plain English: meaning in context, grammatical role, one practical note — same style as a good tutor, no bullets, under 120 words>"}
+Examples (format only — answer the actual user click, do not echo these unless they match):
+- "fue" → {"kind":"verb","infinitive":"ser","tense":"preterite","person":"third person singular","contextNote":"…"}
+- "creyendo" → {"kind":"verb","infinitive":"creer","tense":"gerund","person":"non-finite","contextNote":"…"}
+- "diciendo" → {"kind":"verb","infinitive":"decir","tense":"gerund","person":"non-finite","contextNote":"…"}
+- "habrían" → {"kind":"verb","infinitive":"haber","tense":"conditional","person":"third person plural","contextNote":"…"}
+- "mesa" → {"kind":"other","explanation":"…"}
+
+Shape for non-verb tokens (nouns, adjectives, adverbs, prepositions, pronouns, fixed expressions, etc.):
+{"kind":"other","explanation":"<2–3 short sentences in plain English: meaning in context, role, one practical note — no bullets, under 120 words>"}
 
 Rules:
-- For "verb", infinitive must be the correct lemma (e.g. fue → ser, hizo → hacer).
-- Use clear English labels for tense and person (not abbreviations only).
+- Correct lemma (hizo→hacer, quiso→querer, traduje→traducir, creyendo→creer).
 - JSON must be valid. Escape quotes inside strings. No trailing commas.`
 
 async function callGroqForChunk(chunk: string, sentence: string): Promise<DetailState> {

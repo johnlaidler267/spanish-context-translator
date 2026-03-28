@@ -632,31 +632,7 @@ export async function translate(
   return { reconciled, sentences }
 }
 
-const RANDOM_STYLES = [
-  "a WhatsApp message from a worried mother",
-  "the opening lines of a novel set in Seville",
-  "a teenager's diary entry",
-  "a letter from someone who just moved cities",
-  "overheard conversation on a Madrid metro",
-  "a food critic reviewing a tiny restaurant",
-  "a text message argument between siblings",
-  "a fisherman describing the sea at dawn",
-  "a grandmother's recipe with personal asides",
-  "a man watching his neighbourhood change",
-  "a child explaining something they misunderstood",
-  "a heartfelt wedding toast that goes slightly off-script",
-  "a lonely traveller writing in their journal",
-  "a street vendor's sales pitch with hidden poetry",
-  "a detective's internal monologue at a crime scene",
-  "a botanist describing a plant they've just discovered",
-  "two neighbours arguing over a wall",
-  "a professor losing their train of thought mid-lecture",
-  "a love letter that never got sent",
-  "someone describing a dream that felt too real",
-]
-
 export async function generateRandomSpanish(apiKey: string): Promise<string> {
-  const style = RANDOM_STYLES[Math.floor(Math.random() * RANDOM_STYLES.length)]
   const res = await fetch(GROQ_API_URL, {
     method: "POST",
     headers: {
@@ -668,11 +644,11 @@ export async function generateRandomSpanish(apiKey: string): Promise<string> {
       messages: [
         {
           role: "user",
-          content: `Write a short paragraph in natural Spanish (3–5 sentences) in this style or voice: ${style}.
+          content: `Write one short paragraph in natural Spanish (about 3–5 sentences).
 
-Be creative — vary your vocabulary, rhythm, and register to match the voice. 
-Use authentic Spanish expressions where they fit naturally.
-Return only the Spanish text. No translation, no explanation, no quotes.`,
+You choose the topic, setting, tone, and register freely — fiction, opinion, dialogue, description, anything. Be creative and make each response feel different when asked again.
+
+Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`,
         },
       ],
       temperature: 1.1,
