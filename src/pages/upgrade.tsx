@@ -485,15 +485,16 @@ export default function UpgradePage() {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-app bg-background relative">
-      {/* Background image */}
-      <img
-        src={theme === "dark" ? "/upgrade-bg-dark.png" : "/upgrade-bg.png"}
-        alt=""
+      {/* Background image — desktop only */}
+      <div
         aria-hidden
+        className="hidden md:block"
         style={{
           position: "absolute", inset: 0,
-          width: "100%", height: "100%",
-          objectFit: "cover", objectPosition: "center",
+          backgroundImage: `url(${theme === "dark" ? "/upgrade-bg-dark.png" : "/upgrade-bg.png"})`,
+          backgroundSize: "100% auto",
+          backgroundPosition: "top center",
+          backgroundRepeat: "no-repeat",
           opacity: theme === "dark" ? 0.28 : 0.15,
           filter: theme === "dark" ? "blur(2.3px)" : "none",
           pointerEvents: "none", zIndex: 0,
