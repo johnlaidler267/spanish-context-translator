@@ -154,13 +154,22 @@ Shape for verb:
 - tense: e.g. "preterite", "present indicative", "imperfect subjunctive", "gerund", "infinitive", "past participle".
 
 Examples (format only — answer the actual user click, do not echo these unless they match):
-- "fue" → {"kind":"verb","infinitive":"ser","tense":"preterite","person":"third person singular","contextNote":"…"}
+- "fue"      → {"kind":"verb","infinitive":"ser / ir","tense":"preterite","person":"3sg","contextNote":"Ambiguous — identical preterite form for both ser and ir. Disambiguated by context."}
+- "marcaba"  → {"kind":"verb","infinitive":"marcar","tense":"imperfect","person":"3sg","contextNote":"Ongoing or habitual past action."}
+- "mesa"     → {"kind":"noun","gender":"feminine","explanation":"Common noun. 'la mesa' = the table. No verbal analysis applies."}
 - "creyendo" → {"kind":"verb","infinitive":"creer","tense":"gerund","person":"non-finite","contextNote":"…"}
 - "diciendo" → {"kind":"verb","infinitive":"decir","tense":"gerund","person":"non-finite","contextNote":"…"}
-- "habrían" → {"kind":"verb","infinitive":"haber","tense":"conditional","person":"third person plural","contextNote":"…"}
-- "mesa" → {"kind":"other","explanation":"…"}
-
-Shape for non-verb tokens (nouns, adjectives, adverbs, prepositions, pronouns, fixed expressions, etc.):
+- "habrían"  → {"kind":"verb","infinitive":"haber","tense":"conditional","person":"3pl","contextNote":"Almost always auxiliary in conditional perfect construction: habrían + past participle."}
+- "guardara" → {"kind":"verb","infinitive":"guardar","tense":"imperfect subjunctive","person":"1sg or 3sg","contextNote":"Triggered by past main clause requiring subjunctive. Expresses desired, hypothetical, or contingent action."}
+- "habla"         → {"kind":"verb","infinitive":"hablar","tense":"present indicative","person":"3sg","contextNote":"Simple present or habitual action."}
+- "hablará"       → {"kind":"verb","infinitive":"hablar","tense":"future","person":"3sg","contextNote":"Future certainty, or conjecture about the present ('will speak / must be speaking')."}
+- "ha hablado"    → {"kind":"verb","infinitive":"hablar","tense":"present perfect","person":"3sg","contextNote":"Completed action with present relevance. More common in Spain than Latin America."}
+- "había hablado" → {"kind":"verb","infinitive":"hablar","tense":"pluperfect","person":"3sg","contextNote":"Action completed before another past event."}
+- "habría hablado"→ {"kind":"verb","infinitive":"hablar","tense":"conditional perfect","person":"3sg","contextNote":"Hypothetical completed past action; often in si-clause results: 'would have spoken'."}
+- "hable"         → {"kind":"verb","infinitive":"hablar","tense":"present subjunctive","person":"1sg or 3sg","contextNote":"Triggered by present/future main clause requiring subjunctive."}
+- "hubiera hablado"→{"kind":"verb","infinitive":"hablar","tense":"pluperfect subjunctive","person":"1sg or 3sg","contextNote":"Hypothetical or counterfactual past; common in si-clauses: 'si hubiera hablado…'"}
+- "hablado"       → {"kind":"verb","infinitive":"hablar","tense":"past participle","person":"non-finite","contextNote":"Used with haber to form compound tenses, or as adjective agreeing with noun."}
+- "habla / hablen"→ {"kind":"verb","infinitive":"hablar","tense":"imperative","person":"2sg informal / 3pl formal","contextNote":"Direct command. Negative imperatives use subjunctive instead."}
 {"kind":"other","explanation":"<2–3 short sentences in plain English: meaning in context, role, one practical note — no bullets, under 120 words>"}
 
 Rules:

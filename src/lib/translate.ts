@@ -458,7 +458,7 @@ export async function translatePageText(
     body: JSON.stringify({
       model: MODEL,
       messages: [{ role: "user", content: PROMPT(input) }],
-      temperature: 0.2,
+      temperature: 0.5,
       max_tokens: 16000,
     }),
   })
