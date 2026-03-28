@@ -6,6 +6,8 @@ import { TextChunk, shouldGlueAfterPriorChunk } from "./text-chunk"
 import { Button } from "@/components/ui/button"
 import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
 import type { PageSentenceRange } from "@/lib/translate"
+import { DetailsBox } from "./details-box"
+import { useChunkDetails } from "@/hooks/use-chunk-details"
 
 interface ChunkData {
   id: number
@@ -53,8 +55,17 @@ export function ReadMode({
     [exploringChunkId, pinnedChunkId],
   )
 
+  const chunkDetails = useChunkDetails()
+
   const currentSentence = sentences[currentSentenceIndex] ?? { id: 0, chunks: [] as ChunkData[] }
   const totalSentences = sentences.length
+
+  /** Current sentence as plain text for LLM context */
+  const currentSentenceText = useMemo(
+    () => currentSentence.chunks.map((c: ChunkData) => c.text).join(" "),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentSentenceIndex, sentences],
+  )
 
   useEffect(() => {
     setCurrentSentenceIndex(0)
@@ -82,12 +93,17 @@ export function ReadMode({
   const clearChunkUi = useCallback(() => {
     setExploringChunkId(null)
     setPinnedChunkId(null)
-  }, [])
+    chunkDetails.close()
+  }, [chunkDetails])
 
   const handleGlobalClick = useCallback(
     (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      if (!target.closest("[data-chunk]") && !target.closest("[data-popup]")) {
+      if (
+        !target.closest("[data-chunk]") &&
+        !target.closest("[data-popup]") &&
+        !target.closest("[data-details-box]")
+      ) {
         clearChunkUi()
       }
     },
@@ -162,6 +178,7 @@ export function ReadMode({
                   onPinToggle={() =>
                     setPinnedChunkId(prev => (prev === chunk.id ? null : chunk.id))
                   }
+                  onRequestDetails={() => chunkDetails.fetchDetails(chunk.text, currentSentenceText)}
                 />
                 {gapAfter}
               </span>
@@ -197,6 +214,14 @@ export function ReadMode({
           <span className="sr-only">Next sentence</span>
         </Button>
       </div>
+
+      <DetailsBox
+        activeChunk={chunkDetails.activeChunk}
+        detail={chunkDetails.detail}
+        loading={chunkDetails.loading}
+        error={chunkDetails.error}
+        onClose={chunkDetails.close}
+      />
     </div>
   )
 }

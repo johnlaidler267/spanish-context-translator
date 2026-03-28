@@ -24,6 +24,11 @@ interface TextChunkProps {
   /** Pin / unpin on double-tap (touch) or double-click (desktop) */
   onPinToggle?: () => void
   /**
+   * Called on single-click (desktop) or double-tap (mobile) to open the
+   * bottom details box for this chunk.
+   */
+  onRequestDetails?: () => void
+  /**
    * Article body text is smaller — use a longer gap + stem so the tooltip clears the finger.
    * Read mode keeps a compact callout.
    */
@@ -76,6 +81,7 @@ export function TextChunk({
   onActivate,
   onDeactivate,
   onPinToggle,
+  onRequestDetails,
   variant = "read",
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
@@ -148,10 +154,11 @@ export function TextChunk({
   const handleTouchEnd = useCallback(
     (e: React.TouchEvent) => {
       e.preventDefault()
-      if (!onPinToggle) return
       const now = Date.now()
       if (lastTapRef.current && now - lastTapRef.current.t < 420) {
-        onPinToggle()
+        // Double-tap: pin the popup AND open the details box
+        onPinToggle?.()
+        onRequestDetails?.()
         lastTapRef.current = null
         if (tapResetTimerRef.current != null) {
           window.clearTimeout(tapResetTimerRef.current)
@@ -166,7 +173,7 @@ export function TextChunk({
         }, 450)
       }
     },
-    [onPinToggle],
+    [onPinToggle, onRequestDetails],
   )
 
   const gap = GAP_FROM_WORD[variant]
@@ -272,7 +279,10 @@ export function TextChunk({
         ref={chunkRef}
         data-chunk
         data-chunk-id={chunk.id}
-        onClick={onActivate}
+        onClick={() => {
+          onActivate()
+          onRequestDetails?.()
+        }}
         onMouseEnter={onActivate}
         onMouseLeave={onDeactivate}
         onTouchEnd={handleTouchEnd}

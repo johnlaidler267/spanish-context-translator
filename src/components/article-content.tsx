@@ -8,6 +8,8 @@ import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
+import { DetailsBox } from "./details-box"
+import { useChunkDetails } from "@/hooks/use-chunk-details"
 
 export type ArticlePaginationState = {
   pageIndex: number
@@ -52,13 +54,27 @@ export function ArticleContent({
     [exploringChunkId, pinnedChunkId],
   )
 
+  // Details box state
+  const chunkDetails = useChunkDetails()
+
+  /** Reconstruct full page text for LLM sentence context */
+  const pageText = useMemo(() => {
+    if (!items) return ""
+    return items.map(item => item.type === "text" ? item.text : item.chunk).join("")
+  }, [items])
+
   const handleGlobalClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement
-    if (!target.closest("[data-chunk]") && !target.closest("[data-popup]")) {
+    if (
+      !target.closest("[data-chunk]") &&
+      !target.closest("[data-popup]") &&
+      !target.closest("[data-details-box]")
+    ) {
       setExploringChunkId(null)
       setPinnedChunkId(null)
+      chunkDetails.close()
     }
-  }, [])
+  }, [chunkDetails])
 
   useEffect(() => {
     document.addEventListener("click", handleGlobalClick)
@@ -136,6 +152,7 @@ export function ArticleContent({
                       if (pinnedChunkId !== id) setExploringChunkId(null)
                     }}
                     onPinToggle={() => setPinnedChunkId(prev => (prev === id ? null : id))}
+                    onRequestDetails={() => chunkDetails.fetchDetails(item.chunk, pageText)}
                   />
                 </span>
               )
@@ -181,6 +198,14 @@ export function ArticleContent({
           </div>
         </footer>
       )}
+
+      <DetailsBox
+        activeChunk={chunkDetails.activeChunk}
+        detail={chunkDetails.detail}
+        loading={chunkDetails.loading}
+        error={chunkDetails.error}
+        onClose={chunkDetails.close}
+      />
     </div>
   )
 }
