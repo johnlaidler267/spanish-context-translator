@@ -55,6 +55,44 @@ const GAP_FROM_WORD: Record<"article" | "read", number> = { read: 10, article: 3
 /** Diamond “arrow” size (px); article uses a larger tip + gap so the callout clears the finger */
 const ARROW_BOX: Record<"article" | "read", number> = { read: 10, article: 15 }
 
+/**
+ * Inline wrapped chunks: union bounding box top = first line, but the reader is often on the last line.
+ * Returns full union for placement math, and the last non-empty line box for anchor + arrow X.
+ */
+function getChunkLineRects(el: HTMLElement): { union: DOMRect; anchorLine: DOMRect } {
+  const list = el.getClientRects()
+  if (list.length === 0) {
+    const r = el.getBoundingClientRect()
+    return { union: r, anchorLine: r }
+  }
+  let minL = Infinity
+  let minT = Infinity
+  let maxR = -Infinity
+  let maxB = -Infinity
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i]
+    if (r.width <= 0 && r.height <= 0) continue
+    minL = Math.min(minL, r.left)
+    minT = Math.min(minT, r.top)
+    maxR = Math.max(maxR, r.right)
+    maxB = Math.max(maxB, r.bottom)
+  }
+  if (minL === Infinity) {
+    const r = el.getBoundingClientRect()
+    return { union: r, anchorLine: r }
+  }
+  const union = new DOMRect(minL, minT, maxR - minL, maxB - minT)
+  let anchorLine = list[list.length - 1]
+  for (let i = list.length - 1; i >= 0; i--) {
+    const r = list[i]
+    if (r.width > 0 || r.height > 0) {
+      anchorLine = r
+      break
+    }
+  }
+  return { union, anchorLine }
+}
+
 /** True if chunk is only punctuation/symbols — should sit flush after the previous word in read mode */
 export function isPunctuationOnly(text: string): boolean {
   const t = text.trim()
@@ -96,14 +134,14 @@ export function TextChunk({
 
   const calculateCoords = useCallback(() => {
     if (!chunkRef.current) return
-    const rect = chunkRef.current.getBoundingClientRect()
+    const { union, anchorLine } = getChunkLineRects(chunkRef.current)
     const padding = 16
     const vw = window.innerWidth
     const tooltipWidth = POPUP_WIDTH
     const gap = GAP_FROM_WORD[variant]
     const edgeClearance = 16 + gap
 
-    const wordCenterX = rect.left + rect.width * 0.48
+    const wordCenterX = anchorLine.left + anchorLine.width * 0.48
 
     let tooltipLeft = wordCenterX - tooltipWidth / 2
     tooltipLeft = Math.max(padding, Math.min(tooltipLeft, vw - padding - tooltipWidth))
@@ -114,16 +152,16 @@ export function TextChunk({
       Math.min(tooltipWidth - ARROW_EDGE_INSET, rawArrowCenter),
     )
 
-    const spaceAbove = rect.top
-    const spaceBelow = window.innerHeight - rect.bottom
+    const spaceAbove = union.top
+    const spaceBelow = window.innerHeight - union.bottom
     const placement =
       spaceAbove < POPUP_EST_HEIGHT + edgeClearance && spaceBelow >= POPUP_EST_HEIGHT + edgeClearance
         ? "below"
         : "above"
 
     setCoords({
-      anchorTop: rect.top,
-      anchorBottom: rect.bottom,
+      anchorTop: anchorLine.top,
+      anchorBottom: anchorLine.bottom,
       tooltipLeft,
       arrowCenterX,
       placement,

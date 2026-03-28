@@ -651,7 +651,7 @@ You choose the topic, setting, tone, and register freely — fiction, opinion, d
 Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`,
         },
       ],
-      temperature: 1.1,
+      temperature: 1.5,
       max_tokens: 300,
     }),
   })
