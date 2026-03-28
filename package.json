@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "supabase:deploy-checkout": "npx --yes supabase@latest functions deploy create-checkout-session"
   },
   "dependencies": {
     "20": "^3.1.9",

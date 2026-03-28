@@ -5,13 +5,65 @@
  *   - Add a new tier: add a key to TierId, add an entry to TIERS, bump CONFIG_VERSION.
  *   - Change a limit: edit the relevant field in TIERS[id].limits, bump CONFIG_VERSION.
  *   - Add a new feature flag: add to TierFeatureFlags, set the value in each tier, use hasFeature().
- *   - Change a Stripe price ID: edit pricing.[interval].stripePriceId — no code changes needed elsewhere.
+ *   - Change a Stripe price ID: set VITE_STRIPE_PRICE_* in .env (and matching STRIPE_PRICE_* secrets in Supabase).
  *
  * CONFIG_VERSION: semver string. Bump the patch when changing limits/prices; minor when adding
  * features; major when restructuring the shape itself.
  */
 
 export const TIERS_CONFIG_VERSION = "1.0.0"
+
+function normalizeStripePriceId(raw: string): string {
+  let v = raw.trim()
+  if (v.charCodeAt(0) === 0xfeff) v = v.slice(1).trim()
+  for (;;) {
+    const q =
+      (v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))
+    if (!q) break
+    v = v.slice(1, -1).trim()
+  }
+  return v
+}
+
+function stripePriceFromEnv(
+  envName: string,
+  value: string | undefined,
+  placeholder: string,
+): string {
+  if (value == null || !value.trim()) return placeholder
+  const v = normalizeStripePriceId(value)
+  if (v.startsWith("price_")) return v
+  if (import.meta.env.DEV) {
+    console.warn(
+      `[tiers] ${envName} must be a Stripe Price ID (starts with price_), not a dollar amount. Got: "${v.slice(0, 24)}…"`,
+    )
+  }
+  return placeholder
+}
+
+/** Must match Edge Function secrets STRIPE_PRICE_* (see supabase/functions/_shared/tiers.ts). */
+const STRIPE_PRICE = {
+  proMonthly: stripePriceFromEnv(
+    "VITE_STRIPE_PRICE_PRO_MONTHLY",
+    import.meta.env.VITE_STRIPE_PRICE_PRO_MONTHLY,
+    "price_REPLACE_PRO_MONTHLY",
+  ),
+  proAnnual: stripePriceFromEnv(
+    "VITE_STRIPE_PRICE_PRO_ANNUAL",
+    import.meta.env.VITE_STRIPE_PRICE_PRO_ANNUAL,
+    "price_REPLACE_PRO_ANNUAL",
+  ),
+  unlimitedMonthly: stripePriceFromEnv(
+    "VITE_STRIPE_PRICE_UNLIMITED_MONTHLY",
+    import.meta.env.VITE_STRIPE_PRICE_UNLIMITED_MONTHLY,
+    "price_REPLACE_UNLIMITED_MONTHLY",
+  ),
+  unlimitedAnnual: stripePriceFromEnv(
+    "VITE_STRIPE_PRICE_UNLIMITED_ANNUAL",
+    import.meta.env.VITE_STRIPE_PRICE_UNLIMITED_ANNUAL,
+    "price_REPLACE_UNLIMITED_ANNUAL",
+  ),
+}
 
 // ─── ID ──────────────────────────────────────────────────────────────────────
 
@@ -153,8 +205,8 @@ export const TIERS: Record<TierId, TierConfig> = {
     description: "Everything you need to read Spanish content daily.",
     suggestedUseCase: "Language learners working through books, articles, and news regularly.",
     pricing: {
-      monthly: { amountCents: 900,  stripePriceId: "price_REPLACE_PRO_MONTHLY" },
-      annual:  { amountCents: 7_900, stripePriceId: "price_REPLACE_PRO_ANNUAL", savingsPercent: 27 },
+      monthly: { amountCents: 900,  stripePriceId: STRIPE_PRICE.proMonthly },
+      annual:  { amountCents: 7_900, stripePriceId: STRIPE_PRICE.proAnnual, savingsPercent: 27 },
     },
     limits: {
       textsPerMonth:      50,
@@ -185,8 +237,8 @@ export const TIERS: Record<TierId, TierConfig> = {
     description: "Full access to every feature with no usage caps.",
     suggestedUseCase: "Power users, translators, and teams processing high volumes of Spanish text.",
     pricing: {
-      monthly: { amountCents: 2_900,  stripePriceId: "price_REPLACE_UNLIMITED_MONTHLY" },
-      annual:  { amountCents: 24_900, stripePriceId: "price_REPLACE_UNLIMITED_ANNUAL", savingsPercent: 29 },
+      monthly: { amountCents: 2_900,  stripePriceId: STRIPE_PRICE.unlimitedMonthly },
+      annual:  { amountCents: 24_900, stripePriceId: STRIPE_PRICE.unlimitedAnnual, savingsPercent: 29 },
     },
     limits: {
       textsPerMonth:      null,

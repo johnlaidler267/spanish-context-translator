@@ -31,7 +31,12 @@ import {
   corsHeaders,
   handleCorsPreflightRequest,
 } from "../_shared/cors.ts"
-import { resolvePriceId, TRIAL_DAYS } from "../_shared/tiers.ts"
+import {
+  getAllPriceIds,
+  normalizeStripePriceId,
+  resolvePriceId,
+  TRIAL_DAYS,
+} from "../_shared/tiers.ts"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,16 +119,31 @@ Deno.serve(async (req: Request) => {
     return err("Request body must be valid JSON")
   }
 
-  const { stripePriceId, successUrl, cancelUrl } = body
+  const { stripePriceId: rawPriceId, successUrl, cancelUrl } = body
 
-  if (!stripePriceId || typeof stripePriceId !== "string") {
+  if (rawPriceId == null || typeof rawPriceId !== "string" || !rawPriceId.trim()) {
     return err("stripePriceId is required")
   }
 
+  const stripePriceId = normalizeStripePriceId(rawPriceId)
+
   const priceEntry = resolvePriceId(stripePriceId)
   if (!priceEntry) {
-    // Never reveal which IDs are valid — generic message
-    return err("Invalid price ID")
+    const allowed = getAllPriceIds()
+    console.error("[create-checkout-session] price allowlist miss", {
+      received: stripePriceId,
+      allowed,
+    })
+    const hint =
+      stripePriceId.includes("REPLACE") || stripePriceId.startsWith("price_REPLACE")
+        ? " App is still using placeholder price IDs — set VITE_STRIPE_PRICE_* in .env and restart Vite."
+        : allowed.some((id) => id.includes("REPLACE"))
+          ? " Server still has placeholder IDs — set STRIPE_PRICE_* Edge secrets to your real price_… values."
+          : " Compare received vs allowed in function logs; values must match exactly (test vs live Stripe mode too)."
+    return err(
+      `Price not on server allowlist.${hint} (Logs show received + allowed.)`,
+      400,
+    )
   }
 
   // ── Fetch existing subscription record ────────────────────────────────────
