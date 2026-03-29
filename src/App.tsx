@@ -27,6 +27,7 @@ import {
 import { TranslationCache } from "./lib/translation-cache"
 import type { ViewMode } from "./components/mode-toggle"
 import type { ReadingTheme } from "./components/theme-toggle"
+import { getStoredLandingDraft, setStoredLandingDraft } from "./lib/landing-draft-storage"
 import { getStoredReadingTheme, setStoredReadingTheme } from "./lib/theme-storage"
 import { Button } from "./components/ui/button"
 import { RateLimitModal } from "./components/rate-limit-modal"
@@ -44,6 +45,12 @@ export default function App() {
   const { user, isLoading: authLoading, openAuthModal } = useAuth()
 
   const [appState, setAppState] = useState<AppState>("landing")
+  /** In-memory + sessionStorage: survives reading → home and page refresh (same tab). */
+  const [landingDraft, setLandingDraft] = useState(() => getStoredLandingDraft())
+
+  useEffect(() => {
+    setStoredLandingDraft(landingDraft)
+  }, [landingDraft])
   const [viewMode, setViewMode] = useState<ViewMode>("article")
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const appTheme = readingTheme
@@ -101,13 +108,14 @@ export default function App() {
         setError("Missing VITE_GROQ_API_KEY. Add it to your .env file.")
         return
       }
+      const trimmed = text.trim()
+      setLandingDraft(trimmed)
       setError("")
       rateLimitModalSuppressedRef.current = false
       setRateLimitMessage(null)
       setAppState("loading")
 
       try {
-        const trimmed = text.trim()
         let sents = splitSourceIntoSentences(trimmed)
         if (sents.length === 0) sents = [trimmed]
         const isMobile =
@@ -259,6 +267,8 @@ export default function App() {
     <main className={`min-h-app bg-transparent ${viewportMain}`}>
       {appState === "loading" && <LoadingOverlay />}
       <LandingScreen
+        draftText={landingDraft}
+        onDraftChange={setLandingDraft}
         onSubmit={handleTextSubmit}
         isLoading={appState === "loading"}
         theme={appTheme}

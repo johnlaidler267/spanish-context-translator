@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, type Dispatch, type SetStateAction } from "react"
 import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout-fix"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { Dices } from "lucide-react"
@@ -10,6 +10,8 @@ import { VoiceInputButton } from "./voice-input-button"
 import type { ReadingTheme } from "./theme-toggle"
 
 interface LandingScreenProps {
+  draftText: string
+  onDraftChange: Dispatch<SetStateAction<string>>
   onSubmit: (text: string) => void
   isLoading: boolean
   theme: ReadingTheme
@@ -27,8 +29,14 @@ const PLACEHOLDERS = [
   "Paste a conversation…",
 ]
 
-export function LandingScreen({ onSubmit, isLoading, theme, onThemeChange }: LandingScreenProps) {
-  const [text, setText] = useState("")
+export function LandingScreen({
+  draftText: text,
+  onDraftChange: setText,
+  onSubmit,
+  isLoading,
+  theme,
+  onThemeChange,
+}: LandingScreenProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const landingColumnRef = useRef<HTMLDivElement>(null)
   useVirtualKeyboardLayoutFix(landingColumnRef)
