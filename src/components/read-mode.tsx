@@ -8,6 +8,7 @@ import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
 import type { PageSentenceRange } from "@/lib/translate"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
+import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 
 interface ChunkData {
   id: number
@@ -136,19 +137,25 @@ export function ReadMode({
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [currentSentenceIndex, totalSentences, clearChunkUi])
 
-  const goToPrevious = () => {
-    if (currentSentenceIndex > 0) {
-      setCurrentSentenceIndex(currentSentenceIndex - 1)
-      clearChunkUi()
-    }
-  }
+  const goToPrevious = useCallback(() => {
+    let moved = false
+    setCurrentSentenceIndex((i) => {
+      if (i <= 0) return i
+      moved = true
+      return i - 1
+    })
+    if (moved) clearChunkUi()
+  }, [clearChunkUi])
 
-  const goToNext = () => {
-    if (currentSentenceIndex < totalSentences - 1) {
-      setCurrentSentenceIndex(currentSentenceIndex + 1)
-      clearChunkUi()
-    }
-  }
+  const goToNext = useCallback(() => {
+    let moved = false
+    setCurrentSentenceIndex((i) => {
+      if (i >= totalSentences - 1) return i
+      moved = true
+      return i + 1
+    })
+    if (moved) clearChunkUi()
+  }, [totalSentences, clearChunkUi])
 
   return (
     <div className="flex w-full flex-col max-md:h-full max-md:min-h-0 max-md:flex-1 md:min-h-[calc(100dvh-5rem)] px-6 md:px-8">
@@ -214,6 +221,16 @@ export function ReadMode({
           <span className="sr-only">Next sentence</span>
         </Button>
       </div>
+
+      {totalSentences > 1 && (
+        <MobileReadingEdgeTurn
+          enabled
+          canGoPrevious={currentSentenceIndex > 0}
+          canGoNext={currentSentenceIndex < totalSentences - 1}
+          onPrevious={goToPrevious}
+          onNext={goToNext}
+        />
+      )}
 
       <DetailsBox
         activeChunk={chunkDetails.activeChunk}

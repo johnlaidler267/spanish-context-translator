@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
+import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 
 export type ArticlePaginationState = {
   pageIndex: number
@@ -197,6 +198,18 @@ export function ArticleContent({
             </Button>
           </div>
         </footer>
+      )}
+
+      {pagination && pagination.pageCount > 1 && (
+        <MobileReadingEdgeTurn
+          enabled
+          canGoPrevious={pagination.pageIndex > 0}
+          canGoNext={
+            pagination.pageIndex < pagination.pageCount - 1 && pagination.nextPageOpen
+          }
+          onPrevious={pagination.onPrevious}
+          onNext={pagination.onNext}
+        />
       )}
 
       <DetailsBox

@@ -3,10 +3,12 @@
 /**
  * DetailsBox — fixed bottom sheet that shows grammar details for a clicked chunk.
  *
- * Renders when `activeChunk` is non-null. Slides up from the bottom.
- * Close via the × button or by clicking a different chunk (parent controls state).
+ * Portals to `document.body` so `position:fixed` isn’t warped by a transformed
+ * ancestor (e.g. reading shell `animate-fade-in-up`). Unmounts when closed so
+ * no empty shell sits off-screen on mobile.
  */
 
+import { createPortal } from "react-dom"
 import { X, BookOpen, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { type DetailState } from "@/hooks/use-chunk-details"
@@ -28,15 +30,15 @@ export function DetailsBox({
   onClose,
   className,
 }: DetailsBoxProps) {
-  const visible = activeChunk != null
+  const open = Boolean(activeChunk?.trim())
+  if (!open || typeof document === "undefined") return null
 
-  return (
+  return createPortal(
     <div
       data-details-box
       className={cn(
         "fixed bottom-0 left-0 right-0 z-[70]",
-        "transition-transform duration-300 ease-out",
-        visible ? "translate-y-0" : "translate-y-full",
+        "translate-y-0",
         className,
       )}
     >
@@ -86,7 +88,8 @@ export function DetailsBox({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
