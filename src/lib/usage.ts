@@ -298,6 +298,14 @@ export async function fetchCurrentUsage(): Promise<TrackResult> {
   return callTrackUsage({}, true)
 }
 
+/** Fired after a successful `trackUsage` so billing/settings UI can refetch. */
+export const USAGE_UPDATED_EVENT = "lectora:usage-updated"
+
+export function broadcastUsageUpdated(): void {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new CustomEvent(USAGE_UPDATED_EVENT))
+}
+
 // ─── Zero values ─────────────────────────────────────────────────────────────
 
 function zeroCounters(): UsageCounters {

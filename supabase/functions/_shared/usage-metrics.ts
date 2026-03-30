@@ -144,6 +144,41 @@ export function metricsToRpcParams(
   return params
 }
 
+/**
+ * PostgREST / supabase-js can return one composite row as a one-element array.
+ * Normalize both shapes to a plain object.
+ */
+export function normalizeUsageRpcRow(data: unknown): Record<string, unknown> | null {
+  if (data == null) return null
+  if (Array.isArray(data)) {
+    const first = data[0]
+    if (first && typeof first === "object" && !Array.isArray(first)) {
+      return first as Record<string, unknown>
+    }
+    return null
+  }
+  if (typeof data === "object") return data as Record<string, unknown>
+  return null
+}
+
+/** YYYY-MM-DD in UTC; matches DB UTC-date logic. */
+function utcCalendarTodayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+/** Accept "YYYY-MM-DD" or ISO datetime, return date-only part. */
+function isoDateOnly(value: unknown): string | null {
+  if (value == null) return null
+  if (typeof value === "string") {
+    const m = value.trim().match(/^(\d{4}-\d{2}-\d{2})/)
+    if (m) return m[1] ?? null
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10)
+  }
+  return null
+}
+
 /** Read a counter value out of a usage_records row (handles both fixed + extra). */
 export function readCounter(
   row: Record<string, unknown>,
@@ -152,12 +187,10 @@ export function readCounter(
   const cfg = METRIC_CONFIG[metric]
 
   if (cfg.column === "texts_today") {
-    // Daily counter: only valid if texts_today_date matches today (UTC).
-    // If the date is stale the counter belongs to a previous day → return 0.
-    const storedDate = row["texts_today_date"] as string | null
-    if (!storedDate) return 0
-    const todayUtc = new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
-    return storedDate === todayUtc ? ((row["texts_today"] as number) ?? 0) : 0
+    const stored = isoDateOnly(row["texts_today_date"])
+    if (!stored) return 0
+    const todayUtc = utcCalendarTodayIso()
+    return stored === todayUtc ? ((row["texts_today"] as number) ?? 0) : 0
   }
 
   if (cfg.column) {

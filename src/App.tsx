@@ -34,7 +34,7 @@ import { RateLimitModal } from "./components/rate-limit-modal"
 import { isRateLimitApiMessage } from "./lib/api-errors"
 import { useAuth } from "./contexts/auth-context"
 import { hasReachedGuestLimit, incrementGuestUses } from "./lib/guest-usage"
-import { trackUsage } from "./lib/usage"
+import { METRIC_CONFIG, broadcastUsageUpdated, trackUsage, UsageError } from "./lib/usage"
 
 type AppState = "landing" | "loading" | "reading"
 
@@ -137,6 +137,39 @@ export default function App() {
         let pages = buildSentencePages(sents, effectivePageLimits)
         if (pages.length === 0) pages = [[trimmed]]
 
+        if (user) {
+          try {
+            const usage = await trackUsage({
+              texts_submitted: 1,
+              chars_processed: trimmed.length,
+              pages_processed: pages.length,
+            })
+            if (!usage.allowed && !IS_LOCAL_DEV) {
+              const names = usage.exceeded.map((m) => METRIC_CONFIG[m]?.label ?? m).join(", ")
+              setError(
+                names
+                  ? `Plan limit reached for: ${names}. Upgrade under Settings -> Billing.`
+                  : "Plan limit reached. Upgrade under Settings -> Billing.",
+              )
+              setAppState("landing")
+              return
+            }
+            broadcastUsageUpdated()
+          } catch (e) {
+            if (IS_LOCAL_DEV) {
+              console.warn("[usage] trackUsage failed; continuing in dev:", e)
+            } else {
+              setError(
+                e instanceof UsageError
+                  ? e.message
+                  : "Could not verify usage. Check your connection and try again.",
+              )
+              setAppState("landing")
+              return
+            }
+          }
+        }
+
         cacheRef.current = new TranslationCache()
         setSourcePages(pages)
         setArticlePageIndex(0)
@@ -145,13 +178,6 @@ export default function App() {
         await cacheRef.current.loadPage(0, pageSourceText(pages[0]!), apiKey, translatePageText)
         bump()
         setAppState("reading")
-
-        // Record server-side usage for signed-in users (guests use localStorage only).
-        if (user) {
-          trackUsage({ texts_submitted: 1 }).catch((e) => {
-            console.error("Failed to record usage:", e)
-          })
-        }
 
         // Increment guest counter after a successful submission
         if (!user) incrementGuestUses()

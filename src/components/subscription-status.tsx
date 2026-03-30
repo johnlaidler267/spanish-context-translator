@@ -23,7 +23,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { getTier, formatPrice, type TierId } from "@/lib/tiers"
 import type { UsageMetric, UsageCounters, UsageLimits, UsageTracker } from "@/lib/usage"
-import { METRIC_CONFIG, ALL_METRICS, getLimitStatus, fetchCurrentUsage } from "@/lib/usage"
+import {
+  METRIC_CONFIG,
+  ALL_METRICS,
+  getLimitStatus,
+  fetchCurrentUsage,
+  USAGE_UPDATED_EVENT,
+} from "@/lib/usage"
 import { openBillingPortal, CheckoutError } from "@/lib/checkout"
 import { reactivateSubscription, SubscriptionError } from "@/lib/subscription"
 import { supabase } from "@/lib/supabase"
@@ -398,6 +404,23 @@ function useSubscriptionData(tracker?: UsageTracker) {
   }, [tracker])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const onUsageUpdated = () => {
+      void load()
+    }
+    window.addEventListener(USAGE_UPDATED_EVENT, onUsageUpdated)
+    return () => window.removeEventListener(USAGE_UPDATED_EVENT, onUsageUpdated)
+  }, [load])
+
+  /* Refresh when tab becomes visible (cross-tab submits, return-to-settings). */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => document.removeEventListener("visibilitychange", onVisible)
+  }, [load])
 
   return { state, loading, error, reload: load }
 }

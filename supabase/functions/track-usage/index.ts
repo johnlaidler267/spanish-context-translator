@@ -37,6 +37,7 @@ import { getTierLimits, type TierId } from "../_shared/tiers.ts"
 import {
   METRIC_CONFIG,
   metricsToRpcParams,
+  normalizeUsageRpcRow,
   readCounter,
   type UsageMetric,
 } from "../_shared/usage-metrics.ts"
@@ -164,9 +165,17 @@ Deno.serve(async (req: Request) => {
   // For check-only requests we skip the RPC entirely.
 
   let usageRow: Record<string, unknown> | null = null
+  const hasIncrements = Object.keys(increments).length > 0
 
-  if (!checkOnly && sub && Object.keys(increments).length > 0) {
-    // ── Atomic increment via RPC ──────────────────────────────────────────
+  if (!checkOnly && hasIncrements) {
+    if (!sub) {
+      console.error("[track-usage] increment requested but no user_subscriptions row", user.id)
+      return err(
+        "Could not record usage: no subscription record for this account. Try signing out and back in.",
+        500,
+      )
+    }
+
     const rpcParams = metricsToRpcParams(increments)
 
     const { data: rpcRow, error: rpcError } = await db.rpc("increment_usage", {
@@ -183,15 +192,18 @@ Deno.serve(async (req: Request) => {
       return err("Failed to record usage", 500)
     }
 
-    usageRow = rpcRow as Record<string, unknown>
+    usageRow = normalizeUsageRpcRow(rpcRow)
+    if (!usageRow) {
+      console.error("[track-usage] increment_usage returned unexpected shape:", rpcRow)
+      return err("Failed to record usage", 500)
+    }
   } else {
-    // Check-only or no increments — just read current state
     if (sub) {
       const { data: readRow } = await db.rpc("get_current_usage", {
         p_subscription_id: sub.id,
         p_period_start:    period.start.toISOString(),
       })
-      usageRow = (readRow as Record<string, unknown> | null) ?? null
+      usageRow = normalizeUsageRpcRow(readRow)
     }
   }
 

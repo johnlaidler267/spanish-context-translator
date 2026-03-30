@@ -32,6 +32,7 @@ import {
 } from "./tiers.ts"
 import {
   METRIC_CONFIG,
+  normalizeUsageRpcRow,
   readCounter,
   type UsageMetric,
 } from "./usage-metrics.ts"
@@ -209,7 +210,7 @@ export async function enforceLimits(
       p_subscription_id: sub.subscriptionId,
       p_period_start:    sub.periodStart,
     })
-    usageRow = (data as Record<string, unknown> | null) ?? null
+    usageRow = normalizeUsageRpcRow(data)
   }
 
   // ── 3. Evaluate each metric ───────────────────────────────────────────────
