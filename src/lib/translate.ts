@@ -1,7 +1,7 @@
 import { jsonrepair } from "jsonrepair"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-const MODEL = "openai/gpt-oss-120b"
+const MODEL = "llama-3.3-70b-versatile"
 
 async function parseGroqJsonErrorBody(res: Response): Promise<string> {
   try {
@@ -40,7 +40,7 @@ Fixed idioms — meaning unguessable from parts:
 dar su brazo a torcer, visto bueno, los unos de los otros, en cambio, del mismo modo, se trata de, más adelante, por encima, de pronto, di cuenta
 
 Relative/subordinating connectors — splitting produces nonsense:
-en la que, los que, antes que, de que
+en la que, los que, antes que, de que, mientras que
 
 Compound nouns — two words naming one thing:
 redes sociales, estado natal, aspecto físico
@@ -51,8 +51,8 @@ lo maravilloso (lo + adj = nominalizer), así mismo (fixed adverb)
 Prepositional verb phrases — verb + preposition are inseparable:
 contar con, darse cuenta de, pensar en
 
-Clitic clusters — pronoun combinations that fuse meaning:
-se lo, me lo, te lo
+Clitic clusters — se la habían vendido → se la | habían | vendido | unos | piratas
+"se la" = to him, her — group co-occurring clitics as one chunk, verb stays separate
 
 ]
 
@@ -196,9 +196,9 @@ export function splitIntoSentences(items: ReconciledItem[]) {
 
 /**
  * Words per LLM request (Article pagination + Read-mode preloads both use this; Read UI is still sentence-by-sentence).
- * ~60 mobile / ~115 desktop — one article “screen” without scroll.
+ * ~68 mobile / ~115 desktop — tuned to keep mobile article pages on-screen.
  */
-export const PAGE_SIZE_WORDS_MOBILE = 60
+export const PAGE_SIZE_WORDS_MOBILE = 68
 export const PAGE_SIZE_WORDS_DESKTOP = 115
 
 export type PageSplitLimits = {
@@ -249,17 +249,96 @@ export function splitSourceIntoSentences(text: string): string[] {
 }
 
 /**
- * Group sentences into pages; each page is `string[]` (full sentences only).
+ * Break one long segment into smaller parts so no single unit can exceed page limits.
+ * This prevents mobile overflow when a Wikipedia intro contains one very long sentence.
+ */
+export function splitSegmentIntoPageParts(text: string, limits: PageSplitLimits): string[] {
+  const cleaned = text.replace(/\s+/g, " ").trim()
+  if (!cleaned) return []
+
+  const parts: string[] = []
+  let run = ""
+  let runWords = 0
+  let runChars = 0
+
+  // Prefer punctuation-aware chunks first; fallback to words if still too large.
+  const punctuationChunks = cleaned
+    .split(/(?<=[,;:])\s+/u)
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  const tokenStream =
+    punctuationChunks.length > 1
+      ? punctuationChunks
+      : cleaned.split(/\s+/u).filter(Boolean)
+
+  for (const token of tokenStream) {
+    const tokenWords = countWordsInSentence(token)
+    const tokenChars = token.length
+    const sep = run ? 1 : 0
+    const nextWords = runWords + tokenWords
+    const nextChars = runChars + sep + tokenChars
+
+    if (run && (nextWords > limits.maxWords || nextChars > limits.maxChars)) {
+      parts.push(run)
+      run = ""
+      runWords = 0
+      runChars = 0
+    }
+
+    if (!run && (tokenWords > limits.maxWords || tokenChars > limits.maxChars)) {
+      // Last-resort split by words.
+      const words = token.split(/\s+/u).filter(Boolean)
+      let wordRun = ""
+      let wordRunWords = 0
+      let wordRunChars = 0
+      for (const w of words) {
+        const wWords = countWordsInSentence(w)
+        const wChars = w.length
+        const wSep = wordRun ? 1 : 0
+        if (
+          wordRun &&
+          (wordRunWords + wWords > limits.maxWords || wordRunChars + wSep + wChars > limits.maxChars)
+        ) {
+          parts.push(wordRun)
+          wordRun = ""
+          wordRunWords = 0
+          wordRunChars = 0
+        }
+        wordRun += (wordRun ? " " : "") + w
+        wordRunWords += wWords
+        wordRunChars += wChars + (wordRunChars > 0 ? 1 : 0)
+      }
+      if (wordRun) parts.push(wordRun)
+      continue
+    }
+
+    run += (run ? " " : "") + token
+    runWords += tokenWords
+    runChars += tokenChars + (runChars > 0 ? 1 : 0)
+  }
+
+  if (run) parts.push(run)
+  return parts
+}
+
+/**
+ * Group source text into pages; sentences may be split into smaller pieces if needed.
  */
 export function buildSentencePages(sentences: string[], limits: PageSplitLimits): string[][] {
   if (sentences.length === 0) return []
   const { maxWords: PAGE_SIZE_WORDS, maxChars: PAGE_SIZE_CHARS } = limits
+  const pieces: string[] = []
+  for (const sent of sentences) {
+    pieces.push(...splitSegmentIntoPageParts(sent, limits))
+  }
+
   const pages: string[][] = []
   let cur: string[] = []
   let words = 0
   let chars = 0
 
-  for (const sent of sentences) {
+  for (const sent of pieces) {
     const w = countWordsInSentence(sent)
     const c = sent.length
     const sep = cur.length > 0 ? 1 : 0

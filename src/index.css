@@ -1030,6 +1030,21 @@ article span {
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
+
+.content-pill-spinner {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgba(201, 122, 90, 0.25);
+  border-top-color: #c97a5a;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.dark .content-pill-spinner {
+  border-color: rgba(220, 216, 208, 0.22);
+  border-top-color: rgba(232, 224, 210, 0.9);
+}
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -1112,6 +1127,19 @@ article span {
   letter-spacing: 2px;
   color: #8a5c4a;
   opacity: 1;
+}
+
+/* Desktop: tuck label just outside bottom-right of the composer card */
+@media (min-width: 768px) {
+  .word-counter--anchored {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 6px;
+    width: auto;
+    justify-content: flex-end;
+    pointer-events: none;
+  }
 }
 
 

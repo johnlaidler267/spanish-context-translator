@@ -49,6 +49,7 @@ export default function App() {
   const [landingDraft, setLandingDraft] = useState(() => getStoredLandingDraft())
 
   useEffect(() => {
+    if (typeof landingDraft !== "string") { setLandingDraft(""); return }
     setStoredLandingDraft(landingDraft)
   }, [landingDraft])
   const [viewMode, setViewMode] = useState<ViewMode>("article")
@@ -73,6 +74,7 @@ export default function App() {
    * Read mode still shows one grammatical sentence at a time; it does not change these splits.
    */
   const [sourcePages, setSourcePages] = useState<string[][]>([])
+  const [articleModeHeading, setArticleModeHeading] = useState<string | null>(null)
   const [articlePageIndex, setArticlePageIndex] = useState(0)
   const [readingSessionId, setReadingSessionId] = useState(0)
   const [renderTick, setRenderTick] = useState(0)
@@ -94,7 +96,7 @@ export default function App() {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY
 
   const handleTextSubmit = useCallback(
-    async (text: string) => {
+    async (text: string, options?: { wikipediaArticleTitle?: string }) => {
       if (!text.trim()) return
       if (!IS_LOCAL_DEV && isLapsed) return
 
@@ -109,6 +111,8 @@ export default function App() {
         return
       }
       const trimmed = text.trim()
+      const heading = options?.wikipediaArticleTitle?.trim() ?? ""
+      setArticleModeHeading(heading || null)
       setLandingDraft(trimmed)
       setError("")
       rateLimitModalSuppressedRef.current = false
@@ -122,7 +126,14 @@ export default function App() {
           typeof window !== "undefined" &&
           window.matchMedia("(max-width: 767px)").matches
         const pageLimits = resolvePageSplitLimits(isMobile)
-        let pages = buildSentencePages(sents, pageLimits)
+        const hasMobileHeading = isMobile && Boolean(heading)
+        const effectivePageLimits = hasMobileHeading
+          ? {
+              maxWords: Math.max(42, pageLimits.maxWords - 14),
+              maxChars: Math.round(pageLimits.maxChars * 0.84),
+            }
+          : pageLimits
+        let pages = buildSentencePages(sents, effectivePageLimits)
         if (pages.length === 0) pages = [[trimmed]]
 
         cacheRef.current = new TranslationCache()
@@ -152,6 +163,7 @@ export default function App() {
   const handleBack = useCallback(() => {
     setAppState("landing")
     setSourcePages([])
+    setArticleModeHeading(null)
     cacheRef.current = new TranslationCache()
     setArticlePageIndex(0)
     setError("")
@@ -267,7 +279,7 @@ export default function App() {
     <main className={`min-h-app bg-transparent ${viewportMain}`}>
       {appState === "loading" && <LoadingOverlay />}
       <LandingScreen
-        draftText={landingDraft}
+        draftText={typeof landingDraft === "string" ? landingDraft : ""}
         onDraftChange={setLandingDraft}
         onSubmit={handleTextSubmit}
         isLoading={appState === "loading"}
@@ -334,10 +346,13 @@ export default function App() {
     readingHome = (
       <main
         className={`min-h-app bg-background ${viewportMain}`}
-        style={readingTheme === "light" ? {
-          backgroundImage: "linear-gradient(rgba(255,252,247,0.5), rgba(255,252,247,0.5)), url(/paper-texture.png)",
-          backgroundSize: "auto, 600px auto",
-        } : undefined}
+        style={{
+          ...(readingTheme === "light" ? {
+            backgroundImage: "linear-gradient(rgba(255,252,247,0.5), rgba(255,252,247,0.5)), url(/paper-texture.png)",
+            backgroundSize: "auto, 600px auto",
+          } : {}),
+          maxHeight: "100dvh",
+        }}
       >
         <div className="shrink-0">
           <ReadingHeader
@@ -348,7 +363,7 @@ export default function App() {
             onThemeChange={setReadingTheme}
           />
         </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden animate-fade-in-up">
+        <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden animate-fade-in-up max-md:overflow-hidden md:overflow-y-auto">
           {viewMode === "article" && totalPages > 0 ? (
             <div className="flex w-full min-h-0 flex-1 flex-col">
               <ArticleContent
@@ -357,6 +372,7 @@ export default function App() {
                 errorMessage={articleErr ?? null}
                 onRetry={articleErr ? retryArticlePage : undefined}
                 pageKey={articlePageIndex}
+                articleHeading={articlePageIndex === 0 ? articleModeHeading : null}
                 pagination={
                   totalPages > 1
                     ? {
@@ -427,6 +443,7 @@ export default function App() {
                     : undefined
                 }
                 pageKey={0}
+                articleHeading={articleModeHeading}
                 pagination={null}
               />
             </div>

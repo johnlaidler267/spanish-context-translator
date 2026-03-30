@@ -3,16 +3,17 @@
 import { useState, useEffect, useRef, useCallback, type Dispatch, type SetStateAction } from "react"
 import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout-fix"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
-import { Dices } from "lucide-react"
 import { MainHeader } from "./main-header"
+import { LandingContentPills } from "./landing-content-pills"
 import { appendTranscriptToField, generateRandomSpanish } from "@/lib/translate"
+import { fetchRandomSpanishWikipediaIntro } from "@/lib/wikipedia-random"
 import { VoiceInputButton } from "./voice-input-button"
 import type { ReadingTheme } from "./theme-toggle"
 
 interface LandingScreenProps {
   draftText: string
   onDraftChange: Dispatch<SetStateAction<string>>
-  onSubmit: (text: string) => void
+  onSubmit: (text: string, options?: { wikipediaArticleTitle?: string }) => void
   isLoading: boolean
   theme: ReadingTheme
   onThemeChange: (theme: ReadingTheme) => void
@@ -41,6 +42,9 @@ export function LandingScreen({
   const landingColumnRef = useRef<HTMLDivElement>(null)
   useVirtualKeyboardLayoutFix(landingColumnRef)
   const [isRolling, setIsRolling] = useState(false)
+  const [isLearning, setIsLearning] = useState(false)
+  const [learnError, setLearnError] = useState<string | null>(null)
+  const learnArticleTitleRef = useRef<string | null>(null)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [placeholderVisible, setPlaceholderVisible] = useState(true)
   const [focused, setFocused] = useState(false)
@@ -65,21 +69,40 @@ export function LandingScreen({
 
   const apiKey = import.meta.env.VITE_GROQ_API_KEY
 
-  const handleDiceRoll = async () => {
+  const handleRandomPill = async () => {
     if (isRolling || !apiKey) return
+    setLearnError(null)
     setIsRolling(true)
     try {
       const paragraph = await generateRandomSpanish(apiKey)
+      learnArticleTitleRef.current = null
       setText(paragraph)
     } finally {
       setIsRolling(false)
     }
   }
 
+  const handleLearnPill = async () => {
+    if (isLearning || isLoading) return
+    setLearnError(null)
+    setIsLearning(true)
+    try {
+      const { title, intro } = await fetchRandomSpanishWikipediaIntro()
+      learnArticleTitleRef.current = title
+      setText(intro)
+    } catch (e) {
+      setLearnError(e instanceof Error ? e.message : "No se pudo cargar Wikipedia.")
+    } finally {
+      setIsLearning(false)
+    }
+  }
+
   const sampleText = `El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles. Ella pensaba en su abuela, quien siempre le contaba historias de este lugar mágico.`
 
   const handleSubmit = () => {
-    if (text.trim()) onSubmit(text.trim())
+    if (!text.trim()) return
+    const wiki = learnArticleTitleRef.current?.trim() ?? ""
+    onSubmit(text.trim(), wiki ? { wikipediaArticleTitle: wiki } : undefined)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -90,6 +113,7 @@ export function LandingScreen({
   }
 
   const handleTrySample = () => {
+    learnArticleTitleRef.current = null
     onSubmit(sampleText)
   }
 
@@ -113,7 +137,7 @@ export function LandingScreen({
     <div className="landing-route-shell landing-route-enter relative z-10 flex w-full flex-col min-h-app max-md:min-h-0 max-md:flex-1">
       <MainHeader theme={theme} onThemeChange={onThemeChange} showPlanBanner />
       <div
-        className="landing-page flex flex-col items-stretch md:items-center md:justify-center min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
+        className="landing-page flex flex-col items-stretch md:items-center md:justify-start md:pt-[clamp(3.5rem,10vh,6.5rem)] min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
         style={{ position: "relative" }}
       >
         <img
@@ -163,7 +187,18 @@ export function LandingScreen({
             className="filigree-divider order-1 md:order-2 mx-auto shrink-0"
             aria-hidden
           />
-          <div className="entry-2 order-2 md:order-1 flex flex-col gap-2 w-full">
+          <div className="entry-2 order-2 md:order-1 flex flex-col gap-3 w-full">
+            <LandingContentPills
+              className="order-1 md:order-2"
+              onRandom={handleRandomPill}
+              onLearn={handleLearnPill}
+              randomPending={isRolling}
+              learnPending={isLearning}
+              disabled={isLoading}
+              randomDisabled={!apiKey}
+              learnError={learnError}
+            />
+            <div className="order-2 md:order-1 flex flex-col gap-2 w-full relative md:pb-1">
             <div className="textarea-wrapper w-full">
               <span className="corner corner-tl" aria-hidden />
               <span className="corner corner-tr" aria-hidden />
@@ -173,7 +208,7 @@ export function LandingScreen({
                 <textarea
                   ref={textareaRef}
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => { learnArticleTitleRef.current = null; setText(e.target.value) }}
                   onKeyDown={handleKeyDown}
                   onFocus={() => setFocused(true)}
                   onBlur={() => {
@@ -190,20 +225,7 @@ export function LandingScreen({
                   </span>
                 )}
               </div>
-              <div className="textarea-toolbar" aria-label="Composer actions">
-                <button
-                  type="button"
-                  onClick={handleDiceRoll}
-                  disabled={isRolling}
-                  className="dice-btn"
-                  aria-label="Generate a random Spanish paragraph"
-                >
-                  {isRolling ? (
-                    <span className="dice-spinner" />
-                  ) : (
-                    <Dices className="dice-icon" />
-                  )}
-                </button>
+              <div className="textarea-toolbar max-md:justify-end md:justify-start" aria-label="Composer actions">
                 <div className="textarea-toolbar-right">
                   <button
                     type="button"
@@ -224,11 +246,13 @@ export function LandingScreen({
                 </div>
               </div>
             </div>
-            <div className="hidden md:flex w-full items-center justify-end">
-              <p className="word-counter select-none min-w-0" aria-live="polite">
-                <span className="word-counter-label">words</span>
-                <span className="word-counter-value">{text.trim() ? text.trim().split(/\s+/).length.toString().padStart(2, "0") : "00"}</span>
-              </p>
+            <p
+              className="word-counter word-counter--anchored hidden md:flex select-none min-w-0"
+              aria-live="polite"
+            >
+              <span className="word-counter-label">words</span>
+              <span className="word-counter-value">{text.trim() ? text.trim().split(/\s+/).length.toString().padStart(2, "0") : "00"}</span>
+            </p>
             </div>
           </div>
         </div>

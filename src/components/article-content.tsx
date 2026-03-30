@@ -25,13 +25,13 @@ export type ArticlePaginationState = {
 
 interface ArticleContentProps {
   items: ReconciledItem[] | null
-  /** Initial load for current page */
   loading?: boolean
   errorMessage?: string | null
   onRetry?: () => void
   pagination?: ArticlePaginationState | null
-  /** Bumps chunk popup state when switching pages */
   pageKey?: number
+  /** Wikipedia article title — shown bold above body on page 1 only */
+  articleHeading?: string | null
 }
 
 export function ArticleContent({
@@ -41,6 +41,7 @@ export function ArticleContent({
   onRetry,
   pagination = null,
   pageKey = 0,
+  articleHeading = null,
 }: ArticleContentProps) {
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
@@ -87,10 +88,14 @@ export function ArticleContent({
   return (
     <div
       className={cn(
-        "w-full mx-auto px-6 md:px-8 md:pt-24 max-md:pt-[calc(env(safe-area-inset-top,0px)+var(--reading-content-top))] pb-10 md:pb-16",
-        "flex w-full flex-1 flex-col min-h-0",
-        /* Stretch column to viewport under header (mobile + desktop) */
-        "max-md:min-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom,0px))]",
+        "w-full mx-auto px-6 md:px-8 md:pt-24 pb-10 md:pb-16",
+        pagination && pagination.pageCount > 1
+          ? "max-md:pb-[max(5.5rem,env(safe-area-inset-bottom,0px)+4.5rem)]"
+          : "max-md:pb-[max(2.5rem,env(safe-area-inset-bottom,0px)+1.5rem)]",
+        articleHeading
+          ? "max-md:pt-[calc(env(safe-area-inset-top,0px)+5rem)]"
+          : "max-md:pt-[calc(env(safe-area-inset-top,0px)+var(--reading-content-top))]",
+        "flex w-full flex-1 flex-col min-h-0 max-md:overflow-hidden",
         "md:min-h-[calc(100dvh-7.25rem)]",
       )}
       style={{
@@ -98,11 +103,16 @@ export function ArticleContent({
         ["--reading-content-top" as string]: `${READING_CONTENT_TOP_MOBILE_REM}rem`,
       }}
     >
+      {articleHeading ? (
+        <h1 className="mb-4 shrink-0 font-sans text-xl font-bold leading-snug tracking-tight text-foreground md:mb-6 md:text-2xl">
+          {articleHeading}
+        </h1>
+      ) : null}
       <article
         ref={touchSurfaceRef}
         className={cn(
           "font-serif text-xl md:text-2xl leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
-          "min-h-0 flex-1 md:mb-8",
+          "min-h-0 flex-1 md:mb-8 max-md:overflow-hidden",
           touchExploring && "touch-none select-none",
         )}
       >
@@ -163,7 +173,15 @@ export function ArticleContent({
       </article>
 
       {pagination && pagination.pageCount > 1 && (
-        <footer className="mt-auto flex shrink-0 items-center justify-between gap-4 border-t border-border/60 max-md:border-t-0 pt-8">
+        <footer className={cn(
+          "flex items-center justify-between gap-4",
+          // Desktop: in-flow, pushed to bottom by mt-auto
+          "mt-auto shrink-0 border-t border-border/60 pt-8",
+          // Mobile: fixed to screen bottom, always visible
+          "max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:z-30",
+          "max-md:mt-0 max-md:border-t max-md:border-border/40 max-md:bg-background",
+          "max-md:px-8 max-md:pt-3 max-md:pb-[max(1.25rem,env(safe-area-inset-bottom,0px)+0.5rem)]",
+        )}>
           <Button
             type="button"
             variant="ghost"
