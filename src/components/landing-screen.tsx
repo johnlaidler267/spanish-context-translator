@@ -161,11 +161,11 @@ export function LandingScreen({
           }}
         />
       <div
-        className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto max-md:overflow-x-hidden md:flex-none md:justify-start gap-4 md:gap-6 max-md:pt-[max(7.5rem,calc(env(safe-area-inset-top,0px)+5.75rem))] md:pt-0"
+        className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 max-md:flex-1 max-md:min-h-0 max-md:overflow-hidden max-md:overflow-x-hidden md:flex-none md:justify-start gap-4 md:gap-6 max-md:pt-[max(7.5rem,calc(env(safe-area-inset-top,0px)+5.75rem))] md:pt-0"
         style={{ position: "relative", zIndex: 2 }}
       >
         {/* Hero — mobile: fills space above composer; desktop: top */}
-        <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center items-center min-h-0 md:flex-none md:block md:pb-8 pt-2 md:pt-0 pb-2 md:pb-8">
+        <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block md:pb-8 pt-2 md:pt-0 pb-2 md:pb-8">
           <img
             src="/landing-hero-books.png"
             alt=""
@@ -180,7 +180,7 @@ export function LandingScreen({
         </div>
 
         {/* Filigree sits directly above the textbox (mobile); desktop: below textarea, above sample (flex order inside group) */}
-        <div className="order-2 md:order-2 flex flex-col gap-2 w-full shrink-0 mt-auto md:mt-0 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))] md:pb-0">
+        <div className="order-2 md:order-2 flex flex-col gap-2 w-full shrink-0 md:mt-0 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))] md:pb-0">
           <img
             src="/filigree-divider.svg"
             alt=""
@@ -247,7 +247,7 @@ export function LandingScreen({
               </div>
             </div>
             <p
-              className="word-counter word-counter--anchored hidden md:flex select-none min-w-0"
+              className="word-counter word-counter--anchored max-md:hidden md:flex select-none min-w-0"
               aria-live="polite"
             >
               <span className="word-counter-label">words</span>
