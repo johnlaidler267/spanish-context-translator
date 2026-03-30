@@ -34,6 +34,7 @@ import { RateLimitModal } from "./components/rate-limit-modal"
 import { isRateLimitApiMessage } from "./lib/api-errors"
 import { useAuth } from "./contexts/auth-context"
 import { hasReachedGuestLimit, incrementGuestUses } from "./lib/guest-usage"
+import { trackUsage } from "./lib/usage"
 
 type AppState = "landing" | "loading" | "reading"
 
@@ -100,8 +101,8 @@ export default function App() {
       if (!text.trim()) return
       if (!IS_LOCAL_DEV && isLapsed) return
 
-      // Gate unauthenticated users after GUEST_LIMIT free uses
-      if (!IS_LOCAL_DEV && !user && hasReachedGuestLimit()) {
+      // Gate unauthenticated users after GUEST_LIMIT free uses (dev: auth modal has a bypass)
+      if (!user && hasReachedGuestLimit()) {
         openAuthModal("limit")
         return
       }
@@ -144,6 +145,13 @@ export default function App() {
         await cacheRef.current.loadPage(0, pageSourceText(pages[0]!), apiKey, translatePageText)
         bump()
         setAppState("reading")
+
+        // Record server-side usage for signed-in users (guests use localStorage only).
+        if (user) {
+          trackUsage({ texts_submitted: 1 }).catch((e) => {
+            console.error("Failed to record usage:", e)
+          })
+        }
 
         // Increment guest counter after a successful submission
         if (!user) incrementGuestUses()
@@ -248,6 +256,29 @@ export default function App() {
     rateLimitModalSuppressedRef.current = true
   }, [])
 
+  /** Dev: dismiss rate-limit modal, clear throttled page errors, and retry loads. */
+  const devBypassRateLimit = useCallback(() => {
+    setRateLimitMessage(null)
+    rateLimitModalSuppressedRef.current = true
+    setError("")
+    const c = cacheRef.current
+    const key = apiKey
+    const pages = sourcePages
+    if (key && pages.length > 0) {
+      for (let i = 0; i < pages.length; i++) {
+        const e = c.getError(i)
+        if (e && isRateLimitApiMessage(e)) {
+          c.clearPage(i)
+          void c
+            .loadPage(i, pageSourceText(pages[i]!), key, translatePageText)
+            .then(bump)
+            .catch(bump)
+        }
+      }
+    }
+    bump()
+  }, [apiKey, sourcePages, bump])
+
   const viewportMain =
     "min-h-app flex flex-col max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden overflow-hidden"
 
@@ -286,9 +317,6 @@ export default function App() {
         theme={appTheme}
         onThemeChange={setReadingTheme}
       />
-      {rateLimitMessage && (
-        <RateLimitModal message={rateLimitMessage} onDismiss={dismissRateLimitModal} />
-      )}
       {error && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-3 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg text-sm max-w-md">
           ⚠️ {error}
@@ -457,10 +485,19 @@ export default function App() {
     appState === "landing" || appState === "loading" ? landingHome : readingHome ?? landingHome
 
   return (
-    <Routes>
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/" element={indexElement} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/" element={indexElement} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      {rateLimitMessage && (
+        <RateLimitModal
+          message={rateLimitMessage}
+          onDismiss={dismissRateLimitModal}
+          devBypass={IS_LOCAL_DEV ? devBypassRateLimit : undefined}
+        />
+      )}
+    </>
   )
 }

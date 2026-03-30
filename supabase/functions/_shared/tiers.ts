@@ -1,10 +1,8 @@
 /**
  * Server-side tier/price ID registry — Deno-compatible, no frontend imports.
  *
- * KEEP IN SYNC with src/lib/tiers.ts.
- * When you update price IDs or add tiers there, mirror the change here.
- * This file is the server's authoritative allowlist: any price ID not in
- * PRICE_ENTRIES will be rejected by the edge function.
+ * Price IDs must match `src/lib/tiers.ts` (same Stripe Price IDs).
+ * Set secrets in Supabase → Edge Functions → Secrets; they override placeholders.
  */
 
 export type TierId = "free" | "pro" | "unlimited"
@@ -17,31 +15,65 @@ export interface PriceEntry {
   label: string
 }
 
+/** Trim, strip BOM, strip wrapping quotes (common Dashboard paste mistakes). */
+export function normalizeStripePriceId(raw: string): string {
+  let v = raw.trim()
+  if (v.charCodeAt(0) === 0xfeff) v = v.slice(1).trim()
+  for (;;) {
+    const q =
+      (v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))
+    if (!q) break
+    v = v.slice(1, -1).trim()
+  }
+  return v
+}
+
+function stripePriceFromEnv(value: string | undefined, placeholder: string): string {
+  if (value == null || !value.trim()) return placeholder
+  const v = normalizeStripePriceId(value)
+  if (v.startsWith("price_")) return v
+  return placeholder
+}
+
 /**
- * Allowlist of every valid Stripe Price ID this backend will accept.
- * Free tier has no Stripe price — free downgrades are handled differently.
+ * Build allowlist from Deno.env on every call so new Edge secrets apply without
+ * waiting for a cold isolate that cached an old module graph.
  */
-const PRICE_ENTRIES: Record<string, PriceEntry> = {
-  price_REPLACE_PRO_MONTHLY: {
-    tierId: "pro",
-    interval: "monthly",
-    label: "Pro – Monthly",
-  },
-  price_REPLACE_PRO_ANNUAL: {
-    tierId: "pro",
-    interval: "annual",
-    label: "Pro – Annual",
-  },
-  price_REPLACE_UNLIMITED_MONTHLY: {
-    tierId: "unlimited",
-    interval: "monthly",
-    label: "Unlimited – Monthly",
-  },
-  price_REPLACE_UNLIMITED_ANNUAL: {
-    tierId: "unlimited",
-    interval: "annual",
-    label: "Unlimited – Annual",
-  },
+function buildPriceEntries(): Record<string, PriceEntry> {
+  const P = {
+    proMonthly: stripePriceFromEnv(Deno.env.get("STRIPE_PRICE_PRO_MONTHLY"), "price_REPLACE_PRO_MONTHLY"),
+    proAnnual: stripePriceFromEnv(Deno.env.get("STRIPE_PRICE_PRO_ANNUAL"), "price_REPLACE_PRO_ANNUAL"),
+    unlimitedMonthly: stripePriceFromEnv(
+      Deno.env.get("STRIPE_PRICE_UNLIMITED_MONTHLY"),
+      "price_REPLACE_UNLIMITED_MONTHLY",
+    ),
+    unlimitedAnnual: stripePriceFromEnv(
+      Deno.env.get("STRIPE_PRICE_UNLIMITED_ANNUAL"),
+      "price_REPLACE_UNLIMITED_ANNUAL",
+    ),
+  }
+  return {
+    [P.proMonthly]: {
+      tierId: "pro",
+      interval: "monthly",
+      label: "Pro – Monthly",
+    },
+    [P.proAnnual]: {
+      tierId: "pro",
+      interval: "annual",
+      label: "Pro – Annual",
+    },
+    [P.unlimitedMonthly]: {
+      tierId: "unlimited",
+      interval: "monthly",
+      label: "Unlimited – Monthly",
+    },
+    [P.unlimitedAnnual]: {
+      tierId: "unlimited",
+      interval: "annual",
+      label: "Unlimited – Annual",
+    },
+  }
 }
 
 /**
@@ -49,11 +81,14 @@ const PRICE_ENTRIES: Record<string, PriceEntry> = {
  * Returns null if the ID is unknown — caller should respond 400.
  */
 export function resolvePriceId(priceId: string): PriceEntry | null {
-  return PRICE_ENTRIES[priceId] ?? null
+  const id = normalizeStripePriceId(priceId)
+  return buildPriceEntries()[id] ?? null
 }
 
-/** All valid price IDs as a flat array (useful for Stripe webhook validation). */
-export const ALL_PRICE_IDS: string[] = Object.keys(PRICE_ENTRIES)
+/** Current allowlist keys (from env); call at runtime, not module load. */
+export function getAllPriceIds(): string[] {
+  return Object.keys(buildPriceEntries())
+}
 
 // ─── Tier limits (mirrors src/lib/tiers.ts TierLimits) ───────────────────────
 // null = unlimited (no cap). Keep in sync with the frontend config.

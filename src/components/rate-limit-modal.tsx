@@ -8,9 +8,14 @@ import { Button } from "@/components/ui/button"
 interface RateLimitModalProps {
   message: string
   onDismiss: () => void
+  /**
+   * Dev-only: extra action to dismiss, clear throttled state, and keep working locally.
+   * When omitted, only the normal dismiss controls are shown.
+   */
+  devBypass?: () => void
 }
 
-export function RateLimitModal({ message, onDismiss }: RateLimitModalProps) {
+export function RateLimitModal({ message, onDismiss, devBypass }: RateLimitModalProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -55,9 +60,21 @@ export function RateLimitModal({ message, onDismiss }: RateLimitModalProps) {
           keeps happening.
         </p>
 
-        <Button className="mt-6 w-full" onClick={onDismiss}>
-          OK
-        </Button>
+        <div className="mt-6 flex flex-col gap-2">
+          <Button className="w-full" onClick={onDismiss}>
+            OK
+          </Button>
+          {devBypass && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-amber-500/50 text-amber-700 dark:text-amber-400"
+              onClick={devBypass}
+            >
+              Ignore limit & continue (dev only)
+            </Button>
+          )}
+        </div>
 
         <button
           type="button"

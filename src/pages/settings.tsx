@@ -16,6 +16,7 @@ type SettingsTab = (typeof TABS)[number]
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("General")
+  const [billingKey, setBillingKey] = useState(0)
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [signingOut, setSigningOut] = useState(false)
   const { user, signOut, openAuthModal } = useAuth()
@@ -60,7 +61,7 @@ export default function SettingsPage() {
                   <li key={tab} className="w-full">
                     <button
                       type="button"
-                      onClick={() => setActiveTab(tab)}
+                      onClick={() => { setActiveTab(tab); if (tab === "Billing") setBillingKey(k => k + 1) }}
                       className={`settings-nav-item w-full text-left px-4 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 ease-in-out ${
                         activeTab === tab
                           ? "settings-nav-item--active text-foreground"
@@ -154,7 +155,7 @@ export default function SettingsPage() {
                   <h2 id="settings-billing-heading" className="text-lg font-medium text-foreground mb-6">
                     Billing
                   </h2>
-                  <SubscriptionStatus />
+                  <SubscriptionStatus key={billingKey} />
                 </section>
               )}
             </div>

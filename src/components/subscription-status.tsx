@@ -259,8 +259,8 @@ function UsageBar({ metric, counters, limits, labelSuffix = "" }: UsageBarProps)
       : "bg-muted/60"
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm font-sans">
+    <div className="space-y-0.5">
+      <div className="flex items-center justify-between text-sm font-sans leading-tight">
         <span
           className={cn(
             "flex items-center gap-1.5",
@@ -280,7 +280,7 @@ function UsageBar({ metric, counters, limits, labelSuffix = "" }: UsageBarProps)
       </div>
 
       {/* Track */}
-      <div className={cn("h-1.5 w-full rounded-full overflow-hidden", trackColor)}>
+      <div className={cn("h-1 w-full rounded-full overflow-hidden", trackColor)}>
         <div
           className={cn("h-full rounded-full transition-all duration-500", barColor)}
           style={{ width: `${pct}%` }}
@@ -566,8 +566,8 @@ export function SubscriptionStatus({
         </div>
       )}
 
-      {/* ── Usage bars (monthly metrics) ────────────────────────────────── */}
-      <div className="px-5 py-4 space-y-4">
+      {/* ── Usage bars (monthly metrics) — layout matches "Per-submission limits" below ─ */}
+      <div className="px-5 py-4">
         <p className="text-xs font-medium font-sans text-muted-foreground uppercase tracking-wide mb-3">
           Usage this period
           {state.period && (
@@ -577,40 +577,39 @@ export function SubscriptionStatus({
           )}
         </p>
 
-        {MONTHLY_BAR_METRICS.map(metric => (
-          <UsageBar key={metric} metric={metric} counters={counters} limits={limits} />
-        ))}
+        <div className="space-y-2">
+          {MONTHLY_BAR_METRICS.map(metric => (
+            <UsageBar key={metric} metric={metric} counters={counters} limits={limits} />
+          ))}
 
-        {/* Daily-rate bars — only shown when the tier has a daily cap */}
-        {DAILY_BAR_METRICS.filter(m => limits[m] !== null).map(metric => (
-          <UsageBar
-            key={metric}
-            metric={metric}
-            counters={counters}
-            limits={limits}
-            labelSuffix=" today"
-          />
-        ))}
+          {DAILY_BAR_METRICS.filter(m => limits[m] !== null).map(metric => (
+            <UsageBar
+              key={metric}
+              metric={metric}
+              counters={counters}
+              limits={limits}
+            />
+          ))}
 
-        {/* Informational stats (no hard cap per month, just show totals) */}
-        {!compact && (
-          <div className="pt-1 space-y-2">
-            {[
-              { metric: "chars_processed" as UsageMetric, label: "Chars processed" },
-              { metric: "pages_processed" as UsageMetric, label: "Pages processed" },
-              { metric: "voice_requests"  as UsageMetric, label: "Voice requests" },
-            ]
-              .filter(({ metric }) => counters[metric] > 0)
-              .map(({ metric, label }) => (
-                <div key={metric} className="flex items-center justify-between text-xs font-sans text-muted-foreground">
-                  <span>{label}</span>
-                  <span className="tabular-nums text-foreground/70">
-                    {counters[metric].toLocaleString()}
-                  </span>
-                </div>
-              ))}
-          </div>
-        )}
+          {!compact && (
+            <>
+              {[
+                { metric: "chars_processed" as UsageMetric, label: "Chars processed" },
+                { metric: "pages_processed" as UsageMetric, label: "Pages processed" },
+                { metric: "voice_requests"  as UsageMetric, label: "Voice requests" },
+              ]
+                .filter(({ metric }) => counters[metric] > 0)
+                .map(({ metric, label }) => (
+                  <div key={metric} className="flex items-center justify-between text-xs font-sans text-muted-foreground">
+                    <span>{label}</span>
+                    <span className="tabular-nums text-foreground/70">
+                      {counters[metric].toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Per-request limits (plan facts) ─────────────────────────────── */}

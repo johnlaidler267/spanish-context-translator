@@ -1,0 +1,29 @@
+# Edge Function settings applied when you deploy with the Supabase CLI.
+# https://supabase.com/docs/guides/functions/function-configuration
+#
+# Gateway JWT verification can return "Invalid JWT" even when the token is fine
+# (e.g. clock skew, auth flow edge cases). These handlers still validate the user
+# inside the function via supabase.auth.getUser() with the Authorization header.
+
+[functions.create-checkout-session]
+verify_jwt = false
+
+[functions.create-portal-session]
+verify_jwt = false
+
+[functions.confirm-checkout-session]
+verify_jwt = false
+
+# Stripe calls this URL — no user JWT.
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.track-usage]
+verify_jwt = false
+
+[functions.manage-subscription]
+verify_jwt = false
+
+# Guest-friendly; optional auth inside.
+[functions.chunk-details]
+verify_jwt = false

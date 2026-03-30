@@ -58,7 +58,7 @@ import {
   corsHeaders,
   handleCorsPreflightRequest,
 } from "../_shared/cors.ts"
-import { resolvePriceId, ALL_PRICE_IDS } from "../_shared/tiers.ts"
+import { getAllPriceIds, resolvePriceId } from "../_shared/tiers.ts"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -272,7 +272,7 @@ Deno.serve(async (req: Request) => {
     if (!targetEntry) {
       return err(
         `Unknown price ID: "${targetPriceId}". ` +
-        `Valid IDs: ${ALL_PRICE_IDS.join(", ")}`,
+        `Valid IDs: ${getAllPriceIds().join(", ")}`,
         "invalid_price",
       )
     }
