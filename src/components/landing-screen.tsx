@@ -258,7 +258,7 @@ export function LandingScreen({
         </div>
 
         {/* Sample excerpt — desktop/tablet only */}
-        <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-3 hidden md:block">
+        <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:-mt-4 hidden md:block">
           <p className="sample-excerpt-label">Sample text</p>
           <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
             <p className="sample-paragraph font-serif text-[15px] overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
