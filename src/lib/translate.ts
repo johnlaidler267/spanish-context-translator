@@ -1,7 +1,7 @@
 import { jsonrepair } from "jsonrepair"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-const MODEL = "llama-3.3-70b-versatile"
+const MODEL = "openai/gpt-oss-120b"
 
 async function parseGroqJsonErrorBody(res: Response): Promise<string> {
   try {
@@ -37,7 +37,7 @@ DEFAULT: Usually, words should be seperated individually, or in the smallest log
 Here are examples of specific groups of words it makes sense to chunk:
 
 Fixed idioms — meaning unguessable from parts:
-dar su brazo a torcer, visto bueno, los unos de los otros, en cambio, del mismo modo, se trata de, más adelante, por encima, de pronto, di cuenta
+dar su brazo a torcer, visto bueno, los unos de los otros, en cambio, del mismo modo, de este modo, se trata de, más adelante, por encima, de pronto, di cuenta, a fines de
 
 Relative/subordinating connectors — splitting produces nonsense:
 en la que, los que, antes que, de que, mientras que
@@ -49,7 +49,10 @@ Special grammar constructions — pattern must be read as a unit:
 lo maravilloso (lo + adj = nominalizer), así mismo (fixed adverb)
 
 Prepositional verb phrases — verb + preposition are inseparable:
-contar con, darse cuenta de, pensar en
+contar con, darse cuenta de, pensar en, cuenta con 
+
+Proper nouns — always one chunk, never split:
+Héctor Bonilla, Ciudad de México, Estados Unidos
 
 Clitic clusters — se la habían vendido → se la | habían | vendido | unos | piratas
 "se la" = to him, her — group co-occurring clitics as one chunk, verb stays separate
