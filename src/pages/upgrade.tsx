@@ -573,8 +573,8 @@ export default function UpgradePage() {
         <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
       </div>
 
-      <main className="relative z-[1] overflow-x-hidden pb-16 px-4 md:px-6">
-        <div className="max-w-4xl mx-auto overflow-x-hidden">
+      <main className="relative z-[1] pb-16 px-4 md:px-6 [overflow-x:clip]">
+        <div className="max-w-4xl mx-auto [overflow-x:clip]">
 
           <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -626,7 +626,7 @@ export default function UpgradePage() {
               <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-3 md:items-start">
               {TIER_IDS.map((id) => {
                 const tier        = getTier(id)
                 const isCurrent   = sub?.planId === id
