@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
@@ -13,9 +14,22 @@ interface RateLimitModalProps {
    * When omitted, only the normal dismiss controls are shown.
    */
   devBypass?: () => void
+  /** Defaults to "Rate limit reached". Use "Plan limit reached" for subscription caps. */
+  title?: string
+  /** When false, hides the LLM provider / retry hint (plan limits). Default true. */
+  showProviderHint?: boolean
+  /** Extra content below the message (e.g. upgrade links). */
+  extraFooter?: ReactNode
 }
 
-export function RateLimitModal({ message, onDismiss, devBypass }: RateLimitModalProps) {
+export function RateLimitModal({
+  message,
+  onDismiss,
+  devBypass,
+  title = "Rate limit reached",
+  showProviderHint = true,
+  extraFooter,
+}: RateLimitModalProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -47,7 +61,7 @@ export function RateLimitModal({ message, onDismiss, devBypass }: RateLimitModal
           id="rate-limit-title"
           className="font-serif text-2xl font-medium text-foreground pr-8"
         >
-          Rate limit reached
+          {title}
         </h2>
         <p
           id="rate-limit-desc"
@@ -55,10 +69,13 @@ export function RateLimitModal({ message, onDismiss, devBypass }: RateLimitModal
         >
           {message}
         </p>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Wait a bit and try again, or switch to a different model in your provider settings if this
-          keeps happening.
-        </p>
+        {showProviderHint && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Wait a bit and try again, or switch to a different model in your provider settings if this
+            keeps happening.
+          </p>
+        )}
+        {extraFooter}
 
         <div className="mt-6 flex flex-col gap-2">
           <Button className="w-full" onClick={onDismiss}>

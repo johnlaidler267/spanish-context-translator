@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { ArrowLeft, LogOut, User, Mail } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
 import { MainHeader } from "@/components/main-header"
@@ -14,9 +14,27 @@ import { useAuth } from "@/contexts/auth-context"
 const TABS = ["General", "Account", "Billing"] as const
 type SettingsTab = (typeof TABS)[number]
 
+const TAB_FROM_PARAM: Record<string, SettingsTab> = {
+  general: "General",
+  account: "Account",
+  billing: "Billing",
+}
+
+function tabFromSearchParam(raw: string | null): SettingsTab {
+  if (!raw) return "General"
+  return TAB_FROM_PARAM[raw.toLowerCase()] ?? "General"
+}
+
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("General")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = tabFromSearchParam(searchParams.get("tab"))
   const [billingKey, setBillingKey] = useState(0)
+
+  const goTab = (tab: SettingsTab) => {
+    if (tab === "Billing") setBillingKey((k) => k + 1)
+    if (tab === "General") setSearchParams({}, { replace: true })
+    else setSearchParams({ tab: tab.toLowerCase() }, { replace: true })
+  }
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [signingOut, setSigningOut] = useState(false)
   const { user, signOut, openAuthModal } = useAuth()
@@ -61,7 +79,7 @@ export default function SettingsPage() {
                   <li key={tab} className="w-full">
                     <button
                       type="button"
-                      onClick={() => { setActiveTab(tab); if (tab === "Billing") setBillingKey(k => k + 1) }}
+                      onClick={() => goTab(tab)}
                       className={`settings-nav-item w-full text-left px-4 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 ease-in-out ${
                         activeTab === tab
                           ? "settings-nav-item--active text-foreground"

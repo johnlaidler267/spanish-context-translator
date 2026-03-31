@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
-import { Navigate, Route, Routes } from "react-router-dom"
+import { Link, Navigate, Route, Routes } from "react-router-dom"
 import SettingsPage from "@/pages/settings"
 import { LandingScreen } from "./components/landing-screen"
 import { LoadingOverlay } from "./components/loading-overlay"
@@ -34,12 +34,21 @@ import { RateLimitModal } from "./components/rate-limit-modal"
 import { isRateLimitApiMessage } from "./lib/api-errors"
 import { useAuth } from "./contexts/auth-context"
 import { hasReachedGuestLimit, incrementGuestUses } from "./lib/guest-usage"
-import { METRIC_CONFIG, broadcastUsageUpdated, trackUsage, UsageError } from "./lib/usage"
+import { checkLimits } from "./lib/enforce"
+import {
+  METRIC_CONFIG,
+  broadcastUsageUpdated,
+  fetchCurrentUsage,
+  trackUsage,
+  UsageError,
+} from "./lib/usage"
 
 type AppState = "landing" | "loading" | "reading"
 
-// Disable all usage limits when running on localhost so dev is uninterrupted.
+// In dev, skip usage blocking unless VITE_ENFORCE_USAGE_IN_DEV=true (test modals / limits locally).
 const IS_LOCAL_DEV = import.meta.env.DEV
+const ENFORCE_USAGE_LIMITS =
+  !IS_LOCAL_DEV || import.meta.env.VITE_ENFORCE_USAGE_IN_DEV === "true"
 
 export default function App() {
   const { isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
@@ -82,6 +91,7 @@ export default function App() {
   const bump = useCallback(() => setRenderTick((t) => t + 1), [])
   const [error, setError] = useState("")
   const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null)
+  const [planLimitMessage, setPlanLimitMessage] = useState<string | null>(null)
   /** After closing the rate-limit modal, don’t reopen until retry/new submit or the error clears. */
   const rateLimitModalSuppressedRef = useRef(false)
   /** Narrow viewport: shorter read-mode steps (LLM page size unchanged). */
@@ -118,6 +128,7 @@ export default function App() {
       setError("")
       rateLimitModalSuppressedRef.current = false
       setRateLimitMessage(null)
+      setPlanLimitMessage(null)
       setAppState("loading")
 
       try {
@@ -139,24 +150,56 @@ export default function App() {
 
         if (user) {
           try {
+            if (ENFORCE_USAGE_LIMITS) {
+              try {
+                const preflight = await fetchCurrentUsage()
+                // Mirror server: each text submit bumps monthly texts and the daily counter.
+                // checkLimits only inspects keys present in the increments object — include daily explicitly.
+                const guard = checkLimits(preflight.counters, preflight.limits, {
+                  texts_submitted: 1,
+                  texts_submitted_today: 1,
+                })
+                if (!guard.allowed) {
+                  const names = guard.blocked
+                    .map((s) => METRIC_CONFIG[s.metric]?.label ?? s.metric)
+                    .join(", ")
+                  setPlanLimitMessage(
+                    names
+                      ? `You've reached your plan limit for: ${names}.`
+                      : "You've reached a plan limit.",
+                  )
+                  setAppState("landing")
+                  return
+                }
+              } catch (preflightErr) {
+                setError(
+                  preflightErr instanceof UsageError
+                    ? preflightErr.message
+                    : "Could not verify usage. Check your connection and try again.",
+                )
+                setAppState("landing")
+                return
+              }
+            }
+
             const usage = await trackUsage({
               texts_submitted: 1,
               chars_processed: trimmed.length,
               pages_processed: pages.length,
             })
-            if (!usage.allowed && !IS_LOCAL_DEV) {
+            if (!usage.allowed && ENFORCE_USAGE_LIMITS) {
               const names = usage.exceeded.map((m) => METRIC_CONFIG[m]?.label ?? m).join(", ")
-              setError(
+              setPlanLimitMessage(
                 names
-                  ? `Plan limit reached for: ${names}. Upgrade under Settings -> Billing.`
-                  : "Plan limit reached. Upgrade under Settings -> Billing.",
+                  ? `You've reached your plan limit for: ${names}.`
+                  : "You've reached a plan limit.",
               )
               setAppState("landing")
               return
             }
             broadcastUsageUpdated()
           } catch (e) {
-            if (IS_LOCAL_DEV) {
+            if (IS_LOCAL_DEV && !ENFORCE_USAGE_LIMITS) {
               console.warn("[usage] trackUsage failed; continuing in dev:", e)
             } else {
               setError(
@@ -202,6 +245,7 @@ export default function App() {
     setArticlePageIndex(0)
     setError("")
     setRateLimitMessage(null)
+    setPlanLimitMessage(null)
     rateLimitModalSuppressedRef.current = false
     setViewMode("article")
     bump()
@@ -280,6 +324,10 @@ export default function App() {
   const dismissRateLimitModal = useCallback(() => {
     setRateLimitMessage(null)
     rateLimitModalSuppressedRef.current = true
+  }, [])
+
+  const dismissPlanLimitModal = useCallback(() => {
+    setPlanLimitMessage(null)
   }, [])
 
   /** Dev: dismiss rate-limit modal, clear throttled page errors, and retry loads. */
@@ -517,11 +565,46 @@ export default function App() {
         <Route path="/" element={indexElement} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {rateLimitMessage && (
+      {(rateLimitMessage || planLimitMessage) && (
         <RateLimitModal
-          message={rateLimitMessage}
-          onDismiss={dismissRateLimitModal}
-          devBypass={IS_LOCAL_DEV ? devBypassRateLimit : undefined}
+          message={rateLimitMessage ?? planLimitMessage!}
+          onDismiss={
+            rateLimitMessage
+              ? dismissRateLimitModal
+              : dismissPlanLimitModal
+          }
+          title={
+            planLimitMessage && !rateLimitMessage
+              ? "Plan limit reached"
+              : undefined
+          }
+          showProviderHint={!planLimitMessage || !!rateLimitMessage}
+          extraFooter={
+            planLimitMessage && !rateLimitMessage && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                <Link
+                  to="/upgrade"
+                  onClick={dismissPlanLimitModal}
+                  className="font-medium text-primary underline underline-offset-2 hover:opacity-90"
+                >
+                  View upgrade options
+                </Link>
+                <span className="mx-1.5 text-border">·</span>
+                <Link
+                  to="/settings?tab=billing"
+                  onClick={dismissPlanLimitModal}
+                  className="font-medium text-primary underline underline-offset-2 hover:opacity-90"
+                >
+                  Billing & usage
+                </Link>
+              </p>
+            )
+          }
+          devBypass={
+            IS_LOCAL_DEV && rateLimitMessage
+              ? devBypassRateLimit
+              : undefined
+          }
         />
       )}
     </>
