@@ -1214,6 +1214,14 @@ article span {
   color: #2c2622;
 }
 
+/* Dark mode: keep excerpt/link text the same on hover (no color shift) */
+.dark .sample-excerpt-btn:hover:not(:disabled) .sample-paragraph {
+  color: rgba(234, 224, 213, 0.85);
+}
+.dark .sample-excerpt-btn:hover:not(:disabled) .sample-link {
+  color: rgba(234, 224, 213, 0.75);
+}
+
 @layer base {
   * {
     @apply border-border;
