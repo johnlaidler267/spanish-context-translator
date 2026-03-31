@@ -122,6 +122,8 @@ Deno.serve(async (req: Request) => {
   const increments = body.increments ?? {}
   const checkOnly  = body.checkOnly ?? false
 
+  console.log("[track-usage] user:", user.id, "checkOnly:", checkOnly, "increments:", JSON.stringify(increments))
+
   // ── Subscription + period ──────────────────────────────────────────────────
   let { data: sub } = await db
     .from("user_subscriptions")
@@ -155,6 +157,8 @@ Deno.serve(async (req: Request) => {
     : "free"
   const limits = getTierLimits(tierId)
   const period = resolvePeriod(sub)
+
+  console.log("[track-usage] sub:", sub?.id ?? "NONE", "period_start:", period.start.toISOString(), "period_end:", period.end.toISOString())
 
   // ── Pre-flight limit check (before incrementing) ──────────────────────────
   // Read current counters so we can check whether the increment would breach a limit.
@@ -197,6 +201,7 @@ Deno.serve(async (req: Request) => {
       console.error("[track-usage] increment_usage returned unexpected shape:", rpcRow)
       return err("Failed to record usage", 500)
     }
+    console.log("[track-usage] after increment texts_processed:", usageRow["texts_processed"], "texts_today:", usageRow["texts_today"])
   } else {
     if (sub) {
       const { data: readRow } = await db.rpc("get_current_usage", {
@@ -204,6 +209,7 @@ Deno.serve(async (req: Request) => {
         p_period_start:    period.start.toISOString(),
       })
       usageRow = normalizeUsageRpcRow(readRow)
+      console.log("[track-usage] read-only row:", usageRow ? JSON.stringify({ texts_processed: usageRow["texts_processed"], texts_today: usageRow["texts_today"], texts_today_date: usageRow["texts_today_date"] }) : "NULL")
     }
   }
 
