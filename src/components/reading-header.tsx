@@ -1,12 +1,11 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { ArrowLeft, Moon, Sun, User } from "lucide-react"
+import { ArrowLeft, Moon, Sun, Settings2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ModeToggle, type ViewMode } from "./mode-toggle"
 import { type ReadingTheme } from "./theme-toggle"
-import { cn } from "@/lib/utils"
-import { READING_HEADER_BAND_REM, READING_HEADER_TEXTURE_SHIFT_UP_PX } from "@/lib/reading-layout"
+import { READING_HEADER_BAND_REM } from "@/lib/reading-layout"
 
 interface ReadingHeaderProps {
   mode: ViewMode
@@ -41,7 +40,7 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
           <span className="hidden sm:inline text-sm font-sans">Inicio</span>
         </Button>
 
-        {/* Right side: Mode toggle + Theme + Profile */}
+        {/* Right side: Mode toggle + Theme + Settings */}
         <div className="pointer-events-auto flex items-center gap-2 md:gap-3">
           <ModeToggle mode={mode} onModeChange={onModeChange} />
           <button
@@ -61,7 +60,7 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
             className="profile-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
             aria-label="Settings"
           >
-            <User className="h-4 w-4 max-md:h-5 max-md:w-5" />
+            <Settings2 className="h-4 w-4 max-md:h-5 max-md:w-5" />
           </Link>
         </div>
       </div>

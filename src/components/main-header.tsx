@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { Sun, Moon, User } from "lucide-react"
+import { Sun, Moon, Settings2 } from "lucide-react"
 import { useSubscription } from "@/contexts/subscription-context"
+import { useAuth } from "@/contexts/auth-context"
 import { getTier, type TierId } from "@/lib/tiers"
 import { supabase } from "@/lib/supabase"
 import type { ReadingTheme } from "./theme-toggle"
@@ -20,7 +21,15 @@ interface MainHeaderProps {
   variant?: "fixed" | "stacked"
 }
 
-type PlanPill = { to: string; primary: string; secondary: string }
+type PlanPill =
+  | { mode: "link"; to: string; primary: string; secondary: string }
+  | { mode: "signin"; primary: string; secondary: string }
+
+const GUEST_PLAN_PILL: PlanPill = {
+  mode: "signin",
+  primary: "Sign in",
+  secondary: "",
+}
 
 function daysLeftInTrial(trialEndIso: string | null): number {
   if (!trialEndIso) return 0
@@ -34,13 +43,15 @@ function planPillFromRow(row: {
 } | null): PlanPill {
   const toSettingsBilling = "/settings?tab=billing"
   const toUpgrade = "/upgrade"
-  const freePill: PlanPill = {
+  /** Logged-in user with no subscription row yet — treat as free tier in UI. */
+  const authenticatedFreePill: PlanPill = {
+    mode: "link",
     to: toUpgrade,
     primary: "Free Plan",
     secondary: "Upgrade",
   }
 
-  if (!row) return freePill
+  if (!row) return authenticatedFreePill
 
   let name = "Plan"
   try {
@@ -54,37 +65,36 @@ function planPillFromRow(row: {
     const d = daysLeftInTrial(row.trial_end)
     const dayWord = d === 1 ? "day" : "days"
     return {
+      mode: "link",
       to: toSettingsBilling,
       primary: `${name} Trial`,
       secondary: `${d} ${dayWord} left`,
     }
   }
 
-  if (status === "active" && row.plan_id === "free") return freePill
+  if (status === "active" && row.plan_id === "free") return authenticatedFreePill
 
   if (status === "active" && row.plan_id !== "free") {
-    return { to: toSettingsBilling, primary: name, secondary: "Plan" }
+    return { mode: "link", to: toSettingsBilling, primary: name, secondary: "Plan" }
   }
 
   if (status === "past_due" && row.plan_id !== "free") {
     return {
+      mode: "link",
       to: toSettingsBilling,
       primary: `${name} Plan`,
       secondary: "Payment Failed",
     }
   }
 
-  return freePill
+  return authenticatedFreePill
 }
 
 /** Landing plan pill — subscription copy from DB; `useSubscription` invalidates when status changes. */
 function PlanBadgeContent() {
   const { status: ctxStatus } = useSubscription()
-  const [pill, setPill] = useState<PlanPill>({
-    to: "/upgrade",
-    primary: "Free Plan",
-    secondary: "Upgrade",
-  })
+  const { openAuthModal } = useAuth()
+  const [pill, setPill] = useState<PlanPill>(GUEST_PLAN_PILL)
 
   useEffect(() => {
     let cancelled = false
@@ -94,7 +104,7 @@ function PlanBadgeContent() {
       if (cancelled) return
 
       if (!user) {
-        setPill(planPillFromRow(null))
+        setPill(GUEST_PLAN_PILL)
         return
       }
 
@@ -114,15 +124,36 @@ function PlanBadgeContent() {
     }
   }, [ctxStatus])
 
-  return (
-    <Link to={pill.to} className="contents">
+  const inner = (
+    <>
       <span className="plan-badge-lead">
         <span className="plan-badge-plan">{pill.primary}</span>
-        <span className="plan-badge-dot" aria-hidden>
-          ·
-        </span>
+        {pill.secondary ? (
+          <span className="plan-badge-dot" aria-hidden>
+            ·
+          </span>
+        ) : null}
       </span>
-      <span className="plan-badge-upgrade">{pill.secondary}</span>
+      {pill.secondary ? <span className="plan-badge-upgrade">{pill.secondary}</span> : null}
+    </>
+  )
+
+  if (pill.mode === "signin") {
+    return (
+      <button
+        type="button"
+        className="contents cursor-pointer text-left border-0 bg-transparent p-0 [font:inherit] text-inherit"
+        onClick={() => openAuthModal()}
+        aria-label="Sign in"
+      >
+        {inner}
+      </button>
+    )
+  }
+
+  return (
+    <Link to={pill.to} className="contents">
+      {inner}
     </Link>
   )
 }
@@ -176,7 +207,7 @@ export function MainHeader({
               className="profile-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full transition-colors duration-200 ease-in-out text-foreground hover:bg-muted/50"
               aria-label="Settings"
             >
-              <User className="h-4 w-4 max-md:h-5 max-md:w-5" />
+              <Settings2 className="h-4 w-4 max-md:h-5 max-md:w-5" />
             </Link>
             {showPlanBanner && (
               <div className="plan-badge plan-badge--header !hidden md:!inline-flex">

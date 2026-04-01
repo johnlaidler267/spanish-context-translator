@@ -33,6 +33,7 @@ import { Button } from "./components/ui/button"
 import { RateLimitModal } from "./components/rate-limit-modal"
 import { isRateLimitApiMessage } from "./lib/api-errors"
 import { useAuth } from "./contexts/auth-context"
+import { GuestSignupModal } from "./components/guest-signup-modal"
 import { hasReachedGuestLimit, incrementGuestUses } from "./lib/guest-usage"
 import { checkLimits } from "./lib/enforce"
 import {
@@ -52,7 +53,7 @@ const ENFORCE_USAGE_LIMITS =
 
 export default function App() {
   const { isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
-  const { user, isLoading: authLoading, openAuthModal } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
 
   const [appState, setAppState] = useState<AppState>("landing")
   /** In-memory + sessionStorage: survives reading → home and page refresh (same tab). */
@@ -96,6 +97,12 @@ export default function App() {
   const rateLimitModalSuppressedRef = useRef(false)
   /** Narrow viewport: shorter read-mode steps (LLM page size unchanged). */
   const [readLayoutMobile, setReadLayoutMobile] = useState(false)
+  const [guestSignupOpen, setGuestSignupOpen] = useState(false)
+
+  useEffect(() => {
+    if (user) setGuestSignupOpen(false)
+  }, [user])
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)")
     const sync = () => setReadLayoutMobile(mq.matches)
@@ -111,9 +118,9 @@ export default function App() {
       if (!text.trim()) return
       if (!IS_LOCAL_DEV && isLapsed) return
 
-      // Gate unauthenticated users after GUEST_LIMIT free uses (dev: auth modal has a bypass)
+      // Guests: no track-usage — cap anonymous previews in localStorage (guest_tries_used).
       if (!user && hasReachedGuestLimit()) {
-        openAuthModal("limit")
+        setGuestSignupOpen(true)
         return
       }
 
@@ -224,7 +231,7 @@ export default function App() {
         bump()
         setAppState("reading")
 
-        // Increment guest counter after a successful submission
+        // Guests: count only after success; limit is enforced before submit (modal blocks new articles).
         if (!user) incrementGuestUses()
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Something went wrong."
@@ -236,7 +243,7 @@ export default function App() {
         setAppState("landing")
       }
     },
-    [apiKey, isLapsed, user, openAuthModal, bump],
+    [apiKey, isLapsed, user, bump],
   )
 
   const handleBack = useCallback(() => {
@@ -562,6 +569,7 @@ export default function App() {
 
   return (
     <>
+      <GuestSignupModal open={guestSignupOpen} onClose={() => setGuestSignupOpen(false)} />
       <Routes>
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/" element={indexElement} />

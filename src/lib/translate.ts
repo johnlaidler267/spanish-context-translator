@@ -7,9 +7,9 @@ const MODEL = "openai/gpt-oss-120b"
  * Groq on_demand counts roughly (prompt tokens + max_tokens) against a low TPM
  * ceiling (~8k). Our PROMPT() is long; 12k max_tokens was ~13k+ “requested”
  * and always tripped TPM — unrelated to how short the user’s Spanish is.
- * 5k keeps typical prompt + cap under that floor; raise only on a higher Groq tier.
+ * 4k further reduces “requested” TPM vs 5k; if you still see 429s, wait or upgrade Groq.
  */
-const TRANSLATE_MAX_COMPLETION_TOKENS = 5_120
+const TRANSLATE_MAX_COMPLETION_TOKENS = 4_096
 
 async function parseGroqJsonErrorBody(res: Response): Promise<string> {
   try {
@@ -37,6 +37,37 @@ function throwGroqChatHttpError(res: Response, detail: string): never {
     )
   }
   throw new Error(detail || `HTTP ${res.status}`)
+}
+
+function parseRetryAfterMs(res: Response): number | null {
+  const ra = res.headers.get("Retry-After")
+  if (ra == null || !ra.trim()) return null
+  const n = Number(ra.trim())
+  if (Number.isFinite(n) && n > 0) return Math.min(120_000, Math.round(n * 1000))
+  const t = Date.parse(ra)
+  if (Number.isFinite(t)) return Math.min(120_000, Math.max(0, t - Date.now()))
+  return null
+}
+
+/** One retry on 429 — helps brief RPM/TPM bursts; drains first body so the connection can be reused. */
+async function fetchGroqChatCompletion(body: object, apiKey: string): Promise<Response> {
+  const post = () =>
+    fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    })
+
+  let res = await post()
+  if (res.status !== 429) return res
+
+  await res.text().catch(() => {})
+  const delay = parseRetryAfterMs(res) ?? 4_000
+  await new Promise((r) => setTimeout(r, delay))
+  return post()
 }
 
 const PROMPT = (input: string) => `You will break the input text into chunks so the reader can hover each one in sequence and mentally assemble the English sentence as they go — like translating in their own head, chunk by chunk.
@@ -149,6 +180,14 @@ export function gapBetweenReconciledChunks(
   return ""
 }
 
+function normalizeRawChunk(raw: RawChunk): RawChunk {
+  const chunk =
+    typeof raw.chunk === "string" ? raw.chunk : raw.chunk != null ? String(raw.chunk) : ""
+  const meaning =
+    typeof raw.meaning === "string" ? raw.meaning : raw.meaning != null ? String(raw.meaning) : ""
+  return { ...raw, chunk, meaning }
+}
+
 function reconcileChunks(
   chunks: RawChunk[],
   originalText: string
@@ -156,7 +195,11 @@ function reconcileChunks(
   const result: ReconciledItem[] = []
   let pos = 0
 
-  for (const chunk of chunks) {
+  for (const raw of chunks) {
+    if (raw == null || typeof raw !== "object") continue
+    const chunk = normalizeRawChunk(raw as RawChunk)
+    if (!chunk.chunk) continue
+
     const idx = originalText.indexOf(chunk.chunk, pos)
     if (idx === -1) {
       result.push({ type: "chunk", ...chunk })
@@ -185,19 +228,20 @@ export function splitIntoSentences(items: ReconciledItem[]) {
 
   for (const item of items) {
     if (item.type === "text") {
-      pendingBetween += item.text
+      pendingBetween += item.text ?? ""
       continue
     }
+    const span = typeof item.chunk === "string" ? item.chunk : String(item.chunk ?? "")
     const chunkData = {
       id: chunkId++,
-      text: pendingBetween + item.chunk,
-      meaning: item.meaning,
+      text: pendingBetween + span,
+      meaning: typeof item.meaning === "string" ? item.meaning : String(item.meaning ?? ""),
       literal: item.literal,
       grammar: item.note,
     }
     pendingBetween = ""
     currentChunks.push(chunkData)
-    const endsSentence = /[.!?]$/.test(item.chunk.trim())
+    const endsSentence = /[.!?]$/.test(span.trim())
     if (endsSentence && currentChunks.length > 0) {
       sentences.push({ id: sentences.length, chunks: currentChunks })
       currentChunks = []
@@ -387,19 +431,15 @@ export async function translatePageText(
   input: string,
   apiKey: string,
 ): Promise<ReconciledItem[]> {
-  const res = await fetch(GROQ_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
+  const res = await fetchGroqChatCompletion(
+    {
       model: MODEL,
       messages: [{ role: "user", content: PROMPT(input) }],
       temperature: 0,
       max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
-    }),
-  })
+    },
+    apiKey,
+  )
 
   if (!res.ok) {
     const detail = await parseGroqJsonErrorBody(res)

@@ -7,11 +7,22 @@
  */
 
 export const GUEST_LIMIT = 3
-const STORAGE_KEY = "lector_guest_uses"
+const STORAGE_KEY = "guest_tries_used"
+/** Previous key — migrated once on read. */
+const LEGACY_STORAGE_KEY = "lector_guest_uses"
 
 export function getGuestUses(): number {
   try {
-    return parseInt(localStorage.getItem(STORAGE_KEY) ?? "0", 10) || 0
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw != null) return parseInt(raw, 10) || 0
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY)
+    if (legacy != null) {
+      const n = parseInt(legacy, 10) || 0
+      localStorage.setItem(STORAGE_KEY, String(n))
+      localStorage.removeItem(LEGACY_STORAGE_KEY)
+      return n
+    }
+    return 0
   } catch {
     return 0
   }
@@ -35,5 +46,6 @@ export function hasReachedGuestLimit(): boolean {
 export function clearGuestUses(): void {
   try {
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
   } catch { /* ignore */ }
 }

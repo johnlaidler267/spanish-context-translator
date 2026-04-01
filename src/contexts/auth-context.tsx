@@ -14,19 +14,15 @@ import { clearGuestUses } from "@/lib/guest-usage"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type AuthModalReason = "limit" | "signup"
-
 interface AuthContextValue {
   user:            User | null
   isLoading:       boolean
   signOut:         () => Promise<void>
   signInWithMagicLink: (email: string) => Promise<{ error: string | null }>
   signInWithOAuth: (provider: "google") => Promise<void>
-  /** Open the sign-up/in modal. reason = 'limit' shows "you've hit your limit" copy. */
-  openAuthModal:   (reason?: AuthModalReason) => void
+  openAuthModal:   () => void
   closeAuthModal:  () => void
   authModalOpen:   boolean
-  authModalReason: AuthModalReason
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -38,8 +34,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user,    setUser   ] = useState<User | null>(null)
   const [isLoading, setLoading] = useState(true)
-  const [authModalOpen,   setAuthModalOpen  ] = useState(false)
-  const [authModalReason, setAuthModalReason] = useState<AuthModalReason>("signup")
+  const [authModalOpen, setAuthModalOpen] = useState(false)
 
   // ── Session restore ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -95,8 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const openAuthModal = useCallback((reason: AuthModalReason = "signup") => {
-    setAuthModalReason(reason)
+  const openAuthModal = useCallback(() => {
     setAuthModalOpen(true)
   }, [])
 
@@ -113,7 +107,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     openAuthModal,
     closeAuthModal,
     authModalOpen,
-    authModalReason,
   }
 
   return (

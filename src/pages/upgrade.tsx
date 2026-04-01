@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, type ReactNode } from "react"
 import {
   ArrowLeft, Check, BookOpen, Zap, Crown,
   Loader2, CheckCircle2, AlertCircle, ExternalLink, RotateCcw,
@@ -47,7 +47,7 @@ import { useSubscription } from "@/contexts/subscription-context"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TIER_ICONS: Record<TierId, React.ReactNode> = {
+const TIER_ICONS: Record<TierId, ReactNode> = {
   free:      <BookOpen className="h-5 w-5" />,
   pro:       <Zap className="h-5 w-5" />,
   unlimited: <Crown className="h-5 w-5" />,
@@ -234,10 +234,13 @@ function CurrentPlanSummary({
 }) {
   const tier = getTier(sub.planId)
   return (
-    <div className="rounded-lg border border-border/60 bg-card/60 px-5 py-4 mb-10 font-sans text-sm flex flex-wrap gap-x-8 gap-y-2 items-center">
+    <div className="rounded-lg border border-border/60 bg-card/60 px-5 py-4 mb-7 font-sans text-sm flex flex-wrap gap-x-8 gap-y-2 items-center">
       <div className="flex items-center gap-2 text-foreground font-medium">
         {TIER_ICONS[sub.planId]}
-        <span>Current plan: <span className="text-primary">{tier.name}</span></span>
+        <span>
+          Current plan:
+          <strong className="ml-2 text-primary font-bold">{tier.name}</strong>
+        </span>
       </div>
 
       {sub.status === "trialing" && sub.trialEnd && (

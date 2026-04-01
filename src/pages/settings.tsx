@@ -161,7 +161,7 @@ export default function SettingsPage() {
                       <p className="text-sm text-muted-foreground leading-relaxed">
                         You're not signed in. Sign in to save your reading history and manage your plan.
                       </p>
-                      <Button onClick={() => openAuthModal("signup")} className="gap-2">
+                      <Button onClick={() => openAuthModal()} className="gap-2">
                         Sign in / Sign up
                       </Button>
                     </div>
