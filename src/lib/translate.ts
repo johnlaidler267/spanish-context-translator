@@ -3,13 +3,16 @@ import { jsonrepair } from "jsonrepair"
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const MODEL = "openai/gpt-oss-120b"
 
+/** GPT-OSS on Groq: `low` | `medium` | `high` — keep low for chunk JSON to save completion budget. */
+const TRANSLATE_REASONING_EFFORT = "low" as const
+
 /**
  * Groq on_demand counts roughly (prompt tokens + max_tokens) against a low TPM
  * ceiling (~8k). Our PROMPT() is long; 12k max_tokens was ~13k+ “requested”
  * and always tripped TPM — unrelated to how short the user’s Spanish is.
  * 4k further reduces “requested” TPM vs 5k; if you still see 429s, wait or upgrade Groq.
  */
-const TRANSLATE_MAX_COMPLETION_TOKENS = 4_096
+const TRANSLATE_MAX_COMPLETION_TOKENS = 6000
 
 async function parseGroqJsonErrorBody(res: Response): Promise<string> {
   try {
@@ -437,6 +440,7 @@ export async function translatePageText(
       messages: [{ role: "user", content: PROMPT(input) }],
       temperature: 0,
       max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
+      reasoning_effort: TRANSLATE_REASONING_EFFORT,
     },
     apiKey,
   )
