@@ -99,7 +99,7 @@ Special grammar constructions — pattern must be read as a unit:
 lo maravilloso (lo + adj = nominalizer), así mismo (fixed adverb)
 
 Prepositional verb phrases — verb + preposition are inseparable:
-contar con, darse cuenta de, pensar en, cuenta con 
+contar con, darse cuenta de, pensar en, cuenta con, entre sí.
 
 Proper nouns — always one chunk, never split:
 Héctor Bonilla, Ciudad de México, Estados Unidos
@@ -316,7 +316,7 @@ export function splitSourceIntoSentences(text: string): string[] {
 
 /**
  * Break one long segment into smaller parts so no single unit can exceed page limits.
- * This prevents mobile overflow when a Wikipedia intro contains one very long sentence.
+ * This prevents mobile overflow when a long intro contains one very long sentence.
  */
 export function splitSegmentIntoPageParts(text: string, limits: PageSplitLimits): string[] {
   const cleaned = text.replace(/\s+/g, " ").trim()
@@ -807,6 +807,97 @@ Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translati
   }
   const data = await res.json()
   return data.choices[0].message.content.trim()
+}
+
+/** Small model for Learn-pill topic paragraphs — cheaper/faster than the main translation model. */
+const LEARN_RANDOM_TOPIC_MODEL = "llama-3.1-8b-instant" as const
+
+const LEARN_TOPIC_PROMPT = `Pick a random subject from this list, then pick a specific topic within that subject entirely on your own. Write a single paragraph of 75–100 words about it.
+
+Subjects:
+- Physics
+- Mathematics
+- Philosophy
+- Psychology
+- History
+- Linguistics
+- Biology
+- Neuroscience
+- Economics
+- Astronomy
+- Anthropology
+- Logic
+
+Do not always pick the same subject or the same kinds of topics. Vary widely across runs.
+
+Write in plain, engaging prose. No bullet points in the paragraph. Assume the reader is intelligent but not an expert. End on something that makes them want to know more.
+
+Write the title and the entire paragraph in Spanish.
+
+Return only a single JSON object with exactly these keys (no markdown fences, no other text):
+- "title": a short, specific title for this piece (plain text, one line, suitable as an article headline)
+- "paragraph": the paragraph only (no title inside this field)`
+
+const LEARN_RANDOM_MAX_WORDS = 100
+
+function truncateLearnParagraphToWordLimit(text: string, maxWords: number): string {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (!normalized) return ""
+  const words = normalized.split(/\s+/).filter(Boolean)
+  if (words.length <= maxWords) return normalized
+  return `${words.slice(0, maxWords).join(" ")}…`
+}
+
+export type LearnRandomParagraphResult = {
+  /** Short headline for article mode (Spanish). */
+  title: string
+  /** Body text (Spanish). */
+  intro: string
+}
+
+function parseLearnTopicJson(raw: string): { title: string; paragraph: string } {
+  const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/m, "").trim()
+  const match = cleaned.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
+  const repaired = jsonrepair(match[0])
+  const parsed = JSON.parse(repaired) as { title?: unknown; paragraph?: unknown }
+  const title =
+    typeof parsed.title === "string" ? parsed.title.replace(/\s+/g, " ").trim() : ""
+  const paragraph =
+    typeof parsed.paragraph === "string" ? parsed.paragraph.replace(/\s+/g, " ").trim() : ""
+  if (!title || !paragraph || paragraph.length < 40) {
+    throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
+  }
+  return { title, paragraph }
+}
+
+/**
+ * Learn pill: topic title + paragraph via small Groq model (Spanish, ~75–100 words).
+ * Replaces the former Spanish Wikipedia featured-article fetch.
+ */
+export async function fetchLearnRandomParagraph(
+  apiKey: string,
+): Promise<LearnRandomParagraphResult> {
+  const res = await fetchGroqChatCompletion(
+    {
+      model: LEARN_RANDOM_TOPIC_MODEL,
+      messages: [{ role: "user", content: LEARN_TOPIC_PROMPT }],
+      temperature: 1.5,
+      max_tokens: 500,
+    },
+    apiKey,
+  )
+
+  if (!res.ok) {
+    const detail = await parseGroqJsonErrorBody(res)
+    throwGroqChatHttpError(res, detail)
+  }
+
+  const data = await res.json()
+  const raw = data.choices?.[0]?.message?.content?.trim() ?? ""
+  const { title, paragraph } = parseLearnTopicJson(raw)
+  const intro = truncateLearnParagraphToWordLimit(paragraph, LEARN_RANDOM_MAX_WORDS)
+  return { title, intro }
 }
 
 const GROQ_TRANSCRIBE_URL = "https://api.groq.com/openai/v1/audio/transcriptions"

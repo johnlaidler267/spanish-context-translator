@@ -30,7 +30,7 @@ interface ArticleContentProps {
   onRetry?: () => void
   pagination?: ArticlePaginationState | null
   pageKey?: number
-  /** Wikipedia article title — shown bold above body on page 1 only */
+  /** Optional heading — shown bold above body on page 1 only */
   articleHeading?: string | null
 }
 

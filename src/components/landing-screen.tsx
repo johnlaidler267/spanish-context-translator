@@ -5,8 +5,11 @@ import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { MainHeader } from "./main-header"
 import { LandingContentPills } from "./landing-content-pills"
-import { appendTranscriptToField, generateRandomSpanish } from "@/lib/translate"
-import { fetchRandomSpanishWikipediaIntro } from "@/lib/wikipedia-random"
+import {
+  appendTranscriptToField,
+  fetchLearnRandomParagraph,
+  generateRandomSpanish,
+} from "@/lib/translate"
 import { VoiceInputButton } from "./voice-input-button"
 import type { ReadingTheme } from "./theme-toggle"
 
@@ -83,15 +86,15 @@ export function LandingScreen({
   }
 
   const handleLearnPill = async () => {
-    if (isLearning || isLoading) return
+    if (isLearning || isLoading || !apiKey) return
     setLearnError(null)
     setIsLearning(true)
     try {
-      const { title, intro } = await fetchRandomSpanishWikipediaIntro()
+      const { title, intro } = await fetchLearnRandomParagraph(apiKey)
       learnArticleTitleRef.current = title
       setText(intro)
     } catch (e) {
-      setLearnError(e instanceof Error ? e.message : "No se pudo cargar Wikipedia.")
+      setLearnError(e instanceof Error ? e.message : "No se pudo generar el texto.")
     } finally {
       setIsLearning(false)
     }
@@ -196,6 +199,7 @@ export function LandingScreen({
               learnPending={isLearning}
               disabled={isLoading}
               randomDisabled={!apiKey}
+              learnDisabled={!apiKey}
               learnError={learnError}
             />
             <div className="order-2 md:order-1 flex flex-col gap-2 w-full relative md:pb-1">
