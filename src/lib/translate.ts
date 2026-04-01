@@ -4,7 +4,7 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const MODEL = "openai/gpt-oss-120b"
 
 /** GPT-OSS on Groq: `low` | `medium` | `high` — keep low for chunk JSON to save completion budget. */
-const TRANSLATE_REASONING_EFFORT = "low" as const
+const TRANSLATE_REASONING_EFFORT = "medium" as const
 
 /**
  * Groq on_demand counts roughly (prompt tokens + max_tokens) against a low TPM
