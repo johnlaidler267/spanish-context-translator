@@ -14,7 +14,7 @@
  *   <SubscriptionStatus tracker={trackerRef.current} />
  */
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Link } from "react-router-dom"
 import {
   BookOpen, Zap, Crown, CalendarCheck2,
@@ -347,10 +347,15 @@ function useSubscriptionData(tracker?: UsageTracker) {
   })
   const [loading, setLoading] = useState(true)
   const [error,   setError  ] = useState<string | null>(null)
+  /** After first successful load, refreshes stay in the background (no skeleton flash). */
+  const hasLoadedOnceRef = useRef(false)
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    const showBlockingLoad = !hasLoadedOnceRef.current
+    if (showBlockingLoad) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Not signed in")
@@ -396,8 +401,11 @@ function useSubscriptionData(tracker?: UsageTracker) {
           period:   usage.period,
         })
       }
+      hasLoadedOnceRef.current = true
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load subscription")
+      if (!hasLoadedOnceRef.current) {
+        setError(e instanceof Error ? e.message : "Failed to load subscription")
+      }
     } finally {
       setLoading(false)
     }

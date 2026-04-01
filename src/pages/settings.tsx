@@ -28,10 +28,8 @@ function tabFromSearchParam(raw: string | null): SettingsTab {
 export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = tabFromSearchParam(searchParams.get("tab"))
-  const [billingKey, setBillingKey] = useState(0)
 
   const goTab = (tab: SettingsTab) => {
-    if (tab === "Billing") setBillingKey((k) => k + 1)
     if (tab === "General") setSearchParams({}, { replace: true })
     else setSearchParams({ tab: tab.toLowerCase() }, { replace: true })
   }
@@ -168,13 +166,26 @@ export default function SettingsPage() {
                   )}
                 </section>
               )}
-              {activeTab === "Billing" && (
-                <section aria-labelledby="settings-billing-heading">
+              {/* Signed in: mount billing panel off-tab so data is often ready when user opens Billing (no remount on tab switch). */}
+              {user ? (
+                <section
+                  aria-labelledby="settings-billing-heading"
+                  hidden={activeTab !== "Billing"}
+                >
                   <h2 id="settings-billing-heading" className="text-lg font-medium text-foreground mb-6">
                     Billing
                   </h2>
-                  <SubscriptionStatus key={billingKey} />
+                  <SubscriptionStatus />
                 </section>
+              ) : (
+                activeTab === "Billing" && (
+                  <section aria-labelledby="settings-billing-heading">
+                    <h2 id="settings-billing-heading" className="text-lg font-medium text-foreground mb-6">
+                      Billing
+                    </h2>
+                    <SubscriptionStatus />
+                  </section>
+                )
               )}
             </div>
           </div>
