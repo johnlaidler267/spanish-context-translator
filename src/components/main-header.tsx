@@ -1,7 +1,11 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Sun, Moon, User } from "lucide-react"
+import { useSubscription } from "@/contexts/subscription-context"
+import { getTier, type TierId } from "@/lib/tiers"
+import { supabase } from "@/lib/supabase"
 import type { ReadingTheme } from "./theme-toggle"
 
 interface MainHeaderProps {
@@ -16,19 +20,110 @@ interface MainHeaderProps {
   variant?: "fixed" | "stacked"
 }
 
+type PlanPill = { to: string; primary: string; secondary: string }
+
+function daysLeftInTrial(trialEndIso: string | null): number {
+  if (!trialEndIso) return 0
+  return Math.max(0, Math.ceil((new Date(trialEndIso).getTime() - Date.now()) / 86_400_000))
+}
+
+function planPillFromRow(row: {
+  plan_id: string
+  status: string
+  trial_end: string | null
+} | null): PlanPill {
+  const toSettings = "/settings"
+  const toUpgrade = "/upgrade"
+  const freePill: PlanPill = {
+    to: toUpgrade,
+    primary: "Free Plan",
+    secondary: "Upgrade",
+  }
+
+  if (!row) return freePill
+
+  let name = "Plan"
+  try {
+    name = getTier(row.plan_id as TierId).name
+  } catch {
+    /* unknown plan_id in DB */
+  }
+  const { status } = row
+
+  if (status === "trialing" && row.plan_id !== "free") {
+    const d = daysLeftInTrial(row.trial_end)
+    const dayWord = d === 1 ? "day" : "days"
+    return {
+      to: toSettings,
+      primary: `${name} Trial`,
+      secondary: `${d} ${dayWord} left`,
+    }
+  }
+
+  if (status === "active" && row.plan_id === "free") return freePill
+
+  if (status === "active" && row.plan_id !== "free") {
+    return { to: toSettings, primary: name, secondary: "Plan" }
+  }
+
+  if (status === "past_due" && row.plan_id !== "free") {
+    return {
+      to: toSettings,
+      primary: `${name} Plan`,
+      secondary: "Payment Failed",
+    }
+  }
+
+  return freePill
+}
+
+/** Landing plan pill — subscription copy from DB; `useSubscription` invalidates when status changes. */
 function PlanBadgeContent() {
+  const { status: ctxStatus } = useSubscription()
+  const [pill, setPill] = useState<PlanPill>({
+    to: "/upgrade",
+    primary: "Free Plan",
+    secondary: "Upgrade",
+  })
+
+  useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (cancelled) return
+
+      if (!user) {
+        setPill(planPillFromRow(null))
+        return
+      }
+
+      const { data } = await supabase
+        .from("user_subscriptions")
+        .select("plan_id, status, trial_end")
+        .eq("user_id", user.id)
+        .is("archived_at", null)
+        .maybeSingle<{ plan_id: string; status: string; trial_end: string | null }>()
+
+      if (cancelled) return
+      setPill(planPillFromRow(data ?? null))
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [ctxStatus])
+
   return (
-    <>
+    <Link to={pill.to} className="contents">
       <span className="plan-badge-lead">
-        <span className="plan-badge-plan">Free plan</span>
+        <span className="plan-badge-plan">{pill.primary}</span>
         <span className="plan-badge-dot" aria-hidden>
           ·
         </span>
       </span>
-      <Link to="/upgrade" className="plan-badge-upgrade">
-        Upgrade
-      </Link>
-    </>
+      <span className="plan-badge-upgrade">{pill.secondary}</span>
+    </Link>
   )
 }
 
