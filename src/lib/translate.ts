@@ -4,12 +4,12 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const MODEL = "openai/gpt-oss-120b"
 
 /**
- * Max completion tokens for one paginated translation (chunk JSON). High
- * enough to avoid truncating dense pages; below 16k so we stay under the
- * worst Groq on_demand TPM “requested” spike (~prompt + max_tokens). If TPM
- * errors return on a free/on_demand key, use a higher Groq tier or trim PROMPT.
+ * Groq on_demand counts roughly (prompt tokens + max_tokens) against a low TPM
+ * ceiling (~8k). Our PROMPT() is long; 12k max_tokens was ~13k+ “requested”
+ * and always tripped TPM — unrelated to how short the user’s Spanish is.
+ * 5k keeps typical prompt + cap under that floor; raise only on a higher Groq tier.
  */
-const TRANSLATE_MAX_COMPLETION_TOKENS = 12_288
+const TRANSLATE_MAX_COMPLETION_TOKENS = 5_120
 
 async function parseGroqJsonErrorBody(res: Response): Promise<string> {
   try {
@@ -22,9 +22,17 @@ async function parseGroqJsonErrorBody(res: Response): Promise<string> {
 
 function throwGroqChatHttpError(res: Response, detail: string): never {
   if (res.status === 429) {
+    const d = detail.toLowerCase()
+    const isTpm =
+      d.includes("tokens per minute") ||
+      d.includes("tpm") ||
+      d.includes("request too large for model")
+    const prefix = isTpm
+      ? "Groq usage limit (tokens per minute / request size). "
+      : "Rate limit reached. "
     throw new Error(
       detail
-        ? `Rate limit reached: ${detail}`
+        ? `${prefix}${detail}`
         : "Rate limit reached (HTTP 429). Please wait a moment and try again.",
     )
   }
