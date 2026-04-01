@@ -69,72 +69,78 @@ async function fetchGroqChatCompletion(body: object): Promise<Response> {
   return post()
 }
 
-const PROMPT = (input: string) => `You will break the input text into chunks so the reader can hover each one in sequence and mentally assemble the English sentence as they go — like translating in their own head, chunk by chunk.
+const PROMPT = (input: string) => `You are a Spanish language expert. Break the input into chunks so a reader can hover each one and mentally assemble the English sentence chunk by chunk.
 
-For each chunk return one JSON object using these short keys only (saves space):
+Return a JSON array. Each chunk:
+- "c": original Spanish
+- "m": natural English meaning in context. Wrap in [] any English word implied but absent in the Spanish.
+- "l": word-for-word translation
+- "n": brief grammatical note only when non-obvious — omit entirely otherwise
 
-- "c": the original Spanish text
-- "m": the natural English equivalent in the context of this specific sentence
-- "l": word-for-word translation, even if unnatural
-- "n": include only when the chunk needs a brief non-obvious grammatical explanation — otherwise omit this key entirely (never use "n": null)
+DEFAULT: one word per chunk. Only group when splitting would mislead.
 
+Group these:
+- Fixed idioms (meaning unguessable from parts): en cambio, visto bueno, del mismo modo, los unos de los otros, darse cuenta de, a fines de, se trata de
+- Relative connectors (splitting produces nonsense): en la que, los que, antes de que, mientras que
+- Compound nouns (two words, one thing): redes sociales, estado natal, campaña publicitaria
+- Prepositional verb phrases (verb + preposition inseparable): contar con, pensar en, entre sí
+- Proper nouns: always one chunk
+- Co-occurring clitics: group together, keep verb separate — se la | habían | vendido
 
-Here are examples of specific groups of words it makes sense to chunk:
+---
 
-Fixed idioms — meaning unguessable from parts:
-dar su brazo a torcer, visto bueno, los unos de los otros, en cambio, del mismo modo, de este modo, se trata de, más adelante, por encima, de pronto, di cuenta, a fines de, 
-
-Relative/subordinating connectors — splitting produces nonsense:
-en la que, los que, antes que, de que, mientras que
-
-Compound nouns — two words naming one thing:
-redes sociales, estado natal, aspecto físico
-
-Special grammar constructions — pattern must be read as a unit:
-lo maravilloso (lo + adj = nominalizer), así mismo (fixed adverb)
-
-Prepositional verb phrases — verb + preposition are inseparable:
-contar con, darse cuenta de, pensar en, cuenta con, entre sí.
-
-Proper nouns — always one chunk, never split:
-Héctor Bonilla, Ciudad de México, Estados Unidos
-
-Clitic clusters — se la habían vendido → se la | habían | vendido | unos | piratas
-"se la" = to him, her — group co-occurring clitics as one chunk, verb stays separate
-
-]
-
-Return only a valid JSON array, no preamble, no markdown fences.
-Every word in the input must appear in the output. Do not stop early — complete the full array and close it with ].
-
-Examples:
-
-INPUT: "Los puntos criticos son regiones en las que dos o mas cosas"
+INPUT: "se ha enfrentado a una campaña publicitaria"
 OUTPUT: [
-{ "c": "Los", "m": "The", "l": "The" },
- { "c": "puntos criticos", "m": "critical regions", "l": "critical regions" },
- { "c": "son", "m": "are", "l": "are" },
- { "c": "regiones", "m": "regions", "l": "regions" },
- { "c": "en", "m": "in", "l": "in" },
- { "c": "las que", "m": "where", "l": "where" },
- { "c": "dos", "m": "two", "l": "two" },
- { "c": "o", "m": "or", "l": "or" },
- { "c": "mas", "m": "more", "l": "more" },
- { "c": "cosas", "m": "things", "l": "things" }
+  {"c":"se","m":"[she] herself","l":"herself","n":"Reflexive pronoun — subject acts on herself."},
+  {"c":"ha","m":"has","l":"has"},
+  {"c":"enfrentado","m":"faced","l":"confronted"},
+  {"c":"a","m":"","l":"to","n":"Personal \"a\" — marks a human direct object. No English equivalent."},
+  {"c":"una","m":"a","l":"a"},
+  {"c":"campaña publicitaria","m":"advertising campaign","l":"publicity campaign"}
 ]
 
-- In "m": wrap any English word in [] if it has no corresponding Spanish word in the chunk. Whether that's an implied pronoun, a preposition absorbed into context, or a grammatical particle that just doesn't exist in Spanish.
-
-INPUT: "bajo pena de perjurio ante el Senado"
+INPUT: "en las redes sociales el jueves"
 OUTPUT: [
-{ "c": "bajo", "m": "under", "l": "under" },
-{ "c": "pena", "m": "penalty", "l": "penalty" },
-{ "c": "de", "m": "of", "l": "of" },
-{ "c": "perjurio", "m": "perjury", "l": "perjury" },
-{ "c": "ante", "m": "before", "l": "before" },
-{ "c": "el", "m": "the", "l": "the" },
-{ "c": "Senado", "m": "Senate", "l": "Senate" }
+  {"c":"en","m":"on","l":"in","n":"\"en\" = \"on\" in social media context."},
+  {"c":"las","m":"the","l":"the"},
+  {"c":"redes sociales","m":"social media","l":"social networks"},
+  {"c":"el jueves","m":"on Thursday","l":"the Thursday","n":"\"el\" before a day of the week = \"on\" in English."}
 ]
+
+INPUT: "se le conoce como"
+OUTPUT: [
+  {"c":"se le conoce","m":"it is known","l":"itself it knows","n":"Impersonal construction — se + le make the verb passive. Neither word carries its usual meaning."},
+  {"c":"como","m":"as","l":"as"}
+]
+
+INPUT: "la técnica de golpearse la cara"
+OUTPUT: [
+  {"c":"la","m":"the","l":"the"},
+  {"c":"técnica","m":"technique","l":"technique"},
+  {"c":"de","m":"of","l":"of"},
+  {"c":"golpearse","m":"hitting oneself","l":"to hit oneself","n":"Reflexive infinitive — se attached to verb means action done to oneself."},
+  {"c":"la","m":"the","l":"the"},
+  {"c":"cara","m":"face","l":"face"}
+]
+
+INPUT: "los unos de los otros"
+OUTPUT: [
+  {"c":"los unos de los otros","m":"each other","l":"the ones from the others","n":"Fixed expression — must be grouped. Parts give no hint of meaning."}
+]
+
+INPUT: "se la habían vendido unos piratas"
+OUTPUT: [
+  {"c":"se la","m":"it to him","l":"it to him","n":"Clitic cluster — co-occurring pronouns grouped together."},
+  {"c":"habían","m":"had","l":"had"},
+  {"c":"vendido","m":"sold","l":"sold"},
+  {"c":"unos","m":"some","l":"some"},
+  {"c":"piratas","m":"pirates","l":"pirates"}
+]
+
+---
+
+Every word in the input must appear in the output. Complete the full array and close with ].
+Return only a valid JSON array — no preamble, no markdown fences.
 
 Text: "${input}"`
 

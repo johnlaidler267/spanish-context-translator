@@ -4,14 +4,17 @@
  */
 export const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
+  /** Must cover headers the browser lists in Access-Control-Request-Headers (case-insensitive). */
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "authorization, x-client-info, apikey, content-type, x-supabase-api-version, prefer, accept-profile, content-profile",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  /** Cache preflight to reduce OPTIONS traffic (optional). */
+  "Access-Control-Max-Age": "86400",
 }
 
-/** Respond to a CORS preflight request. */
+/** Respond to a CORS preflight request (200 + empty body — some stacks mishandle 204). */
 export function handleCorsPreflightRequest(): Response {
-  return new Response(null, { status: 204, headers: corsHeaders })
+  return new Response("", { status: 200, headers: corsHeaders })
 }
 
 /** Attach CORS headers to any response. */

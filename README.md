@@ -110,6 +110,8 @@ Npm shortcuts (see `package.json`): `npm run supabase:deploy-checkout`, `npm run
 
 **Deploy every function your app calls** — missing routes return `NOT_FOUND` from the API gateway (e.g. checkout success must have `confirm-checkout-session` deployed).
 
+If the browser reports **CORS** errors on `functions/v1/groq-chat` (preflight “does not have HTTP ok status”), the usual cause is that **`groq-chat` is not deployed** to that project: the gateway responds with **404** to `OPTIONS`, which is not a successful CORS preflight. Run `npm run supabase:deploy-groq` (or `npx supabase functions deploy groq-chat`) after linking the project.
+
 | Function | Route | Description |
 |---|---|---|
 | `create-checkout-session` | `POST /create-checkout-session` | Creates a Stripe Checkout session for a given price ID. Handles trials and existing customers. |
