@@ -67,6 +67,37 @@ interface SubSnapshot {
   trialEnd:            string | null
 }
 
+function normalizePriceId(id: string | null | undefined): string {
+  return (id ?? "").trim()
+}
+
+/** Stripe Price ID from `tiers.ts` for this tier + billing interval. */
+function stripePriceIdForTierInterval(tierId: TierId, billing: DbBillingInterval): string | null {
+  if (tierId === "free") return null
+  const tier = getTier(tierId)
+  return billing === "annual" ? tier.pricing.annual.stripePriceId : tier.pricing.monthly.stripePriceId
+}
+
+/**
+ * Whether this grid card (tier + UI billing toggle) matches the user's active subscription.
+ * Uses Stripe price IDs from env so monthly vs annual Unlimited are distinct.
+ */
+function isCurrentPlanCard(
+  sub: SubSnapshot | null,
+  cardTierId: TierId,
+  uiInterval: DbBillingInterval,
+): boolean {
+  if (!sub) return false
+  if (cardTierId === "free") return sub.planId === "free"
+  if (sub.planId !== cardTierId) return false
+  if (sub.planId === "free") return false
+  const activeInterval = sub.billingInterval ?? "monthly"
+  const subPrice = normalizePriceId(stripePriceIdForTierInterval(sub.planId, activeInterval))
+  const cardPrice = normalizePriceId(stripePriceIdForTierInterval(cardTierId, uiInterval))
+  if (subPrice && cardPrice && subPrice === cardPrice) return true
+  return activeInterval === uiInterval
+}
+
 async function fetchSubSnapshot(userId: string): Promise<SubSnapshot | null> {
   const { data, error } = await supabase
     .from("user_subscriptions")
@@ -150,6 +181,7 @@ function tierBullets(tier: TierConfig): string[] {
 function buttonLabel(
   id: TierId,
   sub: SubSnapshot | null,
+  uiInterval: DbBillingInterval,
   isProcessing: boolean,
 ): string {
   if (isProcessing) return "Processing…"
@@ -158,8 +190,10 @@ function buttonLabel(
     return `Subscribe to ${getTier(id).name}`
   }
   if (id === sub.planId) {
-    // Current plan — offer reactivation if pending cancellation, otherwise manage
-    return sub.cancelAtPeriodEnd ? "Reactivate" : "Manage subscription"
+    if (isCurrentPlanCard(sub, id, uiInterval)) {
+      return sub.cancelAtPeriodEnd ? "Reactivate" : "Manage subscription"
+    }
+    return uiInterval === "annual" ? "Switch to annual billing" : "Switch to monthly billing"
   }
   if (TIER_RANK[id] > TIER_RANK[sub.planId]) return `Upgrade to ${getTier(id).name}`
   if (id === "free") return "Cancel subscription"
@@ -169,9 +203,10 @@ function buttonLabel(
 function buttonVariant(
   id: TierId,
   sub: SubSnapshot | null,
+  uiInterval: DbBillingInterval,
 ): "default" | "outline" | "secondary" | "destructive" {
   if (!sub) return "outline"
-  if (id === sub.planId) {
+  if (id === sub.planId && isCurrentPlanCard(sub, id, uiInterval)) {
     return sub.cancelAtPeriodEnd ? "default" : "outline"
   }
   if (id === "free") return "destructive"
@@ -503,14 +538,25 @@ export default function UpgradePage() {
     async (tierId: TierId) => {
       setCheckoutError(null)
 
-      // Reactivation: same plan while cancelAtPeriodEnd is true
-      if (sub?.planId === tierId && sub.cancelAtPeriodEnd) {
+      // Reactivation: same plan + same price (interval) while cancelAtPeriodEnd is true
+      if (
+        sub &&
+        sub.planId === tierId &&
+        sub.cancelAtPeriodEnd &&
+        isCurrentPlanCard(sub, tierId, interval)
+      ) {
         handleReactivate()
         return
       }
 
-      // Manage: same plan, no pending cancellation → open billing portal
-      if (sub?.planId === tierId && sub.hasStripeSubscription) {
+      // Manage: same plan & same Stripe price, no pending cancellation → billing portal
+      if (
+        sub &&
+        sub.planId === tierId &&
+        sub.hasStripeSubscription &&
+        isCurrentPlanCard(sub, tierId, interval) &&
+        !sub.cancelAtPeriodEnd
+      ) {
         await openBillingPortal(window.location.href).catch((e) => {
           setCheckoutError(e instanceof CheckoutError ? e.message : "Could not open billing portal")
         })
@@ -634,7 +680,7 @@ export default function UpgradePage() {
             <div className="grid gap-6 md:grid-cols-3 md:items-start">
               {TIER_IDS.map((id) => {
                 const tier        = getTier(id)
-                const isCurrent   = sub?.planId === id
+                const isCurrent   = isCurrentPlanCard(sub, id, interval)
                 const isProcessing = processingTier === id
                 const anyProcessing = processingTier !== null
                 const bullets     = tierBullets(tier)
@@ -716,16 +762,16 @@ export default function UpgradePage() {
                       <Button
                         onClick={() => handleSelectPlan(id)}
                         disabled={isButtonDisabled(id, sub, anyProcessing)}
-                        variant={buttonVariant(id, sub)}
+                        variant={buttonVariant(id, sub, interval)}
                         className="w-full font-sans"
                       >
                         {isProcessing ? (
                           <span className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            {buttonLabel(id, sub, true)}
+                            {buttonLabel(id, sub, interval, true)}
                           </span>
                         ) : (
-                          buttonLabel(id, sub, false)
+                          buttonLabel(id, sub, interval, false)
                         )}
                       </Button>
 
