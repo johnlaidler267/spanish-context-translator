@@ -4,13 +4,13 @@
  * POST /functions/v1/manage-subscription
  *
  * Handles subscription lifecycle actions that require custom UX treatment
- * (cancellation with grace period, reactivation, and paid-to-paid downgrades
- * with proration). Upgrades are still handled via Stripe Checkout / Billing
- * Portal through create-checkout-session.
+ * (cancellation with grace period, reactivation, paid-to-paid downgrades,
+ * and upgrades / same-tier interval switches via stripe.subscriptions.update).
+ * New subscribers without a Stripe subscription still use create-checkout-session.
  *
  * Body:
- *   action              "cancel" | "reactivate" | "downgrade"
- *   targetPriceId?      string   required for "downgrade" — must be in the allowlist
+ *   action              "cancel" | "reactivate" | "downgrade" | "upgrade"
+ *   targetPriceId?      string   required for "downgrade" and "upgrade" — allowlisted price
  *   prorationBehavior?  "create_prorations" | "none"   default: "create_prorations"
  *
  * Actions:
@@ -21,13 +21,10 @@
  *   reactivate  → stripe.subscriptions.update(id, { cancel_at_period_end: false })
  *                 Only valid while cancel_at_period_end is true (grace period).
  *
- *   downgrade   → stripe.subscriptions.update(id, {
- *                   items: [{ id: itemId, price: targetPriceId }],
- *                   proration_behavior: prorationBehavior,
- *                 })
- *                 Takes effect immediately; Stripe generates proration line items.
- *                 The endpoint validates that targetPriceId is lower-tier than the
- *                 current price. Use create-checkout-session for upgrades.
+ *   downgrade   → stripe.subscriptions.update — lower tier only; proration.
+ *
+ *   upgrade     → stripe.subscriptions.update — higher tier OR same-tier interval
+ *                 switch (e.g. Pro monthly → annual). Replaces the subscription item.
  *
  * All actions optimistically update user_subscriptions in the DB immediately,
  * then the Stripe webhook (customer.subscription.updated) provides the
@@ -58,11 +55,11 @@ import {
   corsHeaders,
   handleCorsPreflightRequest,
 } from "../_shared/cors.ts"
-import { getAllPriceIds, resolvePriceId } from "../_shared/tiers.ts"
+import { getAllPriceIds, normalizeStripePriceId, resolvePriceId } from "../_shared/tiers.ts"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-const VALID_ACTIONS = ["cancel", "reactivate", "downgrade"] as const
+const VALID_ACTIONS = ["cancel", "reactivate", "downgrade", "upgrade"] as const
 type Action = typeof VALID_ACTIONS[number]
 
 /** Tier rank — lower number = lower tier.  Must mirror TIER_RANK in upgrade.tsx */
@@ -284,7 +281,7 @@ Deno.serve(async (req: Request) => {
       return err(
         `targetPriceId resolves to "${targetEntry.tierId}" ` +
         `which is not lower than the current plan "${currentPlanId}". ` +
-        "Use create-checkout-session for upgrades.",
+        "Use the upgrade action for upgrades or interval switches.",
         "not_a_downgrade",
       )
     }
@@ -351,6 +348,115 @@ Deno.serve(async (req: Request) => {
       status: updatedSub.status,
       currentPeriodEnd: newPeriodEnd,
       planId: targetEntry.tierId,
+      billingInterval: targetEntry.interval,
+    })
+  }
+
+  // ── UPGRADE (higher tier, or same-tier monthly ↔ annual switch) ───────────
+  if (action === "upgrade") {
+    const targetPriceId = body.targetPriceId?.trim()
+    if (!targetPriceId) {
+      return err("targetPriceId is required for action 'upgrade'", "invalid_price")
+    }
+
+    const targetEntry = resolvePriceId(targetPriceId)
+    if (!targetEntry) {
+      return err(
+        `Unknown price ID: "${targetPriceId}". ` +
+        `Valid IDs: ${getAllPriceIds().join(", ")}`,
+        "invalid_price",
+      )
+    }
+
+    let stripeSub: Stripe.Subscription
+    try {
+      stripeSub = await stripe.subscriptions.retrieve(stripeSubId)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error("[manage-subscription] Stripe retrieve error:", msg)
+      return err(`Stripe error: ${msg}`, "stripe_error", 502)
+    }
+
+    const currentPriceId = stripeSub.items.data[0]?.price?.id
+    if (
+      currentPriceId &&
+      normalizeStripePriceId(currentPriceId) === normalizeStripePriceId(targetPriceId)
+    ) {
+      return err("You are already subscribed to this price.", "already_on_this_plan")
+    }
+
+    const currentRank = TIER_RANK[currentPlanId] ?? -1
+    const targetRank = TIER_RANK[targetEntry.tierId] ?? -1
+
+    if (targetRank < currentRank) {
+      return err(
+        "Target is a lower tier — use the downgrade action instead.",
+        "not_an_upgrade",
+      )
+    }
+
+    const isTierUpgrade = targetRank > currentRank
+    const isIntervalSwitch =
+      targetRank === currentRank && targetEntry.tierId === currentPlanId
+
+    if (!isTierUpgrade && !isIntervalSwitch) {
+      return err(
+        "Invalid upgrade target for your current plan.",
+        "invalid_upgrade",
+      )
+    }
+
+    const itemId = stripeSub.items.data[0]?.id
+    if (!itemId) {
+      return err("Could not find subscription item to update.", "no_item", 500)
+    }
+
+    const prorationBehavior =
+      (body.prorationBehavior === "none" ? "none" : "create_prorations") as
+      Stripe.SubscriptionUpdateParams.ProrationBehavior
+
+    let updatedSub: Stripe.Subscription
+    try {
+      updatedSub = await stripe.subscriptions.update(stripeSubId, {
+        items: [{ id: itemId, price: targetPriceId }],
+        proration_behavior: prorationBehavior,
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error("[manage-subscription] Stripe upgrade error:", msg)
+      return err(`Stripe error: ${msg}`, "stripe_error", 502)
+    }
+
+    const newPeriodEnd = updatedSub.current_period_end
+      ? new Date(updatedSub.current_period_end * 1000).toISOString()
+      : currentPeriodEnd
+
+    const { error: updateErr } = await db
+      .from("user_subscriptions")
+      .update({
+        plan_id: targetEntry.tierId,
+        billing_interval: targetEntry.interval,
+        cancel_at_period_end: updatedSub.cancel_at_period_end ?? false,
+        current_period_end: newPeriodEnd,
+      })
+      .eq("id", localSubId)
+
+    if (updateErr) {
+      console.error("[manage-subscription] DB upgrade update error:", updateErr)
+    }
+
+    console.log(
+      `[manage-subscription] upgrade user=${user.id} ${currentPlanId}→${targetEntry.tierId} ` +
+      `interval=${targetEntry.interval}`,
+    )
+
+    return json({
+      ok: true,
+      cancelAtPeriodEnd: updatedSub.cancel_at_period_end ?? false,
+      status: updatedSub.status,
+      currentPeriodEnd: newPeriodEnd,
+      planId: targetEntry.tierId,
+      billingInterval: targetEntry.interval,
     })
   }
 

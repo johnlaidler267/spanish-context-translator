@@ -39,6 +39,7 @@ import {
   cancelSubscription,
   reactivateSubscription,
   downgradeSubscription,
+  upgradeSubscription,
   SubscriptionError,
 } from "@/lib/subscription"
 import { PlanChangeDialog } from "@/components/plan-change-dialog"
@@ -223,15 +224,34 @@ function isButtonDisabled(id: TierId, sub: SubSnapshot | null, anyProcessing: bo
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function CheckoutSuccessBanner({ onDismiss }: { onDismiss: () => void }) {
+type SuccessBannerState =
+  | { kind: "checkout" }
+  | { kind: "upgrade"; tierName: string }
+  | { kind: "generic" }
+
+function PlanSuccessBanner({ state, onDismiss }: { state: SuccessBannerState; onDismiss: () => void }) {
+  const copy =
+    state.kind === "checkout"
+      ? {
+          title: "Subscription activated!",
+          body: "Your plan is now active. It may take a moment for all features to unlock.",
+        }
+      : state.kind === "upgrade"
+        ? {
+            title: "Plan updated",
+            body: `You're now on ${state.tierName}. Stripe charged your saved card (prorated)—no separate checkout. Receipts and payment method: Billing in Settings.`,
+          }
+        : {
+            title: "Changes saved",
+            body: "Your subscription was updated.",
+          }
+
   return (
     <div className="flex items-start gap-3 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 mb-8 text-sm font-sans">
       <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
       <div className="flex-1">
-        <p className="font-medium text-green-800 dark:text-green-300">Subscription activated!</p>
-        <p className="text-green-700/80 dark:text-green-400/80 mt-0.5">
-          Your plan is now active. It may take a moment for all features to unlock.
-        </p>
+        <p className="font-medium text-green-800 dark:text-green-300">{copy.title}</p>
+        <p className="text-green-700/80 dark:text-green-400/80 mt-0.5">{copy.body}</p>
       </div>
       <button
         onClick={onDismiss}
@@ -381,7 +401,7 @@ export default function UpgradePage() {
   const [subLoading, setSubLoading] = useState(true)
   const [processingTier, setProcessingTier] = useState<TierId | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
-  const [showSuccess, setShowSuccess] = useState(false)
+  const [successBanner, setSuccessBanner] = useState<SuccessBannerState | null>(null)
   const [confirmingActivation, setConfirmingActivation] = useState(false)
   // Downgrade / cancel confirmation dialog state
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
@@ -434,7 +454,7 @@ export default function UpgradePage() {
   // ── Handle Stripe redirect-back ────────────────────────────────────────────
   useEffect(() => {
     if (!didReturnFromCheckout()) return
-    setShowSuccess(true)
+    setSuccessBanner({ kind: "checkout" })
     setConfirmingActivation(true)
 
     // Poll until the webhook has updated the DB, then refresh global subscription state.
@@ -492,7 +512,7 @@ export default function UpgradePage() {
         status:            result.status,
         currentPeriodEnd:  result.currentPeriodEnd,
       } : prev)
-      setShowSuccess(true)
+      setSuccessBanner({ kind: "generic" })
     } catch (e) {
       const msg = e instanceof SubscriptionError ? e.message : "Could not reactivate. Please try again."
       setCheckoutError(msg)
@@ -523,7 +543,7 @@ export default function UpgradePage() {
         currentPeriodEnd:  result.currentPeriodEnd,
       } : prev)
       setPendingAction(null)
-      setShowSuccess(true)
+      setSuccessBanner({ kind: "generic" })
     } catch (e) {
       const msg = e instanceof SubscriptionError ? e.message : "Something went wrong. Please try again."
       setCheckoutError(msg)
@@ -584,7 +604,45 @@ export default function UpgradePage() {
         return
       }
 
-      // Upgrade or new subscription → Stripe Checkout
+      // Higher tier or same-tier interval switch: update Stripe subscription in place.
+      // (create-checkout-session + existing sub only opens the generic Billing Portal — no upgrade.)
+      if (
+        sub?.hasStripeSubscription &&
+        priceId &&
+        (targetRank > currentRank ||
+          (tierId === sub.planId && !isCurrentPlanCard(sub, tierId, interval)))
+      ) {
+        setProcessingTier(tierId)
+        try {
+          const result = await upgradeSubscription(priceId)
+          setSub((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  planId: result.planId,
+                  billingInterval: result.billingInterval ?? prev.billingInterval,
+                  cancelAtPeriodEnd: result.cancelAtPeriodEnd,
+                  status: result.status,
+                  currentPeriodEnd: result.currentPeriodEnd,
+                }
+              : prev,
+          )
+          setSuccessBanner({
+            kind: "upgrade",
+            tierName: getTier(result.planId).name,
+          })
+          await recheck()
+        } catch (e) {
+          const msg =
+            e instanceof SubscriptionError ? e.message : "Could not change plan. Please try again."
+          setCheckoutError(msg)
+        } finally {
+          setProcessingTier(null)
+        }
+        return
+      }
+
+      // New subscriber (no active Stripe sub) → Stripe Checkout
       setProcessingTier(tierId)
       try {
         await startCheckout({
@@ -598,7 +656,7 @@ export default function UpgradePage() {
         setProcessingTier(null)
       }
     },
-    [interval, sub, handleReactivate],
+    [interval, sub, handleReactivate, recheck],
   )
 
   // ─── Render ────────────────────────────────────────────────────────────────
@@ -633,8 +691,11 @@ export default function UpgradePage() {
           </BackToHomeLink>
 
           {/* Success banner */}
-          {showSuccess && (
-            <CheckoutSuccessBanner onDismiss={() => setShowSuccess(false)} />
+          {successBanner && (
+            <PlanSuccessBanner
+              state={successBanner}
+              onDismiss={() => setSuccessBanner(null)}
+            />
           )}
 
           {/* Error banner */}

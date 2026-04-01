@@ -8,8 +8,11 @@
  *   // New subscription → Stripe Checkout
  *   await startCheckout({ stripePriceId: getTier("pro").pricing.monthly.stripePriceId! })
  *
- *   // Existing subscriber → Stripe Billing Portal (manage/cancel/invoices)
+ *   // Existing subscriber managing payment method / invoices (not plan changes)
  *   await openBillingPortal()
+ *
+ *   // Upgrades / interval switches: use upgradeSubscription() in subscription.ts
+ *   // (updates the Stripe subscription in place — do not use startCheckout).
  */
 
 import { supabase } from "@/lib/supabase"

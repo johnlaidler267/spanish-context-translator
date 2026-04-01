@@ -28,6 +28,7 @@ import { supabase } from "@/lib/supabase"
 import {
   type TierId,
   type TierConfig,
+  type DbBillingInterval,
   TIER_IDS,
   getTier,
 } from "@/lib/tiers"
@@ -102,6 +103,8 @@ export interface ManageSubResult {
   status: string
   currentPeriodEnd: string | null
   planId: TierId
+  /** Set when Stripe price / interval changed (upgrade / downgrade / interval switch). */
+  billingInterval?: DbBillingInterval | null
 }
 
 // ─── Core caller ──────────────────────────────────────────────────────────────
@@ -110,7 +113,7 @@ const FUNCTION_NAME = "manage-subscription"
 
 async function callManageSubscription(
   body: {
-    action: "cancel" | "reactivate" | "downgrade"
+    action: "cancel" | "reactivate" | "downgrade" | "upgrade"
     targetPriceId?: string
     prorationBehavior?: "create_prorations" | "none"
   },
@@ -139,6 +142,7 @@ async function callManageSubscription(
     status?: string
     currentPeriodEnd?: string | null
     planId?: string
+    billingInterval?: string
   }
   try {
     payload = await res.json()
@@ -154,11 +158,14 @@ async function callManageSubscription(
     )
   }
 
+  const bi = payload.billingInterval
   return {
     cancelAtPeriodEnd: payload.cancelAtPeriodEnd ?? false,
     status:            payload.status ?? "active",
     currentPeriodEnd:  payload.currentPeriodEnd ?? null,
     planId:            (payload.planId as TierId) ?? "free",
+    billingInterval:
+      bi === "monthly" || bi === "annual" ? bi : undefined,
   }
 }
 
@@ -195,6 +202,21 @@ export async function downgradeSubscription(
 ): Promise<ManageSubResult> {
   return callManageSubscription({
     action: "downgrade",
+    targetPriceId,
+    prorationBehavior: proration,
+  })
+}
+
+/**
+ * Upgrade to a higher tier, or switch monthly ↔ annual on the same tier.
+ * Updates the existing Stripe subscription in place (proration applies).
+ */
+export async function upgradeSubscription(
+  targetPriceId: string,
+  proration: "create_prorations" | "none" = "create_prorations",
+): Promise<ManageSubResult> {
+  return callManageSubscription({
+    action: "upgrade",
     targetPriceId,
     prorationBehavior: proration,
   })
