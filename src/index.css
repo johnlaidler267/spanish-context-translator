@@ -81,7 +81,7 @@ html.lector-reading-session .global-corner-letter {
   }
 
   /*
-   * /upgrade: mobile shell uses overflow:hidden on html/body — that blocks page scroll.
+   * /upgrade, /settings: mobile shell uses overflow:hidden on html/body — that blocks page scroll.
    * This class opts the route out so the document can scroll. Use with MainHeader
    * variant="stacked" (in-flow), not fixed — avoids overlay without a nested flex trap.
    */

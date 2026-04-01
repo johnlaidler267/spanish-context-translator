@@ -48,13 +48,19 @@ export default function SettingsPage() {
     setStoredReadingTheme(theme)
   }, [theme])
 
+  // Mobile: same as /upgrade — global overflow:hidden traps scroll; stacked header + doc scroll fixes it.
+  useEffect(() => {
+    document.documentElement.classList.add("mobile-scroll-upgrade")
+    return () => document.documentElement.classList.remove("mobile-scroll-upgrade")
+  }, [])
+
   return (
-    <div className="min-h-app bg-background max-md:min-h-0 max-md:flex max-md:flex-1 max-md:flex-col max-md:overflow-hidden">
-      <div className="shrink-0">
-        <MainHeader theme={theme} onThemeChange={setTheme} />
+    <div className="min-h-app bg-background relative">
+      <div className="shrink-0 relative z-[1]">
+        <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
       </div>
 
-      <main className="md:pt-20 max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] pb-16 px-4 md:px-8 max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto overflow-x-hidden">
+      <main className="relative z-[1] pb-16 px-4 md:px-8 overflow-x-hidden">
         <div className="max-w-5xl mx-auto">
           <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8">
             <ArrowLeft className="h-4 w-4 mr-2" />
