@@ -18,6 +18,7 @@
  *   limits:   Record<UsageMetric, number | null>  — tier cap (null = unlimited)
  *   exceeded: UsageMetric[]                  — which metrics are over their limit (empty = fine)
  *   period: { start: string, end: string }   — ISO 8601 billing period dates
+ *   tierId: TierId                           — effective tier after status rules (mirrors enforcement)
  * }
  *
  * Response 4xx/5xx:  { error: string }
@@ -249,6 +250,7 @@ Deno.serve(async (req: Request) => {
     counters,
     limits:   limitMap,
     exceeded,
+    tierId,
     period: {
       start: period.start.toISOString(),
       end:   period.end.toISOString(),

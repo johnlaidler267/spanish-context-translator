@@ -127,6 +127,8 @@ function tierBullets(tier: TierConfig): string[] {
       ? "Unlimited texts per month"
       : `${limits.textsPerMonth} texts per month`,
   )
+  if (limits.textsPerDay !== null)
+    bullets.push(`${limits.textsPerDay} submissions per day`)
   if (limits.charsPerSubmission !== null)
     bullets.push(`Up to ${limits.charsPerSubmission.toLocaleString()} characters per submission`)
   if (limits.savedTranslations === null)

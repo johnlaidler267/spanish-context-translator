@@ -17,8 +17,7 @@
  */
 
 import { supabase } from "@/lib/supabase"
-import type { TierId } from "@/lib/tiers"
-import { getLimit, type TierLimits } from "@/lib/tiers"
+import { getLimit, getTier, type TierId, type TierLimits } from "@/lib/tiers"
 
 // ─── Metric definitions ───────────────────────────────────────────────────────
 
@@ -75,6 +74,39 @@ export interface TrackResult {
   exceeded: UsageMetric[]
   /** Current billing period boundaries. */
   period: { start: string; end: string }
+  /** Effective tier from track-usage (used to align limits with the shipped app). */
+  tierId?: TierId
+}
+
+/** Map tier config → per-metric limits (same shape as track-usage `limits`). */
+export function buildUsageLimitsFromTier(tierId: TierId): UsageLimits {
+  const L = getTier(tierId).limits
+  return {
+    texts_submitted:       L.textsPerMonth,
+    texts_submitted_today: L.textsPerDay,
+    chunks_returned:       L.chunksPerRequest,
+    pages_processed:       L.pagesPerSubmission,
+    chars_processed:       L.charsPerSubmission,
+    api_calls:             null,
+    voice_requests:        null,
+  }
+}
+
+/** Mirror track-usage exceeded rules using client tier caps (avoids stale deployed TIER_LIMITS). */
+export function computeExceededFromCounters(
+  counters: UsageCounters,
+  limits: UsageLimits,
+  increments: Partial<UsageCounters>,
+): UsageMetric[] {
+  return ALL_METRICS.filter((m) => {
+    const cap = limits[m]
+    if (cap === null) return false
+    if (PER_SUBMISSION_LIMIT_METRICS.has(m)) {
+      const inc = increments[m] ?? 0
+      return inc > cap
+    }
+    return (counters[m] ?? 0) > cap
+  })
 }
 
 export class UsageError extends Error {
@@ -151,7 +183,23 @@ async function callTrackUsage(
     throw new UsageError(payload.error ?? `HTTP ${res.status}`, res.status)
   }
 
-  return payload as TrackResult
+  const base = payload as TrackResult & { tierId?: TierId }
+  const tierId = base.tierId
+  if (!tierId || !base.counters || !base.period) {
+    return base as TrackResult
+  }
+
+  const limits = buildUsageLimitsFromTier(tierId)
+  const incForExceeded = checkOnly ? {} : increments
+  const exceeded = computeExceededFromCounters(base.counters, limits, incForExceeded)
+
+  return {
+    ...base,
+    limits,
+    exceeded,
+    allowed: exceeded.length === 0,
+    tierId,
+  }
 }
 
 // ─── UsageTracker class ───────────────────────────────────────────────────────
