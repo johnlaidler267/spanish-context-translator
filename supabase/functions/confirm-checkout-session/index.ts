@@ -45,6 +45,25 @@ function err(message: string, status = 400): Response {
   return json({ error: message }, status)
 }
 
+/** Expand can still leave `subscription` as an id string; retrieve in that case. */
+async function subscriptionFromSession(
+  stripe: Stripe,
+  session: Stripe.Checkout.Session,
+): Promise<Stripe.Subscription | null> {
+  const subField = session.subscription
+  if (subField && typeof subField === "object") {
+    return subField as Stripe.Subscription
+  }
+  if (typeof subField === "string") {
+    try {
+      return await stripe.subscriptions.retrieve(subField)
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return handleCorsPreflightRequest()
   if (req.method !== "POST") return err("Method not allowed", 405)
@@ -114,15 +133,29 @@ Deno.serve(async (req: Request) => {
     if (session.mode !== "subscription") {
       return err("Checkout session is not a subscription session", 400)
     }
+    // Trials with `payment_method_collection: "if_required"` often complete with
+    // `status: "complete"` and a non-"paid" payment_status (e.g. unpaid / no_payment_required).
     if (session.payment_status !== "paid" && session.status !== "complete") {
       return err("Checkout session is not complete", 409)
     }
 
     stripeCustomerId = typeof session.customer === "string" ? session.customer : session.customer?.id
-    stripeSub =
-      typeof session.subscription === "object" && session.subscription
-        ? session.subscription
-        : null
+    stripeSub = await subscriptionFromSession(stripe, session)
+
+    // Right after redirect, subscription is occasionally still null until Stripe finishes wiring;
+    // same session id + short delay usually resolves it.
+    for (let attempt = 0; attempt < 3 && (!stripeSub || !stripeCustomerId); attempt++) {
+      await new Promise((r) => setTimeout(r, 450))
+      try {
+        session = await stripe.checkout.sessions.retrieve(sessionId, {
+          expand: ["subscription"],
+        })
+      } catch {
+        break
+      }
+      stripeCustomerId = typeof session.customer === "string" ? session.customer : session.customer?.id
+      stripeSub = await subscriptionFromSession(stripe, session)
+    }
   } else {
     stripeCustomerId = currentRow?.stripe_customer_id ?? null
     if (!stripeCustomerId) {

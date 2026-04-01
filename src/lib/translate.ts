@@ -70,6 +70,114 @@ async function fetchGroqChatCompletion(body: object): Promise<Response> {
   return post()
 }
 
+/** Groq / OpenAI-compatible: `content` may be a string or multimodal parts; some models fill `reasoning`. */
+function getAssistantMessageText(data: unknown): string {
+  const choice = (data as { choices?: Array<{ message?: Record<string, unknown> }> })?.choices?.[0]
+  const msg = choice?.message
+  if (!msg) return ""
+  const content = msg.content
+  if (typeof content === "string" && content.trim()) return content.trim()
+  if (Array.isArray(content)) {
+    const texts = content.map((part: unknown) => {
+      if (part !== null && typeof part === "object" && "text" in part) {
+        const t = (part as { text?: unknown }).text
+        return typeof t === "string" ? t : ""
+      }
+      return ""
+    })
+    const joined = texts.join("")
+    if (joined.trim()) return joined.trim()
+  }
+  const reasoning = msg.reasoning
+  if (typeof reasoning === "string" && reasoning.trim()) return reasoning.trim()
+  return ""
+}
+
+/** First top-level `[`…`]` span; ignores `]` inside double-quoted JSON strings. */
+function sliceBalancedJsonArray(raw: string): string | null {
+  const start = raw.indexOf("[")
+  if (start === -1) return null
+  let depth = 0
+  let inStr = false
+  let esc = false
+  for (let i = start; i < raw.length; i++) {
+    const c = raw[i]!
+    if (inStr) {
+      if (esc) {
+        esc = false
+        continue
+      }
+      if (c === "\\") {
+        esc = true
+        continue
+      }
+      if (c === '"') {
+        inStr = false
+        continue
+      }
+      continue
+    }
+    if (c === '"') {
+      inStr = true
+      continue
+    }
+    if (c === "[") depth++
+    if (c === "]") {
+      depth--
+      if (depth === 0) return raw.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
+function extractChunkJsonArrayFromText(raw: string): unknown[] {
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/m, "").trim()
+  if (!cleaned) throw new Error("Empty model response")
+
+  const tryParseArray = (s: string): unknown[] | null => {
+    try {
+      const repaired = jsonrepair(s)
+      const parsed = JSON.parse(repaired)
+      return Array.isArray(parsed) ? parsed : null
+    } catch {
+      return null
+    }
+  }
+
+  const balanced = sliceBalancedJsonArray(cleaned)
+  if (balanced) {
+    const arr = tryParseArray(balanced)
+    if (arr) return arr
+  }
+
+  const greedy = cleaned.match(/\[[\s\S]*\]/)
+  if (greedy) {
+    const arr = tryParseArray(greedy[0])
+    if (arr) return arr
+  }
+
+  const whole = tryParseArray(cleaned)
+  if (whole) return whole
+
+  try {
+    const repaired = jsonrepair(cleaned)
+    const parsed = JSON.parse(repaired) as unknown
+    if (Array.isArray(parsed)) return parsed
+    if (parsed && typeof parsed === "object") {
+      const o = parsed as Record<string, unknown>
+      for (const k of ["chunks", "output", "data", "items", "result"]) {
+        const v = o[k]
+        if (Array.isArray(v)) return v
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  const preview = cleaned.length > 400 ? `${cleaned.slice(0, 400)}…` : cleaned
+  throw new Error(`No JSON array found in response. Preview: ${preview}`)
+}
+
 const PROMPT = (input: string) => `You are a Spanish language expert. Break the input into chunks so a reader can hover each one and mentally assemble the English sentence chunk by chunk.
 
 Return a JSON array. Each chunk:
@@ -490,16 +598,8 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   }
 
   const data = await res.json()
-  let raw = data.choices?.[0]?.message?.content?.trim() ?? ""
-
-  raw = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim()
-
-  const match = raw.match(/\[[\s\S]*\]/)
-  if (!match) throw new Error("No JSON array found in response")
-
-  const repaired = jsonrepair(match[0])
-  const parsed: unknown = JSON.parse(repaired)
-  if (!Array.isArray(parsed)) throw new Error("No JSON array found in response")
+  const raw = getAssistantMessageText(data)
+  const parsed = extractChunkJsonArrayFromText(raw)
   const merged = postProcessChunks(parsed)
   const chunks: RawChunk[] = []
   for (const row of merged) {

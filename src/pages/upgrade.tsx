@@ -494,7 +494,12 @@ export default function UpgradePage() {
             setInterval(confirmed.billingInterval)
           }
         } catch (e) {
-          const msg = e instanceof CheckoutError ? e.message : "Could not confirm your subscription yet."
+          const msg =
+            e instanceof CheckoutError || (e instanceof Error && e.name === "CheckoutError")
+              ? (e as Error).message
+              : e instanceof Error
+                ? e.message
+                : "Could not confirm your subscription yet."
           setCheckoutError(msg)
         }
 
