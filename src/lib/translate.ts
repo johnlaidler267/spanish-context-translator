@@ -1,7 +1,8 @@
 import { jsonrepair } from "jsonrepair"
+import { postProcessChunks } from "@/lib/chunk-merges"
 import { fetchGroqChatViaEdge, transcribeAudioViaEdge } from "@/lib/groq-edge"
 
-const MODEL = "openai/gpt-oss-120b"
+const MODEL = "openai/gpt-oss-20b"
 
 /** GPT-OSS on Groq: `low` | `medium` | `high` — keep low for chunk JSON to save completion budget. */
 const TRANSLATE_REASONING_EFFORT = "medium" as const
@@ -12,7 +13,7 @@ const TRANSLATE_REASONING_EFFORT = "medium" as const
  * and always tripped TPM — unrelated to how short the user’s Spanish is.
  * 4k further reduces “requested” TPM vs 5k; if you still see 429s, wait or upgrade Groq.
  */
-const TRANSLATE_MAX_COMPLETION_TOKENS = 6000
+const TRANSLATE_MAX_COMPLETION_TOKENS =6000
 
 async function parseGroqJsonErrorBody(res: Response): Promise<string> {
   try {
@@ -467,15 +468,20 @@ export function pageSourceText(pageSentences: string[]): string {
 
 /** Single LLM call: chunk JSON → reconciled items for one page of source text. */
 export async function translatePageText(input: string): Promise<ReconciledItem[]> {
+  const systemContent = "You are an intuitive spanish language chunking expert."
+  const userContent = PROMPT(input)
+  console.log(
+    "[translatePageText] complete prompt to LLM\n--- SYSTEM ---\n%s\n--- USER ---\n%s\n--- END ---",
+    systemContent,
+    userContent,
+  )
+
   const res = await fetchGroqChatCompletion({
     model: MODEL,
-    messages: [{
-      "role": "system",
-      "content": "You are an intuitive spanish language chunking expert.",
-    }, { role: "user", content: PROMPT(input) }],
+    messages: [{ role: "system", content: systemContent }, { role: "user", content: userContent }],
     temperature: 0.2,
     max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
-    reasoning_effort: TRANSLATE_REASONING_EFFORT,
+    // reasoning_effort: TRANSLATE_REASONING_EFFORT,
   })
 
   if (!res.ok) {
@@ -494,8 +500,9 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   const repaired = jsonrepair(match[0])
   const parsed: unknown = JSON.parse(repaired)
   if (!Array.isArray(parsed)) throw new Error("No JSON array found in response")
+  const merged = postProcessChunks(parsed)
   const chunks: RawChunk[] = []
-  for (const row of parsed) {
+  for (const row of merged) {
     const c = coerceLlmChunkRow(row)
     if (c) chunks.push(normalizeRawChunk(c))
   }
