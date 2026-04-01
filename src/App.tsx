@@ -112,8 +112,6 @@ export default function App() {
     return () => mq.removeEventListener("change", sync)
   }, [])
 
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY
-
   const handleTextSubmit = useCallback(
     async (text: string, options?: { wikipediaArticleTitle?: string }) => {
       if (!text.trim()) return
@@ -122,11 +120,6 @@ export default function App() {
       // Guests: no track-usage — cap anonymous previews in localStorage (guest_tries_used).
       if (!user && hasReachedGuestLimit()) {
         setGuestSignupOpen(true)
-        return
-      }
-
-      if (!apiKey) {
-        setError("Missing VITE_GROQ_API_KEY. Add it to your .env file.")
         return
       }
       const trimmed = text.trim()
@@ -228,7 +221,7 @@ export default function App() {
         setArticlePageIndex(0)
         setReadingSessionId((k) => k + 1)
 
-        await cacheRef.current.loadPage(0, pageSourceText(pages[0]!), apiKey, translatePageText)
+        await cacheRef.current.loadPage(0, pageSourceText(pages[0]!), translatePageText)
         bump()
         setAppState("reading")
 
@@ -244,7 +237,7 @@ export default function App() {
         setAppState("landing")
       }
     },
-    [apiKey, isLapsed, user, bump],
+    [isLapsed, user, bump],
   )
 
   const handleBack = useCallback(() => {
@@ -265,52 +258,52 @@ export default function App() {
 
   /** Article: preload next page when current page is shown. */
   useEffect(() => {
-    if (appState !== "reading" || viewMode !== "article" || !apiKey) return
+    if (appState !== "reading" || viewMode !== "article") return
     const next = articlePageIndex + 1
     if (next >= totalPages) return
     const c = cacheRef.current
     if (c.getPage(next) != null || c.isLoading(next) || c.getError(next)) return
     void c
-      .loadPage(next, pageSourceText(sourcePages[next]!), apiKey, translatePageText)
+      .loadPage(next, pageSourceText(sourcePages[next]!), translatePageText)
       .then(bump)
       .catch(bump)
-  }, [appState, viewMode, articlePageIndex, totalPages, sourcePages, apiKey, bump])
+  }, [appState, viewMode, articlePageIndex, totalPages, sourcePages, bump])
 
   /** Read: start loading page 1 early when there are multiple pages. */
   useEffect(() => {
     if (appState !== "reading" || viewMode !== "read") return
-    if (totalPages <= 1 || !apiKey) return
+    if (totalPages <= 1) return
     const c = cacheRef.current
     if (c.getPage(1) != null || c.isLoading(1) || c.getError(1)) return
     void c
-      .loadPage(1, pageSourceText(sourcePages[1]!), apiKey, translatePageText)
+      .loadPage(1, pageSourceText(sourcePages[1]!), translatePageText)
       .then(bump)
       .catch(bump)
-  }, [appState, viewMode, totalPages, sourcePages, apiKey, bump])
+  }, [appState, viewMode, totalPages, sourcePages, bump])
 
   const onRequestPreloadPage = useCallback(
     (pageIndex: number) => {
-      if (pageIndex >= totalPages || !apiKey) return
+      if (pageIndex >= totalPages) return
       const c = cacheRef.current
       if (c.getPage(pageIndex) != null || c.isLoading(pageIndex) || c.getError(pageIndex)) return
       void c
-        .loadPage(pageIndex, pageSourceText(sourcePages[pageIndex]!), apiKey, translatePageText)
+        .loadPage(pageIndex, pageSourceText(sourcePages[pageIndex]!), translatePageText)
         .then(bump)
         .catch(bump)
     },
-    [totalPages, sourcePages, apiKey, bump],
+    [totalPages, sourcePages, bump],
   )
 
   const retryArticlePage = useCallback(() => {
-    if (!apiKey || totalPages === 0) return
+    if (totalPages === 0) return
     rateLimitModalSuppressedRef.current = false
     const i = articlePageIndex
     cacheRef.current.clearPage(i)
     void cacheRef.current
-      .loadPage(i, pageSourceText(sourcePages[i]!), apiKey, translatePageText)
+      .loadPage(i, pageSourceText(sourcePages[i]!), translatePageText)
       .then(bump)
       .catch(bump)
-  }, [articlePageIndex, sourcePages, apiKey, totalPages, bump])
+  }, [articlePageIndex, sourcePages, totalPages, bump])
 
   useEffect(() => {
     const messages: string[] = []
@@ -346,22 +339,21 @@ export default function App() {
     rateLimitModalSuppressedRef.current = true
     setError("")
     const c = cacheRef.current
-    const key = apiKey
     const pages = sourcePages
-    if (key && pages.length > 0) {
+    if (pages.length > 0) {
       for (let i = 0; i < pages.length; i++) {
         const e = c.getError(i)
         if (e && isRateLimitApiMessage(e)) {
           c.clearPage(i)
           void c
-            .loadPage(i, pageSourceText(pages[i]!), key, translatePageText)
+            .loadPage(i, pageSourceText(pages[i]!), translatePageText)
             .then(bump)
             .catch(bump)
         }
       }
     }
     bump()
-  }, [apiKey, sourcePages, bump])
+  }, [sourcePages, bump])
 
   const viewportMain =
     "min-h-app flex flex-col max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden overflow-hidden"
@@ -517,13 +509,12 @@ export default function App() {
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        if (!apiKey) return
                         rateLimitModalSuppressedRef.current = false
                         const c = cacheRef.current
                         const idx = firstMissingPageIndex
                         c.clearPage(idx)
                         void c
-                          .loadPage(idx, pageSourceText(sourcePages[idx]!), apiKey, translatePageText)
+                          .loadPage(idx, pageSourceText(sourcePages[idx]!), translatePageText)
                           .then(bump)
                           .catch(bump)
                       }}
@@ -543,12 +534,12 @@ export default function App() {
                   return e && !isRateLimitApiMessage(e) ? e : null
                 })()}
                 onRetry={
-                  cache.getError(0) && apiKey && !isRateLimitApiMessage(cache.getError(0)!)
+                  cache.getError(0) && !isRateLimitApiMessage(cache.getError(0)!)
                     ? () => {
                         rateLimitModalSuppressedRef.current = false
                         cache.clearPage(0)
                         void cache
-                          .loadPage(0, pageSourceText(sourcePages[0]!), apiKey, translatePageText)
+                          .loadPage(0, pageSourceText(sourcePages[0]!), translatePageText)
                           .then(bump)
                           .catch(bump)
                       }

@@ -70,14 +70,12 @@ export function LandingScreen({
     return () => clearInterval(interval)
   }, [text])
 
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY
-
   const handleRandomPill = async () => {
-    if (isRolling || !apiKey) return
+    if (isRolling) return
     setLearnError(null)
     setIsRolling(true)
     try {
-      const paragraph = await generateRandomSpanish(apiKey)
+      const paragraph = await generateRandomSpanish()
       learnArticleTitleRef.current = null
       setText(paragraph)
     } finally {
@@ -86,11 +84,11 @@ export function LandingScreen({
   }
 
   const handleLearnPill = async () => {
-    if (isLearning || isLoading || !apiKey) return
+    if (isLearning || isLoading) return
     setLearnError(null)
     setIsLearning(true)
     try {
-      const { title, intro } = await fetchLearnRandomParagraph(apiKey)
+      const { title, intro } = await fetchLearnRandomParagraph()
       learnArticleTitleRef.current = title
       setText(intro)
     } catch (e) {
@@ -198,8 +196,6 @@ export function LandingScreen({
               randomPending={isRolling}
               learnPending={isLearning}
               disabled={isLoading}
-              randomDisabled={!apiKey}
-              learnDisabled={!apiKey}
               learnError={learnError}
             />
             <div className="order-2 md:order-1 flex flex-col gap-2 w-full relative md:pb-1">
@@ -243,7 +239,6 @@ export function LandingScreen({
                     </svg>
                   </button>
                   <VoiceInputButton
-                    apiKey={apiKey}
                     disabled={isLoading}
                     onTranscript={(t) => setText((prev) => appendTranscriptToField(prev, t))}
                   />

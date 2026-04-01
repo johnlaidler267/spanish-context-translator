@@ -90,13 +90,11 @@ function useSilenceStop(
 }
 
 interface VoiceInputButtonProps {
-  apiKey: string | undefined
   onTranscript: (text: string) => void
   disabled?: boolean
 }
 
 export function VoiceInputButton({
-  apiKey,
   onTranscript,
   disabled,
 }: VoiceInputButtonProps) {
@@ -152,7 +150,7 @@ export function VoiceInputButton({
   }, [])
 
   const startRecording = useCallback(async () => {
-    if (!apiKey || disabled) return
+    if (disabled) return
     setFeedback(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -183,11 +181,7 @@ export function VoiceInputButton({
 
         setPhase("transcribing")
         try {
-          const text = await transcribeAudioWithGroq(
-            apiKey,
-            blob,
-            `recording.${ext}`,
-          )
+          const text = await transcribeAudioWithGroq(blob, `recording.${ext}`)
           if (!text.trim()) {
             clearFeedbackSoon("No speech detected")
           } else {
@@ -214,10 +208,10 @@ export function VoiceInputButton({
       }
       setPhase("idle")
     }
-  }, [apiKey, disabled, onTranscript, clearFeedbackSoon])
+  }, [disabled, onTranscript, clearFeedbackSoon])
 
   const toggle = useCallback(() => {
-    if (disabled || !apiKey) return
+    if (disabled) return
     if (phase === "transcribing") return
     if (phase === "recording") {
       vibrateShort()
@@ -225,7 +219,7 @@ export function VoiceInputButton({
       return
     }
     void startRecording()
-  }, [apiKey, disabled, phase, startRecording, stopRecordingInternal])
+  }, [disabled, phase, startRecording, stopRecordingInternal])
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -251,7 +245,7 @@ export function VoiceInputButton({
         aria-label={ariaLabel}
         aria-pressed={isRecording}
         title={isRecording ? "Listening…" : undefined}
-        disabled={disabled || !apiKey || isBusy}
+        disabled={disabled || isBusy}
         onClick={toggle}
         onKeyDown={onKeyDown}
       >

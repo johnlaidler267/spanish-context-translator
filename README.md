@@ -36,9 +36,8 @@ cp .env.example .env
 |---|---|
 | `VITE_SUPABASE_URL` | Your Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key |
-| `VITE_GROQ_API_KEY` | Groq API key ([console.groq.com](https://console.groq.com)) |
 
-> ⚠️ `VITE_` prefixed variables are bundled into the browser. Never put secret keys here.
+> ⚠️ `VITE_` prefixed variables are bundled into the browser. **Never** put API keys for Groq or other paid APIs there. The Groq key lives only in Supabase Edge Function secrets (`GROQ_API_KEY`).
 
 ### 3. Supabase setup
 
@@ -66,7 +65,10 @@ npx supabase@latest secrets set RESEND_API_KEY=re_...
 npx supabase@latest secrets set APP_URL=https://your-domain.com
 npx supabase@latest secrets set REPLAY_WEBHOOK_SECRET=some-random-secret
 npx supabase@latest secrets set PAST_DUE_GRACE_DAYS=3   # optional, defaults to 3
+npx supabase@latest secrets set GROQ_API_KEY=gsk_...    # Groq — used only by Edge Functions (translation, Learn, voice, chunk details)
 ```
+
+**Auth (required for translation):** In Supabase → **Authentication** → **Providers**, enable **Anonymous** sign-ins. Guests get an anonymous JWT so Edge Functions can authorize requests without exposing `GROQ_API_KEY` in the client bundle.
 
 ### 5. Run locally
 
@@ -116,7 +118,9 @@ Npm shortcuts (see `package.json`): `npm run supabase:deploy-checkout`, `npm run
 | `manage-subscription` | `POST /manage-subscription` | Handles cancel, reactivate, and downgrade without going through Stripe's portal. |
 | `stripe-webhook` | `POST /stripe-webhook` | Receives and verifies Stripe events; updates DB via shared processor. |
 | `track-usage` | `POST /track-usage` | Increments usage counters; returns `counters`, `limits`, `allowed`, `exceeded`, `tierId`, `period`. |
-| `chunk-details` | `POST /chunk-details` | Optional grammar / chunk detail calls from the reader UI. |
+| `groq-chat` | `POST /groq-chat` | Proxies OpenAI-compatible chat completions to Groq (`GROQ_API_KEY` server-side). |
+| `groq-transcribe` | `POST /groq-transcribe` | Proxies Whisper transcription to Groq. |
+| `chunk-details` | `POST /chunk-details` | Grammar / chunk detail calls from the reader UI (Groq via server). |
 | `replay-failed-webhooks` | `POST /replay-failed-webhooks` | Admin endpoint to replay failed webhook events (dead letter queue). |
 
 ---
@@ -143,7 +147,7 @@ The client also pre-checks limits before translation (`src/lib/enforce.ts` + `Ap
 
 ### Translation (Groq)
 
-Chunking runs in the browser against **Groq** (`src/lib/translate.ts`) using `VITE_GROQ_API_KEY`. **On-demand** Groq projects enforce a low **tokens-per-minute / request-size** budget (roughly prompt + `max_tokens`). If you see TPM errors on short text, the static prompt is large — lower `TRANSLATE_MAX_COMPLETION_TOKENS` in `translate.ts`, shorten the prompt, or move to a higher Groq tier.
+Chunking calls **Groq** through **`groq-chat`** (`src/lib/translate.ts` → `src/lib/groq-edge.ts`). The Groq API key is **not** in the browser. **On-demand** Groq projects enforce a low **tokens-per-minute / request-size** budget (roughly prompt + `max_tokens`). If you see TPM errors on short text, lower `TRANSLATE_MAX_COMPLETION_TOKENS` in `translate.ts`, shorten the prompt, or upgrade Groq.
 
 ### Landing plan pill
 
@@ -188,7 +192,7 @@ Events that fail 3 consecutive retries are marked `dead_letter`.
 1. Push the repo to GitHub.
 2. [Vercel](https://vercel.com) → **Add New Project** → import the repo.
 3. **Framework preset:** Vite. **Build:** `npm run build`. **Output:** `dist`.
-4. Add environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GROQ_API_KEY`).
+4. Add environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Set `GROQ_API_KEY` in Supabase secrets and deploy `groq-chat`, `groq-transcribe`, and `chunk-details`.
 5. The included `vercel.json` handles SPA fallback so deep routes like `/settings` and `/upgrade` work on refresh.
 
 ---

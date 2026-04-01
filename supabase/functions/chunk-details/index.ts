@@ -6,10 +6,10 @@
  *   { "kind":"verb", "infinitive", "tense", "person", "contextNote" }
  *   or { "kind":"other", "explanation" }
  *
- * The app currently calls Groq from the browser; this function mirrors that
- * contract for server-side / mobile clients. Set GROQ_API_KEY in Supabase secrets.
+ * Requires a valid Supabase JWT (signed-in or anonymous). Set GROQ_API_KEY in secrets.
  */
 
+import { requireAuthUser, jsonError } from "../_shared/auth-user.ts"
 import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -47,13 +47,13 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders })
   }
 
+  const auth = await requireAuthUser(req)
+  if (auth instanceof Response) return auth
+
   const groqKey = Deno.env.get("GROQ_API_KEY")
   if (!groqKey) {
     console.error("[chunk-details] GROQ_API_KEY not set")
-    return new Response(
-      JSON.stringify({ error: "Service misconfigured" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    )
+    return jsonError("Service misconfigured", 500)
   }
 
   let body: { chunk?: string; sentence?: string }

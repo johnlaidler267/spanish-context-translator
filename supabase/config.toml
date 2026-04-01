@@ -24,6 +24,12 @@ verify_jwt = false
 [functions.manage-subscription]
 verify_jwt = false
 
-# Guest-friendly; optional auth inside.
+# Validates JWT inside the function (anonymous or signed-in).
 [functions.chunk-details]
+verify_jwt = false
+
+[functions.groq-chat]
+verify_jwt = false
+
+[functions.groq-transcribe]
 verify_jwt = false

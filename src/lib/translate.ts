@@ -1,6 +1,6 @@
 import { jsonrepair } from "jsonrepair"
+import { fetchGroqChatViaEdge, transcribeAudioViaEdge } from "@/lib/groq-edge"
 
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const MODEL = "openai/gpt-oss-120b"
 
 /** GPT-OSS on Groq: `low` | `medium` | `high` — keep low for chunk JSON to save completion budget. */
@@ -16,7 +16,11 @@ const TRANSLATE_MAX_COMPLETION_TOKENS = 6000
 
 async function parseGroqJsonErrorBody(res: Response): Promise<string> {
   try {
-    const j = (await res.json()) as { error?: { message?: string }; message?: string }
+    const j = (await res.json()) as {
+      error?: { message?: string } | string
+      message?: string
+    }
+    if (typeof j?.error === "string") return j.error
     return j?.error?.message ?? j?.message ?? ""
   } catch {
     return ""
@@ -53,16 +57,8 @@ function parseRetryAfterMs(res: Response): number | null {
 }
 
 /** One retry on 429 — helps brief RPM/TPM bursts; drains first body so the connection can be reused. */
-async function fetchGroqChatCompletion(body: object, apiKey: string): Promise<Response> {
-  const post = () =>
-    fetch(GROQ_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(body),
-    })
+async function fetchGroqChatCompletion(body: object): Promise<Response> {
+  const post = () => fetchGroqChatViaEdge(body)
 
   let res = await post()
   if (res.status !== 429) return res
@@ -75,19 +71,18 @@ async function fetchGroqChatCompletion(body: object, apiKey: string): Promise<Re
 
 const PROMPT = (input: string) => `You will break the input text into chunks so the reader can hover each one in sequence and mentally assemble the English sentence as they go — like translating in their own head, chunk by chunk.
 
-For each chunk return:
+For each chunk return one JSON object using these short keys only (saves space):
 
-- "chunk": the original Spanish text
-- "meaning": the natural English equivalent in the context of this specific sentence
-- "literal": word-for-word translation, even if unnatural
-- "note": a brief grammatical explanation for non-obvious chunks — null if the chunk is straightforward
+- "c": the original Spanish text
+- "m": the natural English equivalent in the context of this specific sentence
+- "l": word-for-word translation, even if unnatural
+- "n": include only when the chunk needs a brief non-obvious grammatical explanation — otherwise omit this key entirely (never use "n": null)
 
-DEFAULT: Usually, words should be seperated individually, or in the smallest logical group. Only group when the words make more sense together.
 
 Here are examples of specific groups of words it makes sense to chunk:
 
 Fixed idioms — meaning unguessable from parts:
-dar su brazo a torcer, visto bueno, los unos de los otros, en cambio, del mismo modo, de este modo, se trata de, más adelante, por encima, de pronto, di cuenta, a fines de
+dar su brazo a torcer, visto bueno, los unos de los otros, en cambio, del mismo modo, de este modo, se trata de, más adelante, por encima, de pronto, di cuenta, a fines de, 
 
 Relative/subordinating connectors — splitting produces nonsense:
 en la que, los que, antes que, de que, mientras que
@@ -114,37 +109,36 @@ Every word in the input must appear in the output. Do not stop early — complet
 
 Examples:
 
-INPUT: "El siempre cerraba la puerta, como hacía siempre que la llamaba."
+INPUT: "Los puntos criticos son regiones en las que dos o mas cosas"
 OUTPUT: [
-{ "chunk": "El", "meaning": "He", "literal": "He", "note": null },
-{ "chunk": "siempre", "meaning": "always", "literal": "always", "note": null },
-{ "chunk": "cerraba", "meaning": "closed", "literal": "closed", "note": null },
-{ "chunk": "la", "meaning": "the", "literal": "the", "note": null },
-{ "chunk": "puerta", "meaning": "door", "literal": "door", "note": null },
-{ "chunk": ",", "meaning": ",", "literal": ",", "note": null },
-{ "chunk": "como", "meaning": "as", "literal": "as", "note": null },
-{ "chunk": "hacía", "meaning": "he always did", "literal": "did", "note": null },
-{ "chunk": "siempre", "meaning": "whenever", "literal": "always", "note": null },
-{ "chunk": "que", "meaning": "that", "literal": "that", "note": null },
-{ "chunk": "la", "meaning": "[to] her", "literal": "the", "note": null },
-{ "chunk": "llamaba", "meaning": "[he] called", "literal": "called", "note": null }
+{ "c": "Los", "m": "The", "l": "The" },
+ { "c": "puntos criticos", "m": "critical regions", "l": "critical regions" },
+ { "c": "son", "m": "are", "l": "are" },
+ { "c": "regiones", "m": "regions", "l": "regions" },
+ { "c": "en", "m": "in", "l": "in" },
+ { "c": "las que", "m": "where", "l": "where" },
+ { "c": "dos", "m": "two", "l": "two" },
+ { "c": "o", "m": "or", "l": "or" },
+ { "c": "mas", "m": "more", "l": "more" },
+ { "c": "cosas", "m": "things", "l": "things" }
 ]
 
-- note: wrap any English word in [] if it has no corresponding Spanish word in the chunk. Whether that's an implied pronoun, a preposition absorbed into context, or a grammatical particle that just doesn't exist in Spanish.
+- In "m": wrap any English word in [] if it has no corresponding Spanish word in the chunk. Whether that's an implied pronoun, a preposition absorbed into context, or a grammatical particle that just doesn't exist in Spanish.
 
 INPUT: "bajo pena de perjurio ante el Senado"
 OUTPUT: [
-{ "chunk": "bajo", "meaning": "under", "literal": "under", "note": null },
-{ "chunk": "pena", "meaning": "penalty", "literal": "penalty", "note": null },
-{ "chunk": "de", "meaning": "of", "literal": "of", "note": null },
-{ "chunk": "perjurio", "meaning": "perjury", "literal": "perjury", "note": null },
-{ "chunk": "ante", "meaning": "before", "literal": "before", "note": null },
-{ "chunk": "el", "meaning": "the", "literal": "the", "note": null },
-{ "chunk": "Senado", "meaning": "Senate", "literal": "Senate", "note": null }
+{ "c": "bajo", "m": "under", "l": "under" },
+{ "c": "pena", "m": "penalty", "l": "penalty" },
+{ "c": "de", "m": "of", "l": "of" },
+{ "c": "perjurio", "m": "perjury", "l": "perjury" },
+{ "c": "ante", "m": "before", "l": "before" },
+{ "c": "el", "m": "the", "l": "the" },
+{ "c": "Senado", "m": "Senate", "l": "Senate" }
 ]
 
 Text: "${input}"`
 
+/** LLM JSON uses short keys (c,m,l,n); internal pipeline uses long names. */
 export type RawChunk = {
   chunk: string
   meaning: string
@@ -181,6 +175,42 @@ export function gapBetweenReconciledChunks(
   const word = /[\w\u00C0-\u024F]/
   if (word.test(a.slice(-1)) && word.test(b.charAt(0))) return " "
   return ""
+}
+
+/** Map LLM row (c/m/l/n or legacy chunk/meaning/literal/note) → RawChunk. */
+function coerceLlmChunkRow(raw: unknown): RawChunk | null {
+  if (raw == null || typeof raw !== "object") return null
+  const o = raw as Record<string, unknown>
+  const chunk = pickLlmStr(o, "c", "chunk")
+  const meaning = pickLlmStr(o, "m", "meaning")
+  if (chunk === undefined || meaning === undefined) return null
+  const literal = pickLlmOptStr(o, "l", "literal")
+  const noteRaw = pickLlmNote(o, "n", "note")
+  const note = noteRaw === null ? undefined : noteRaw
+  return { chunk, meaning, literal, note }
+}
+
+function pickLlmStr(o: Record<string, unknown>, short: string, long: string): string | undefined {
+  const v = o[short] !== undefined ? o[short] : o[long]
+  if (v === null || v === undefined) return undefined
+  return typeof v === "string" ? v : String(v)
+}
+
+function pickLlmOptStr(o: Record<string, unknown>, short: string, long: string): string | undefined {
+  const v = o[short] !== undefined ? o[short] : o[long]
+  if (v === null || v === undefined) return undefined
+  return typeof v === "string" ? v : String(v)
+}
+
+function pickLlmNote(
+  o: Record<string, unknown>,
+  short: string,
+  long: string,
+): string | undefined | null {
+  const v = o[short] !== undefined ? o[short] : o[long]
+  if (v === null) return null
+  if (v === undefined) return undefined
+  return typeof v === "string" ? v : String(v)
 }
 
 function normalizeRawChunk(raw: RawChunk): RawChunk {
@@ -430,20 +460,17 @@ export function pageSourceText(pageSentences: string[]): string {
 }
 
 /** Single LLM call: chunk JSON → reconciled items for one page of source text. */
-export async function translatePageText(
-  input: string,
-  apiKey: string,
-): Promise<ReconciledItem[]> {
-  const res = await fetchGroqChatCompletion(
-    {
-      model: MODEL,
-      messages: [{ role: "user", content: PROMPT(input) }],
-      temperature: 0,
-      max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
-      reasoning_effort: TRANSLATE_REASONING_EFFORT,
-    },
-    apiKey,
-  )
+export async function translatePageText(input: string): Promise<ReconciledItem[]> {
+  const res = await fetchGroqChatCompletion({
+    model: MODEL,
+    messages: [{
+      "role": "system",
+      "content": "You are an intuitive spanish language chunking expert.",
+    }, { role: "user", content: PROMPT(input) }],
+    temperature: 0.2,
+    max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
+    reasoning_effort: TRANSLATE_REASONING_EFFORT,
+  })
 
   if (!res.ok) {
     const detail = await parseGroqJsonErrorBody(res)
@@ -459,8 +486,14 @@ export async function translatePageText(
   if (!match) throw new Error("No JSON array found in response")
 
   const repaired = jsonrepair(match[0])
-  const parsed: RawChunk[] = JSON.parse(repaired)
-  return reconcileChunks(parsed, input)
+  const parsed: unknown = JSON.parse(repaired)
+  if (!Array.isArray(parsed)) throw new Error("No JSON array found in response")
+  const chunks: RawChunk[] = []
+  for (const row of parsed) {
+    const c = coerceLlmChunkRow(row)
+    if (c) chunks.push(normalizeRawChunk(c))
+  }
+  return reconcileChunks(chunks, input)
 }
 
 export type PageSentenceRange = { pageIndex: number; start: number; end: number }
@@ -770,35 +803,27 @@ export function countConsecutiveLoadedPages(
 
 export async function translate(
   input: string,
-  apiKey: string,
 ): Promise<{ reconciled: ReconciledItem[]; sentences: ReturnType<typeof splitIntoSentences> }> {
-  const reconciled = await translatePageText(input, apiKey)
+  const reconciled = await translatePageText(input)
   const sentences = splitIntoSentences(reconciled)
   return { reconciled, sentences }
 }
 
-export async function generateRandomSpanish(apiKey: string): Promise<string> {
-  const res = await fetch(GROQ_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        {
-          role: "user",
-          content: `Write one short paragraph in natural Spanish (about 3–5 sentences).
+export async function generateRandomSpanish(): Promise<string> {
+  const res = await fetchGroqChatCompletion({
+    model: MODEL,
+    messages: [
+      {
+        role: "user",
+        content: `Write one short paragraph in natural Spanish (about 3–5 sentences).
 
 You choose the topic, setting, tone, and register freely — fiction, opinion, dialogue, description, anything. Be creative and make each response feel different when asked again.
 
 Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`,
-        },
-      ],
-      temperature: 1.5,
-      max_tokens: 300,
-    }),
+      },
+    ],
+    temperature: 1.5,
+    max_tokens: 300,
   })
 
   if (!res.ok) {
@@ -875,18 +900,13 @@ function parseLearnTopicJson(raw: string): { title: string; paragraph: string } 
  * Learn pill: topic title + paragraph via small Groq model (Spanish, ~75–100 words).
  * Replaces the former Spanish Wikipedia featured-article fetch.
  */
-export async function fetchLearnRandomParagraph(
-  apiKey: string,
-): Promise<LearnRandomParagraphResult> {
-  const res = await fetchGroqChatCompletion(
-    {
-      model: LEARN_RANDOM_TOPIC_MODEL,
-      messages: [{ role: "user", content: LEARN_TOPIC_PROMPT }],
-      temperature: 1.5,
-      max_tokens: 500,
-    },
-    apiKey,
-  )
+export async function fetchLearnRandomParagraph(): Promise<LearnRandomParagraphResult> {
+  const res = await fetchGroqChatCompletion({
+    model: LEARN_RANDOM_TOPIC_MODEL,
+    messages: [{ role: "user", content: LEARN_TOPIC_PROMPT }],
+    temperature: 1.5,
+    max_tokens: 500,
+  })
 
   if (!res.ok) {
     const detail = await parseGroqJsonErrorBody(res)
@@ -900,47 +920,12 @@ export async function fetchLearnRandomParagraph(
   return { title, intro }
 }
 
-const GROQ_TRANSCRIBE_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
-
-/** Spanish-first speech-to-text via Groq Whisper (same API key as chat). */
+/** Spanish-first speech-to-text via Groq Whisper (proxied through Edge Function). */
 export async function transcribeAudioWithGroq(
-  apiKey: string,
   audioBlob: Blob,
   filename = "recording.webm",
 ): Promise<string> {
-  const form = new FormData()
-  form.append("file", audioBlob, filename)
-  form.append("model", "whisper-large-v3-turbo")
-  form.append("language", "es")
-  form.append("response_format", "json")
-
-  const res = await fetch(GROQ_TRANSCRIBE_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: form,
-  })
-
-  if (!res.ok) {
-    const err = await res.text().catch(() => "")
-    if (res.status === 429) {
-      let detail = ""
-      try {
-        const j = JSON.parse(err) as { error?: { message?: string } }
-        detail = j?.error?.message ?? ""
-      } catch {
-        /* ignore */
-      }
-      throw new Error(
-        detail
-          ? `Rate limit reached: ${detail}`
-          : "Rate limit reached (HTTP 429). Please wait a moment and try again.",
-      )
-    }
-    throw new Error(err || `Transcription failed: ${res.status}`)
-  }
-
-  const data = (await res.json()) as { text?: string }
-  return (data.text ?? "").trim()
+  return transcribeAudioViaEdge(audioBlob, filename)
 }
 
 /** Join transcribed phrase to existing textarea value with a space when needed */

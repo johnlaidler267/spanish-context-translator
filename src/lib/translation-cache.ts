@@ -41,8 +41,7 @@ export class TranslationCache {
   loadPage(
     index: number,
     pageText: string,
-    apiKey: string,
-    translateFn: (text: string, key: string) => Promise<ReconciledItem[]>,
+    translateFn: (text: string) => Promise<ReconciledItem[]>,
   ): Promise<ReconciledItem[]> {
     const hit = this.resolved.get(index)
     if (hit) return Promise.resolve(hit)
@@ -50,7 +49,7 @@ export class TranslationCache {
     const existing = this.inFlight.get(index)
     if (existing) return existing
 
-    const p = translateFn(pageText, apiKey)
+    const p = translateFn(pageText)
       .then((items) => {
         this.resolved.set(index, items)
         this.errors.delete(index)

@@ -10,10 +10,6 @@ interface LandingContentPillsProps {
   learnPending: boolean
   /** e.g. submit in flight */
   disabled: boolean
-  /** No Groq key — Random pill disabled */
-  randomDisabled?: boolean
-  /** No Groq key — Learn pill disabled */
-  learnDisabled?: boolean
   learnError: string | null
   className?: string
 }
@@ -24,14 +20,10 @@ export function LandingContentPills({
   randomPending,
   learnPending,
   disabled,
-  randomDisabled = false,
-  learnDisabled = false,
   learnError,
   className,
 }: LandingContentPillsProps) {
   const busy = disabled || randomPending || learnPending
-  const randomOff = randomDisabled || busy
-  const learnOff = learnDisabled || busy
 
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>
@@ -43,9 +35,8 @@ export function LandingContentPills({
         <button
           type="button"
           onClick={onRandom}
-          disabled={randomOff}
+          disabled={busy}
           aria-busy={randomPending}
-          title={randomDisabled ? "Add VITE_GROQ_API_KEY for random Spanish" : undefined}
           className={cn(
             "content-pill inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
             "border-black/[0.08] bg-white text-[#3a332e] shadow-sm",
@@ -67,9 +58,8 @@ export function LandingContentPills({
         <button
           type="button"
           onClick={onLearn}
-          disabled={learnOff}
+          disabled={busy}
           aria-busy={learnPending}
-          title={learnDisabled ? "Add VITE_GROQ_API_KEY for Learn" : undefined}
           className={cn(
             "content-pill inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
             "border-black/[0.08] bg-white text-[#3a332e] shadow-sm",
