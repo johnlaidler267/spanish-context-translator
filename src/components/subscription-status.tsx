@@ -693,7 +693,7 @@ export function SubscriptionStatus({
                 {portalLoading
                   ? <Loader2 className="h-4 w-4 animate-spin" />
                   : <ExternalLink className="h-4 w-4" />}
-                Manage subscription
+                {portalLoading ? "Opening billing…" : "Manage subscription"}
               </span>
               <span className="text-xs text-muted-foreground">Stripe Portal</span>
             </Button>

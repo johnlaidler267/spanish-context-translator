@@ -283,9 +283,14 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
 function CurrentPlanSummary({
   sub,
   onReactivate,
+  billingPortalLoading,
+  onManageBilling,
 }: {
   sub: SubSnapshot
   onReactivate?: () => void
+  /** True while the Stripe Billing Portal session is being created */
+  billingPortalLoading?: boolean
+  onManageBilling?: () => void | Promise<void>
 }) {
   const tier = getTier(sub.planId)
   return (
@@ -332,10 +337,17 @@ function CurrentPlanSummary({
         )}
         {sub.hasStripeSubscription && (
           <button
-            onClick={() => openBillingPortal(window.location.href)}
-            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            type="button"
+            disabled={billingPortalLoading}
+            onClick={() => void onManageBilling?.()}
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-60 disabled:pointer-events-none"
           >
-            Manage billing <ExternalLink className="h-3.5 w-3.5" />
+            {billingPortalLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {billingPortalLoading ? "Opening billing…" : "Manage billing"}
           </button>
         )}
       </div>
@@ -406,6 +418,7 @@ export default function UpgradePage() {
   // Downgrade / cancel confirmation dialog state
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [dialogLoading, setDialogLoading] = useState(false)
+  const [billingPortalLoading, setBillingPortalLoading] = useState(false)
 
   // ── Theme ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -577,9 +590,14 @@ export default function UpgradePage() {
         isCurrentPlanCard(sub, tierId, interval) &&
         !sub.cancelAtPeriodEnd
       ) {
-        await openBillingPortal(window.location.href).catch((e) => {
+        setProcessingTier(tierId)
+        try {
+          await openBillingPortal(window.location.href)
+          // Success: browser navigates to Stripe — do not clear processingTier here
+        } catch (e) {
           setCheckoutError(e instanceof CheckoutError ? e.message : "Could not open billing portal")
-        })
+          setProcessingTier(null)
+        }
         return
       }
 
@@ -726,7 +744,23 @@ export default function UpgradePage() {
 
           {/* Current plan summary bar */}
           {!subLoading && sub && sub.planId !== "free" && (
-            <CurrentPlanSummary sub={sub} onReactivate={handleReactivate} />
+            <CurrentPlanSummary
+              sub={sub}
+              onReactivate={handleReactivate}
+              billingPortalLoading={billingPortalLoading}
+              onManageBilling={async () => {
+                setCheckoutError(null)
+                setBillingPortalLoading(true)
+                try {
+                  await openBillingPortal(window.location.href)
+                } catch (e) {
+                  setCheckoutError(
+                    e instanceof CheckoutError ? e.message : "Could not open billing portal",
+                  )
+                  setBillingPortalLoading(false)
+                }
+              }}
+            />
           )}
 
           {/* Billing interval toggle */}
