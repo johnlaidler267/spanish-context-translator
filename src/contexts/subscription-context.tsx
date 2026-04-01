@@ -44,10 +44,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     recheck()
   }, [recheck])
 
-  // Re-check whenever the Supabase session changes (sign in / sign out)
+  // Re-check when auth meaningfully changes — not on TOKEN_REFRESHED (refreshSession before
+  // Edge calls would otherwise set isLoading and make App.tsx replace the whole UI with a spinner).
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      recheck()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "TOKEN_REFRESHED") return
+      void recheck()
     })
     return () => subscription.unsubscribe()
   }, [recheck])
