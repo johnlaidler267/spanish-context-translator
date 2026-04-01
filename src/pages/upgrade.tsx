@@ -258,12 +258,12 @@ function CurrentPlanSummary({
           Renews {formatDate(sub.currentPeriodEnd)}
         </span>
       )}
-
+{/* 
       {sub.cancelAtPeriodEnd && sub.currentPeriodEnd && (
         <span className="text-amber-600 dark:text-amber-400 font-medium">
           Access until {formatDate(sub.currentPeriodEnd)} · then reverts to Free
         </span>
-      )}
+      )} */}
 
       <div className="flex items-center gap-4 ml-auto">
         {sub.cancelAtPeriodEnd && onReactivate && (
