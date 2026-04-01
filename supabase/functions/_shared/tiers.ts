@@ -105,9 +105,9 @@ export interface TierLimits {
 export const TIER_LIMITS: Record<TierId, TierLimits> = {
   free: {
     textsPerMonth:      5,
-    textsPerDay:        1,
+    textsPerDay:        3,
     chunksPerRequest:   80,
-    pagesPerSubmission: 1,
+    pagesPerSubmission: null,
     savedTranslations:  0,
     charsPerSubmission: 1_000,
   },

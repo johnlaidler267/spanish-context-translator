@@ -33,6 +33,7 @@ import {
 import {
   METRIC_CONFIG,
   normalizeUsageRpcRow,
+  PER_SUBMISSION_LIMIT_METRICS,
   readCounter,
   type UsageMetric,
 } from "./usage-metrics.ts"
@@ -233,12 +234,38 @@ export async function enforceLimits(
       continue
     }
 
-    const current    = usageRow ? readCounter(usageRow, metricKey) : 0
+    const proposedVal = proposed ?? 0
+    const current     = usageRow ? readCounter(usageRow, metricKey) : 0
+
+    // Per-submission / per-request caps: compare increment to limit only.
+    if (PER_SUBMISSION_LIMIT_METRICS.has(metricKey)) {
+      const rsAfter = limit > 0 ? proposedVal / limit : 1
+      let level: EnforcementLevel
+      if (proposedVal > limit) {
+        level = "blocked"
+        blockedMetrics.push(metricKey)
+      } else if (rsAfter >= warnRatio) {
+        level = "warning"
+        warnedMetrics.push(metricKey)
+      } else {
+        level = "clean"
+      }
+      metricDecisions.push({
+        metric: metricKey, level,
+        current,
+        proposed: proposedVal,
+        limit,
+        ratio: limit > 0 ? +((current / limit).toFixed(4)) : null,
+        ratioAfter: +rsAfter.toFixed(4),
+      })
+      continue
+    }
+
     const ratio      = limit > 0 ? current / limit : 1
-    const ratioAfter = limit > 0 ? (current + (proposed ?? 0)) / limit : 1
+    const ratioAfter = limit > 0 ? (current + proposedVal) / limit : 1
 
     let level: EnforcementLevel
-    if (ratio >= blockRatio) {
+    if (current + proposedVal > limit) {
       level = "blocked"
       blockedMetrics.push(metricKey)
     } else if (ratio >= warnRatio || ratioAfter >= warnRatio) {
@@ -250,7 +277,7 @@ export async function enforceLimits(
 
     metricDecisions.push({
       metric: metricKey, level,
-      current, proposed: proposed ?? 0,
+      current, proposed: proposedVal,
       limit, ratio: +ratio.toFixed(4), ratioAfter: +ratioAfter.toFixed(4),
     })
   }

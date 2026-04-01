@@ -95,6 +95,17 @@ export const METRIC_CONFIG: Record<UsageMetric, MetricConfig> = {
   },
 }
 
+/**
+ * TierLimits keys like pagesPerSubmission / charsPerSubmission / chunksPerRequest
+ * cap a *single* request, not the billing-period total. Compare against the
+ * current increment only — not cumulative usage_records counters.
+ */
+export const PER_SUBMISSION_LIMIT_METRICS = new Set<UsageMetric>([
+  "pages_processed",
+  "chars_processed",
+  "chunks_returned",
+])
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Map metric increments to the RPC parameters for fixed columns. */

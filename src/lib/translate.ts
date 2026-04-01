@@ -3,6 +3,14 @@ import { jsonrepair } from "jsonrepair"
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const MODEL = "openai/gpt-oss-120b"
 
+/**
+ * Max completion tokens for one paginated translation (chunk JSON). High
+ * enough to avoid truncating dense pages; below 16k so we stay under the
+ * worst Groq on_demand TPM “requested” spike (~prompt + max_tokens). If TPM
+ * errors return on a free/on_demand key, use a higher Groq tier or trim PROMPT.
+ */
+const TRANSLATE_MAX_COMPLETION_TOKENS = 12_288
+
 async function parseGroqJsonErrorBody(res: Response): Promise<string> {
   try {
     const j = (await res.json()) as { error?: { message?: string }; message?: string }
@@ -381,7 +389,7 @@ export async function translatePageText(
       model: MODEL,
       messages: [{ role: "user", content: PROMPT(input) }],
       temperature: 0,
-      max_tokens: 16000,
+      max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
     }),
   })
 

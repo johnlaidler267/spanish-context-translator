@@ -52,6 +52,13 @@ export const METRIC_CONFIG: Record<UsageMetric, MetricConfig> = {
 
 export const ALL_METRICS = Object.keys(METRIC_CONFIG) as UsageMetric[]
 
+/** Keep in sync with supabase/functions/_shared/usage-metrics.ts */
+export const PER_SUBMISSION_LIMIT_METRICS = new Set<UsageMetric>([
+  "pages_processed",
+  "chars_processed",
+  "chunks_returned",
+])
+
 // ─── Response types ───────────────────────────────────────────────────────────
 
 export type UsageCounters = Record<UsageMetric, number>

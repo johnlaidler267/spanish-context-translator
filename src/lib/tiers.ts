@@ -179,9 +179,10 @@ export const TIERS: Record<TierId, TierConfig> = {
     },
     limits: {
       textsPerMonth:      5,
-      textsPerDay:        1,
+      textsPerDay:        3,
       chunksPerRequest:   80,
-      pagesPerSubmission: 1,
+      /** null = an "article" may span multiple LLM pages; cap submissions/day via textsPerDay. */
+      pagesPerSubmission: null,
       savedTranslations:  0,
       charsPerSubmission: 1_000,
     },

@@ -38,6 +38,7 @@ import {
   METRIC_CONFIG,
   metricsToRpcParams,
   normalizeUsageRpcRow,
+  PER_SUBMISSION_LIMIT_METRICS,
   readCounter,
   type UsageMetric,
 } from "../_shared/usage-metrics.ts"
@@ -229,9 +230,18 @@ Deno.serve(async (req: Request) => {
   ) as Record<UsageMetric, number | null>
 
   // ── Determine which metrics are exceeded ──────────────────────────────────
+  // Period caps (texts/month, texts/day): compare post-increment counters.
+  // Per-submission caps (pages/chunks/chars in one submit): compare THIS
+  // request's increments only — cumulative pages_processed was blocking free
+  // users on their first multi-page article (sum of LLM pages > pagesPerSubmission).
   const exceeded: UsageMetric[] = allMetrics.filter(m => {
     const cap = limitMap[m]
-    return cap !== null && counters[m] > cap
+    if (cap === null) return false
+    if (PER_SUBMISSION_LIMIT_METRICS.has(m)) {
+      const inc = increments[m] ?? 0
+      return inc > cap
+    }
+    return counters[m] > cap
   })
 
   return json({

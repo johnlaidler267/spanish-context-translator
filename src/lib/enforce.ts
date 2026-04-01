@@ -21,7 +21,12 @@
 
 import { useState, useCallback, useRef } from "react"
 import type { UsageMetric, UsageCounters, UsageLimits, LimitStatus, UsageTracker } from "@/lib/usage"
-import { METRIC_CONFIG, ALL_METRICS, getLimitStatus } from "@/lib/usage"
+import {
+  METRIC_CONFIG,
+  ALL_METRICS,
+  getLimitStatus,
+  PER_SUBMISSION_LIMIT_METRICS,
+} from "@/lib/usage"
 
 // ─── Thresholds (mirror supabase/functions/_shared/enforce-limits.ts) ─────────
 
@@ -96,15 +101,24 @@ export function checkLimits(
     let level: EnforcementLevel  = "clean"
 
     if (status.limit !== null) {
-      const currentRatio = status.ratio ?? 0
-      ratioAfter = status.limit > 0
-        ? (status.current + proposed) / status.limit
-        : 1
+      if (PER_SUBMISSION_LIMIT_METRICS.has(metric)) {
+        ratioAfter = status.limit > 0 ? proposed / status.limit : null
+        if (proposed > status.limit) {
+          level = "blocked"
+        } else if (ratioAfter != null && ratioAfter >= warnRatio) {
+          level = "warning"
+        }
+      } else {
+        const currentRatio = status.ratio ?? 0
+        ratioAfter = status.limit > 0
+          ? (status.current + proposed) / status.limit
+          : 1
 
-      if (currentRatio >= blockRatio) {
-        level = "blocked"
-      } else if (currentRatio >= warnRatio || ratioAfter >= warnRatio) {
-        level = "warning"
+        if (status.current + proposed > status.limit) {
+          level = "blocked"
+        } else if (currentRatio >= warnRatio || ratioAfter >= warnRatio) {
+          level = "warning"
+        }
       }
     }
 
