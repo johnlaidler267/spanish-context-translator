@@ -17,7 +17,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Link } from "react-router-dom"
 import {
-  BookOpen, Zap, Crown, ExternalLink,
+  BookOpen, Zap, Crown, CalendarCheck2,
   AlertTriangle, RefreshCw, Loader2, ArrowUpRight, RotateCcw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -692,7 +692,7 @@ export function SubscriptionStatus({
               <span className="flex items-center gap-2">
                 {portalLoading
                   ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : <ExternalLink className="h-4 w-4" />}
+                  : <CalendarCheck2 className="h-4 w-4" />}
                 {portalLoading ? "Opening billing…" : "Manage subscription"}
               </span>
               <span className="text-xs text-muted-foreground">Stripe Portal</span>
