@@ -32,7 +32,7 @@ function planPillFromRow(row: {
   status: string
   trial_end: string | null
 } | null): PlanPill {
-  const toSettings = "/settings"
+  const toSettingsBilling = "/settings?tab=billing"
   const toUpgrade = "/upgrade"
   const freePill: PlanPill = {
     to: toUpgrade,
@@ -54,7 +54,7 @@ function planPillFromRow(row: {
     const d = daysLeftInTrial(row.trial_end)
     const dayWord = d === 1 ? "day" : "days"
     return {
-      to: toSettings,
+      to: toSettingsBilling,
       primary: `${name} Trial`,
       secondary: `${d} ${dayWord} left`,
     }
@@ -63,12 +63,12 @@ function planPillFromRow(row: {
   if (status === "active" && row.plan_id === "free") return freePill
 
   if (status === "active" && row.plan_id !== "free") {
-    return { to: toSettings, primary: name, secondary: "Plan" }
+    return { to: toSettingsBilling, primary: name, secondary: "Plan" }
   }
 
   if (status === "past_due" && row.plan_id !== "free") {
     return {
-      to: toSettings,
+      to: toSettingsBilling,
       primary: `${name} Plan`,
       secondary: "Payment Failed",
     }
