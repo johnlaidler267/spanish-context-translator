@@ -26,7 +26,7 @@ interface Sentence {
 interface ReadModeProps {
   /** Increment when starting a new reading session (resets sentence index). */
   readingSessionKey?: number
-  /** One step per item; desktop ≈ one grammatical sentence. Mobile may split long sentences into smaller chunk groups. */
+  /** One step per item; desktop = fixed character count per step. Mobile splits long sentences into smaller chunk groups. */
   sentences: Sentence[]
   /**
    * Per LLM page → global sentence index range (pages = article-mode word caps at submit).
@@ -163,7 +163,7 @@ export function ReadMode({
       <div className="mx-auto flex w-full min-h-0 max-w-[700px] flex-1 flex-col items-center justify-center max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] md:pt-16">
         <div
           ref={touchSurfaceRef}
-          className={`block w-full font-serif text-3xl md:text-5xl lg:text-6xl max-md:leading-[1.52] md:leading-tight text-center text-foreground text-balance selection:bg-primary/20 ${
+          className={`block w-full font-serif text-3xl md:text-5xl lg:text-6xl max-md:leading-[1.52] md:leading-snug text-center text-foreground text-balance selection:bg-primary/20 ${
             touchExploring ? "touch-none select-none" : ""
           }`}
         >

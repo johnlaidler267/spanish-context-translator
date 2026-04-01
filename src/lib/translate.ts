@@ -484,6 +484,169 @@ export type ReadSentence = {
  */
 export const READ_MODE_WORDS_PER_STEP_MOBILE = 18
 
+/** Read-mode step size on desktop: exact character count per page (including spaces between chunks). */
+export const READ_MODE_CHARS_PER_STEP_DESKTOP = 100
+
+/** Same rules as `shouldGlueAfterPriorChunk` in text-chunk.tsx — keep in sync for length/slicing. */
+function isPunctuationOnlyForReadGlue(text: string): boolean {
+  const t = text.trim()
+  if (!t) return false
+  return /^[^\w\u00C0-\u024F]+$/.test(t)
+}
+
+const OPENING_PUNCT_RE_FOR_READ_GLUE = /^[¿¡(«"“‘\u201C\u2018]/
+
+function shouldGlueAfterPriorChunkReadGlue(nextChunkText: string): boolean {
+  if (!isPunctuationOnlyForReadGlue(nextChunkText)) return false
+  const t = nextChunkText.trim()
+  if (OPENING_PUNCT_RE_FOR_READ_GLUE.test(t)) return false
+  return true
+}
+
+type ReadChunkRow = ReadSentence["chunks"][number]
+
+type ReadPart = { kind: "gap" } | { kind: "chunk"; idx: number }
+
+function buildReadParts(chunks: ReadChunkRow[]): ReadPart[] {
+  const out: ReadPart[] = []
+  for (let i = 0; i < chunks.length; i++) {
+    const c = chunks[i]!
+    if (i > 0) {
+      if (!shouldGlueAfterPriorChunkReadGlue(c.text)) out.push({ kind: "gap" })
+    }
+    out.push({ kind: "chunk", idx: i })
+  }
+  return out
+}
+
+function joinedReadLengthFromParts(chunks: ReadChunkRow[], parts: ReadPart[]): number {
+  let n = 0
+  for (const p of parts) {
+    n += p.kind === "gap" ? 1 : chunks[p.idx]!.text.length
+  }
+  return n
+}
+
+function buildJoinedReadString(chunks: ReadChunkRow[], parts: ReadPart[]): string {
+  let s = ""
+  for (const p of parts) {
+    if (p.kind === "gap") s += " "
+    else s += chunks[p.idx]!.text
+  }
+  return s
+}
+
+/** Exclusive end `b` is a word boundary when the next char is whitespace or end of string. */
+function isValidWordBreakEnd(S: string, b: number): boolean {
+  return b === S.length || /\s/.test(S[b]!)
+}
+
+/**
+ * Prefer a break at or before `idealEnd`; if that would cut mid-word, back up to the last space
+ * or extend to the next space / end of string (never splits a word).
+ */
+function findWordBoundaryEnd(S: string, sliceStart: number, idealEnd: number): number {
+  const len = S.length
+  const cap = Math.min(idealEnd, len)
+  for (let b = cap; b > sliceStart; b--) {
+    if (isValidWordBreakEnd(S, b)) return b
+  }
+  let b = Math.max(cap, sliceStart + 1)
+  while (b < len && !isValidWordBreakEnd(S, b)) b++
+  return b
+}
+
+/**
+ * Desktop Read mode: each step targets ~`charsPerStep` characters of the joined Spanish
+ * (chunk texts + read-mode gaps), ending only at word boundaries (whitespace).
+ * The last step for each LLM page may be shorter; a single word longer than the cap stays one step.
+ */
+export function subdivideReadStepsForDesktop(
+  sentences: ReadSentence[],
+  charsPerStep: number = READ_MODE_CHARS_PER_STEP_DESKTOP,
+): ReadSentence[] {
+  const flat: Array<{ chunk: ReadChunkRow; sourcePageIndex: number }> = []
+  for (const sent of sentences) {
+    for (const c of sent.chunks) {
+      flat.push({ chunk: c, sourcePageIndex: sent.sourcePageIndex })
+    }
+  }
+  if (flat.length === 0) return []
+
+  const out: ReadSentence[] = []
+  let nextSentenceId = 0
+  let chunkId = 0
+
+  let i = 0
+  while (i < flat.length) {
+    const page = flat[i]!.sourcePageIndex
+    const group: ReadChunkRow[] = []
+    while (i < flat.length && flat[i]!.sourcePageIndex === page) {
+      group.push(flat[i]!.chunk)
+      i++
+    }
+
+    const parts = buildReadParts(group)
+    const totalLen = joinedReadLengthFromParts(group, parts)
+    if (totalLen === 0) continue
+
+    const S = buildJoinedReadString(group, parts)
+    let sliceStart = 0
+    while (sliceStart < totalLen) {
+      const idealEnd = sliceStart + charsPerStep
+      const b = findWordBoundaryEnd(S, sliceStart, idealEnd)
+      const a = sliceStart
+      if (b <= sliceStart) break
+
+      const stepChunks: ReadChunkRow[] = []
+      let pos = 0
+      for (const part of parts) {
+        const segment = part.kind === "gap" ? " " : group[part.idx]!.text
+        const segLen = segment.length
+        const partEnd = pos + segLen
+        if (partEnd <= a || pos >= b) {
+          pos = partEnd
+          continue
+        }
+        const lo = Math.max(0, a - pos)
+        const hi = Math.min(segLen, b - pos)
+        const frag = segment.slice(lo, hi)
+        if (!frag) {
+          pos = partEnd
+          continue
+        }
+        if (part.kind === "gap") {
+          stepChunks.push({
+            id: chunkId++,
+            text: frag,
+            meaning: " ",
+            literal: " ",
+          })
+        } else {
+          const ck = group[part.idx]!
+          stepChunks.push({
+            ...ck,
+            id: chunkId++,
+            text: frag,
+          })
+        }
+        pos = partEnd
+      }
+
+      if (stepChunks.length > 0) {
+        out.push({
+          id: nextSentenceId++,
+          sourcePageIndex: page,
+          chunks: stepChunks,
+        })
+      }
+      sliceStart = b
+    }
+  }
+
+  return out.map((s, idx) => ({ ...s, id: idx }))
+}
+
 function countWordsInText(s: string): number {
   return s.trim().split(/\s+/).filter((w) => /\p{L}/u.test(w)).length
 }

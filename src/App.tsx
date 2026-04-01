@@ -20,6 +20,7 @@ import {
   READ_MODE_WORDS_PER_STEP_MOBILE,
   resolvePageSplitLimits,
   splitSourceIntoSentences,
+  subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
   translatePageText,
   type ReconciledItem,
@@ -420,7 +421,7 @@ export default function App() {
     const readSentencesMerged = mergeReconciledPagesToSentences(loadedReconciled)
     const readSentences = readLayoutMobile
       ? subdivideReadStepsForMobile(readSentencesMerged, READ_MODE_WORDS_PER_STEP_MOBILE)
-      : readSentencesMerged
+      : subdivideReadStepsForDesktop(readSentencesMerged)
     const sentenceRangesByPage = pageStepRangesFromSentences(readSentences)
 
     const articleItems = cache.getPage(articlePageIndex)
