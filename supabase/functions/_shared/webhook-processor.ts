@@ -39,6 +39,7 @@ export interface SubRow {
   user_id: string
   status: string
   stripe_subscription_id: string | null
+  past_due_since: string | null
 }
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
@@ -87,7 +88,7 @@ export async function findSubscription(
   if (opts.stripeCustomerId) {
     const { data } = await db
       .from("user_subscriptions")
-      .select("id, user_id, status, stripe_subscription_id")
+      .select("id, user_id, status, stripe_subscription_id, past_due_since")
       .eq("stripe_customer_id", opts.stripeCustomerId)
       .is("archived_at", null)
       .maybeSingle<SubRow>()
@@ -201,6 +202,13 @@ async function handleSubscriptionUpdated(
   if (ACTIVE_STATUSES.has(sub.status) && existing.status === "past_due") {
     updates.past_due_since = null
     console.log(`[subscription.updated] past_due → ${sub.status} cleared for user=${existing.user_id}`)
+  }
+
+  const newStatus = castStatus(sub.status)
+  // Stripe may send subscription.updated (past_due) before invoice.payment_failed; start grace clock once.
+  if (newStatus === "past_due" && existing.status !== "past_due" && !existing.past_due_since) {
+    updates.past_due_since = new Date().toISOString()
+    console.log(`[subscription.updated] past_due grace clock start user=${existing.user_id}`)
   }
 
   const { error } = await db.from("user_subscriptions").update(updates).eq("id", existing.id)
@@ -426,6 +434,13 @@ async function handleInvoicePaymentFailed(
         // so the grace period starts from the FIRST failure.
         past_due_since: existing.status !== "past_due" ? now : undefined,
       })
+      .eq("id", existing.id)
+    if (error) throw new Error(`Subscription update failed: ${error.message}`)
+  } else if (existing.status === "past_due" && !existing.past_due_since) {
+    // Repair: past_due without a clock (e.g. race with subscription.updated) — start grace now.
+    const { error } = await db
+      .from("user_subscriptions")
+      .update({ past_due_since: new Date().toISOString() })
       .eq("id", existing.id)
     if (error) throw new Error(`Subscription update failed: ${error.message}`)
   }

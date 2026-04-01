@@ -76,7 +76,9 @@ export async function checkSubscriptionStatus(): Promise<{ status: SubscriptionS
     if (status === "active")   return { status: plan_id === "free" ? "free" : "active" }
     if (status === "trialing") return { status: "trialing" }
     if (status === "past_due") {
-      const withinGrace = past_due_since ? isWithinGracePeriod(past_due_since) : true
+      // No timestamp → cannot compute grace; treat as lapsed so paid access is not left open forever.
+      if (!past_due_since) return { status: "lapsed" }
+      const withinGrace = isWithinGracePeriod(past_due_since)
       return { status: withinGrace ? "past_due" : "lapsed" }
     }
     // canceled, incomplete_expired, unpaid, etc.

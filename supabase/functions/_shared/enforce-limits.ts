@@ -37,7 +37,6 @@ import {
   readCounter,
   type UsageMetric,
 } from "./usage-metrics.ts"
-import { isWithinGracePeriod } from "./grace-period.ts"
 
 // ─── Thresholds ───────────────────────────────────────────────────────────────
 
@@ -175,30 +174,16 @@ export async function enforceLimits(
   }
 
   // ── Resolve effective tier based on subscription status ──────────────────
-  // • active / trialing             → paid-tier limits
-  // • past_due within grace period  → paid-tier limits (don't punish immediately)
-  // • past_due after grace expires  → free-tier limits
-  // • canceled / incomplete_expired → free-tier limits
-  // • no sub record                 → free-tier limits
+  // Mirrors track-usage: only active / trialing get paid-tier limits.
+  // past_due (failed payment), paused, unpaid, canceled, etc. → free-tier limits.
   const ACCESS_STATUSES = new Set(["active", "trialing"])
 
   let tierId: TierId = "free"
   if (sub) {
     if (ACCESS_STATUSES.has(sub.status)) {
       tierId = sub.tierId
-    } else if (sub.status === "past_due") {
-      const withinGrace = sub.pastDueSince
-        ? isWithinGracePeriod(sub.pastDueSince)
-        : true  // no timestamp yet → treat conservatively as still within grace
-      tierId = withinGrace ? sub.tierId : "free"
-      if (!withinGrace) {
-        console.warn(
-          `[enforce-limits] user=${userId} past_due grace expired` +
-          ` since=${sub.pastDueSince} — enforcing free-tier limits`,
-        )
-      }
     }
-    // else: canceled, incomplete, etc. → stays "free"
+    // else: past_due, canceled, incomplete, etc. → stays "free"
   }
 
   const tierLimits: TierLimits = getTierLimits(tierId)

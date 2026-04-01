@@ -17,7 +17,8 @@ interface SubscriptionContextValue {
   isLapsed: boolean
   popupDismissed: boolean
   dismissPopup: () => void
-  recheck: () => Promise<void>
+  /** Pass `{ silent: true }` to avoid full-screen loading (e.g. tab visibility refresh). */
+  recheck: (opts?: { silent?: boolean }) => Promise<void>
 }
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null)
@@ -27,8 +28,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [popupDismissed, setPopupDismissed] = useState(false)
 
-  const recheck = useCallback(async () => {
-    setIsLoading(true)
+  const recheck = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true
+    if (!silent) setIsLoading(true)
     try {
       const result = await checkSubscriptionStatus()
       setStatus(result.status)
@@ -36,7 +38,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         setPopupDismissed(false) // Re-trigger popup on return
       }
     } finally {
-      setIsLoading(false)
+      if (!silent) setIsLoading(false)
     }
   }, [])
 
@@ -57,9 +59,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   // Re-trigger popup when user returns to app (tab focus, navigate back)
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === "visible" && status === "lapsed") {
-        setPopupDismissed(false)
-        recheck()
+      if (document.visibilityState === "visible" && (status === "lapsed" || status === "past_due")) {
+        if (status === "lapsed") setPopupDismissed(false)
+        void recheck({ silent: true })
       }
     }
     document.addEventListener("visibilitychange", handleVisibility)
