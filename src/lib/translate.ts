@@ -142,6 +142,44 @@ function sliceBalancedJsonArrayFrom(raw: string, start: number): string | null {
   return null
 }
 
+/**
+ * Balanced `{`…`}` span starting at `start` (must be `{`); ignores `}` inside double-quoted JSON strings.
+ */
+function sliceBalancedJsonObjectFrom(raw: string, start: number): string | null {
+  if (start < 0 || start >= raw.length || raw[start] !== "{") return null
+  let depth = 0
+  let inStr = false
+  let esc = false
+  for (let i = start; i < raw.length; i++) {
+    const c = raw[i]!
+    if (inStr) {
+      if (esc) {
+        esc = false
+        continue
+      }
+      if (c === "\\") {
+        esc = true
+        continue
+      }
+      if (c === '"') {
+        inStr = false
+        continue
+      }
+      continue
+    }
+    if (c === '"') {
+      inStr = true
+      continue
+    }
+    if (c === "{") depth++
+    if (c === "}") {
+      depth--
+      if (depth === 0) return raw.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
 /** First `[`…`]` span in `raw`. */
 function sliceBalancedJsonArray(raw: string): string | null {
   const start = raw.indexOf("[")
@@ -1112,6 +1150,8 @@ Write in plain, engaging prose. No bullet points in the paragraph. Assume the re
 
 Write the title and the entire paragraph in Spanish.
 
+If the paragraph contains double-quote characters ("), escape each one as backslash-quote (\\") inside the JSON string.
+
 Return only a single JSON object with exactly these keys (no markdown fences, no other text):
 - "title": a short, specific title for this piece (plain text, one line, suitable as an article headline)
 - "paragraph": the paragraph only (no title inside this field)`
@@ -1133,20 +1173,120 @@ export type LearnRandomParagraphResult = {
   intro: string
 }
 
+/** Read a JSON double-quoted string starting at `start` (index of opening `"`). */
+function readJsonDoubleQuotedString(raw: string, start: number): { end: number; value: string } | null {
+  if (start < 0 || start >= raw.length || raw[start] !== '"') return null
+  let i = start + 1
+  let value = ""
+  while (i < raw.length) {
+    const c = raw[i]!
+    if (c === "\\") {
+      if (i + 1 >= raw.length) return null
+      const n = raw[i + 1]!
+      if (n === "n") {
+        value += "\n"
+        i += 2
+        continue
+      }
+      if (n === "r") {
+        value += "\r"
+        i += 2
+        continue
+      }
+      if (n === "t") {
+        value += "\t"
+        i += 2
+        continue
+      }
+      if (n === "u" && i + 5 < raw.length) {
+        const hex = raw.slice(i + 2, i + 6)
+        if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+          value += String.fromCharCode(parseInt(hex, 16))
+          i += 6
+          continue
+        }
+      }
+      value += n
+      i += 2
+      continue
+    }
+    if (c === '"') return { end: i + 1, value }
+    value += c
+    i++
+  }
+  return null
+}
+
+/**
+ * When jsonrepair/JSON.parse fail (unescaped quotes, etc.), pull title/paragraph by scanning for keys.
+ */
+function tryParseLearnTopicLoose(blob: string): { title: string; paragraph: string } | null {
+  const findStringAfterKey = (key: string): string | null => {
+    const needle = `"${key}"`
+    let from = 0
+    while (from < blob.length) {
+      const k = blob.indexOf(needle, from)
+      if (k === -1) return null
+      const afterKey = k + needle.length
+      const colon = blob.indexOf(":", afterKey)
+      if (colon === -1) return null
+      let i = colon + 1
+      while (i < blob.length && /\s/.test(blob[i]!)) i++
+      const read = readJsonDoubleQuotedString(blob, i)
+      if (read) return read.value
+      from = afterKey
+    }
+    return null
+  }
+  const title = findStringAfterKey("title")
+  const paragraph = findStringAfterKey("paragraph")
+  if (!title || !paragraph) return null
+  return { title, paragraph }
+}
+
 function parseLearnTopicJson(raw: string): { title: string; paragraph: string } {
   const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/m, "").trim()
-  const match = cleaned.match(/\{[\s\S]*\}/)
-  if (!match) throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
-  const repaired = jsonrepair(match[0])
-  const parsed = JSON.parse(repaired) as { title?: unknown; paragraph?: unknown }
-  const title =
-    typeof parsed.title === "string" ? parsed.title.replace(/\s+/g, " ").trim() : ""
-  const paragraph =
-    typeof parsed.paragraph === "string" ? parsed.paragraph.replace(/\s+/g, " ").trim() : ""
-  if (!title || !paragraph || paragraph.length < 40) {
+  const objStart = cleaned.indexOf("{")
+  const jsonBlob =
+    objStart >= 0 ? sliceBalancedJsonObjectFrom(cleaned, objStart) : cleaned.match(/\{[\s\S]*\}/)?.[0]
+  if (!jsonBlob) throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
+
+  const normalize = (title: string, paragraph: string) => ({
+    title: title.replace(/\s+/g, " ").trim(),
+    paragraph: paragraph.replace(/\s+/g, " ").trim(),
+  })
+
+  const validate = (title: string, paragraph: string): { title: string; paragraph: string } => {
+    if (!title || !paragraph || paragraph.length < 40) {
+      throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
+    }
+    return { title, paragraph }
+  }
+
+  try {
+    const repaired = jsonrepair(jsonBlob)
+    const parsed = JSON.parse(repaired) as { title?: unknown; paragraph?: unknown }
+    const title = typeof parsed.title === "string" ? parsed.title : ""
+    const paragraph = typeof parsed.paragraph === "string" ? parsed.paragraph : ""
+    const n = normalize(title, paragraph)
+    return validate(n.title, n.paragraph)
+  } catch {
+    try {
+      const parsed = JSON.parse(jsonBlob) as { title?: unknown; paragraph?: unknown }
+      const title = typeof parsed.title === "string" ? parsed.title : ""
+      const paragraph = typeof parsed.paragraph === "string" ? parsed.paragraph : ""
+      const n = normalize(title, paragraph)
+      return validate(n.title, n.paragraph)
+    } catch {
+      /* fall through */
+    }
+    const loose = tryParseLearnTopicLoose(jsonBlob) ?? tryParseLearnTopicLoose(cleaned)
+    if (loose) {
+      const n = normalize(loose.title, loose.paragraph)
+      return validate(n.title, n.paragraph)
+    }
     throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
   }
-  return { title, paragraph }
 }
 
 /**
