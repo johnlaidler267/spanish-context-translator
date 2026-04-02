@@ -32,6 +32,8 @@ Deno.serve(async (req: Request) => {
     temperature?: number
     max_tokens?: number
     reasoning_effort?: string
+    /** GPT-OSS / Qwen reasoning: `hidden` = only final answer in content (see Groq reasoning docs). */
+    reasoning_format?: string
   }
   try {
     body = await req.json()
@@ -65,6 +67,9 @@ Deno.serve(async (req: Request) => {
   if (typeof body.temperature === "number") payload.temperature = body.temperature
   if (body.reasoning_effort != null && body.reasoning_effort !== "") {
     payload.reasoning_effort = body.reasoning_effort
+  }
+  if (body.reasoning_format != null && body.reasoning_format !== "") {
+    payload.reasoning_format = body.reasoning_format
   }
 
   const groqRes = await fetch(GROQ_URL, {

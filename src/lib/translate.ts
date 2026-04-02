@@ -4,8 +4,13 @@ import { fetchGroqChatViaEdge, transcribeAudioViaEdge } from "@/lib/groq-edge"
 
 const MODEL = "openai/gpt-oss-20b"
 
-/** GPT-OSS on Groq: `low` | `medium` | `high` — keep low for chunk JSON to save completion budget. */
-const TRANSLATE_REASONING_EFFORT = "medium" as const
+/**
+ * GPT-OSS on Groq always spends reasoning tokens; `reasoning_effort` only changes how many.
+ * To stop stream-of-consciousness in `message.content`, Groq requires `reasoning_format: "hidden"`
+ * (see https://console.groq.com/docs/reasoning — "Returns only the final answer").
+ */
+const TRANSLATE_REASONING_EFFORT = "low" as const
+const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
 
 /**
  * Groq on_demand counts roughly (prompt tokens + max_tokens) against a low TPM
@@ -93,10 +98,11 @@ function getAssistantMessageText(data: unknown): string {
   return ""
 }
 
-/** First top-level `[`…`]` span; ignores `]` inside double-quoted JSON strings. */
-function sliceBalancedJsonArray(raw: string): string | null {
-  const start = raw.indexOf("[")
-  if (start === -1) return null
+/**
+ * Balanced `[`…`]` span starting at `start` (must be `[`); ignores `]` inside double-quoted JSON strings.
+ */
+function sliceBalancedJsonArrayFrom(raw: string, start: number): string | null {
+  if (start < 0 || start >= raw.length || raw[start] !== "[") return null
   let depth = 0
   let inStr = false
   let esc = false
@@ -128,6 +134,38 @@ function sliceBalancedJsonArray(raw: string): string | null {
     }
   }
   return null
+}
+
+/** First `[`…`]` span in `raw`. */
+function sliceBalancedJsonArray(raw: string): string | null {
+  const start = raw.indexOf("[")
+  if (start === -1) return null
+  return sliceBalancedJsonArrayFrom(raw, start)
+}
+
+/** Every balanced array span (for models that prepend chain-of-thought before the real JSON). */
+function allBalancedJsonArraySpans(raw: string): string[] {
+  const spans: string[] = []
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === "[") {
+      const s = sliceBalancedJsonArrayFrom(raw, i)
+      if (s) spans.push(s)
+    }
+  }
+  return spans
+}
+
+function looksLikeChunkObject(row: unknown): boolean {
+  if (row == null || typeof row !== "object") return false
+  const o = row as Record<string, unknown>
+  return typeof o.c === "string" || typeof o.chunk === "string"
+}
+
+/** Prefer arrays that actually look like chunk rows (avoids tiny accidental `[...]` in prose). */
+function isPlausibleChunkArray(arr: unknown[]): boolean {
+  if (arr.length === 0) return false
+  const hits = arr.filter(looksLikeChunkObject).length
+  return hits >= Math.min(3, arr.length) || (arr.length === 1 && hits === 1)
 }
 
 function extractChunkJsonArrayFromText(raw: string): unknown[] {
@@ -192,7 +230,7 @@ Group these:
 - Fixed idioms (meaning unguessable from parts): en cambio, visto bueno, del mismo modo, los unos de los otros, darse cuenta de, a fines de, se trata de
 - Relative connectors (splitting produces nonsense): en la que, los que, antes de que, mientras que
 - Compound nouns (two words, one thing): redes sociales, estado natal, campaña publicitaria
-- Prepositional verb phrases (verb + preposition inseparable): contar con, pensar en, entre sí
+- Prepositional verb phrases (verb + preposition inseparable): contar con, pensar en, entre sí, hacer que
 - Proper nouns: always one chunk
 - Co-occurring clitics: group together, keep verb separate — se la | habían | vendido
 
@@ -207,6 +245,15 @@ OUTPUT: [
   {"c":"una","m":"a","l":"a"},
   {"c":"campaña publicitaria","m":"advertising campaign","l":"publicity campaign"}
 ]
+
+INPUT: "durante varias semanas del mismo modo"
+OUTPUT: [
+  { "chunk": "durante", "meaning": "for", "literal": "during", "note": null },
+  { "chunk": "varias", "meaning": "several", "literal": "various", "note": null },
+  { "chunk": "semanas", "meaning": "weeks", "literal": "weeks", "note": null },
+  { "chunk": "del mismo modo", "meaning": "in the same way", "literal": "of the same mode", "note": "Fixed expression — must be grouped." }
+]
+
 
 INPUT: "en las redes sociales el jueves"
 OUTPUT: [
@@ -591,7 +638,8 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     messages: [{ role: "system", content: systemContent }, { role: "user", content: userContent }],
     temperature: 0.2,
     max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
-    // reasoning_effort: TRANSLATE_REASONING_EFFORT,
+    reasoning_effort: TRANSLATE_REASONING_EFFORT,
+    reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
   })
 
   if (!res.ok) {
@@ -600,7 +648,9 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   }
 
   const data = await res.json()
+  console.log("[translatePageText] LLM response (raw JSON)", data)
   const raw = getAssistantMessageText(data)
+  console.log("[translatePageText] LLM assistant message text", raw)
   const parsed = extractChunkJsonArrayFromText(raw)
   const merged = postProcessChunks(parsed)
   const chunks: RawChunk[] = []
@@ -939,6 +989,8 @@ Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translati
     ],
     temperature: 1.5,
     max_tokens: 300,
+    reasoning_effort: TRANSLATE_REASONING_EFFORT,
+    reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
   })
 
   if (!res.ok) {
