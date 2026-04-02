@@ -37,13 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authModalOpen, setAuthModalOpen] = useState(false)
 
   // ── Session restore ────────────────────────────────────────────────────────
+  // Single path: onAuthStateChange emits INITIAL_SESSION (and later events) under the
+  // same lock as other GoTrue work. Avoid also calling getSession() here — parallel
+  // calls + a second onAuthStateChange in SubscriptionProvider fight the Web Lock and
+  // trigger Strict Mode "orphaned lock" warnings in dev.
   useEffect(() => {
-    // getSession resolves immediately from localStorage in Supabase JS v2
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         const nextUser = session?.user ?? null
@@ -51,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false)
 
         if (nextUser) {
-          // User just signed in — clear the guest counter and close the modal
+          // Signed-in session (initial restore, OAuth return, or sign-in) — clear guest tries, close modal
           clearGuestUses()
           setAuthModalOpen(false)
         }
