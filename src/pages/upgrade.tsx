@@ -43,6 +43,7 @@ import {
   SubscriptionError,
 } from "@/lib/subscription"
 import { PlanChangeDialog } from "@/components/plan-change-dialog"
+import { LegalDocLinks } from "@/components/legal-doc-links"
 import { supabase } from "@/lib/supabase"
 import { useSubscription } from "@/contexts/subscription-context"
 
@@ -968,6 +969,9 @@ export default function UpgradePage() {
           {/* Footer note */}
           <p className="mt-10 text-center text-xs text-muted-foreground font-sans">
             Payments processed securely by Stripe. You can cancel or change plans at any time.
+            <span className="block mt-2">
+              <LegalDocLinks className="text-muted-foreground" />
+            </span>
           </p>
 
         </div>

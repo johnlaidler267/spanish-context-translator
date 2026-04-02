@@ -7,6 +7,8 @@ import { SubscriptionProvider } from './contexts/subscription-context.tsx'
 import { AuthModal } from './components/auth-modal.tsx'
 import App from './App.tsx'
 import UpgradePage from './pages/upgrade.tsx'
+import TermsPage from './pages/terms.tsx'
+import PrivacyPage from './pages/privacy.tsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -33,6 +35,8 @@ createRoot(document.getElementById('root')).render(
 
             <Routes>
               <Route path="/upgrade" element={<UpgradePage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
               {/* App owns / + /settings so reading state survives settings */}
               <Route path="*" element={<App />} />
             </Routes>

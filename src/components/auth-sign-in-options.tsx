@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react"
 import { Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { LegalDocLinks } from "@/components/legal-doc-links"
 import { useAuth } from "@/contexts/auth-context"
 
 function GoogleIcon() {
@@ -131,15 +132,7 @@ export function AuthSignInOptions({ extraActions }: AuthSignInOptionsProps) {
       {extraActions}
 
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        By signing up you agree to our{" "}
-        <a href="/terms" className="underline underline-offset-2 hover:text-foreground">
-          Terms
-        </a>{" "}
-        and{" "}
-        <a href="/privacy" className="underline underline-offset-2 hover:text-foreground">
-          Privacy Policy
-        </a>
-        .
+        By signing up you agree to our <LegalDocLinks openInNewTab />.
       </p>
     </>
   )

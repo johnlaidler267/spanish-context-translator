@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import type { ReadingTheme } from "@/components/theme-toggle"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
 import { useAuth } from "@/contexts/auth-context"
+import { LegalDocLinks } from "@/components/legal-doc-links"
 
 const TABS = ["General", "Account", "Billing"] as const
 type SettingsTab = (typeof TABS)[number]
@@ -195,6 +196,10 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
+
+          <p className="mt-12 text-center text-xs text-muted-foreground">
+            <LegalDocLinks />
+          </p>
         </div>
       </main>
     </div>
