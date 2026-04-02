@@ -17,9 +17,9 @@ export type ArticlePaginationState = {
   pageCount: number
   onPrevious: () => void
   onNext: () => void
-  /** Next page is in flight (show on Next control). */
+  /** Next page is in flight after user chose Next (spinner on control until advance). */
   nextPageLoading: boolean
-  /** User can open the next page (cached or errored — errored page shows retry there). */
+  /** User can request the next page (current page ready; load runs on Next if not cached). */
   nextPageOpen: boolean
 }
 

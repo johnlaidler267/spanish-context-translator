@@ -199,6 +199,16 @@ Events that fail 3 consecutive retries are marked `dead_letter`.
 
 ---
 
+## Article next-page prefetch (revisit)
+
+Article mode **does not** start translating the following page in the background while you read the current one. The LLM runs for the next slice only after you tap **Next page**; the app advances to that page once the request finishes (or immediately if that page was already cached or failed).
+
+Previously, a `useEffect` in `App.tsx` called `TranslationCache.loadPage(articlePageIndex + 1, …)` whenever the visible article page changed. To restore that behavior, reintroduce that effect and set `nextPageOpen` / `goArticleNext` back to “allow next when the next page is already loaded, errored, or in flight,” with navigation on Next only incrementing the index.
+
+Read mode still preloads the following LLM page around the midpoint of the current page’s sentences (`ReadMode` + `onRequestPreloadPage`).
+
+---
+
 ## Project Structure
 
 ```

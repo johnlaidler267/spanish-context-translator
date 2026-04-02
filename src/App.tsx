@@ -259,18 +259,11 @@ export default function App() {
 
   const totalPages = sourcePages.length
 
-  /** Article: preload next page when current page is shown. */
-  useEffect(() => {
-    if (appState !== "reading" || viewMode !== "article") return
-    const next = articlePageIndex + 1
-    if (next >= totalPages) return
-    const c = cacheRef.current
-    if (c.getPage(next) != null || c.isLoading(next) || c.getError(next)) return
-    void c
-      .loadPage(next, pageSourceText(sourcePages[next]!), translatePageText)
-      .then(bump)
-      .catch(bump)
-  }, [appState, viewMode, articlePageIndex, totalPages, sourcePages, bump])
+  /**
+   * Article next-page prefetch is intentionally disabled: the next slice is translated only
+   * when the user taps Next (see goArticleNext). To revisit background preload, see README
+   * “Article next-page prefetch”.
+   */
 
   /** Read: start loading page 1 early when there are multiple pages. */
   useEffect(() => {
@@ -427,10 +420,7 @@ export default function App() {
       cache.isLoading(articlePageIndex) && articleItems == null && articleErrRaw == null
 
     const nextIdx = articlePageIndex + 1
-    const nextPageOpen =
-      articlePageIndex >= totalPages - 1 ||
-      cache.getPage(nextIdx) != null ||
-      cache.getError(nextIdx) != null
+    const nextPageOpen = articlePageIndex < totalPages - 1 && !articleLoading
     const nextPageLoading =
       articlePageIndex < totalPages - 1 &&
       cache.isLoading(nextIdx) &&
@@ -443,9 +433,20 @@ export default function App() {
     }
 
     const goArticleNext = () => {
-      if (articlePageIndex >= totalPages - 1) return
-      if (!nextPageOpen) return
-      setArticlePageIndex((p) => p + 1)
+      if (articlePageIndex >= totalPages - 1 || articleLoading) return
+      const idx = articlePageIndex + 1
+      if (cache.getPage(idx) != null || cache.getError(idx) != null) {
+        setArticlePageIndex((p) => p + 1)
+        return
+      }
+      if (cache.isLoading(idx)) return
+      void cache
+        .loadPage(idx, pageSourceText(sourcePages[idx]!), translatePageText)
+        .then(() => {
+          setArticlePageIndex((p) => p + 1)
+          bump()
+        })
+        .catch(bump)
     }
 
     const hasSentences = readSentences.length > 0
