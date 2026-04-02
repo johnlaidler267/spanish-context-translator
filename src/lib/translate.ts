@@ -2,7 +2,7 @@ import { jsonrepair } from "jsonrepair"
 import { postProcessChunks } from "@/lib/chunk-merges"
 import { fetchGroqChatViaEdge, transcribeAudioViaEdge } from "@/lib/groq-edge"
 
-const MODEL = "openai/gpt-oss-20b"
+const MODEL = "openai/gpt-oss-120b"
 
 /**
  * GPT-OSS on Groq always spends reasoning tokens; `reasoning_effort` only changes how many.
@@ -161,6 +161,19 @@ function allBalancedJsonArraySpans(raw: string): string[] {
   return spans
 }
 
+/**
+ * Model sometimes appends prose after the closing `]` (e.g. "Need chunking. Provide JSON array.").
+ * Slice to that bracket so JSON.parse / jsonrepair see only the array.
+ */
+function stripTrailingChunkingBoilerplate(s: string): string {
+  const t = s.trimEnd()
+  const re =
+    /\]\s*(?:\r?\n\s*)*(?:Need chunking|Provide\s+(?:JSON\s+)?array)[\s\S]*$/i
+  const m = t.match(re)
+  if (m && m.index !== undefined) return t.slice(0, m.index + 1)
+  return t
+}
+
 /** First complete `[...]` only — drops trailing "Need chunking…" after a valid array. */
 function stripToFirstBalancedJsonArray(raw: string): string | null {
   const t = raw.trim()
@@ -192,13 +205,18 @@ function sanitizeChunkJsonTypos(s: string): string {
   return o
 }
 
+function looksLikeChunkJsonKeys(s: string): boolean {
+  return /"c"\s*:/.test(s) || /"chunk"\s*:/.test(s)
+}
+
 function extractChunkJsonArrayFromText(raw: string): unknown[] {
   let cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/m, "").trim()
+  cleaned = stripTrailingChunkingBoilerplate(cleaned)
   cleaned = sanitizeChunkJsonTypos(cleaned)
   if (!cleaned) throw new Error("Empty model response")
 
   const tryParseArray = (s: string): unknown[] | null => {
-    const t = sanitizeChunkJsonTypos(s.trim())
+    const t = sanitizeChunkJsonTypos(stripTrailingChunkingBoilerplate(s.trim()))
     if (!t) return null
     try {
       const repaired = jsonrepair(t)
@@ -214,42 +232,58 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
     }
   }
 
-  // 1) Whole string is a JSON array (possibly with jsonrepair)
-  const whole = tryParseArray(cleaned)
-  if (whole) return whole
+  /**
+   * jsonrepair on `[...] trailing prose` can yield `[]` or junk; whole-string parse must not
+   * win before we isolate the first balanced `[...]` (which ignores text after `]`).
+   */
+  const acceptWholeArray = (arr: unknown[] | null, source: string): unknown[] | null => {
+    if (!arr) return null
+    if (arr.length > 0) return arr
+    const t = source.trim()
+    if (/^\[\s*\]\s*$/.test(t)) return arr
+    if (looksLikeChunkJsonKeys(source)) return null
+    return arr
+  }
 
-  // 2) Only the first top-level [...] — ignores trailing model rambling after `]`
+  // 1) First top-level [...] only (drops any trailing model text after `]`)
   const stripped = stripToFirstBalancedJsonArray(cleaned)
   if (stripped) {
-    const arr = tryParseArray(stripped)
+    const arr = acceptWholeArray(tryParseArray(stripped), stripped)
     if (arr) return arr
   }
+
+  // 2) Whole string is a JSON array (possibly with jsonrepair) — reject empty if chunks clearly present
+  const whole = acceptWholeArray(tryParseArray(cleaned), cleaned)
+  if (whole) return whole
 
   // 3) Try every balanced span, longest first (prose before first [, or bracket scanner quirks)
   const candidates = allBalancedJsonArraySpans(cleaned).sort((a, b) => b.length - a.length)
   for (const span of candidates) {
-    const arr = tryParseArray(span)
+    const arr = acceptWholeArray(tryParseArray(span), span)
     if (arr && arr.length > 0) return arr
   }
 
   // 4) First [ … ] via indexOf
   const balanced = sliceBalancedJsonArray(cleaned)
   if (balanced) {
-    const arr = tryParseArray(balanced)
+    const arr = acceptWholeArray(tryParseArray(balanced), balanced)
     if (arr) return arr
   }
 
   // 5) Greedy bracket span (last resort; can fail if `]` appears inside strings)
   const greedy = cleaned.match(/\[[\s\S]*\]/)
   if (greedy) {
-    const arr = tryParseArray(greedy[0])
+    const arr = acceptWholeArray(tryParseArray(greedy[0]), greedy[0])
     if (arr) return arr
   }
 
   try {
     const repaired = jsonrepair(cleaned)
     const parsed = JSON.parse(repaired) as unknown
-    if (Array.isArray(parsed)) return parsed
+    if (Array.isArray(parsed)) {
+      const ok = acceptWholeArray(parsed, cleaned)
+      if (ok) return ok
+    }
     if (parsed && typeof parsed === "object") {
       const o = parsed as Record<string, unknown>
       for (const k of ["chunks", "output", "data", "items", "result"]) {
@@ -265,90 +299,66 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
 }
 
-const PROMPT = (input: string) => `You are a Spanish language expert. Break the input into chunks so a reader can hover each one and mentally assemble the English sentence chunk by chunk.
+const PROMPT = (input: string) => `You are a Spanish language expert. Break the input into chunks for a hover-to-translate reader.
 
-Return a JSON array. Each chunk:
-- "c": original Spanish
-- "m": natural English meaning in context. Wrap in [] any English word implied but absent in the Spanish.
-- "l": word-for-word translation
-- "n": brief grammatical note only when non-obvious — omit entirely otherwise
+Each chunk: {"c": Spanish, "m": English meaning in context, "l": word-for-word, "n": grammar note — omit key entirely if obvious}
 
-JSON syntax: every key must be written exactly like "c":"value" with a colon after the closing quote of the key — never "c",":"value (that is invalid JSON). Punctuation chunks still use quotes: "c":",","m":"", ...
+ONE WORD PER CHUNK. Group only when splitting misleads. Never chunk punctuation.
 
-DEFAULT: one word per chunk. Only group when splitting would mislead.
-
-Group these:
-- Fixed idioms (meaning unguessable from parts): en cambio, visto bueno, del mismo modo, los unos de los otros, darse cuenta de, a fines de, se trata de
-- Relative connectors (splitting produces nonsense): en la que, los que, antes de que, mientras que
-- Compound nouns (two words, one thing): redes sociales, estado natal, campaña publicitaria
-- Prepositional verb phrases (verb + preposition inseparable): contar con, pensar en, entre sí, hacer que
-- Proper nouns: always one chunk
-- Co-occurring clitics: group together, keep verb separate — se la | habían | vendido
-
----
-
-INPUT: "se ha enfrentado a una campaña publicitaria"
+INPUT: "se enfrentó a las redes sociales el martes"
 OUTPUT: [
-  {"c":"se","m":"[she] herself","l":"herself","n":"Reflexive pronoun — subject acts on herself."},
-  {"c":"ha","m":"has","l":"has"},
-  {"c":"enfrentado","m":"faced","l":"confronted"},
-  {"c":"a","m":"","l":"to","n":"Personal \"a\" — marks a human direct object. No English equivalent."},
-  {"c":"una","m":"a","l":"a"},
-  {"c":"campaña publicitaria","m":"advertising campaign","l":"publicity campaign"}
-]
-
-INPUT: "durante varias semanas del mismo modo"
-OUTPUT: [
-  { "chunk": "durante", "meaning": "for", "literal": "during", "note": null },
-  { "chunk": "varias", "meaning": "several", "literal": "various", "note": null },
-  { "chunk": "semanas", "meaning": "weeks", "literal": "weeks", "note": null },
-  { "chunk": "del mismo modo", "meaning": "in the same way", "literal": "of the same mode", "note": "Fixed expression — must be grouped." }
-]
-
-
-INPUT: "en las redes sociales el jueves"
-OUTPUT: [
-  {"c":"en","m":"on","l":"in","n":"\"en\" = \"on\" in social media context."},
+  {"c":"se","m":"[she] herself","l":"herself","n":"Reflexive — subject acts on herself."},
+  {"c":"enfrentó","m":"faced","l":"confronted"},
+  {"c":"a","m":"","l":"to","n":"Personal \"a\" — marks human direct object, no English equivalent."},
   {"c":"las","m":"the","l":"the"},
   {"c":"redes sociales","m":"social media","l":"social networks"},
-  {"c":"el jueves","m":"on Thursday","l":"the Thursday","n":"\"el\" before a day of the week = \"on\" in English."}
+  {"c":"el martes","m":"on Tuesday","l":"the Tuesday","n":"el + day of week = \"on\" in English."}
 ]
 
-INPUT: "se le conoce como"
+INPUT: "María se dio cuenta de que no había nadie"
 OUTPUT: [
-  {"c":"se le conoce","m":"it is known","l":"itself it knows","n":"Impersonal construction — se + le make the verb passive. Neither word carries its usual meaning."},
-  {"c":"como","m":"as","l":"as"}
+  {"c":"María","m":"María","l":"María"},
+  {"c":"se dio cuenta de","m":"realized","l":"gave herself account of","n":"Fixed verb phrase — darse cuenta de = to realize. The \"de\" belongs to the verb, not to what follows."},
+  {"c":"que","m":"that","l":"that"},
+  {"c":"no","m":"not","l":"not"},
+  {"c":"había","m":"there was","l":"there was"},
+  {"c":"nadie","m":"anyone","l":"nobody"}
 ]
 
-INPUT: "la técnica de golpearse la cara"
+INPUT: "sin embargo insistió a pesar de sus errores en cambio"
+OUTPUT: [
+  {"c":"sin embargo","m":"however","l":"without embargo","n":"Fixed expression."},
+  {"c":"insistió","m":"insisted","l":"insisted"},
+  {"c":"a pesar de","m":"despite","l":"to weight of","n":"Fixed expression."},
+  {"c":"sus","m":"his","l":"his"},
+  {"c":"errores","m":"mistakes","l":"errors"},
+  {"c":"en cambio","m":"on the other hand","l":"in change","n":"Fixed expression."}
+]
+
+INPUT: "se dio cuenta de que cada vez más gente protestaba a lo largo del país"
+OUTPUT: [
+  {"c":"se dio cuenta de","m":"realized","l":"gave itself account of","n":"Fixed verb phrase."},
+  {"c":"que","m":"that","l":"that"},
+  {"c":"cada vez más","m":"increasingly","l":"each time more","n":"Fixed expression."},
+  {"c":"gente","m":"people","l":"people"},
+  {"c":"protestaba","m":"was protesting","l":"protested"},
+  {"c":"a lo largo de","m":"throughout","l":"along the length of","n":"Fixed expression."},
+  {"c":"el","m":"the","l":"the"},
+  {"c":"país","m":"country","l":"country"}
+]
+
+INPUT: "la casa en la que había dado su visto bueno"
 OUTPUT: [
   {"c":"la","m":"the","l":"the"},
-  {"c":"técnica","m":"technique","l":"technique"},
-  {"c":"de","m":"of","l":"of"},
-  {"c":"golpearse","m":"hitting oneself","l":"to hit oneself","n":"Reflexive infinitive — se attached to verb means action done to oneself."},
-  {"c":"la","m":"the","l":"the"},
-  {"c":"cara","m":"face","l":"face"}
+  {"c":"casa","m":"house","l":"house"},
+  {"c":"en la que","m":"in which","l":"in the that","n":"Relative connector — splitting produces nonsense."},
+  {"c":"había","m":"had","l":"had"},
+  {"c":"dado","m":"given","l":"given"},
+  {"c":"su","m":"his","l":"his"},
+  {"c":"visto bueno","m":"approval","l":"good sight","n":"Fixed expression."}
 ]
 
-INPUT: "los unos de los otros"
-OUTPUT: [
-  {"c":"los unos de los otros","m":"each other","l":"the ones from the others","n":"Fixed expression — must be grouped. Parts give no hint of meaning."}
-]
-
-INPUT: "se la habían vendido unos piratas"
-OUTPUT: [
-  {"c":"se la","m":"it to him","l":"it to him","n":"Clitic cluster — co-occurring pronouns grouped together."},
-  {"c":"habían","m":"had","l":"had"},
-  {"c":"vendido","m":"sold","l":"sold"},
-  {"c":"unos","m":"some","l":"some"},
-  {"c":"piratas","m":"pirates","l":"pirates"}
-]
-
----
-
-Every word in the input must appear in the output. Complete the full array and close with ].
 Return only a valid JSON array — no preamble, no markdown fences.
-
 Text: "${input}"`
 
 /** LLM JSON uses short keys (c,m,l,n); internal pipeline uses long names. */
@@ -702,11 +712,6 @@ export function mergeArticlePagesIfWholeTextFitsLimits(
 export async function translatePageText(input: string): Promise<ReconciledItem[]> {
   const systemContent = "You are an intuitive spanish language chunking expert."
   const userContent = PROMPT(input)
-  console.log(
-    "[translatePageText] complete prompt to LLM\n--- SYSTEM ---\n%s\n--- USER ---\n%s\n--- END ---",
-    systemContent,
-    userContent,
-  )
 
   const res = await fetchGroqChatCompletion({
     model: MODEL,
@@ -723,9 +728,8 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   }
 
   const data = await res.json()
-  console.log("[translatePageText] LLM response (raw JSON)", data)
   const raw = combineAssistantPayloadsForChunkParse(data)
-  console.log("[translatePageText] LLM assistant text (content + reasoning)", raw)
+  console.log("[translatePageText] assistant text", raw)
   const parsed = extractChunkJsonArrayFromText(raw)
   const merged = postProcessChunks(parsed)
   const chunks: RawChunk[] = []
@@ -733,7 +737,14 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     const c = coerceLlmChunkRow(row)
     if (c) chunks.push(normalizeRawChunk(c))
   }
-  return reconcileChunks(chunks, input)
+  const reconciled = reconcileChunks(chunks, input)
+  if (!reconciled.some((item) => item.type === "chunk")) {
+    throw new Error(
+      "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
+    )
+  }
+  console.log(JSON.stringify(reconciled))
+  return reconciled
 }
 
 export type PageSentenceRange = { pageIndex: number; start: number; end: number }

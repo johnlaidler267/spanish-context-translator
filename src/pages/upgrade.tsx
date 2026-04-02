@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, type ReactNode } from "react"
 import {
-  ArrowLeft, Check, BookOpen, Zap, Crown,
+  ArrowLeft, Check, BookOpen, Zap,
   Loader2, CheckCircle2, AlertCircle, ExternalLink, RotateCcw,
 } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
@@ -49,12 +49,11 @@ import { useSubscription } from "@/contexts/subscription-context"
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TIER_ICONS: Record<TierId, ReactNode> = {
-  free:      <BookOpen className="h-5 w-5" />,
-  pro:       <Zap className="h-5 w-5" />,
-  unlimited: <Crown className="h-5 w-5" />,
+  free: <BookOpen className="h-5 w-5" />,
+  pro:  <Zap className="h-5 w-5" />,
 }
 
-const TIER_RANK: Record<TierId, number> = { free: 0, pro: 1, unlimited: 2 }
+const TIER_RANK: Record<TierId, number> = { free: 0, pro: 1 }
 
 // ─── Subscription snapshot from DB ───────────────────────────────────────────
 
@@ -81,7 +80,7 @@ function stripePriceIdForTierInterval(tierId: TierId, billing: DbBillingInterval
 
 /**
  * Whether this grid card (tier + UI billing toggle) matches the user's active subscription.
- * Uses Stripe price IDs from env so monthly vs annual Unlimited are distinct.
+ * Uses Stripe price IDs from env so monthly vs annual Pro are distinct.
  */
 function isCurrentPlanCard(
   sub: SubSnapshot | null,
@@ -149,6 +148,23 @@ function formatDate(iso: string | null): string {
   if (!iso) return "—"
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
+
+/** Free plan — feature lines under “Includes” (limit line rendered separately). */
+const FREE_TIER_INCLUDES: string[] = [
+  "Article mode — hover any word to understand it",
+  "Read mode — sentence by sentence, at your pace",
+  "Voice transcription",
+  "Sample texts to get started",
+]
+
+const FREE_TIER_LIMITS_LINE = "5 submissions per day · 600 characters per submission"
+
+const PRO_TIER_PLUS_HEADING = "Everything in free, plus"
+
+const PRO_TIER_PLUS: string[] = [
+  "Unlimited submissions",
+  "No character limit — paste full articles",
+]
 
 function tierBullets(tier: TierConfig): string[] {
   const { limits, features } = tier
@@ -777,16 +793,21 @@ export default function UpgradePage() {
               <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-3 md:items-start">
+            <div className="grid gap-6 md:grid-cols-2 md:items-start">
               {TIER_IDS.map((id) => {
                 const tier        = getTier(id)
                 const isCurrent   = isCurrentPlanCard(sub, id, interval)
                 const isProcessing = processingTier === id
                 const anyProcessing = processingTier !== null
-                const bullets     = tierBullets(tier)
+                const bullets =
+                  id === "free"
+                    ? FREE_TIER_INCLUDES
+                    : id === "pro"
+                      ? PRO_TIER_PLUS
+                      : tierBullets(tier)
 
                 const pricing = interval === "annual" ? tier.pricing.annual : tier.pricing.monthly
-                const price   = formatPrice(pricing.amountCents)
+                const nonProPrice = id !== "pro" ? formatPrice(pricing.amountCents) : null
 
                 return (
                   <Card
@@ -821,35 +842,81 @@ export default function UpgradePage() {
                     <CardHeader className="pb-4">
                       <div className="flex items-center gap-2 text-muted-foreground mb-2">
                         {TIER_ICONS[id]}
-                        <span className="text-sm font-medium font-sans">{tier.name}</span>
+                        <span className="text-sm font-medium font-sans">
+                          {id === "pro" ? "Pro Plan" : tier.name}
+                        </span>
                       </div>
 
                       {/* Price */}
-                      <CardTitle className="flex items-baseline gap-1">
-                        <span className="text-3xl font-serif text-foreground">{price}</span>
-                        <span className="text-sm text-muted-foreground font-sans">/month</span>
-                      </CardTitle>
-
-                      {/* Annual savings callout */}
-                      {interval === "annual" && pricing.amountCents > 0 && (
-                        <p className="text-xs text-muted-foreground font-sans mt-0.5">
-                          {formatAnnualMonthlyEquivalent(id)}/mo · billed annually
-                          {tier.pricing.annual.savingsPercent > 0 && (
-                            <span className="ml-1.5 text-primary font-medium">
-                              Save {tier.pricing.annual.savingsPercent}%
+                      {id === "pro" ? (
+                        <>
+                          <CardTitle className="flex items-baseline gap-1">
+                            <span className="text-3xl font-serif text-foreground">
+                              {formatPrice(
+                                interval === "annual"
+                                  ? tier.pricing.annual.amountCents
+                                  : tier.pricing.monthly.amountCents,
+                              )}
                             </span>
+                            <span className="text-sm text-muted-foreground font-sans">
+                              {interval === "annual" ? "/year" : "/month"}
+                            </span>
+                          </CardTitle>
+                          {interval === "monthly" ? (
+                            <p className="text-sm text-muted-foreground font-sans mt-1">
+                              or {formatPrice(tier.pricing.annual.amountCents)}/yr — two months free
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground font-sans mt-0.5">
+                              {formatAnnualMonthlyEquivalent("pro")}/mo · billed annually — two months free
+                              {tier.pricing.annual.savingsPercent > 0 && (
+                                <span className="ml-1.5 text-primary font-medium">
+                                  (Save {tier.pricing.annual.savingsPercent}%)
+                                </span>
+                              )}
+                            </p>
                           )}
-                        </p>
+                        </>
+                      ) : (
+                        <>
+                          <CardTitle className="flex items-baseline gap-1">
+                            <span className="text-3xl font-serif text-foreground">{nonProPrice}</span>
+                            <span className="text-sm text-muted-foreground font-sans">/month</span>
+                          </CardTitle>
+
+                          {interval === "annual" && pricing.amountCents > 0 && (
+                            <p className="text-xs text-muted-foreground font-sans mt-0.5">
+                              {formatAnnualMonthlyEquivalent(id)}/mo · billed annually
+                              {tier.pricing.annual.savingsPercent > 0 && (
+                                <span className="ml-1.5 text-primary font-medium">
+                                  Save {tier.pricing.annual.savingsPercent}%
+                                </span>
+                              )}
+                            </p>
+                          )}
+                        </>
                       )}
 
-                      <CardDescription className="text-muted-foreground font-sans">
-                        {tier.tagline}
-                      </CardDescription>
+                      {tier.tagline ? (
+                        <CardDescription className="text-muted-foreground font-sans">
+                          {tier.tagline}
+                        </CardDescription>
+                      ) : null}
                     </CardHeader>
 
                     <CardContent className="pt-0">
+                      {id === "free" && (
+                        <p className="text-xs font-semibold font-sans text-muted-foreground uppercase tracking-wide mb-3">
+                          Includes
+                        </p>
+                      )}
+                      {id === "pro" && (
+                        <p className="text-xs font-semibold font-sans text-muted-foreground uppercase tracking-wide mb-3">
+                          {PRO_TIER_PLUS_HEADING}
+                        </p>
+                      )}
                       {/* Feature bullets */}
-                      <ul className="space-y-2.5 mb-6">
+                      <ul className={`space-y-2.5 ${id === "free" ? "mb-3" : "mb-6"}`}>
                         {bullets.map((bullet) => (
                           <li key={bullet} className="flex items-start gap-2 text-sm font-sans">
                             <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -857,6 +924,11 @@ export default function UpgradePage() {
                           </li>
                         ))}
                       </ul>
+                      {id === "free" && (
+                        <p className="text-sm font-sans text-muted-foreground mb-6">
+                          {FREE_TIER_LIMITS_LINE}
+                        </p>
+                      )}
 
                       {/* CTA button */}
                       <Button

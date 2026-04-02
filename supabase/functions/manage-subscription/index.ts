@@ -63,7 +63,7 @@ const VALID_ACTIONS = ["cancel", "reactivate", "downgrade", "upgrade"] as const
 type Action = typeof VALID_ACTIONS[number]
 
 /** Tier rank — lower number = lower tier.  Must mirror TIER_RANK in upgrade.tsx */
-const TIER_RANK: Record<string, number> = { free: 0, pro: 1, unlimited: 2 }
+const TIER_RANK: Record<string, number> = { free: 0, pro: 1 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

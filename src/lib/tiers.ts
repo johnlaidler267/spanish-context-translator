@@ -11,7 +11,7 @@
  * features; major when restructuring the shape itself.
  */
 
-export const TIERS_CONFIG_VERSION = "1.0.0"
+export const TIERS_CONFIG_VERSION = "2.0.2"
 
 function normalizeStripePriceId(raw: string): string {
   let v = raw.trim()
@@ -53,27 +53,17 @@ const STRIPE_PRICE = {
     import.meta.env.VITE_STRIPE_PRICE_PRO_ANNUAL,
     "price_REPLACE_PRO_ANNUAL",
   ),
-  unlimitedMonthly: stripePriceFromEnv(
-    "VITE_STRIPE_PRICE_UNLIMITED_MONTHLY",
-    import.meta.env.VITE_STRIPE_PRICE_UNLIMITED_MONTHLY,
-    "price_REPLACE_UNLIMITED_MONTHLY",
-  ),
-  unlimitedAnnual: stripePriceFromEnv(
-    "VITE_STRIPE_PRICE_UNLIMITED_ANNUAL",
-    import.meta.env.VITE_STRIPE_PRICE_UNLIMITED_ANNUAL,
-    "price_REPLACE_UNLIMITED_ANNUAL",
-  ),
 }
 
 // ─── ID ──────────────────────────────────────────────────────────────────────
 
-export type TierId = "free" | "pro" | "unlimited"
+export type TierId = "free" | "pro"
 
 /** Re-exported here so UI files can import billing interval from one place. */
 export type { DbBillingInterval } from "@/lib/db.types"
 
 /** Ordered list — use for rendering plan grids in sequence. */
-export const TIER_IDS: TierId[] = ["free", "pro", "unlimited"]
+export const TIER_IDS: TierId[] = ["free", "pro"]
 
 // ─── SHAPES ──────────────────────────────────────────────────────────────────
 
@@ -178,18 +168,19 @@ export const TIERS: Record<TierId, TierConfig> = {
       annual:  { amountCents: 0, stripePriceId: null, savingsPercent: 0 },
     },
     limits: {
-      textsPerMonth:      5,
-      textsPerDay:        3,
+      /** Monthly cap — keep in sync with /upgrade + track-usage; free tier messaging emphasizes daily + chars. */
+      textsPerMonth:      null,
+      textsPerDay:        5,
       chunksPerRequest:   80,
       /** null = an "article" may span multiple LLM pages; cap submissions/day via textsPerDay. */
       pagesPerSubmission: null,
       savedTranslations:  0,
-      charsPerSubmission: 1_000,
+      charsPerSubmission: 600,
     },
     features: {
       articleMode:        true,
-      readMode:           false,
-      voiceInput:         false,
+      readMode:           true,
+      voiceInput:         true,
       exportTranslations: false,
       apiAccess:          false,
       prioritySupport:    false,
@@ -202,44 +193,12 @@ export const TIERS: Record<TierId, TierConfig> = {
   pro: {
     id: "pro",
     name: "Pro",
-    tagline: "For regular readers",
-    description: "Everything you need to read Spanish content daily.",
-    suggestedUseCase: "Language learners working through books, articles, and news regularly.",
+    tagline: "",
+    description: "Unlimited submissions, no character cap — monthly or annual billing.",
+    suggestedUseCase: "Anyone reading Spanish regularly: learners, translators, and power users.",
     pricing: {
-      monthly: { amountCents: 900,  stripePriceId: STRIPE_PRICE.proMonthly },
-      annual:  { amountCents: 7_900, stripePriceId: STRIPE_PRICE.proAnnual, savingsPercent: 27 },
-    },
-    limits: {
-      textsPerMonth:      50,
-      textsPerDay:        null,
-      chunksPerRequest:   null,
-      pagesPerSubmission: 10,
-      savedTranslations:  200,
-      charsPerSubmission: 10_000,
-    },
-    features: {
-      articleMode:        true,
-      readMode:           true,
-      voiceInput:         true,
-      exportTranslations: false,
-      apiAccess:          false,
-      prioritySupport:    true,
-      dedicatedSupport:   false,
-    },
-    trialDays: 7,
-    badge: "Most Popular",
-    highlighted: true,
-  },
-
-  unlimited: {
-    id: "unlimited",
-    name: "Unlimited",
-    tagline: "No limits, ever",
-    description: "Full access to every feature with no usage caps.",
-    suggestedUseCase: "Power users, translators, and teams processing high volumes of Spanish text.",
-    pricing: {
-      monthly: { amountCents: 2_900,  stripePriceId: STRIPE_PRICE.unlimitedMonthly },
-      annual:  { amountCents: 24_900, stripePriceId: STRIPE_PRICE.unlimitedAnnual, savingsPercent: 29 },
+      monthly: { amountCents: 700,  stripePriceId: STRIPE_PRICE.proMonthly },
+      annual:  { amountCents: 5_900, stripePriceId: STRIPE_PRICE.proAnnual, savingsPercent: 30 },
     },
     limits: {
       textsPerMonth:      null,
@@ -259,16 +218,26 @@ export const TIERS: Record<TierId, TierConfig> = {
       dedicatedSupport:   true,
     },
     trialDays: 7,
-    badge: "Best Value",
-    highlighted: false,
+    badge: "Pro",
+    highlighted: true,
   },
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
-/** Look up a tier config — throws if the ID is unknown (catches typos at runtime). */
-export function getTier(id: TierId): TierConfig {
-  const tier = TIERS[id]
+/**
+ * Map legacy DB / Stripe metadata (`unlimited`) to the single paid tier (`pro`).
+ */
+export function normalizeTierId(raw: string): TierId {
+  if (raw === "unlimited") return "pro"
+  if (raw === "pro" || raw === "free") return raw
+  return "free"
+}
+
+/** Look up a tier config — unknown IDs fall back to free; legacy `unlimited` → pro. */
+export function getTier(id: string): TierConfig {
+  const key = normalizeTierId(id)
+  const tier = TIERS[key]
   if (!tier) throw new Error(`Unknown tier ID: "${id}"`)
   return tier
 }

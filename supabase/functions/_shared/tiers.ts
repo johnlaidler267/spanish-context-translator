@@ -3,9 +3,12 @@
  *
  * Price IDs must match `src/lib/tiers.ts` (same Stripe Price IDs).
  * Set secrets in Supabase → Edge Functions → Secrets; they override placeholders.
+ *
+ * Legacy: old Unlimited Stripe prices still resolve to tier `pro` so existing
+ * subscriptions keep working after the Unlimited product was removed.
  */
 
-export type TierId = "free" | "pro" | "unlimited"
+export type TierId = "free" | "pro"
 export type BillingInterval = "monthly" | "annual"
 
 export interface PriceEntry {
@@ -43,11 +46,12 @@ function buildPriceEntries(): Record<string, PriceEntry> {
   const P = {
     proMonthly: stripePriceFromEnv(Deno.env.get("STRIPE_PRICE_PRO_MONTHLY"), "price_REPLACE_PRO_MONTHLY"),
     proAnnual: stripePriceFromEnv(Deno.env.get("STRIPE_PRICE_PRO_ANNUAL"), "price_REPLACE_PRO_ANNUAL"),
-    unlimitedMonthly: stripePriceFromEnv(
+    /** Legacy Unlimited product — map to Pro tier. */
+    legacyUnlimitedMonthly: stripePriceFromEnv(
       Deno.env.get("STRIPE_PRICE_UNLIMITED_MONTHLY"),
       "price_REPLACE_UNLIMITED_MONTHLY",
     ),
-    unlimitedAnnual: stripePriceFromEnv(
+    legacyUnlimitedAnnual: stripePriceFromEnv(
       Deno.env.get("STRIPE_PRICE_UNLIMITED_ANNUAL"),
       "price_REPLACE_UNLIMITED_ANNUAL",
     ),
@@ -63,15 +67,15 @@ function buildPriceEntries(): Record<string, PriceEntry> {
       interval: "annual",
       label: "Pro – Annual",
     },
-    [P.unlimitedMonthly]: {
-      tierId: "unlimited",
+    [P.legacyUnlimitedMonthly]: {
+      tierId: "pro",
       interval: "monthly",
-      label: "Unlimited – Monthly",
+      label: "Pro – Monthly (legacy price)",
     },
-    [P.unlimitedAnnual]: {
-      tierId: "unlimited",
+    [P.legacyUnlimitedAnnual]: {
+      tierId: "pro",
       interval: "annual",
-      label: "Unlimited – Annual",
+      label: "Pro – Annual (legacy price)",
     },
   }
 }
@@ -104,22 +108,14 @@ export interface TierLimits {
 
 export const TIER_LIMITS: Record<TierId, TierLimits> = {
   free: {
-    textsPerMonth:      5,
-    textsPerDay:        3,
+    textsPerMonth:      null,
+    textsPerDay:        5,
     chunksPerRequest:   80,
     pagesPerSubmission: null,
     savedTranslations:  0,
-    charsPerSubmission: 1_000,
+    charsPerSubmission: 600,
   },
   pro: {
-    textsPerMonth:      50,
-    textsPerDay:        null,
-    chunksPerRequest:   null,
-    pagesPerSubmission: 10,
-    savedTranslations:  200,
-    charsPerSubmission: 10_000,
-  },
-  unlimited: {
     textsPerMonth:      null,
     textsPerDay:        null,
     chunksPerRequest:   null,
@@ -138,7 +134,6 @@ export function getTierLimits(tierId: TierId): TierLimits {
 
 /** Number of free-trial days for first-time subscribers on each tier. */
 export const TRIAL_DAYS: Record<TierId, number> = {
-  free:      0,
-  pro:       7,
-  unlimited: 7,
+  free: 0,
+  pro:  7,
 }

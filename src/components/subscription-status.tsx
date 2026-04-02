@@ -17,7 +17,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Link } from "react-router-dom"
 import {
-  BookOpen, Zap, Crown, CalendarCheck2,
+  BookOpen, Zap, CalendarCheck2,
   AlertTriangle, RefreshCw, Loader2, ArrowUpRight, RotateCcw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -98,9 +98,8 @@ function nullLimits(): UsageLimits {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const TIER_ICONS: Record<TierId, React.ReactNode> = {
-  free:      <BookOpen className="h-4 w-4" />,
-  pro:       <Zap className="h-4 w-4" />,
-  unlimited: <Crown className="h-4 w-4" />,
+  free: <BookOpen className="h-4 w-4" />,
+  pro:  <Zap className="h-4 w-4" />,
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -563,8 +562,8 @@ export function SubscriptionStatus({
           ) : null}
         </div>
 
-        {/* Quick upgrade link (not on unlimited) */}
-        {tierId !== "unlimited" && (
+        {/* Quick upgrade link — free tier only */}
+        {tierId === "free" && (
           <Link
             to="/upgrade"
             className="shrink-0 flex items-center gap-1 text-xs font-medium font-sans text-primary hover:underline mt-0.5"
@@ -711,18 +710,14 @@ export function SubscriptionStatus({
           </>
         )}
 
-        {/* Upgrade CTA (not on unlimited) */}
-        {tierId !== "unlimited" && (
+        {/* Upgrade CTA — free tier only */}
+        {tierId === "free" && (
           <Link to="/upgrade" className="w-full">
             <Button
               variant={exceededMetrics.length > 0 ? "default" : "secondary"}
               className="w-full font-sans"
             >
-              {exceededMetrics.length > 0
-                ? "Upgrade to continue →"
-                : tierId === "free"
-                  ? "View plans"
-                  : "Upgrade to Unlimited"}
+              {exceededMetrics.length > 0 ? "Upgrade to continue →" : "View plans"}
             </Button>
           </Link>
         )}

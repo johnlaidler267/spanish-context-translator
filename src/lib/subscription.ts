@@ -21,7 +21,7 @@
  *   await downgradeSubscription("price_REPLACE_PRO_MONTHLY")
  *
  *   // What will the user lose?
- *   const diff = diffTiers("unlimited", "pro")
+ *   const diff = diffTiers("pro", "free")
  */
 
 import { supabase } from "@/lib/supabase"
@@ -302,6 +302,6 @@ export function diffTiers(fromId: TierId, toId: TierId): TierDiff {
 
 /** Returns the ordered list of tier IDs that are strictly lower-rank than `fromId`. */
 export function lowerTierIds(fromId: TierId): TierId[] {
-  const rank: Record<TierId, number> = { free: 0, pro: 1, unlimited: 2 }
+  const rank: Record<TierId, number> = { free: 0, pro: 1 }
   return TIER_IDS.filter((id) => rank[id] < rank[fromId])
 }

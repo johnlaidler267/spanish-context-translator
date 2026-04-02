@@ -5,7 +5,7 @@ import { Link } from "react-router-dom"
 import { Sun, Moon, Settings2 } from "lucide-react"
 import { useSubscription } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
-import { getTier, type TierId } from "@/lib/tiers"
+import { getTier } from "@/lib/tiers"
 import { supabase } from "@/lib/supabase"
 import type { ReadingTheme } from "./theme-toggle"
 
@@ -55,7 +55,7 @@ function planPillFromRow(row: {
 
   let name = "Plan"
   try {
-    name = getTier(row.plan_id as TierId).name
+    name = getTier(row.plan_id).name
   } catch {
     /* unknown plan_id in DB */
   }
