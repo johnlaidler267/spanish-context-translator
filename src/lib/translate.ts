@@ -406,8 +406,8 @@ export function splitIntoSentences(items: ReconciledItem[]) {
 }
 
 /**
- * Words per LLM request (Article pagination + Read-mode preloads both use this; Read UI is still sentence-by-sentence).
- * ~68 mobile / ~115 desktop — tuned to keep mobile article pages on-screen.
+ * Fallback words per LLM page when DOM measurement is unavailable (SSR / tiny viewport).
+ * Normal path: `reading-page-measure` + `resolvePageSplitLimits` in the app shell.
  */
 export const PAGE_SIZE_WORDS_MOBILE = 68
 export const PAGE_SIZE_WORDS_DESKTOP = 115
@@ -422,6 +422,7 @@ export function pageCharCapForWordLimit(maxWords: number): number {
   return Math.round(maxWords * 24)
 }
 
+/** Static fallback if DOM-based `measureArticlePageSplitLimits` cannot run yet. */
 export function resolvePageSplitLimits(isMobileViewport: boolean): PageSplitLimits {
   const maxWords = isMobileViewport ? PAGE_SIZE_WORDS_MOBILE : PAGE_SIZE_WORDS_DESKTOP
   return { maxWords, maxChars: pageCharCapForWordLimit(maxWords) }
@@ -535,6 +536,7 @@ export function splitSegmentIntoPageParts(text: string, limits: PageSplitLimits)
 
 /**
  * Group source text into pages; sentences may be split into smaller pieces if needed.
+ * Page breaks are driven by `maxChars` first when limits come from DOM measurement (large `maxWords`).
  */
 export function buildSentencePages(sentences: string[], limits: PageSplitLimits): string[][] {
   if (sentences.length === 0) return []
@@ -626,7 +628,7 @@ export type ReadSentence = {
 
 /**
  * Max words per Read-mode step on narrow viewports — same prev/next as desktop, smaller bites.
- * (LLM still uses PAGE_SIZE_WORDS_MOBILE per request; this only splits display steps.)
+ * (LLM page size comes from DOM-measured article column; this only splits display steps.)
  */
 export const READ_MODE_WORDS_PER_STEP_MOBILE = 18
 

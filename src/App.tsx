@@ -18,7 +18,6 @@ import {
   pageSourceText,
   pageStepRangesFromSentences,
   READ_MODE_WORDS_PER_STEP_MOBILE,
-  resolvePageSplitLimits,
   splitSourceIntoSentences,
   subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
@@ -34,6 +33,7 @@ import { Button } from "./components/ui/button"
 import { RateLimitModal } from "./components/rate-limit-modal"
 import { isRateLimitApiMessage } from "./lib/api-errors"
 import { useAuth } from "./contexts/auth-context"
+import { useArticlePageSplitLimits } from "./hooks/use-article-page-split-limits"
 import { GuestSignupModal } from "./components/guest-signup-modal"
 import { hasReachedGuestLimit, incrementGuestUses } from "./lib/guest-usage"
 import { checkLimits } from "./lib/enforce"
@@ -82,7 +82,7 @@ export default function App() {
   const cacheRef = useRef(new TranslationCache())
   /**
    * LLM batching only: same sentence-boundary pages for Article and Read mode
-   * (~115 words / page desktop, ~60 mobile via resolvePageSplitLimits at submit).
+   * (LLM page size from DOM-measured article column; see useArticlePageSplitLimits.)
    * Read mode still shows one grammatical sentence at a time; it does not change these splits.
    */
   const [sourcePages, setSourcePages] = useState<string[][]>([])
@@ -98,6 +98,7 @@ export default function App() {
   const rateLimitModalSuppressedRef = useRef(false)
   /** Narrow viewport: shorter read-mode steps (LLM page size unchanged). */
   const [readLayoutMobile, setReadLayoutMobile] = useState(false)
+  const articlePageSplitLimits = useArticlePageSplitLimits()
   const [guestSignupOpen, setGuestSignupOpen] = useState(false)
 
   useEffect(() => {
@@ -138,11 +139,11 @@ export default function App() {
         const isMobile =
           typeof window !== "undefined" &&
           window.matchMedia("(max-width: 767px)").matches
-        const pageLimits = resolvePageSplitLimits(isMobile)
+        const pageLimits = articlePageSplitLimits
         const hasMobileHeading = isMobile && Boolean(heading)
         const effectivePageLimits = hasMobileHeading
           ? {
-              maxWords: Math.max(42, pageLimits.maxWords - 14),
+              maxWords: Math.max(800, Math.round(pageLimits.maxWords * 0.84)),
               maxChars: Math.round(pageLimits.maxChars * 0.84),
             }
           : pageLimits
@@ -237,7 +238,7 @@ export default function App() {
         setAppState("landing")
       }
     },
-    [isLapsed, user, bump],
+    [isLapsed, user, bump, articlePageSplitLimits],
   )
 
   const handleBack = useCallback(() => {
