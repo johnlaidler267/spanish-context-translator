@@ -75,12 +75,7 @@ async function fetchGroqChatCompletion(body: object): Promise<Response> {
   return post()
 }
 
-/** Groq / OpenAI-compatible: `content` may be a string or multimodal parts; some models fill `reasoning`. */
-function getAssistantMessageText(data: unknown): string {
-  const choice = (data as { choices?: Array<{ message?: Record<string, unknown> }> })?.choices?.[0]
-  const msg = choice?.message
-  if (!msg) return ""
-  const content = msg.content
+function stringifyMessageContent(content: unknown): string {
   if (typeof content === "string" && content.trim()) return content.trim()
   if (Array.isArray(content)) {
     const texts = content.map((part: unknown) => {
@@ -93,9 +88,20 @@ function getAssistantMessageText(data: unknown): string {
     const joined = texts.join("")
     if (joined.trim()) return joined.trim()
   }
-  const reasoning = msg.reasoning
-  if (typeof reasoning === "string" && reasoning.trim()) return reasoning.trim()
   return ""
+}
+
+/** Concatenate channels so a JSON array in one field isn’t lost when the other has prose. */
+function combineAssistantPayloadsForChunkParse(data: unknown): string {
+  const choice = (data as { choices?: Array<{ message?: Record<string, unknown> }> })?.choices?.[0]
+  const msg = choice?.message
+  if (!msg) return ""
+  const parts: string[] = []
+  const c = stringifyMessageContent(msg.content)
+  if (c) parts.push(c)
+  const r = msg.reasoning
+  if (typeof r === "string" && r.trim()) parts.push(r.trim())
+  return parts.join("\n\n")
 }
 
 /**
@@ -155,47 +161,90 @@ function allBalancedJsonArraySpans(raw: string): string[] {
   return spans
 }
 
-function looksLikeChunkObject(row: unknown): boolean {
-  if (row == null || typeof row !== "object") return false
-  const o = row as Record<string, unknown>
-  return typeof o.c === "string" || typeof o.chunk === "string"
+/** First complete `[...]` only — drops trailing "Need chunking…" after a valid array. */
+function stripToFirstBalancedJsonArray(raw: string): string | null {
+  const t = raw.trim()
+  const start = t.indexOf("[")
+  if (start === -1) return null
+  return sliceBalancedJsonArrayFrom(t, start)
 }
 
-/** Prefer arrays that actually look like chunk rows (avoids tiny accidental `[...]` in prose). */
-function isPlausibleChunkArray(arr: unknown[]): boolean {
-  if (arr.length === 0) return false
-  const hits = arr.filter(looksLikeChunkObject).length
-  return hits >= Math.min(3, arr.length) || (arr.length === 1 && hits === 1)
+/**
+ * GPT-OSS often glues `,":"` where valid JSON needs `":","` when the Spanish chunk is
+ * punctuation (comma, colon). Example broken: `{"c",":"m` → `{"c":",","m`
+ * Without this, `]`/`"` balance is wrong and JSON.parse + jsonrepair both fail.
+ */
+function sanitizeChunkJsonTypos(s: string): string {
+  let o = s
+  for (let pass = 0; pass < 6; pass++) {
+    const next = o
+      .replace(/"c",":"m/g, '"c":",","m')
+      .replace(/"c",":"l/g, '"c":",","l')
+      .replace(/"c",":"n/g, '"c":",","n')
+      .replace(/"c",",","m/g, '"c":",","m')
+      .replace(/"c",",","l/g, '"c":",","l')
+      .replace(/"c",",","n/g, '"c":",","n')
+      .replace(/"l":":"(?=\s*[,}\]])/g, '"l":","')
+      .replace(/"m":":"(?=\s*[,}\]])/g, '"m":","')
+    if (next === o) break
+    o = next
+  }
+  return o
 }
 
 function extractChunkJsonArrayFromText(raw: string): unknown[] {
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/m, "").trim()
+  let cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/m, "").trim()
+  cleaned = sanitizeChunkJsonTypos(cleaned)
   if (!cleaned) throw new Error("Empty model response")
 
   const tryParseArray = (s: string): unknown[] | null => {
+    const t = sanitizeChunkJsonTypos(s.trim())
+    if (!t) return null
     try {
-      const repaired = jsonrepair(s)
+      const repaired = jsonrepair(t)
       const parsed = JSON.parse(repaired)
       return Array.isArray(parsed) ? parsed : null
     } catch {
-      return null
+      try {
+        const parsed = JSON.parse(t)
+        return Array.isArray(parsed) ? parsed : null
+      } catch {
+        return null
+      }
     }
   }
 
+  // 1) Whole string is a JSON array (possibly with jsonrepair)
+  const whole = tryParseArray(cleaned)
+  if (whole) return whole
+
+  // 2) Only the first top-level [...] — ignores trailing model rambling after `]`
+  const stripped = stripToFirstBalancedJsonArray(cleaned)
+  if (stripped) {
+    const arr = tryParseArray(stripped)
+    if (arr) return arr
+  }
+
+  // 3) Try every balanced span, longest first (prose before first [, or bracket scanner quirks)
+  const candidates = allBalancedJsonArraySpans(cleaned).sort((a, b) => b.length - a.length)
+  for (const span of candidates) {
+    const arr = tryParseArray(span)
+    if (arr && arr.length > 0) return arr
+  }
+
+  // 4) First [ … ] via indexOf
   const balanced = sliceBalancedJsonArray(cleaned)
   if (balanced) {
     const arr = tryParseArray(balanced)
     if (arr) return arr
   }
 
+  // 5) Greedy bracket span (last resort; can fail if `]` appears inside strings)
   const greedy = cleaned.match(/\[[\s\S]*\]/)
   if (greedy) {
     const arr = tryParseArray(greedy[0])
     if (arr) return arr
   }
-
-  const whole = tryParseArray(cleaned)
-  if (whole) return whole
 
   try {
     const repaired = jsonrepair(cleaned)
@@ -223,6 +272,8 @@ Return a JSON array. Each chunk:
 - "m": natural English meaning in context. Wrap in [] any English word implied but absent in the Spanish.
 - "l": word-for-word translation
 - "n": brief grammatical note only when non-obvious — omit entirely otherwise
+
+JSON syntax: every key must be written exactly like "c":"value" with a colon after the closing quote of the key — never "c",":"value (that is invalid JSON). Punctuation chunks still use quotes: "c":",","m":"", ...
 
 DEFAULT: one word per chunk. Only group when splitting would mislead.
 
@@ -623,6 +674,30 @@ export function pageSourceText(pageSentences: string[]): string {
   return pageSentences.join(" ")
 }
 
+/**
+ * After `buildSentencePages`, use one LLM page when the full article fits the same
+ * char budget. Static mobile fallback uses a low word cap (~68) *and* a char cap; the
+ * word check can split into two pages even when the whole text still fits under
+ * `maxChars`, leaving a tiny or confusing second page. DOM-measured limits rarely
+ * hit this because `maxWords` is huge and only `maxChars` binds.
+ */
+export function mergeArticlePagesIfWholeTextFitsLimits(
+  pages: string[][],
+  limits: PageSplitLimits,
+  fullText: string,
+): string[][] {
+  const t = fullText.replace(/\s+/g, " ").trim()
+  const nonEmpty = pages
+    .map((p) => p.filter((s) => s.trim().length > 0))
+    .filter((p) => p.length > 0)
+  if (nonEmpty.length <= 1) return nonEmpty.length > 0 ? nonEmpty : [[t]]
+
+  if (t.length > 0 && t.length <= limits.maxChars) {
+    return [[t]]
+  }
+  return nonEmpty
+}
+
 /** Single LLM call: chunk JSON → reconciled items for one page of source text. */
 export async function translatePageText(input: string): Promise<ReconciledItem[]> {
   const systemContent = "You are an intuitive spanish language chunking expert."
@@ -649,8 +724,8 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
 
   const data = await res.json()
   console.log("[translatePageText] LLM response (raw JSON)", data)
-  const raw = getAssistantMessageText(data)
-  console.log("[translatePageText] LLM assistant message text", raw)
+  const raw = combineAssistantPayloadsForChunkParse(data)
+  console.log("[translatePageText] LLM assistant text (content + reasoning)", raw)
   const parsed = extractChunkJsonArrayFromText(raw)
   const merged = postProcessChunks(parsed)
   const chunks: RawChunk[] = []

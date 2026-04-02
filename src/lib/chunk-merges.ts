@@ -13,6 +13,7 @@ export const CHUNK_MERGES: ChunkMergeSpec[] = [
   { c: "los unos de los otros", m: "each other", l: "the ones from the others", n: "Fixed expression." },
   { c: "en gran medida", m: "largely", l: "in great measure", n: "Fixed expression." },
   { c: "redes sociales", m: "social media", l: "social networks" },
+  { c: "hacer que", m: "make", l: "to make that", n: "Fixed expression." },
 ]
 
 function normalizeForMatch(s: string): string {

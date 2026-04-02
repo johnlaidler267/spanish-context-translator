@@ -13,6 +13,7 @@ import { LockedView } from "./components/locked-view"
 import { useSubscription } from "./contexts/subscription-context"
 import {
   buildSentencePages,
+  mergeArticlePagesIfWholeTextFitsLimits,
   countConsecutiveLoadedPages,
   mergeReconciledPagesToSentences,
   pageSourceText,
@@ -149,6 +150,7 @@ export default function App() {
           : pageLimits
         let pages = buildSentencePages(sents, effectivePageLimits)
         if (pages.length === 0) pages = [[trimmed]]
+        pages = mergeArticlePagesIfWholeTextFitsLimits(pages, effectivePageLimits, trimmed)
 
         if (user) {
           try {
