@@ -423,12 +423,13 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
 }
 
-const PROMPT = (input: string) => `You are a Spanish language expert. Break the input into chunks for a hover-to-translate reader.
+const PROMPT = (input: string) => `You are a Spanish to english tutor. Break the input into chunks based on the following groups.
 
 Each chunk: {"c": Spanish, "m": English meaning in context, "l": word-for-word, "n": grammar note — omit key entirely if obvious}
 
-ONE WORD PER CHUNK. Group only when splitting misleads. Never chunk punctuation.
+Default to one word per chunk. Never chunk punctuation.
 
+EXAMPLE GROUPING CATEGORIES (EXTRAPOLATE):
 {
   "fixed_idioms": [
     {"c":"dar su brazo a torcer","m":"to give in","l":"give his arm to twist","n":"Fixed idiom — to yield or back down."},
