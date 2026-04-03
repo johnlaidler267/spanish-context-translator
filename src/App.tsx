@@ -145,12 +145,18 @@ export default function App() {
         const effectivePageLimits = hasMobileHeading
           ? {
               maxWords: Math.max(800, Math.round(pageLimits.maxWords * 0.84)),
-              maxChars: Math.round(pageLimits.maxChars * 0.84),
+              // Extra margin: in-flow title uses body space the char probe does not reserve.
+              maxChars: Math.round(pageLimits.maxChars * 0.84 * 0.88),
             }
           : pageLimits
         let pages = buildSentencePages(sents, effectivePageLimits)
         if (pages.length === 0) pages = [[trimmed]]
-        pages = mergeArticlePagesIfWholeTextFitsLimits(pages, effectivePageLimits, trimmed)
+        pages = mergeArticlePagesIfWholeTextFitsLimits(
+          pages,
+          effectivePageLimits,
+          trimmed,
+          isMobile,
+        )
 
         if (user) {
           try {

@@ -728,17 +728,25 @@ export function pageSourceText(pageSentences: string[]): string {
  * word check can split into two pages even when the whole text still fits under
  * `maxChars`, leaving a tiny or confusing second page. DOM-measured limits rarely
  * hit this because `maxWords` is huge and only `maxChars` binds.
+ *
+ * On mobile, merging to a single page is skipped when multiple batches already exist:
+ * one tall page clips under `overflow-y` layout and would hide the pagination footer.
  */
 export function mergeArticlePagesIfWholeTextFitsLimits(
   pages: string[][],
   limits: PageSplitLimits,
   fullText: string,
+  isMobileViewport = false,
 ): string[][] {
   const t = fullText.replace(/\s+/g, " ").trim()
   const nonEmpty = pages
     .map((p) => p.filter((s) => s.trim().length > 0))
     .filter((p) => p.length > 0)
   if (nonEmpty.length <= 1) return nonEmpty.length > 0 ? nonEmpty : [[t]]
+
+  if (isMobileViewport) {
+    return nonEmpty
+  }
 
   if (t.length > 0 && t.length <= limits.maxChars) {
     return [[t]]

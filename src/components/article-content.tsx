@@ -112,7 +112,7 @@ export function ArticleContent({
         ref={touchSurfaceRef}
         className={cn(
           "font-serif text-xl md:text-2xl leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
-          "min-h-0 flex-1 md:mb-8 max-md:overflow-hidden",
+          "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
         )}
       >
