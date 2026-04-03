@@ -2,14 +2,14 @@ import { jsonrepair } from "jsonrepair"
 import { postProcessChunks } from "@/lib/chunk-merges"
 import { fetchGroqChatViaEdge, transcribeAudioViaEdge } from "@/lib/groq-edge"
 
-const MODEL = "openai/gpt-oss-120b"
+const MODEL = "openai/gpt-oss-20b"
 
 /**
  * GPT-OSS on Groq always spends reasoning tokens; `reasoning_effort` only changes how many.
  * To stop stream-of-consciousness in `message.content`, Groq requires `reasoning_format: "hidden"`
  * (see https://console.groq.com/docs/reasoning — "Returns only the final answer").
  */
-const TRANSLATE_REASONING_EFFORT = "low" as const
+const TRANSLATE_REASONING_EFFORT = "medium" as const
 const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
 
 /**
@@ -343,58 +343,91 @@ Each chunk: {"c": Spanish, "m": English meaning in context, "l": word-for-word, 
 
 ONE WORD PER CHUNK. Group only when splitting misleads. Never chunk punctuation.
 
-INPUT: "se enfrentó a las redes sociales el martes"
-OUTPUT: [
-  {"c":"se","m":"[she] herself","l":"herself","n":"Reflexive — subject acts on herself."},
-  {"c":"enfrentó","m":"faced","l":"confronted"},
-  {"c":"a","m":"","l":"to","n":"Personal \"a\" — marks human direct object, no English equivalent."},
-  {"c":"las","m":"the","l":"the"},
-  {"c":"redes sociales","m":"social media","l":"social networks"},
-  {"c":"el martes","m":"on Tuesday","l":"the Tuesday","n":"el + day of week = \"on\" in English."}
+{
+  "fixed_idioms": [
+    {"c":"dar su brazo a torcer","m":"to give in","l":"give his arm to twist","n":"Fixed idiom — to yield or back down."},
+    {"c":"visto bueno","m":"green light","l":"seen good","n":"Fixed idiom — approval or go-ahead."},
+    {"c":"de pronto","m":"suddenly","l":"of sudden","n":"Fixed idiom — all of a sudden."},
+    {"c":"en cambio","m":"on the other hand","l":"in change","n":"Fixed idiom — instead / by contrast."},
+    {"c":"del mismo modo","m":"in the same way","l":"of the same mode","n":"Fixed idiom — likewise."},
+    {"c":"de este modo","m":"in this way","l":"of this mode","n":"Fixed idiom — thus / this way."},
+    {"c":"se trata de","m":"it is about","l":"itself treats of","n":"Fixed idiom — impersonal reflexive, to be about."},
+  ],
+
+  "relative_subordinating_connectors": [
+    {"c":"en la que","m":"in which","l":"in the which"},
+    {"c":"en el que","m":"in which","l":"in the which"},
+    {"c":"los que","m":"those who","l":"the ones that"},
+    {"c":"las que","m":"those who","l":"the ones that"},
+    {"c":"antes que","m":"before","l":"before that"},
+    {"c":"mientras que","m":"while / whereas","l":"while that"},
+  
+  ],
+
+  "compound_nouns": [
+    {"c":"redes sociales","m":"social media","l":"networks social"},
+    {"c":"estado natal","m":"home state","l":"state native"},
+    {"c":"aspecto físico","m":"physical appearance","l":"aspect physical"},
+    {"c":"medio ambiente","m":"environment","l":"middle surroundings"},
+    {"c":"libre albedrío","m":"free will","l":"free will"},
+    {"c":"corriente eléctrica","m":"electric current","l":"current electric"},
+   
+  ],
+
+  "lo_nominalizer": [
+    {"c":"lo maravilloso","m":"the remarkable thing","l":"the marvelous","n":"lo + adj — nominalizes adjective into abstract concept."},
+    {"c":"lo invisible","m":"the invisible","l":"the invisible","n":"lo + adj — makes adjective into a noun concept."},
+    {"c":"lo extraordinario","m":"the extraordinary thing","l":"the extraordinary","n":"lo + adj — nominalizer."},
+  ],
+
+  "prepositional_verb_phrases": [
+    {"c":"contar con","m":"to rely on / to have","l":"count with"},
+    {"c":"darse cuenta de","m":"to realize","l":"give oneself account of"},
+    {"c":"pensar en","m":"to think about","l":"think in","n":"Verb + preposition — pensar en, not pensar de."},
+    {"c":"tratar de","m":"to try to","l":"treat of"},
 ]
 
-INPUT: "María se dio cuenta de que no había nadie"
-OUTPUT: [
-  {"c":"María","m":"María","l":"María"},
-  {"c":"se dio cuenta de","m":"realized","l":"gave herself account of","n":"Fixed verb phrase — darse cuenta de = to realize. The \"de\" belongs to the verb, not to what follows."},
-  {"c":"que","m":"that","l":"that"},
-  {"c":"no","m":"not","l":"not"},
-  {"c":"había","m":"there was","l":"there was"},
-  {"c":"nadie","m":"anyone","l":"nobody"}
-]
+  "proper_nouns": [
+    {"c":"Héctor Bonilla","m":"Héctor Bonilla","l":"Héctor Bonilla"},
+    {"c":"Fernanda Ríos","m":"Fernanda Ríos","l":"Fernanda Ríos"},
+    {"c":"Buenos Aires","m":"Buenos Aires","l":"Good Airs"},
+    {"c":"Premio Nobel","m":"Nobel Prize","l":"Prize Nobel"},
+    {"c":"Segunda Guerra Mundial","m":"World War II","l":"Second War World"},
+    {"c":"Año Nuevo","m":"New Year","l":"Year New"}
+  ],
 
-INPUT: "sin embargo insistió a pesar de sus errores en cambio"
-OUTPUT: [
-  {"c":"sin embargo","m":"however","l":"without embargo","n":"Fixed expression."},
-  {"c":"insistió","m":"insisted","l":"insisted"},
-  {"c":"a pesar de","m":"despite","l":"to weight of","n":"Fixed expression."},
-  {"c":"sus","m":"his","l":"his"},
-  {"c":"errores","m":"mistakes","l":"errors"},
-  {"c":"en cambio","m":"on the other hand","l":"in change","n":"Fixed expression."}
-]
+  "clitic_clusters": [
+    {"c":"se lo","m":"it to her/him","l":"it to him","n":"Clitic cluster — indirect se + direct lo."},
+    {"c":"se las","m":"them to her/him","l":"them to him","n":"Clitic cluster — indirect se + direct las."},
+    {"c":"se los","m":"them to her/him","l":"them to him","n":"Clitic cluster — indirect se + direct los."},
+    {"c":"me lo","m":"it to me","l":"it to me","n":"Clitic cluster — indirect me + direct lo."},
+    {"c":"te lo","m":"it to you","l":"it to you","n":"Clitic cluster — indirect te + direct lo."},
+    {"c":"nos lo","m":"it to us","l":"it to us","n":"Clitic cluster — indirect nos + direct lo."},
+    {"c":"me los","m":"them to me","l":"them to me","n":"Clitic cluster — indirect me + direct los."},
+    {"c":"te las","m":"them to you","l":"them to you","n":"Clitic cluster — indirect te + direct las."}
+  ],
 
-INPUT: "se dio cuenta de que cada vez más gente protestaba a lo largo del país"
-OUTPUT: [
-  {"c":"se dio cuenta de","m":"realized","l":"gave itself account of","n":"Fixed verb phrase."},
-  {"c":"que","m":"that","l":"that"},
-  {"c":"cada vez más","m":"increasingly","l":"each time more","n":"Fixed expression."},
-  {"c":"gente","m":"people","l":"people"},
-  {"c":"protestaba","m":"was protesting","l":"protested"},
-  {"c":"a lo largo de","m":"throughout","l":"along the length of","n":"Fixed expression."},
-  {"c":"el","m":"the","l":"the"},
-  {"c":"país","m":"country","l":"country"}
-]
+  "temporal_age_phrases": [
+    {"c":"a los cinco minutos","m":"after five minutes","l":"at the five minutes","n":"Fixed temporal phrase — a los + number + minutes."},
+    {"c":"a las tres de la tarde","m":"at three in the afternoon","l":"at the three of the afternoon"},
+    {"c":"a principios de","m":"at the beginning of","l":"at beginnings of"},
+    {"c":"a mediados de","m":"in the middle of","l":"at middles of" },
+    {"c":"a fines de","m":"at the end of","l":"at ends of"},
+    {"c":"al día siguiente","m":"the next day","l":"at the day following"},
+    {"c":"de vez en cuando","m":"from time to time","l":"of time in when"},
+    {"c":"a partir de","m":"starting from","l":"at leaving from"},
+    {"c":"en aquel entonces","m":"back then","l":"in that then"}
+  ]
 
-INPUT: "la casa en la que había dado su visto bueno"
-OUTPUT: [
-  {"c":"la","m":"the","l":"the"},
-  {"c":"casa","m":"house","l":"house"},
-  {"c":"en la que","m":"in which","l":"in the that","n":"Relative connector — splitting produces nonsense."},
-  {"c":"había","m":"had","l":"had"},
-  {"c":"dado","m":"given","l":"given"},
-  {"c":"su","m":"his","l":"his"},
-  {"c":"visto bueno","m":"approval","l":"good sight","n":"Fixed expression."}
-]
+  "reciprocal/distributive pronoun phrase": [
+    {"c":"los unos y los otros","m":"each other / some and others","l":"the ones and the others"},
+    {"c":"unos a otros","m":"one another","l":"ones to others"},}
+  ]
+
+  "adverbial phrases": [
+    {"c":"por igual","m":"equally","l":"by equal"},
+    {"c":"por supuesto","m":"of course","l":"by supposed"},
+  ]
 
 Return only a valid JSON array — no preamble, no markdown fences.
 Text: "${input}"`

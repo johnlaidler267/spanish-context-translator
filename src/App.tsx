@@ -301,6 +301,8 @@ export default function App() {
     const stillHasRateLimit = messages.some(isRateLimitApiMessage)
     if (!stillHasRateLimit) {
       rateLimitModalSuppressedRef.current = false
+      setRateLimitMessage(null)
+      return
     }
     if (rateLimitModalSuppressedRef.current) return
     const rateMsg = messages.find(isRateLimitApiMessage)
