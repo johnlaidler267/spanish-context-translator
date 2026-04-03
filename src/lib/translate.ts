@@ -1,15 +1,42 @@
 import { jsonrepair } from "jsonrepair"
 import { postProcessChunks } from "@/lib/chunk-merges"
-import { fetchGroqChatViaEdge, transcribeAudioViaEdge } from "@/lib/groq-edge"
+import {
+  fetchGeminiChatViaEdge,
+  fetchGroqChatViaEdge,
+  transcribeAudioViaEdge,
+} from "@/lib/groq-edge"
 
-const MODEL = "openai/gpt-oss-20b"
+/** `groq` (default) or `gemini` — set `VITE_TRANSLATION_LLM_PROVIDER` in `.env`. */
+function translationProvider(): "groq" | "gemini" {
+  const v = (import.meta.env.VITE_TRANSLATION_LLM_PROVIDER as string | undefined)?.trim().toLowerCase()
+  return v === "gemini" ? "gemini" : "groq"
+}
+
+const GROQ_TRANSLATE_MODEL = "openai/gpt-oss-120b"
+const GROQ_LEARN_MODEL = "llama-3.1-8b-instant" as const
+const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-3-flash"
+const GEMINI_LEARN_MODEL_DEFAULT = "gemini-2.0-flash"
+
+function translateModel(): string {
+  if (translationProvider() === "gemini") {
+    return (import.meta.env.VITE_GEMINI_MODEL as string | undefined)?.trim() || GEMINI_TRANSLATE_MODEL_DEFAULT
+  }
+  return GROQ_TRANSLATE_MODEL
+}
+
+function learnModel(): string {
+  if (translationProvider() === "gemini") {
+    return (import.meta.env.VITE_GEMINI_MODEL_LEARN as string | undefined)?.trim() || GEMINI_LEARN_MODEL_DEFAULT
+  }
+  return GROQ_LEARN_MODEL
+}
 
 /**
  * GPT-OSS on Groq always spends reasoning tokens; `reasoning_effort` only changes how many.
  * To stop stream-of-consciousness in `message.content`, Groq requires `reasoning_format: "hidden"`
  * (see https://console.groq.com/docs/reasoning — "Returns only the final answer").
  */
-const TRANSLATE_REASONING_EFFORT = "medium" as const
+const TRANSLATE_REASONING_EFFORT = "low" as const
 const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
 
 /**
@@ -20,7 +47,7 @@ const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
  */
 const TRANSLATE_MAX_COMPLETION_TOKENS =6000
 
-async function parseGroqJsonErrorBody(res: Response): Promise<string> {
+async function parseChatJsonErrorBody(res: Response): Promise<string> {
   try {
     const j = (await res.json()) as {
       error?: { message?: string } | string
@@ -33,21 +60,58 @@ async function parseGroqJsonErrorBody(res: Response): Promise<string> {
   }
 }
 
-function throwGroqChatHttpError(res: Response, detail: string): never {
-  if (res.status === 429) {
-    const d = detail.toLowerCase()
-    const isTpm =
-      d.includes("tokens per minute") ||
-      d.includes("tpm") ||
-      d.includes("request too large for model")
-    const prefix = isTpm
-      ? "Groq usage limit (tokens per minute / request size). "
-      : "Rate limit reached. "
-    throw new Error(
-      detail
-        ? `${prefix}${detail}`
-        : "Rate limit reached (HTTP 429). Please wait a moment and try again.",
+/** Google / billing-style 429s — retrying after a few seconds does not help. */
+function isHardQuotaOrBillingErrorText(text: string): boolean {
+  const t = text.toLowerCase()
+  return (
+    t.includes("quota exceeded") ||
+    t.includes("limit: 0") ||
+    t.includes("free_tier") ||
+    t.includes("exceeded your current quota") ||
+    (t.includes("billing") && t.includes("quota"))
+  )
+}
+
+/** Model id from Google quota error text, e.g. `model: gemini-2.0-flash`. */
+function geminiModelFromQuotaDetail(detail: string): string | null {
+  const m = detail.match(/\bmodel:\s*([^\s,*]+)/i)
+  return m?.[1]?.trim() ?? null
+}
+
+function formatRateLimitUserMessage(detail: string): string {
+  const d = detail.trim()
+  if (!d) return "Rate limit reached (HTTP 429). Please wait a moment and try again."
+
+  if (translationProvider() === "gemini" && isHardQuotaOrBillingErrorText(d)) {
+    const model = geminiModelFromQuotaDetail(d)
+    const modelBit = model ? ` (${model})` : ""
+    return (
+      `Google reports no usable Gemini quota for this key${modelBit} — often until billing is enabled or the project has API access. ` +
+      "Details: https://ai.google.dev/gemini-api/docs/rate-limits — " +
+      "or switch to Groq by removing or unsetting VITE_TRANSLATION_LLM_PROVIDER."
     )
+  }
+
+  const lower = d.toLowerCase()
+  const isTpm =
+    lower.includes("tokens per minute") ||
+    lower.includes("tpm") ||
+    lower.includes("request too large for model") ||
+    lower.includes("resource exhausted")
+  const alreadySelfDescribing =
+    lower.includes("quota exceeded") ||
+    lower.includes("exceeded your current quota") ||
+    /\brate limit\b/.test(lower) ||
+    lower.includes("too many requests")
+
+  if (alreadySelfDescribing) return d
+  if (isTpm) return `Translation model usage limit (tokens per minute / request size). ${d}`
+  return `Rate limit reached. ${d}`
+}
+
+function throwChatHttpError(res: Response, detail: string): never {
+  if (res.status === 429) {
+    throw new Error(formatRateLimitUserMessage(detail))
   }
   throw new Error(detail || `HTTP ${res.status}`)
 }
@@ -62,14 +126,22 @@ function parseRetryAfterMs(res: Response): number | null {
   return null
 }
 
-/** One retry on 429 — helps brief RPM/TPM bursts; drains first body so the connection can be reused. */
-async function fetchGroqChatCompletion(body: object): Promise<Response> {
-  const post = () => fetchGroqChatViaEdge(body)
+/**
+ * One retry on 429 for transient throttling only. Hard quota / billing 429s (e.g. Gemini
+ * `limit: 0`) are returned immediately so we do not double-hit the API.
+ */
+async function fetchChatCompletion(body: object): Promise<Response> {
+  const post = () =>
+    translationProvider() === "gemini" ? fetchGeminiChatViaEdge(body) : fetchGroqChatViaEdge(body)
 
   let res = await post()
   if (res.status !== 429) return res
 
-  await res.text().catch(() => {})
+  const bodyText = await res.text().catch(() => "")
+  if (isHardQuotaOrBillingErrorText(bodyText)) {
+    return new Response(bodyText, { status: 429, headers: res.headers })
+  }
+
   const delay = parseRetryAfterMs(res) ?? 4_000
   await new Promise((r) => setTimeout(r, delay))
   return post()
@@ -792,18 +864,25 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   const systemContent = "You are an intuitive spanish language chunking expert."
   const userContent = PROMPT(input)
 
-  const res = await fetchGroqChatCompletion({
-    model: MODEL,
+  const base = {
+    model: translateModel(),
     messages: [{ role: "system", content: systemContent }, { role: "user", content: userContent }],
     temperature: 0.2,
     max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
-    reasoning_effort: TRANSLATE_REASONING_EFFORT,
-    reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
-  })
+  }
+  const res = await fetchChatCompletion(
+    translationProvider() === "groq"
+      ? {
+          ...base,
+          reasoning_effort: TRANSLATE_REASONING_EFFORT,
+          reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
+        }
+      : base,
+  )
 
   if (!res.ok) {
-    const detail = await parseGroqJsonErrorBody(res)
-    throwGroqChatHttpError(res, detail)
+    const detail = await parseChatJsonErrorBody(res)
+    throwChatHttpError(res, detail)
   }
 
   const data = await res.json()
@@ -1140,8 +1219,8 @@ export async function translate(
 }
 
 export async function generateRandomSpanish(): Promise<string> {
-  const res = await fetchGroqChatCompletion({
-    model: MODEL,
+  const base = {
+    model: translateModel(),
     messages: [
       {
         role: "user",
@@ -1154,20 +1233,24 @@ Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translati
     ],
     temperature: 1.5,
     max_tokens: 300,
-    reasoning_effort: TRANSLATE_REASONING_EFFORT,
-    reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
-  })
+  }
+  const res = await fetchChatCompletion(
+    translationProvider() === "groq"
+      ? {
+          ...base,
+          reasoning_effort: TRANSLATE_REASONING_EFFORT,
+          reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
+        }
+      : base,
+  )
 
   if (!res.ok) {
-    const detail = await parseGroqJsonErrorBody(res)
-    throwGroqChatHttpError(res, detail)
+    const detail = await parseChatJsonErrorBody(res)
+    throwChatHttpError(res, detail)
   }
   const data = await res.json()
   return data.choices[0].message.content.trim()
 }
-
-/** Small model for Learn-pill topic paragraphs — cheaper/faster than the main translation model. */
-const LEARN_RANDOM_TOPIC_MODEL = "llama-3.1-8b-instant" as const
 
 const LEARN_TOPIC_PROMPT = `Pick a random subject from this list, then pick a specific topic within that subject entirely on your own. Write a single paragraph of 75–100 words about it.
 
@@ -1331,20 +1414,20 @@ function parseLearnTopicJson(raw: string): { title: string; paragraph: string } 
 }
 
 /**
- * Learn pill: topic title + paragraph via small Groq model (Spanish, ~75–100 words).
+ * Learn pill: topic title + paragraph via the configured learn model (Spanish, ~75–100 words).
  * Replaces the former Spanish Wikipedia featured-article fetch.
  */
 export async function fetchLearnRandomParagraph(): Promise<LearnRandomParagraphResult> {
-  const res = await fetchGroqChatCompletion({
-    model: LEARN_RANDOM_TOPIC_MODEL,
+  const res = await fetchChatCompletion({
+    model: learnModel(),
     messages: [{ role: "user", content: LEARN_TOPIC_PROMPT }],
     temperature: 1.5,
     max_tokens: 500,
   })
 
   if (!res.ok) {
-    const detail = await parseGroqJsonErrorBody(res)
-    throwGroqChatHttpError(res, detail)
+    const detail = await parseChatJsonErrorBody(res)
+    throwChatHttpError(res, detail)
   }
 
   const data = await res.json()

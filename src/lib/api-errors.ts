@@ -19,6 +19,7 @@ export function isRateLimitApiMessage(message: string): boolean {
     m.includes("tpm") ||
     m.includes("rpm") ||
     m.includes("over capacity") ||
-    m.includes("quota exceeded")
+    m.includes("quota exceeded") ||
+    m.includes("gemini quota")
   )
 }

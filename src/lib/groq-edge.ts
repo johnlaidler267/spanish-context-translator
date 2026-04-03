@@ -44,6 +44,18 @@ export async function fetchGroqChatViaEdge(body: object): Promise<Response> {
   })
 }
 
+/** Proxied chat completions (OpenAI-compatible body → Gemini; response shaped like OpenAI). */
+export async function fetchGeminiChatViaEdge(body: object): Promise<Response> {
+  await ensureSessionForGroq()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error("No session")
+  return fetch(`${supabaseUrl}/functions/v1/gemini-chat`, {
+    method: "POST",
+    headers: jsonHeaders(session),
+    body: JSON.stringify(body),
+  })
+}
+
 export async function transcribeAudioViaEdge(
   audioBlob: Blob,
   filename = "recording.webm",

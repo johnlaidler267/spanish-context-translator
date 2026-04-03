@@ -33,3 +33,6 @@ verify_jwt = false
 
 [functions.groq-transcribe]
 verify_jwt = false
+
+[functions.gemini-chat]
+verify_jwt = false

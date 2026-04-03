@@ -1,6 +1,11 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** `groq` (default) or `gemini` — which backend translates + learn flows use. */
+  readonly VITE_TRANSLATION_LLM_PROVIDER?: string
+  /** Gemini model id when `VITE_TRANSLATION_LLM_PROVIDER=gemini` (must match Edge allowlist). */
+  readonly VITE_GEMINI_MODEL?: string
+  readonly VITE_GEMINI_MODEL_LEARN?: string
   /** Set to "true" in `.env` / `.env.local` to run usage preflight + plan-limit modal while `npm run dev`. */
   readonly VITE_ENFORCE_USAGE_IN_DEV?: string
   readonly VITE_SUPABASE_URL?: string

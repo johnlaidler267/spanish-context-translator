@@ -8,11 +8,12 @@ import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-/** Keep in sync with `MODEL` / `LEARN_RANDOM_TOPIC_MODEL` in `src/lib/translate.ts`. */
+/** Keep in sync with `GROQ_TRANSLATE_MODEL` / `GROQ_LEARN_MODEL` in `src/lib/translate.ts`. */
 const ALLOWED_MODELS = new Set([
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
   "llama-3.1-8b-instant",
+  "llama-3.3-70b-versatile",
 ])
 
 const MAX_TOKENS_CAP = 8192
