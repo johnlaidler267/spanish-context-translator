@@ -389,6 +389,17 @@ export default function App() {
     const readSentences = readLayoutMobile
       ? subdivideReadStepsForMobile(readSentencesMerged, READ_MODE_WORDS_PER_STEP_MOBILE)
       : subdivideReadStepsForDesktop(readSentencesMerged)
+
+    let readStepOffset = 0
+    for (let p = 0; p < articlePageIndex; p++) {
+      const priorItems = cache.getPage(p)
+      if (priorItems == null) continue
+      const priorMerged = mergeReconciledPagesToSentences([priorItems])
+      const priorSteps = readLayoutMobile
+        ? subdivideReadStepsForMobile(priorMerged, READ_MODE_WORDS_PER_STEP_MOBILE)
+        : subdivideReadStepsForDesktop(priorMerged)
+      readStepOffset += priorSteps.length
+    }
     const articleErrRaw = cache.getError(articlePageIndex)
     const articleErr =
       articleErrRaw && !isRateLimitApiMessage(articleErrRaw) ? articleErrRaw : null
@@ -499,6 +510,7 @@ export default function App() {
               <ReadMode
                 readingSessionKey={readingSessionId}
                 readPageKey={articlePageIndex}
+                readStepOffset={readStepOffset}
                 enterAtLastStepNonce={readEnterLastStepNonce}
                 lastConsumedEnterNonce={readLastConsumedEnterNonce}
                 onConsumeEnterLastStep={consumeReadEnterLastStep}

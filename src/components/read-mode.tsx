@@ -27,6 +27,8 @@ interface ReadModeProps {
   readingSessionKey?: number
   /** Current article / LLM page — when it changes, step index resets (or lands on last via nonce). */
   readPageKey: number
+  /** Read steps on earlier article pages (same merge/subdivide as parent) — for cumulative “slide” label. */
+  readStepOffset: number
   /**
    * Increment when navigating to the previous article page from the first read step
    * so the last step of that page is selected (parent bumps with `goReadPrevArticlePage`).
@@ -49,6 +51,7 @@ interface ReadModeProps {
 export function ReadMode({
   readingSessionKey = 0,
   readPageKey,
+  readStepOffset,
   enterAtLastStepNonce,
   lastConsumedEnterNonce,
   onConsumeEnterLastStep,
@@ -300,7 +303,7 @@ export function ReadMode({
         </Button>
 
         <span className="text-sm font-sans text-muted-foreground tabular-nums">
-          {currentSentenceIndex + 1} of {totalSentences}
+          {readStepOffset + currentSentenceIndex + 1} of {readStepOffset + totalSentences}
         </span>
 
         <Button
