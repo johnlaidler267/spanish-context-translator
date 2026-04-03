@@ -664,6 +664,21 @@ export function splitIntoSentences(items: ReconciledItem[]) {
     const prefix = shouldGlueAfterPriorChunkReadGlue(span)
       ? pendingBetween.replace(/\s+$/, "")
       : pendingBetween
+
+    // LLM often emits closing punctuation as its own row; attach to the preceding word
+    // so read mode treats it as one token (same rules as glue for type:"text" gaps).
+    if (currentChunks.length > 0 && shouldGlueAfterPriorChunkReadGlue(span)) {
+      const prev = currentChunks[currentChunks.length - 1]!
+      prev.text += prefix + span
+      pendingBetween = ""
+      const endsSentence = /[.!?]$/.test(span.trim())
+      if (endsSentence && currentChunks.length > 0) {
+        sentences.push({ id: sentences.length, chunks: currentChunks })
+        currentChunks = []
+      }
+      continue
+    }
+
     const chunkData = {
       id: chunkId++,
       text: prefix + span,
