@@ -53,6 +53,37 @@ interface LlmOtherPayload {
 
 type LlmPayload = LlmVerbPayload | LlmOtherPayload
 
+/**
+ * Model sometimes returns pseudo-JSON with unescaped " inside explanation; JSON.parse fails.
+ * If the payload still ends with `"}`, we can take the slice between "explanation":" and that closing quote.
+ */
+function extractOtherExplanationLenient(raw: string): string | null {
+  const needle = '"explanation":"'
+  const idx = raw.indexOf(needle)
+  if (idx === -1) return null
+  const valueStart = idx + needle.length
+  const close = raw.lastIndexOf('"}')
+  if (close === -1 || close < valueStart) return null
+  const inner = raw
+    .slice(valueStart, close)
+    .replace(/\\n/g, "\n")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, "\\")
+    .trim()
+  return inner || null
+}
+
+/** If the model JSON ended up as a single string (invalid parse on server), pull out the explanation. */
+function salvageLlmJsonBlob(d: DetailState): DetailState {
+  if (d.type !== "llm") return d
+  const t = d.text.trim()
+  if (t.startsWith("{") && t.includes('"explanation"')) {
+    const salvaged = extractOtherExplanationLenient(t)
+    if (salvaged) return { type: "llm", text: salvaged }
+  }
+  return d
+}
+
 function parseChunkDetailJson(raw: string): DetailState {
   let cleaned = raw.trim()
   cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim()
@@ -61,7 +92,8 @@ function parseChunkDetailJson(raw: string): DetailState {
   try {
     obj = JSON.parse(cleaned)
   } catch {
-    return { type: "llm", text: raw }
+    const salvaged = extractOtherExplanationLenient(cleaned)
+    return salvageLlmJsonBlob({ type: "llm", text: salvaged ?? raw })
   }
 
   if (!obj || typeof obj !== "object") return { type: "llm", text: raw }
@@ -128,10 +160,10 @@ function cacheValueToDetail(cached: string): DetailState {
   try {
     const p = JSON.parse(cached) as LlmPayload
     if (p && typeof p === "object" && (p.kind === "verb" || p.kind === "other")) {
-      return payloadToDetail(p)
+      return salvageLlmJsonBlob(payloadToDetail(p))
     }
   } catch { /* fall through */ }
-  return parseChunkDetailJson(cached)
+  return salvageLlmJsonBlob(parseChunkDetailJson(cached))
 }
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
@@ -153,7 +185,7 @@ async function fetchDetailsFromEdge(chunk: string, sentence: string): Promise<De
   }
   const data = (await res.json()) as Record<string, unknown>
   if (data.kind === "verb" || data.kind === "other") {
-    return payloadToDetail(data as unknown as LlmPayload)
+    return salvageLlmJsonBlob(payloadToDetail(data as unknown as LlmPayload))
   }
   return { type: "llm", text: "Unexpected response from details service." }
 }

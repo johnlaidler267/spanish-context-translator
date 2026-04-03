@@ -39,7 +39,25 @@ Shape for non-verb tokens:
 
 Rules:
 - Correct lemma (hizo→hacer, creyendo→creer).
-- JSON must be valid. Escape quotes inside strings. No trailing commas.`
+- JSON must be valid. Escape any double quotes inside string values, or avoid them: use single quotes for glosses (e.g. 'arabesco') instead of double quotes around foreign words.
+- No trailing commas.`
+
+/** When the model omits escapes inside explanation, JSON.parse fails; recover prose if the tail still closes with "}. */
+function extractOtherExplanationLenient(raw: string): string | null {
+  const needle = '"explanation":"'
+  const idx = raw.indexOf(needle)
+  if (idx === -1) return null
+  const valueStart = idx + needle.length
+  const close = raw.lastIndexOf('"}')
+  if (close === -1 || close < valueStart) return null
+  const inner = raw
+    .slice(valueStart, close)
+    .replace(/\\n/g, "\n")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, "\\")
+    .trim()
+  return inner || null
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return handleCorsPreflightRequest()
@@ -94,6 +112,8 @@ Deno.serve(async (req: Request) => {
       ],
       max_tokens: MAX_TOKENS,
       temperature: 0.2,
+      // Groq validates JSON syntax; avoids invalid payloads when the model forgets to escape " inside strings.
+      response_format: { type: "json_object" },
     }),
   })
 
@@ -126,8 +146,11 @@ Deno.serve(async (req: Request) => {
     /* fall through */
   }
 
+  const salvaged = extractOtherExplanationLenient(cleaned)
+  const explanation = salvaged ?? (raw || "No explanation returned.")
+
   return new Response(
-    JSON.stringify({ kind: "other", explanation: raw || "No explanation returned." }),
+    JSON.stringify({ kind: "other", explanation }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
   )
 })
