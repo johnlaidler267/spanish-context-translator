@@ -123,7 +123,7 @@ export function TextChunk({
   variant = "read",
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
-    return <span>{chunk.text}</span>
+    return <span>{chunk.text.trim()}</span>
   }
 
   const isPopupOpen = popupChunkId === chunk.id

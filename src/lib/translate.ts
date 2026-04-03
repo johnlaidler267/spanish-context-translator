@@ -632,6 +632,22 @@ function reconcileChunks(
   return result
 }
 
+/** Same rules as `shouldGlueAfterPriorChunk` in text-chunk.tsx — keep in sync for length/slicing. */
+function isPunctuationOnlyForReadGlue(text: string): boolean {
+  const t = text.trim()
+  if (!t) return false
+  return /^[^\w\u00C0-\u024F]+$/.test(t)
+}
+
+const OPENING_PUNCT_RE_FOR_READ_GLUE = /^[¿¡(«"“‘\u201C\u2018]/
+
+function shouldGlueAfterPriorChunkReadGlue(nextChunkText: string): boolean {
+  if (!isPunctuationOnlyForReadGlue(nextChunkText)) return false
+  const t = nextChunkText.trim()
+  if (OPENING_PUNCT_RE_FOR_READ_GLUE.test(t)) return false
+  return true
+}
+
 export function splitIntoSentences(items: ReconciledItem[]) {
   const sentences: { id: number; chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> }[] = []
   let currentChunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> = []
@@ -645,9 +661,12 @@ export function splitIntoSentences(items: ReconciledItem[]) {
       continue
     }
     const span = typeof item.chunk === "string" ? item.chunk : String(item.chunk ?? "")
+    const prefix = shouldGlueAfterPriorChunkReadGlue(span)
+      ? pendingBetween.replace(/\s+$/, "")
+      : pendingBetween
     const chunkData = {
       id: chunkId++,
-      text: pendingBetween + span,
+      text: prefix + span,
       meaning: typeof item.meaning === "string" ? item.meaning : String(item.meaning ?? ""),
       literal: item.literal,
       grammar: item.note,
@@ -942,22 +961,6 @@ export const READ_MODE_WORDS_PER_STEP_MOBILE = 18
 
 /** Read-mode step size on desktop: exact character count per page (including spaces between chunks). */
 export const READ_MODE_CHARS_PER_STEP_DESKTOP = 100
-
-/** Same rules as `shouldGlueAfterPriorChunk` in text-chunk.tsx — keep in sync for length/slicing. */
-function isPunctuationOnlyForReadGlue(text: string): boolean {
-  const t = text.trim()
-  if (!t) return false
-  return /^[^\w\u00C0-\u024F]+$/.test(t)
-}
-
-const OPENING_PUNCT_RE_FOR_READ_GLUE = /^[¿¡(«"“‘\u201C\u2018]/
-
-function shouldGlueAfterPriorChunkReadGlue(nextChunkText: string): boolean {
-  if (!isPunctuationOnlyForReadGlue(nextChunkText)) return false
-  const t = nextChunkText.trim()
-  if (OPENING_PUNCT_RE_FOR_READ_GLUE.test(t)) return false
-  return true
-}
 
 type ReadChunkRow = ReadSentence["chunks"][number]
 
