@@ -32,6 +32,19 @@ function learnModel(): string {
   return GROQ_LEARN_MODEL
 }
 
+/** For Settings UI — reflects `VITE_TRANSLATION_LLM_PROVIDER` and Gemini model env at build time. */
+export function getTranslationLlmDisplayInfo(): {
+  provider: "groq" | "gemini"
+  translateModel: string
+  learnModel: string
+} {
+  return {
+    provider: translationProvider(),
+    translateModel: translateModel(),
+    learnModel: learnModel(),
+  }
+}
+
 /**
  * GPT-OSS on Groq always spends reasoning tokens; `reasoning_effort` only changes how many.
  * To stop stream-of-consciousness in `message.content`, Groq requires `reasoning_format: "hidden"`

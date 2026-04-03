@@ -11,6 +11,7 @@ import type { ReadingTheme } from "@/components/theme-toggle"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
 import { useAuth } from "@/contexts/auth-context"
 import { LegalDocLinks } from "@/components/legal-doc-links"
+import { getTranslationLlmDisplayInfo } from "@/lib/translate"
 
 const TABS = ["General", "Account", "Billing"] as const
 type SettingsTab = (typeof TABS)[number]
@@ -37,6 +38,7 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [signingOut, setSigningOut] = useState(false)
   const { user, signOut, openAuthModal } = useAuth()
+  const llmInfo = getTranslationLlmDisplayInfo()
 
   const handleSignOut = async () => {
     setSigningOut(true)
@@ -104,9 +106,39 @@ export default function SettingsPage() {
                   <h2 id="settings-general-heading" className="text-lg font-medium text-foreground mb-4">
                     General
                   </h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    App preferences and display options will appear here.
-                  </p>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                        Translation models
+                      </p>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                        Which provider and models chunk your text and power Learn-topic paragraphs. Values come from
+                        this app&apos;s deployment config (not editable here).
+                      </p>
+                      <dl className="space-y-3 text-sm border border-border rounded-md p-4 bg-muted/20">
+                        <div>
+                          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                            Provider
+                          </dt>
+                          <dd className="font-mono text-foreground break-all">
+                            {llmInfo.provider === "gemini" ? "Gemini" : "Groq"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                            Main translation
+                          </dt>
+                          <dd className="font-mono text-foreground break-all">{llmInfo.translateModel}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                            Learn / topic paragraph
+                          </dt>
+                          <dd className="font-mono text-foreground break-all">{llmInfo.learnModel}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
                 </section>
               )}
               {activeTab === "Account" && (
