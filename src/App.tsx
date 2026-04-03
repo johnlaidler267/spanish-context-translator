@@ -14,16 +14,13 @@ import { useSubscription } from "./contexts/subscription-context"
 import {
   buildSentencePages,
   mergeArticlePagesIfWholeTextFitsLimits,
-  countConsecutiveLoadedPages,
   mergeReconciledPagesToSentences,
   pageSourceText,
-  pageStepRangesFromSentences,
   READ_MODE_WORDS_PER_STEP_MOBILE,
   splitSourceIntoSentences,
   subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
   translatePageText,
-  type ReconciledItem,
 } from "./lib/translate"
 import { TranslationCache } from "./lib/translation-cache"
 import type { ViewMode } from "./components/mode-toggle"
@@ -84,14 +81,21 @@ export default function App() {
   /**
    * LLM batching only: same sentence-boundary pages for Article and Read mode
    * (LLM page size from DOM-measured article column; see useArticlePageSplitLimits.)
-   * Read mode still shows one grammatical sentence at a time; it does not change these splits.
+   * Read mode shows subdivided steps for the current article page only; no extra LLM preload.
    */
   const [sourcePages, setSourcePages] = useState<string[][]>([])
   const [articleModeHeading, setArticleModeHeading] = useState<string | null>(null)
   const [articlePageIndex, setArticlePageIndex] = useState(0)
   const [readingSessionId, setReadingSessionId] = useState(0)
+  /** Increment when Read mode goes to previous article page from first step (land on last read step). */
+  const [readEnterLastStepNonce, setReadEnterLastStepNonce] = useState(0)
+  /** Last `readEnterLastStepNonce` applied by ReadMode (avoids remount / Strict Mode re-applying). */
+  const [readLastConsumedEnterNonce, setReadLastConsumedEnterNonce] = useState(0)
   const [renderTick, setRenderTick] = useState(0)
   const bump = useCallback(() => setRenderTick((t) => t + 1), [])
+  const consumeReadEnterLastStep = useCallback((n: number) => {
+    setReadLastConsumedEnterNonce(n)
+  }, [])
   const [error, setError] = useState("")
   const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null)
   const [planLimitMessage, setPlanLimitMessage] = useState<string | null>(null)
@@ -229,6 +233,8 @@ export default function App() {
         setSourcePages(pages)
         setArticlePageIndex(0)
         setReadingSessionId((k) => k + 1)
+        setReadEnterLastStepNonce(0)
+        setReadLastConsumedEnterNonce(0)
 
         await cacheRef.current.loadPage(0, pageSourceText(pages[0]!), translatePageText)
         bump()
@@ -270,31 +276,6 @@ export default function App() {
    * when the user taps Next (see goArticleNext). To revisit background preload, see README
    * “Article next-page prefetch”.
    */
-
-  /** Read: start loading page 1 early when there are multiple pages. */
-  useEffect(() => {
-    if (appState !== "reading" || viewMode !== "read") return
-    if (totalPages <= 1) return
-    const c = cacheRef.current
-    if (c.getPage(1) != null || c.isLoading(1) || c.getError(1)) return
-    void c
-      .loadPage(1, pageSourceText(sourcePages[1]!), translatePageText)
-      .then(bump)
-      .catch(bump)
-  }, [appState, viewMode, totalPages, sourcePages, bump])
-
-  const onRequestPreloadPage = useCallback(
-    (pageIndex: number) => {
-      if (pageIndex >= totalPages) return
-      const c = cacheRef.current
-      if (c.getPage(pageIndex) != null || c.isLoading(pageIndex) || c.getError(pageIndex)) return
-      void c
-        .loadPage(pageIndex, pageSourceText(sourcePages[pageIndex]!), translatePageText)
-        .then(bump)
-        .catch(bump)
-    },
-    [totalPages, sourcePages, bump],
-  )
 
   const retryArticlePage = useCallback(() => {
     if (totalPages === 0) return
@@ -360,13 +341,6 @@ export default function App() {
   const viewportMain =
     "min-h-app flex flex-col max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden overflow-hidden"
 
-  const consecutiveLoaded = countConsecutiveLoadedPages((i) => cacheRef.current.getPage(i), totalPages)
-  const firstMissingPageIndex = consecutiveLoaded < totalPages ? consecutiveLoaded : null
-  const readBlockedError =
-    appState === "reading" && viewMode === "read" && firstMissingPageIndex != null
-      ? cacheRef.current.getError(firstMissingPageIndex)
-      : undefined
-
   if (!IS_LOCAL_DEV && isLapsed) {
     return (
       <div className={`min-h-app bg-background ${viewportMain}`}>
@@ -406,19 +380,13 @@ export default function App() {
   let readingHome: React.ReactNode = null
   if (appState === "reading") {
     const cache = cacheRef.current
-    const consecutive = countConsecutiveLoadedPages((i) => cache.getPage(i), totalPages)
-    const loadedReconciled: ReconciledItem[][] = []
-    for (let i = 0; i < consecutive; i++) {
-      const p = cache.getPage(i)
-      if (p) loadedReconciled.push(p)
-    }
-    const readSentencesMerged = mergeReconciledPagesToSentences(loadedReconciled)
+    const articleItems = cache.getPage(articlePageIndex)
+    const readSentencesMerged = mergeReconciledPagesToSentences(
+      articleItems ? [articleItems] : [],
+    )
     const readSentences = readLayoutMobile
       ? subdivideReadStepsForMobile(readSentencesMerged, READ_MODE_WORDS_PER_STEP_MOBILE)
       : subdivideReadStepsForDesktop(readSentencesMerged)
-    const sentenceRangesByPage = pageStepRangesFromSentences(readSentences)
-
-    const articleItems = cache.getPage(articlePageIndex)
     const articleErrRaw = cache.getError(articlePageIndex)
     const articleErr =
       articleErrRaw && !isRateLimitApiMessage(articleErrRaw) ? articleErrRaw : null
@@ -452,6 +420,29 @@ export default function App() {
           setArticlePageIndex((p) => p + 1)
           bump()
         })
+        .catch(bump)
+    }
+
+    const goReadPrevArticlePage = () => {
+      if (articlePageIndex <= 0) return
+      setReadEnterLastStepNonce((n) => n + 1)
+      setArticlePageIndex((p) => p - 1)
+    }
+
+    const readNextPageErrorRaw =
+      articlePageIndex < totalPages - 1 ? cache.getError(nextIdx) : undefined
+    const readNextPageError =
+      readNextPageErrorRaw && !isRateLimitApiMessage(readNextPageErrorRaw)
+        ? readNextPageErrorRaw
+        : null
+
+    const retryReadNextPage = () => {
+      if (nextIdx >= totalPages) return
+      rateLimitModalSuppressedRef.current = false
+      cache.clearPage(nextIdx)
+      void cache
+        .loadPage(nextIdx, pageSourceText(sourcePages[nextIdx]!), translatePageText)
+        .then(bump)
         .catch(bump)
     }
 
@@ -505,58 +496,30 @@ export default function App() {
             <div className="flex w-full min-h-0 flex-1 flex-col">
               <ReadMode
                 readingSessionKey={readingSessionId}
+                readPageKey={articlePageIndex}
+                enterAtLastStepNonce={readEnterLastStepNonce}
+                lastConsumedEnterNonce={readLastConsumedEnterNonce}
+                onConsumeEnterLastStep={consumeReadEnterLastStep}
                 sentences={readSentences}
-                sentenceRangesByPage={sentenceRangesByPage}
-                onRequestPreloadPage={onRequestPreloadPage}
+                articlePageIndex={articlePageIndex}
+                totalPages={totalPages}
+                onRequestNextArticlePage={goArticleNext}
+                onRequestPrevArticlePage={goReadPrevArticlePage}
+                nextPageLoading={nextPageLoading}
+                nextPageOpen={nextPageOpen}
+                nextPageError={readNextPageError}
+                onRetryNextPage={readNextPageError ? retryReadNextPage : undefined}
               />
-              {readBlockedError &&
-                firstMissingPageIndex != null &&
-                !isRateLimitApiMessage(readBlockedError) && (
-                  <div className="shrink-0 border-t border-border/60 bg-muted/30 px-4 py-3 text-center">
-                    <p className="text-sm text-muted-foreground mb-2 font-sans">{readBlockedError}</p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        rateLimitModalSuppressedRef.current = false
-                        const c = cacheRef.current
-                        const idx = firstMissingPageIndex
-                        c.clearPage(idx)
-                        void c
-                          .loadPage(idx, pageSourceText(sourcePages[idx]!), translatePageText)
-                          .then(bump)
-                          .catch(bump)
-                      }}
-                    >
-                      Retry loading next section
-                    </Button>
-                  </div>
-                )}
             </div>
           ) : totalPages > 0 ? (
             <div className="flex w-full min-h-0 flex-1 flex-col">
               <ArticleContent
-                items={cache.getPage(0)}
-                loading={cache.isLoading(0) && cache.getPage(0) == null}
-                errorMessage={(() => {
-                  const e = cache.getError(0)
-                  return e && !isRateLimitApiMessage(e) ? e : null
-                })()}
-                onRetry={
-                  cache.getError(0) && !isRateLimitApiMessage(cache.getError(0)!)
-                    ? () => {
-                        rateLimitModalSuppressedRef.current = false
-                        cache.clearPage(0)
-                        void cache
-                          .loadPage(0, pageSourceText(sourcePages[0]!), translatePageText)
-                          .then(bump)
-                          .catch(bump)
-                      }
-                    : undefined
-                }
-                pageKey={0}
-                articleHeading={articleModeHeading}
+                items={articleItems}
+                loading={articleLoading}
+                errorMessage={articleErr ?? null}
+                onRetry={articleErr ? retryArticlePage : undefined}
+                pageKey={articlePageIndex}
+                articleHeading={articlePageIndex === 0 ? articleModeHeading : null}
                 pagination={null}
               />
             </div>

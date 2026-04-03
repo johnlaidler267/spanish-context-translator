@@ -205,7 +205,7 @@ Article mode **does not** start translating the following page in the background
 
 Previously, a `useEffect` in `App.tsx` called `TranslationCache.loadPage(articlePageIndex + 1, …)` whenever the visible article page changed. To restore that behavior, reintroduce that effect and set `nextPageOpen` / `goArticleNext` back to “allow next when the next page is already loaded, errored, or in flight,” with navigation on Next only incrementing the index.
 
-Read mode still preloads the following LLM page around the midpoint of the current page’s sentences (`ReadMode` + `onRequestPreloadPage`).
+Read mode uses the same translated slice as the current article page and only requests the next LLM page when you advance past the last read step on that page (same `TranslationCache.loadPage` path as **Next page** in article mode). There is no read-mode-only background preload.
 
 ---
 
