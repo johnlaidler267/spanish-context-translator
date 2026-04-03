@@ -447,7 +447,6 @@ ONE WORD PER CHUNK. Group only when splitting misleads. Never chunk punctuation.
     {"c":"las que","m":"those who","l":"the ones that"},
     {"c":"antes que","m":"before","l":"before that"},
     {"c":"mientras que","m":"while / whereas","l":"while that"},
-  
   ],
 
   "compound_nouns": [
@@ -457,7 +456,6 @@ ONE WORD PER CHUNK. Group only when splitting misleads. Never chunk punctuation.
     {"c":"medio ambiente","m":"environment","l":"middle surroundings"},
     {"c":"libre albedrío","m":"free will","l":"free will"},
     {"c":"corriente eléctrica","m":"electric current","l":"current electric"},
-   
   ],
 
   "lo_nominalizer": [
@@ -513,6 +511,10 @@ ONE WORD PER CHUNK. Group only when splitting misleads. Never chunk punctuation.
   "adverbial phrases": [
     {"c":"por igual","m":"equally","l":"by equal"},
     {"c":"por supuesto","m":"of course","l":"by supposed"},
+  ]
+
+  "colloquial fixed expressions": [
+    {"c":"pinta bien","m":"looks promising / looks good","l":"paints well"},s
   ]
 
 Return only a valid JSON array — no preamble, no markdown fences.
