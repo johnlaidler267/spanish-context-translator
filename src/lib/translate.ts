@@ -14,7 +14,7 @@ function translationProvider(): "groq" | "gemini" {
 
 const GROQ_TRANSLATE_MODEL = "openai/gpt-oss-120b"
 const GROQ_LEARN_MODEL = "llama-3.1-8b-instant" as const
-const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-3-flash"
+const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-3.0-flash"
 const GEMINI_LEARN_MODEL_DEFAULT = "gemini-2.0-flash"
 
 function translateModel(): string {
