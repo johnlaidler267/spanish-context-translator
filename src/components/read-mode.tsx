@@ -84,10 +84,13 @@ export function ReadMode({
   )
 
   const chunkDetails = useChunkDetails()
-  const { pageEnterClassName, onPageEnterAnimationEnd } = useReadingPageEnterAnimation(readPageKey)
 
   const currentSentence = sentences[currentSentenceIndex] ?? { id: 0, chunks: [] as ChunkData[] }
   const totalSentences = sentences.length
+
+  /** Linear read position — changes on every sentence (and article page) so enter anim can run per step */
+  const readEnterAnimKey = readStepOffset + currentSentenceIndex
+  const { pageEnterStyle } = useReadingPageEnterAnimation(readEnterAnimKey)
 
   /** Current sentence as plain text for LLM context */
   const currentSentenceText = useMemo(
@@ -261,12 +264,12 @@ export function ReadMode({
           </div>
         )}
         <div
+          key={readEnterAnimKey}
           ref={touchSurfaceRef}
-          onAnimationEnd={onPageEnterAnimationEnd}
+          style={pageEnterStyle}
           className={cn(
             "block w-full font-serif text-3xl md:text-5xl lg:text-6xl max-md:leading-[1.52] md:leading-snug text-center text-foreground text-balance selection:bg-primary/20",
             touchExploring && "touch-none select-none",
-            pageEnterClassName,
           )}
         >
           {currentSentence.chunks.map((chunk: ChunkData, index: number) => {

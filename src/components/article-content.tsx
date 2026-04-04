@@ -59,7 +59,7 @@ export function ArticleContent({
 
   // Details box state
   const chunkDetails = useChunkDetails()
-  const { pageEnterClassName, onPageEnterAnimationEnd } = useReadingPageEnterAnimation(pageKey)
+  const { pageEnterStyle } = useReadingPageEnterAnimation(pageKey)
 
   /** Reconstruct full page text for LLM sentence context */
   const pageText = useMemo(() => {
@@ -111,13 +111,13 @@ export function ArticleContent({
         </h1>
       ) : null}
       <article
+        key={pageKey}
         ref={touchSurfaceRef}
-        onAnimationEnd={onPageEnterAnimationEnd}
+        style={pageEnterStyle}
         className={cn(
           "font-serif text-xl md:text-2xl leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
           "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
-          pageEnterClassName,
         )}
       >
         {loading && (
