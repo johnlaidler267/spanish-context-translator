@@ -257,8 +257,6 @@ function getFreeTierIncludeRows(): { feature: string; limitHint: string }[] {
 const PRO_TIER_PLUS: string[] = [
   "Unlimited submissions",
   "No character limit — paste full articles",
-  "Priority support",
-  "Grammar breakdowns"
 ]
 
 function tierBullets(tier: TierConfig): string[] {
@@ -1017,14 +1015,18 @@ export default function UpgradePage() {
                       className={cn(
                         "px-6 pb-4",
                         isCurrent ? "pt-12" : isPro ? "pt-5" : "pt-6",
-                        isPro && !isCurrent && "pr-[7.5rem] sm:pr-[8rem]",
                       )}
                     >
+                      {/*
+                        Reserve right padding only on the title row — "Most popular" floats top-right.
+                        Applying it to the whole header was narrowing the price / annual blurb.
+                      */}
                       <div
-                        className={[
+                        className={cn(
                           "flex items-center gap-3 mb-3 flex-wrap",
                           isFree ? "text-muted-foreground" : "text-foreground",
-                        ].join(" ")}
+                          isPro && !isCurrent && "pr-[7.5rem] sm:pr-[8rem]",
+                        )}
                       >
                         <span
                           className={
@@ -1067,10 +1069,11 @@ export default function UpgradePage() {
                               or {formatPrice(tier.pricing.annual.amountCents)}/yr — two months free
                             </p>
                           ) : (
-                            <p className="text-xs text-muted-foreground font-sans mt-0.5">
+                            <p className="text-xs text-muted-foreground font-sans mt-0.5 md:whitespace-nowrap">
                               {formatAnnualMonthlyEquivalent("pro")}/mo · billed annually — two months free
                               {tier.pricing.annual.savingsPercent > 0 && (
                                 <span className="ml-1.5 text-primary font-medium">
+                                  {" "}
                                   (Save {tier.pricing.annual.savingsPercent}%)
                                 </span>
                               )}
@@ -1087,10 +1090,11 @@ export default function UpgradePage() {
                           </CardTitle>
 
                           {interval === "annual" && pricing.amountCents > 0 && (
-                            <p className="text-xs text-muted-foreground font-sans mt-0.5">
+                            <p className="text-xs text-muted-foreground font-sans mt-0.5 md:whitespace-nowrap">
                               {formatAnnualMonthlyEquivalent(id)}/mo · billed annually
                               {tier.pricing.annual.savingsPercent > 0 && (
                                 <span className="ml-1.5 text-primary font-medium">
+                                  {" "}
                                   Save {tier.pricing.annual.savingsPercent}%
                                 </span>
                               )}
@@ -1114,7 +1118,7 @@ export default function UpgradePage() {
                       )}
                       {id === "pro" && (
                         <p className="text-xs font-semibold font-sans text-muted-foreground uppercase tracking-wide mb-3">
-                          What you get
+                          Everything in free, plus
                         </p>
                       )}
                       {/* Feature bullets — flex-1 so CTAs align across cards */}
