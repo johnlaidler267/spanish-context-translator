@@ -88,6 +88,7 @@ export function ReadMode({
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
   /** Touch drag: updated without React state so the sentence doesn’t re-render every frame */
   const tooltipFollowRef = useRef<{ x: number; y: number } | null>(null)
+  const followTooltipPlaceRef = useRef<((x: number, y: number) => void) | null>(null)
 
   const prevPageKeyRef = useRef(readPageKey)
   /** Pointer hit-test: delayed clear when moving across spaces between words */
@@ -112,7 +113,12 @@ export function ReadMode({
     commitExploringChunkId,
     currentSentenceIndex,
     sentences,
-    { onTouchPointerClient: (pt) => { tooltipFollowRef.current = pt } },
+    {
+      onTouchPointerClient: (pt) => {
+        tooltipFollowRef.current = pt
+        if (pt) followTooltipPlaceRef.current?.(pt.x, pt.y)
+      },
+    },
   )
 
   const pointerHoverRafRef = useRef<number | null>(null)
@@ -410,6 +416,11 @@ export function ReadMode({
                       ? tooltipFollowRef
                       : undefined
                   }
+                  followPointerPlaceRef={
+                    touchExploring && effectivePopupId === chunk.id
+                      ? followTooltipPlaceRef
+                      : undefined
+                  }
                   followPointerClient={
                     !touchExploring &&
                     effectivePopupId === chunk.id &&
@@ -417,7 +428,6 @@ export function ReadMode({
                       ? tooltipPointer
                       : null
                   }
-                  followPointerSnap={touchExploring}
                   isTouchHighlight={exploringChunkId === chunk.id}
                   isPinned={pinnedChunkId === chunk.id}
                   onActivate={() => commitExploringChunkId(chunk.id)}

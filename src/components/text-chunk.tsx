@@ -7,6 +7,7 @@ import {
   useLayoutEffect,
   useCallback,
   type MouseEvent,
+  type MutableRefObject,
   type RefObject,
   type TransitionEvent,
   type TouchEvent,
@@ -56,13 +57,14 @@ interface TextChunkProps {
    */
   followPointerClient?: { x: number; y: number } | null
   /**
-   * Mobile thumb-drag: skip position transitions so rapid updates don’t fight CSS interpolation.
-   */
-  followPointerSnap?: boolean
-  /**
-   * Touch drag: read coords from this ref each frame (no parent setState) — avoids re-rendering every chunk.
+   * Touch drag: latest viewport point without parent setState (initial layout + scroll reflow).
    */
   followPointerRef?: RefObject<{ x: number; y: number } | null>
+  /**
+   * Parent calls this from native touch handlers so placement runs in the same turn as touchmove
+   * (desktop uses state → useLayoutEffect; rAF-only follow felt a frame late on phones).
+   */
+  followPointerPlaceRef?: MutableRefObject<((x: number, y: number) => void) | null>
 }
 
 interface PopupCoords {
@@ -181,8 +183,8 @@ export function TextChunk({
   variant = "read",
   delegatePointerHover = false,
   followPointerClient = null,
-  followPointerSnap = false,
   followPointerRef,
+  followPointerPlaceRef,
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text.trim()}</span>
@@ -311,21 +313,18 @@ export function TextChunk({
   ])
 
   useLayoutEffect(() => {
-    if (!isPopupOpen || !delegatePointerHover || !followPointerRef) return
-    let alive = true
-    let rafId = 0
-    const step = () => {
-      if (!alive) return
-      const p = followPointerRef.current
-      if (p) placeTooltip(p.x, p.y)
-      rafId = requestAnimationFrame(step)
+    if (!followPointerPlaceRef) return
+    if (!isPopupOpen || !delegatePointerHover) {
+      followPointerPlaceRef.current = null
+      return
     }
-    rafId = requestAnimationFrame(step)
+    followPointerPlaceRef.current = (x: number, y: number) => {
+      placeTooltip(x, y)
+    }
     return () => {
-      alive = false
-      cancelAnimationFrame(rafId)
+      followPointerPlaceRef.current = null
     }
-  }, [isPopupOpen, delegatePointerHover, followPointerRef, placeTooltip])
+  }, [isPopupOpen, delegatePointerHover, followPointerPlaceRef, placeTooltip])
 
   useEffect(() => {
     if (!isPopupOpen) return
@@ -398,8 +397,12 @@ export function TextChunk({
   const padX = 14
 
   const showTooltip = coords !== null
-  const followMotionMs =
-    isPopupOpen && followPointerSnap ? 0 : TOOLTIP_FOLLOW_POSITION_MS
+  /** Same motion for mouse + touch: no CSS interpolation while a live pointer drives placement. */
+  const followingLiveDelegatedPointer =
+    isPopupOpen &&
+    delegatePointerHover &&
+    (followPointerClient != null || followPointerRef != null)
+  const followMotionMs = followingLiveDelegatedPointer ? 0 : TOOLTIP_FOLLOW_POSITION_MS
 
   const handleTooltipTransitionEnd = useCallback((e: TransitionEvent<HTMLDivElement>) => {
     if (e.propertyName !== "opacity" || e.target !== e.currentTarget) return

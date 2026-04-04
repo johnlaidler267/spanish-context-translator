@@ -192,7 +192,6 @@ export function useChunkTouchExploration(
   const touchExploringRef = useRef(false)
   const lastEmittedIdRef = useRef<number | null>(null)
   const pendingPointRef = useRef<{ x: number; y: number } | null>(null)
-  const rafRef = useRef<number | null>(null)
   const [touchExploring, setTouchExploring] = useState(false)
   const onTouchPointerRef = useRef(options?.onTouchPointerClient)
   onTouchPointerRef.current = options?.onTouchPointerClient
@@ -204,19 +203,10 @@ export function useChunkTouchExploration(
     const runHitTest = () => {
       const p = pendingPointRef.current
       if (!p || !touchExploringRef.current) return
-      const id = getChunkIdFromPoint(p.x, p.y)
+      const id = getChunkIdFromPointerClientXY(p.x, p.y, el)
       if (id === lastEmittedIdRef.current) return
       lastEmittedIdRef.current = id
       setActiveChunkId(id)
-    }
-
-    /** One rAF per frame: latest finger position + chunk hit-test (avoids setState per touchmove). */
-    const flushTouchFrame = () => {
-      rafRef.current = null
-      const p = pendingPointRef.current
-      if (!p || !touchExploringRef.current) return
-      onTouchPointerRef.current?.({ x: p.x, y: p.y })
-      runHitTest()
     }
 
     const onTouchStart = (e: TouchEvent) => {
@@ -226,7 +216,7 @@ export function useChunkTouchExploration(
       setTouchExploring(true)
       pendingPointRef.current = { x: t.clientX, y: t.clientY }
       onTouchPointerRef.current?.({ x: t.clientX, y: t.clientY })
-      const id = getChunkIdFromPoint(t.clientX, t.clientY)
+      const id = getChunkIdFromPointerClientXY(t.clientX, t.clientY, el)
       lastEmittedIdRef.current = id
       setActiveChunkId(id)
     }
@@ -235,9 +225,10 @@ export function useChunkTouchExploration(
       if (!touchExploringRef.current || e.touches.length !== 1) return
       e.preventDefault()
       const tt = e.touches[0]
-      pendingPointRef.current = { x: tt.clientX, y: tt.clientY }
-      if (rafRef.current != null) return
-      rafRef.current = requestAnimationFrame(flushTouchFrame)
+      const p = { x: tt.clientX, y: tt.clientY }
+      pendingPointRef.current = p
+      onTouchPointerRef.current?.(p)
+      runHitTest()
     }
 
     const endTouchExploration = () => {
@@ -248,10 +239,6 @@ export function useChunkTouchExploration(
       lastEmittedIdRef.current = null
       setActiveChunkId(null)
       pendingPointRef.current = null
-      if (rafRef.current != null) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
     }
 
     el.addEventListener("touchstart", onTouchStart, { passive: true })
@@ -273,14 +260,11 @@ export function useChunkTouchExploration(
   useLayoutEffect(() => {
     if (touchExploring) {
       document.body.classList.add("read-mode-touch-exploring")
-      document.documentElement.style.overflow = "hidden"
     } else {
       document.body.classList.remove("read-mode-touch-exploring")
-      document.documentElement.style.overflow = ""
     }
     return () => {
       document.body.classList.remove("read-mode-touch-exploring")
-      document.documentElement.style.overflow = ""
     }
   }, [touchExploring])
 
