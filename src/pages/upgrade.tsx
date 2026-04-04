@@ -542,31 +542,45 @@ export default function UpgradePage() {
   // ── Load subscription ──────────────────────────────────────────────────────
   const loadSub = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSubLoading(false); return }
-    let snap = await fetchSubSnapshot(user.id)
-
-    // Fallback: if the DB still says "free", try syncing from Stripe directly.
-    if (!snap || snap.planId === "free") {
-      try {
-        const confirmed = await confirmCheckoutSession()
-        snap = {
-          planId: confirmed.planId as TierId,
-          status: confirmed.status,
-          billingInterval: (confirmed.billingInterval as DbBillingInterval) ?? null,
-          currentPeriodEnd: confirmed.currentPeriodEnd,
-          cancelAtPeriodEnd: false,
-          hasStripeSubscription: confirmed.hasStripeSubscription,
-          trialEnd: confirmed.trialEnd,
-        }
-      } catch {
-        // No synced Stripe subscription yet — keep the DB snapshot as-is.
-      }
+    if (!user) {
+      setSubLoading(false)
+      return
     }
+    const snap = await fetchSubSnapshot(user.id)
 
     setSub(snap)
     setSubLoading(false)
-    // Pre-select the billing interval that matches the user's current plan
     if (snap?.billingInterval) setInterval(snap.billingInterval)
+
+    // Stripe confirm is slow (auth refresh + edge function). Do not block the pricing grid.
+    // Only resync when the row says free but still has a Stripe sub (webhook lag / drift).
+    // Checkout return with ?session_id= is handled by the dedicated effect below.
+    const checkoutReturn = getReturnedCheckoutSessionId()
+    const needsStripeResync =
+      !checkoutReturn &&
+      snap &&
+      snap.planId === "free" &&
+      snap.hasStripeSubscription
+
+    if (!needsStripeResync) return
+
+    try {
+      const confirmed = await confirmCheckoutSession()
+      setSub({
+        planId: confirmed.planId as TierId,
+        status: confirmed.status,
+        billingInterval: (confirmed.billingInterval as DbBillingInterval) ?? null,
+        currentPeriodEnd: confirmed.currentPeriodEnd,
+        cancelAtPeriodEnd: false,
+        hasStripeSubscription: confirmed.hasStripeSubscription,
+        trialEnd: confirmed.trialEnd,
+      })
+      if (confirmed.billingInterval === "monthly" || confirmed.billingInterval === "annual") {
+        setInterval(confirmed.billingInterval)
+      }
+    } catch {
+      /* keep DB snapshot */
+    }
   }, [])
 
   useEffect(() => { loadSub() }, [loadSub])
