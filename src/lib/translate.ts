@@ -739,6 +739,53 @@ function coalesceGlueablePunctuationChunks<
   return out
 }
 
+/**
+ * Merge closing punctuation-only chunk rows into the previous Spanish chunk (same rules as
+ * {@link coalesceGlueablePunctuationChunks}). Article mode renders `ReconciledItem[]` directly;
+ * without this, LLM rows like `","` stay a separate inline node on phones (read mode was already
+ * fixed via `splitIntoSentences`).
+ */
+export function coalesceGlueablePunctuationReconciledItems(
+  items: ReconciledItem[],
+): ReconciledItem[] {
+  const out: ReconciledItem[] = []
+  let pendingText = ""
+
+  const flushPendingText = () => {
+    if (pendingText.length === 0) return
+    out.push({ type: "text", text: pendingText })
+    pendingText = ""
+  }
+
+  for (const item of items) {
+    if (item.type === "text") {
+      pendingText += item.text ?? ""
+      continue
+    }
+    const span =
+      typeof item.chunk === "string" ? item.chunk : String(item.chunk ?? "")
+    const last = out[out.length - 1]
+
+    if (last?.type === "chunk" && shouldGlueAfterPriorChunkReadGlue(span)) {
+      const prefix = pendingText.replace(/\s+$/, "")
+      last.chunk += prefix + span
+      pendingText = ""
+      continue
+    }
+
+    flushPendingText()
+    out.push({
+      type: "chunk",
+      chunk: span,
+      meaning: item.meaning,
+      literal: item.literal,
+      note: item.note,
+    })
+  }
+  flushPendingText()
+  return out
+}
+
 export function splitIntoSentences(items: ReconciledItem[]) {
   const sentences: { id: number; chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> }[] = []
   let currentChunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> = []
@@ -1050,7 +1097,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
           "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
         )
       }
-      return unwrapped
+      return coalesceGlueablePunctuationReconciledItems(unwrapped)
     }
   }
 
@@ -1060,7 +1107,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
       "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
     )
   }
-  return reconciled
+  return coalesceGlueablePunctuationReconciledItems(reconciled)
 }
 
 export type PageSentenceRange = { pageIndex: number; start: number; end: number }
