@@ -1,6 +1,14 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  type TransitionEvent,
+  type TouchEvent,
+} from "react"
 import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
@@ -47,6 +55,8 @@ interface PopupCoords {
 
 const POPUP_WIDTH = 288
 const POPUP_EST_HEIGHT = 120
+/** Hover meaning card — slightly leisurely fade out (ms) */
+const TOOLTIP_FADE_OUT_MS = 380
 /** Keep arrow diamond inside tooltip; min distance from edge to arrow center (px) */
 const ARROW_EDGE_INSET = 12
 
@@ -128,6 +138,7 @@ export function TextChunk({
 
   const isPopupOpen = popupChunkId === chunk.id
   const [coords, setCoords] = useState<PopupCoords | null>(null)
+  const [tooltipLeaving, setTooltipLeaving] = useState(false)
   const chunkRef = useRef<HTMLSpanElement>(null)
   const lastTapRef = useRef<{ t: number } | null>(null)
   const tapResetTimerRef = useRef<number | null>(null)
@@ -168,10 +179,20 @@ export function TextChunk({
     })
   }, [variant])
 
+  useLayoutEffect(() => {
+    if (!isPopupOpen && coords !== null) {
+      setTooltipLeaving(true)
+    }
+  }, [isPopupOpen, coords])
+
   useEffect(() => {
-    if (isPopupOpen) calculateCoords()
-    else setCoords(null)
-  }, [isPopupOpen, calculateCoords])
+    if (isPopupOpen) {
+      setTooltipLeaving(false)
+      calculateCoords()
+    } else if (coords === null) {
+      setTooltipLeaving(false)
+    }
+  }, [isPopupOpen, calculateCoords, coords])
 
   useEffect(() => {
     if (!isPopupOpen) return
@@ -190,7 +211,7 @@ export function TextChunk({
   }, [])
 
   const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
+    (e: TouchEvent) => {
       e.preventDefault()
       const now = Date.now()
       if (lastTapRef.current && now - lastTapRef.current.t < 420) {
@@ -225,11 +246,25 @@ export function TextChunk({
   const pad = 12
   const padX = 14
 
-  const popup = coords && (
+  const showTooltip = coords !== null && (isPopupOpen || tooltipLeaving)
+
+  const handleTooltipTransitionEnd = useCallback(
+    (e: TransitionEvent<HTMLDivElement>) => {
+      if (e.propertyName !== "opacity" || e.target !== e.currentTarget) return
+      if (tooltipLeaving && !isPopupOpen) {
+        setCoords(null)
+        setTooltipLeaving(false)
+      }
+    },
+    [isPopupOpen, tooltipLeaving],
+  )
+
+  const popup = showTooltip && coords && (
     <div
       data-popup
       onMouseEnter={onActivate}
       onMouseLeave={onDeactivate}
+      onTransitionEnd={handleTooltipTransitionEnd}
       style={{
         position: "fixed",
         top:
@@ -241,6 +276,10 @@ export function TextChunk({
         boxSizing: "border-box",
         transform: coords.placement === "above" ? "translateY(-100%)" : "none",
         zIndex: 9999,
+        opacity: tooltipLeaving ? 0 : 1,
+        transition: tooltipLeaving
+          ? `opacity ${TOOLTIP_FADE_OUT_MS}ms ease-out`
+          : undefined,
         backgroundColor: "#f4efe9",
         border: "1px solid rgba(201, 122, 90, 0.28)",
         borderRadius: "4px",
@@ -331,7 +370,7 @@ export function TextChunk({
         className={cn(
           /* Keep underline in the tree so decoration-color can fade (snap-off feels harsh) */
           "cursor-pointer rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[1.5px]",
-          "transition-[text-decoration-color,background-color] duration-700 ease-out md:duration-300",
+          "transition-[text-decoration-color,background-color] duration-700 ease-out md:duration-500",
           isPinned
             ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
             : isTouchHighlight
