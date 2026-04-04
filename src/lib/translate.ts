@@ -515,7 +515,12 @@ EXAMPLE GROUPING CATEGORIES (EXTRAPOLATE):
   ]
 
   "colloquial fixed expressions": [
-    {"c":"pinta bien","m":"looks promising / looks good","l":"paints well"},s
+    {"c":"pinta bien","m":"looks promising / looks good","l":"paints well"},
+  ]
+
+  "possessive pronouns": [
+    {"c":"el suyo","m":"his","l":"the his"},
+    {"c":"la nuestra","m":"ours","l":"the our"},
   ]
 
 Return only a valid JSON array — no preamble, no markdown fences.
