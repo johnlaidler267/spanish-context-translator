@@ -60,6 +60,7 @@ export function ArticleContent({
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
+  const tooltipFollowRef = useRef<{ x: number; y: number } | null>(null)
   const exploringLeaveTimerRef = useRef<number | null>(null)
   const pointerHoverRafRef = useRef<number | null>(null)
   const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
@@ -94,7 +95,7 @@ export function ArticleContent({
     commitExploringChunkId,
     items,
     pageKey,
-    { onTouchPointerClient: setTooltipPointer },
+    { onTouchPointerClient: (pt) => { tooltipFollowRef.current = pt } },
   )
 
   useLayoutEffect(() => {
@@ -289,11 +290,19 @@ export function ArticleContent({
                     chunk={chunkData}
                     popupChunkId={effectivePopupId}
                     delegatePointerHover
+                    followPointerRef={
+                      touchExploring && effectivePopupId === id
+                        ? tooltipFollowRef
+                        : undefined
+                    }
                     followPointerClient={
-                      effectivePopupId === id && tooltipPointer != null
+                      !touchExploring &&
+                      effectivePopupId === id &&
+                      tooltipPointer != null
                         ? tooltipPointer
                         : null
                     }
+                    followPointerSnap={touchExploring}
                     isTouchHighlight={exploringChunkId === id}
                     isPinned={pinnedChunkId === id}
                     onActivate={() => commitExploringChunkId(id)}

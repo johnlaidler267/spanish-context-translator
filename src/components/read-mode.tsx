@@ -86,6 +86,8 @@ export function ReadMode({
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
   /** Desktop hover: viewport position for tooltip arrow (read mode delegates pointer to parent) */
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
+  /** Touch drag: updated without React state so the sentence doesn’t re-render every frame */
+  const tooltipFollowRef = useRef<{ x: number; y: number } | null>(null)
 
   const prevPageKeyRef = useRef(readPageKey)
   /** Pointer hit-test: delayed clear when moving across spaces between words */
@@ -110,7 +112,7 @@ export function ReadMode({
     commitExploringChunkId,
     currentSentenceIndex,
     sentences,
-    { onTouchPointerClient: setTooltipPointer },
+    { onTouchPointerClient: (pt) => { tooltipFollowRef.current = pt } },
   )
 
   const pointerHoverRafRef = useRef<number | null>(null)
@@ -403,11 +405,19 @@ export function ReadMode({
                   chunk={chunk}
                   popupChunkId={effectivePopupId}
                   delegatePointerHover
+                  followPointerRef={
+                    touchExploring && effectivePopupId === chunk.id
+                      ? tooltipFollowRef
+                      : undefined
+                  }
                   followPointerClient={
-                    effectivePopupId === chunk.id && tooltipPointer != null
+                    !touchExploring &&
+                    effectivePopupId === chunk.id &&
+                    tooltipPointer != null
                       ? tooltipPointer
                       : null
                   }
+                  followPointerSnap={touchExploring}
                   isTouchHighlight={exploringChunkId === chunk.id}
                   isPinned={pinnedChunkId === chunk.id}
                   onActivate={() => commitExploringChunkId(chunk.id)}

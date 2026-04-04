@@ -4,8 +4,10 @@ import {
   useState,
   useRef,
   useEffect,
+  useLayoutEffect,
   useCallback,
   type MouseEvent,
+  type RefObject,
   type TransitionEvent,
   type TouchEvent,
 } from "react"
@@ -53,6 +55,14 @@ interface TextChunkProps {
    * tracks the pointer while the popup is open.
    */
   followPointerClient?: { x: number; y: number } | null
+  /**
+   * Mobile thumb-drag: skip position transitions so rapid updates don’t fight CSS interpolation.
+   */
+  followPointerSnap?: boolean
+  /**
+   * Touch drag: read coords from this ref each frame (no parent setState) — avoids re-rendering every chunk.
+   */
+  followPointerRef?: RefObject<{ x: number; y: number } | null>
 }
 
 interface PopupCoords {
@@ -171,6 +181,8 @@ export function TextChunk({
   variant = "read",
   delegatePointerHover = false,
   followPointerClient = null,
+  followPointerSnap = false,
+  followPointerRef,
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text.trim()}</span>
@@ -228,12 +240,25 @@ export function TextChunk({
           ? "below"
           : "above"
 
-      setCoords({
+      const next: PopupCoords = {
         anchorTop: anchorLine.top,
         anchorBottom: anchorLine.bottom,
         tooltipLeft,
         arrowCenterX,
         placement,
+      }
+      setCoords((prev) => {
+        if (
+          prev &&
+          prev.placement === next.placement &&
+          prev.tooltipLeft === next.tooltipLeft &&
+          prev.anchorTop === next.anchorTop &&
+          prev.anchorBottom === next.anchorBottom &&
+          prev.arrowCenterX === next.arrowCenterX
+        ) {
+          return prev
+        }
+        return next
       })
     },
     [variant],
@@ -255,7 +280,7 @@ export function TextChunk({
     [flushPendingPointer],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isPopupOpen) {
       lastPointerRef.current = null
       pointerPendingRef.current = null
@@ -267,13 +292,40 @@ export function TextChunk({
     }
     if (delegatePointerHover && followPointerClient) {
       placeTooltip(followPointerClient.x, followPointerClient.y)
+    } else if (delegatePointerHover && followPointerRef) {
+      const p = followPointerRef.current
+      if (p) placeTooltip(p.x, p.y)
+      else placeTooltip(null, null)
     } else if (!delegatePointerHover) {
       const p = lastPointerRef.current
       placeTooltip(p?.x ?? null, p?.y ?? null)
     } else {
       placeTooltip(null, null)
     }
-  }, [isPopupOpen, delegatePointerHover, followPointerClient, placeTooltip])
+  }, [
+    isPopupOpen,
+    delegatePointerHover,
+    followPointerClient,
+    followPointerRef,
+    placeTooltip,
+  ])
+
+  useLayoutEffect(() => {
+    if (!isPopupOpen || !delegatePointerHover || !followPointerRef) return
+    let alive = true
+    let rafId = 0
+    const step = () => {
+      if (!alive) return
+      const p = followPointerRef.current
+      if (p) placeTooltip(p.x, p.y)
+      rafId = requestAnimationFrame(step)
+    }
+    rafId = requestAnimationFrame(step)
+    return () => {
+      alive = false
+      cancelAnimationFrame(rafId)
+    }
+  }, [isPopupOpen, delegatePointerHover, followPointerRef, placeTooltip])
 
   useEffect(() => {
     if (!isPopupOpen) return
@@ -346,6 +398,8 @@ export function TextChunk({
   const padX = 14
 
   const showTooltip = coords !== null
+  const followMotionMs =
+    isPopupOpen && followPointerSnap ? 0 : TOOLTIP_FOLLOW_POSITION_MS
 
   const handleTooltipTransitionEnd = useCallback((e: TransitionEvent<HTMLDivElement>) => {
     if (e.propertyName !== "opacity" || e.target !== e.currentTarget) return
@@ -373,7 +427,7 @@ export function TextChunk({
         pointerEvents: "none",
         opacity: isPopupOpen ? 1 : 0,
         transition: isPopupOpen
-          ? `left ${TOOLTIP_FOLLOW_POSITION_MS}ms linear, top ${TOOLTIP_FOLLOW_POSITION_MS}ms linear, opacity 0ms`
+          ? `left ${followMotionMs}ms linear, top ${followMotionMs}ms linear, opacity 0ms`
           : `opacity ${TOOLTIP_FADE_OUT_MS}ms ease-out`,
         backgroundColor: "#f4efe9",
         border: "1px solid rgba(201, 122, 90, 0.28)",
@@ -394,7 +448,7 @@ export function TextChunk({
           width: arrowSize,
           height: arrowSize,
           left: coords.arrowCenterX,
-          transition: isPopupOpen ? `left ${TOOLTIP_FOLLOW_POSITION_MS}ms linear` : undefined,
+          transition: isPopupOpen ? `left ${followMotionMs}ms linear` : undefined,
           zIndex: 2,
           backgroundColor: "#f4efe9",
           borderLeft: "1px solid rgba(201,122,90,0.28)",

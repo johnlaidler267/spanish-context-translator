@@ -210,6 +210,15 @@ export function useChunkTouchExploration(
       setActiveChunkId(id)
     }
 
+    /** One rAF per frame: latest finger position + chunk hit-test (avoids setState per touchmove). */
+    const flushTouchFrame = () => {
+      rafRef.current = null
+      const p = pendingPointRef.current
+      if (!p || !touchExploringRef.current) return
+      onTouchPointerRef.current?.({ x: p.x, y: p.y })
+      runHitTest()
+    }
+
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) return
       const t = e.touches[0]
@@ -227,12 +236,8 @@ export function useChunkTouchExploration(
       e.preventDefault()
       const tt = e.touches[0]
       pendingPointRef.current = { x: tt.clientX, y: tt.clientY }
-      onTouchPointerRef.current?.({ x: tt.clientX, y: tt.clientY })
       if (rafRef.current != null) return
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = null
-        runHitTest()
-      })
+      rafRef.current = requestAnimationFrame(flushTouchFrame)
     }
 
     const endTouchExploration = () => {

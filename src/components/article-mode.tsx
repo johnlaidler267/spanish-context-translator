@@ -32,6 +32,7 @@ interface ArticleModeProps {
 const CHUNK_HOVER_GAP_CLEAR_MS = 90
 
 export function ArticleMode({ chunks }: ArticleModeProps) {
+  const tooltipFollowRef = useRef<{ x: number; y: number } | null>(null)
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
@@ -69,7 +70,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
     commitExploringChunkId,
     chunks,
     undefined,
-    { onTouchPointerClient: setTooltipPointer },
+    { onTouchPointerClient: (pt) => { tooltipFollowRef.current = pt } },
   )
 
   useLayoutEffect(() => {
@@ -195,11 +196,19 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
               chunk={chunk}
               popupChunkId={effectivePopupId}
               delegatePointerHover
+              followPointerRef={
+                touchExploring && effectivePopupId === chunk.id
+                  ? tooltipFollowRef
+                  : undefined
+              }
               followPointerClient={
-                effectivePopupId === chunk.id && tooltipPointer != null
+                !touchExploring &&
+                effectivePopupId === chunk.id &&
+                tooltipPointer != null
                   ? tooltipPointer
                   : null
               }
+              followPointerSnap={touchExploring}
               isTouchHighlight={exploringChunkId === chunk.id}
               isPinned={pinnedChunkId === chunk.id}
               onActivate={() => commitExploringChunkId(chunk.id)}
