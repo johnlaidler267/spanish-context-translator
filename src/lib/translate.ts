@@ -520,6 +520,7 @@ EXAMPLE GROUPING CATEGORIES (EXTRAPOLATE):
 
   "possessive pronouns": [
     {"c":"el suyo","m":"his","l":"the his"},
+    {"c":"la tuya", "m":"yours","l":"the your"},
     {"c":"la nuestra","m":"ours","l":"the our"},
   ]
 
