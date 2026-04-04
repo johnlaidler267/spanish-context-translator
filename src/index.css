@@ -46,11 +46,6 @@
   animation: levitate 4s ease-in-out infinite;
 }
 
-/* DetailsBox: Framer Motion animates transform/opacity on the scrim + sheet nodes. */
-[data-details-box] {
-  will-change: transform, opacity;
-}
-
 /* Shell height: CSS viewport units only — do NOT bind to visualViewport.height (keyboard shrinks it and creates a gap below). */
 @layer utilities {
   .min-h-app {

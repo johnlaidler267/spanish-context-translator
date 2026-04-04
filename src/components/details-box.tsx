@@ -65,12 +65,14 @@ export function DetailsBox({
           aria-label="Dismiss details"
           className={cn(
             "fixed inset-0 z-[70] border-0 p-0 cursor-default",
-            "bg-black/[0.18] dark:bg-black/45",
+            /* Solid rgba — avoids Tailwind /opacity + animated opacity double-multiply flicker on iOS */
+            "bg-[rgba(0,0,0,0.18)] dark:bg-[rgba(0,0,0,0.45)]",
+            "[-webkit-backface-visibility:hidden] [backface-visibility:hidden]",
           )}
-          initial={{ opacity: 0 }}
+          /* No enter fade: one less full-screen opacity tween (fixes scrim flicker with scroll/freezing assists). */
+          initial={false}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: exitOnly }}
-          transition={enter}
           onClick={onClose}
         />
       )}
@@ -80,6 +82,7 @@ export function DetailsBox({
           data-details-box
           className={cn(
             "fixed bottom-0 left-0 right-0 z-[71] flex justify-center pointer-events-none",
+            "[-webkit-backface-visibility:hidden] [backface-visibility:hidden]",
             className,
           )}
           initial={{ opacity: 0, y: SLIDE_IN_PX }}
