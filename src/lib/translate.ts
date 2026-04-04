@@ -604,6 +604,73 @@ function normalizeRawChunk(raw: RawChunk): RawChunk {
   return { ...raw, chunk, meaning }
 }
 
+function squashWsForReconcileCompare(s: string): string {
+  return s.replace(/\s+/g, " ").trim()
+}
+
+/**
+ * Model occasionally returns one row whose Spanish field is a stringified reconciled-style
+ * `[{type:"chunk"|"text",...},…]` array. `reconcileChunks` then treats it as literal text,
+ * fails `indexOf` against the real source, and Read mode shows the raw JSON.
+ */
+function tryUnwrapEmbeddedReconciledJson(
+  spanishField: string,
+  sourcePageText: string,
+): ReconciledItem[] | null {
+  const t = spanishField.trim()
+  if (t.length < 80 || !t.startsWith("[")) return null
+  if (!/"type"\s*:\s*"(chunk|text)"/.test(t)) return null
+
+  try {
+    const parsed = JSON.parse(jsonrepair(t)) as unknown
+    if (!Array.isArray(parsed) || parsed.length === 0) return null
+
+    const items: ReconciledItem[] = []
+    for (const el of parsed) {
+      if (el == null || typeof el !== "object") continue
+      const o = el as Record<string, unknown>
+      if (o.type === "text") {
+        const tx = o.text
+        if (typeof tx === "string") items.push({ type: "text", text: tx })
+        continue
+      }
+      if (o.type === "chunk") {
+        const chunk = typeof o.chunk === "string" ? o.chunk : String(o.chunk ?? "")
+        const meaning = typeof o.meaning === "string" ? o.meaning : String(o.meaning ?? "")
+        if (!chunk.trim() || !meaning.trim()) continue
+        items.push({
+          type: "chunk",
+          chunk,
+          meaning,
+          literal: typeof o.literal === "string" ? o.literal : undefined,
+          note: typeof o.note === "string" ? o.note : undefined,
+        })
+        continue
+      }
+      const c = coerceLlmChunkRow(el)
+      if (c) {
+        items.push({
+          type: "chunk",
+          chunk: c.chunk,
+          meaning: c.meaning,
+          literal: c.literal,
+          note: c.note,
+        })
+      }
+    }
+
+    if (!items.some((i) => i.type === "chunk")) return null
+
+    const rebuilt = items.map((i) => (i.type === "text" ? i.text : i.chunk)).join("")
+    if (squashWsForReconcileCompare(rebuilt) !== squashWsForReconcileCompare(sourcePageText)) {
+      return null
+    }
+    return items
+  } catch {
+    return null
+  }
+}
+
 function reconcileChunks(
   chunks: RawChunk[],
   originalText: string
@@ -974,13 +1041,25 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     const c = coerceLlmChunkRow(row)
     if (c) chunks.push(normalizeRawChunk(c))
   }
+
+  if (chunks.length === 1) {
+    const unwrapped = tryUnwrapEmbeddedReconciledJson(chunks[0]!.chunk, input)
+    if (unwrapped) {
+      if (!unwrapped.some((item) => item.type === "chunk")) {
+        throw new Error(
+          "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
+        )
+      }
+      return unwrapped
+    }
+  }
+
   const reconciled = reconcileChunks(chunks, input)
   if (!reconciled.some((item) => item.type === "chunk")) {
     throw new Error(
       "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
     )
   }
-  console.log(JSON.stringify(reconciled))
   return reconciled
 }
 
