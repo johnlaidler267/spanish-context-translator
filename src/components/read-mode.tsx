@@ -1,6 +1,14 @@
 "use client"
 
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from "react"
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  type SetStateAction,
+} from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { TextChunk, shouldGlueAfterPriorChunk } from "./text-chunk"
 import { Button } from "@/components/ui/button"
@@ -53,6 +61,9 @@ interface ReadModeProps {
   onRetryNextPage?: () => void
 }
 
+/** Brief delay before clearing hover over inter-chunk gaps (read + article pointer paths). */
+const CHUNK_HOVER_GAP_CLEAR_MS = 90
+
 export function ReadMode({
   readingSessionKey = 0,
   readPageKey,
@@ -77,8 +88,25 @@ export function ReadMode({
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
 
   const prevPageKeyRef = useRef(readPageKey)
+  /** Pointer hit-test: delayed clear when moving across spaces between words */
+  const gapClearExploreTimerRef = useRef<number | null>(null)
 
-  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(setExploringChunkId, [
+  const cancelGapClearExplore = useCallback(() => {
+    if (gapClearExploreTimerRef.current != null) {
+      window.clearTimeout(gapClearExploreTimerRef.current)
+      gapClearExploreTimerRef.current = null
+    }
+  }, [])
+
+  const commitExploringChunkId = useCallback(
+    (action: SetStateAction<number | null>) => {
+      cancelGapClearExplore()
+      setExploringChunkId(action)
+    },
+    [cancelGapClearExplore],
+  )
+
+  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(commitExploringChunkId, [
     currentSentenceIndex,
     sentences,
   ])
@@ -97,9 +125,22 @@ export function ReadMode({
 
     const applyHit = (clientX: number, clientY: number) => {
       const id = getChunkIdFromPointerClientXY(clientX, clientY, el)
-      if (id === pointerLastIdRef.current) return
-      pointerLastIdRef.current = id
-      setExploringChunkId((prev) => (prev === id ? prev : id))
+
+      if (id != null) {
+        cancelGapClearExplore()
+        if (id === pointerLastIdRef.current) return
+        pointerLastIdRef.current = id
+        setExploringChunkId((prev) => (prev === id ? prev : id))
+        return
+      }
+
+      if (pointerLastIdRef.current == null) return
+      if (gapClearExploreTimerRef.current != null) return
+      gapClearExploreTimerRef.current = window.setTimeout(() => {
+        gapClearExploreTimerRef.current = null
+        pointerLastIdRef.current = null
+        setExploringChunkId(null)
+      }, CHUNK_HOVER_GAP_CLEAR_MS)
     }
 
     const flushHitTest = () => {
@@ -132,6 +173,7 @@ export function ReadMode({
       ) {
         return
       }
+      cancelGapClearExplore()
       pointerPendingRef.current = null
       pointerLastIdRef.current = null
       setTooltipPointer(null)
@@ -155,8 +197,9 @@ export function ReadMode({
       }
       pointerPendingRef.current = null
       pointerLastIdRef.current = null
+      cancelGapClearExplore()
     }
-  }, [readStepOffset, currentSentenceIndex])
+  }, [readStepOffset, currentSentenceIndex, cancelGapClearExplore])
 
   const effectivePopupId = useMemo(
     () => (exploringChunkId != null ? exploringChunkId : pinnedChunkId),
@@ -217,10 +260,11 @@ export function ReadMode({
   }, [sentences.length])
 
   const clearChunkUi = useCallback(() => {
+    cancelGapClearExplore()
     setExploringChunkId(null)
     setPinnedChunkId(null)
     chunkDetails.close()
-  }, [chunkDetails])
+  }, [chunkDetails, cancelGapClearExplore])
 
   const handleGlobalClick = useCallback(
     (e: MouseEvent) => {
@@ -370,9 +414,9 @@ export function ReadMode({
                   }
                   isTouchHighlight={exploringChunkId === chunk.id}
                   isPinned={pinnedChunkId === chunk.id}
-                  onActivate={() => setExploringChunkId(chunk.id)}
+                  onActivate={() => commitExploringChunkId(chunk.id)}
                   onDeactivate={() => {
-                    if (pinnedChunkId !== chunk.id) setExploringChunkId(null)
+                    if (pinnedChunkId !== chunk.id) commitExploringChunkId(null)
                   }}
                   onPinToggle={() =>
                     setPinnedChunkId((prev) => (prev === chunk.id ? null : chunk.id))

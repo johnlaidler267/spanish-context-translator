@@ -1,10 +1,21 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  type SetStateAction,
+} from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { TextChunk } from "./text-chunk"
 import { gapBetweenReconciledChunks, type ReconciledItem } from "@/lib/translate"
-import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
+import {
+  getChunkIdFromPointerClientXY,
+  useChunkTouchExploration,
+} from "@/hooks/use-chunk-touch-exploration"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
@@ -35,6 +46,8 @@ interface ArticleContentProps {
   articleHeading?: string | null
 }
 
+const CHUNK_HOVER_GAP_CLEAR_MS = 90
+
 export function ArticleContent({
   items,
   loading = false,
@@ -46,11 +59,126 @@ export function ArticleContent({
 }: ArticleContentProps) {
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
+  const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
+  const exploringLeaveTimerRef = useRef<number | null>(null)
+  const pointerHoverRafRef = useRef<number | null>(null)
+  const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
+  const pointerLastIdRef = useRef<number | null>(null)
 
-  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(setExploringChunkId, [
+  const cancelExploringLeaveTimer = useCallback(() => {
+    if (exploringLeaveTimerRef.current != null) {
+      window.clearTimeout(exploringLeaveTimerRef.current)
+      exploringLeaveTimerRef.current = null
+    }
+  }, [])
+
+  const commitExploringChunkId = useCallback(
+    (action: SetStateAction<number | null>) => {
+      cancelExploringLeaveTimer()
+      setExploringChunkId(action)
+    },
+    [cancelExploringLeaveTimer],
+  )
+
+  const scheduleExploringLeave = useCallback(() => {
+    cancelExploringLeaveTimer()
+    exploringLeaveTimerRef.current = window.setTimeout(() => {
+      exploringLeaveTimerRef.current = null
+      setExploringChunkId(null)
+    }, CHUNK_HOVER_GAP_CLEAR_MS)
+  }, [cancelExploringLeaveTimer])
+
+  useEffect(() => () => cancelExploringLeaveTimer(), [cancelExploringLeaveTimer])
+
+  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(commitExploringChunkId, [
     items,
     pageKey,
   ])
+
+  useEffect(() => {
+    if (touchExploring) setTooltipPointer(null)
+  }, [touchExploring])
+
+  useLayoutEffect(() => {
+    const el = touchSurfaceRef.current
+    if (!el) return
+
+    const applyHit = (clientX: number, clientY: number) => {
+      const id = getChunkIdFromPointerClientXY(clientX, clientY, el)
+
+      if (id != null) {
+        cancelExploringLeaveTimer()
+        if (id === pointerLastIdRef.current) return
+        pointerLastIdRef.current = id
+        setExploringChunkId((prev) => (prev === id ? prev : id))
+        return
+      }
+
+      if (pointerLastIdRef.current == null) return
+      if (exploringLeaveTimerRef.current != null) return
+      exploringLeaveTimerRef.current = window.setTimeout(() => {
+        exploringLeaveTimerRef.current = null
+        pointerLastIdRef.current = null
+        setExploringChunkId(null)
+      }, CHUNK_HOVER_GAP_CLEAR_MS)
+    }
+
+    const flushHitTest = () => {
+      pointerHoverRafRef.current = null
+      const p = pointerPendingRef.current
+      if (!p) return
+      applyHit(p.x, p.y)
+      setTooltipPointer({ x: p.x, y: p.y })
+    }
+
+    const onMouseEnter = (e: MouseEvent) => {
+      pointerPendingRef.current = { x: e.clientX, y: e.clientY }
+      setTooltipPointer({ x: e.clientX, y: e.clientY })
+      applyHit(e.clientX, e.clientY)
+    }
+
+    const onMouseMove = (e: MouseEvent) => {
+      pointerPendingRef.current = { x: e.clientX, y: e.clientY }
+      setTooltipPointer({ x: e.clientX, y: e.clientY })
+      if (pointerHoverRafRef.current != null) return
+      pointerHoverRafRef.current = requestAnimationFrame(flushHitTest)
+    }
+
+    const onMouseLeave = (e: MouseEvent) => {
+      const rt = e.relatedTarget
+      if (
+        rt instanceof Element &&
+        (rt.closest("[data-popup]") || rt.closest("[data-details-box]"))
+      ) {
+        return
+      }
+      cancelExploringLeaveTimer()
+      pointerPendingRef.current = null
+      pointerLastIdRef.current = null
+      setTooltipPointer(null)
+      if (pointerHoverRafRef.current != null) {
+        cancelAnimationFrame(pointerHoverRafRef.current)
+        pointerHoverRafRef.current = null
+      }
+      setExploringChunkId(null)
+    }
+
+    el.addEventListener("mouseenter", onMouseEnter, { passive: true })
+    el.addEventListener("mousemove", onMouseMove, { passive: true })
+    el.addEventListener("mouseleave", onMouseLeave)
+    return () => {
+      el.removeEventListener("mouseenter", onMouseEnter)
+      el.removeEventListener("mousemove", onMouseMove)
+      el.removeEventListener("mouseleave", onMouseLeave)
+      if (pointerHoverRafRef.current != null) {
+        cancelAnimationFrame(pointerHoverRafRef.current)
+        pointerHoverRafRef.current = null
+      }
+      pointerPendingRef.current = null
+      pointerLastIdRef.current = null
+      cancelExploringLeaveTimer()
+    }
+  }, [pageKey, cancelExploringLeaveTimer])
 
   const effectivePopupId = useMemo(
     () => (exploringChunkId != null ? exploringChunkId : pinnedChunkId),
@@ -74,11 +202,13 @@ export function ArticleContent({
       !target.closest("[data-popup]") &&
       !target.closest("[data-details-box]")
     ) {
+      cancelExploringLeaveTimer()
+      setTooltipPointer(null)
       setExploringChunkId(null)
       setPinnedChunkId(null)
       chunkDetails.close()
     }
-  }, [chunkDetails])
+  }, [chunkDetails, cancelExploringLeaveTimer])
 
   useEffect(() => {
     document.addEventListener("click", handleGlobalClick)
@@ -160,11 +290,19 @@ export function ArticleContent({
                     variant="article"
                     chunk={chunkData}
                     popupChunkId={effectivePopupId}
+                    delegatePointerHover
+                    followPointerClient={
+                      !touchExploring &&
+                      effectivePopupId === id &&
+                      tooltipPointer != null
+                        ? tooltipPointer
+                        : null
+                    }
                     isTouchHighlight={exploringChunkId === id}
                     isPinned={pinnedChunkId === id}
-                    onActivate={() => setExploringChunkId(id)}
+                    onActivate={() => commitExploringChunkId(id)}
                     onDeactivate={() => {
-                      if (pinnedChunkId !== id) setExploringChunkId(null)
+                      if (pinnedChunkId !== id) scheduleExploringLeave()
                     }}
                     onPinToggle={() => setPinnedChunkId(prev => (prev === id ? null : id))}
                     onRequestDetails={() => chunkDetails.fetchDetails(item.chunk, pageText)}

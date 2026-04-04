@@ -13,6 +13,8 @@ import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
 interface ChunkData {
+  /** Stable chunk id when provided (read/article); used for tooltip content keys */
+  id?: number
   text: string
   meaning: string
   literal?: string
@@ -42,13 +44,13 @@ interface TextChunkProps {
    */
   variant?: "article" | "read"
   /**
-   * Read mode: parent runs caret-based hit testing — skip per-span mouseenter/leave so
-   * overlapping inline boxes don’t mis-target hover.
+   * Read / article: parent runs line-rect hit testing on the surface — skip per-span
+   * mouseenter/leave so overlapping inline boxes and portaled tooltips don’t mis-target hover.
    */
   delegatePointerHover?: boolean
   /**
-   * When set (e.g. read mode), tooltip arrow tracks this viewport position while the popup is open.
-   * Omit for article mode — pointer is read from `mousemove` on the chunk span instead.
+   * When `delegatePointerHover` is set, parent passes viewport coords so the tooltip arrow
+   * tracks the pointer while the popup is open.
    */
   followPointerClient?: { x: number; y: number } | null
 }
@@ -66,7 +68,7 @@ interface PopupCoords {
 const POPUP_WIDTH = 250
 const POPUP_EST_HEIGHT = 120
 /** Hover meaning card — quick fade out (ms) */
-const TOOLTIP_FADE_OUT_MS = 20
+const TOOLTIP_FADE_OUT_MS = 0
 /** Tooltip box + arrow ease horizontally toward the pointer (ms) */
 const TOOLTIP_FOLLOW_POSITION_MS = 45
 /** Keep arrow diamond inside tooltip; min distance from edge to arrow center (px) */
@@ -355,8 +357,6 @@ export function TextChunk({
   const popup = showTooltip && coords && (
     <div
       data-popup
-      onMouseEnter={variant === "read" ? undefined : onActivate}
-      onMouseLeave={variant === "read" ? undefined : onDeactivate}
       onTransitionEnd={handleTooltipTransitionEnd}
       style={{
         position: "fixed",
@@ -369,8 +369,8 @@ export function TextChunk({
         boxSizing: "border-box",
         transform: coords.placement === "above" ? "translateY(-100%)" : "none",
         zIndex: 9999,
-        /* Read mode: tooltip is visual-only — don’t steal mouse from sentence hit-testing */
-        pointerEvents: variant === "read" ? "none" : undefined,
+        /* Portaled above text — pass pointer through so hit-testing stays on the article/read surface */
+        pointerEvents: "none",
         opacity: isPopupOpen ? 1 : 0,
         transition: isPopupOpen
           ? `left ${TOOLTIP_FOLLOW_POSITION_MS}ms linear, top ${TOOLTIP_FOLLOW_POSITION_MS}ms linear, opacity 0ms`
@@ -421,28 +421,33 @@ export function TextChunk({
         }}
       />
 
-      <p style={{ fontSize: "1.05rem", fontFamily: "var(--font-serif)", fontWeight: 600, color: "#3a332e", lineHeight: 1.3, margin: 0 }}>
-        {chunk.meaning}
-      </p>
+      <div
+        className="chunk-tooltip-body"
+        key={chunk.id != null ? `c${chunk.id}-${chunk.meaning}` : `${chunk.text}-${chunk.meaning}`}
+      >
+        <p style={{ fontSize: "1.05rem", fontFamily: "var(--font-serif)", fontWeight: 600, color: "#3a332e", lineHeight: 1.3, margin: 0 }}>
+          {chunk.meaning}
+        </p>
 
-      {(chunk.literal || chunk.grammar) && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(201,122,90,0.16)" }}>
-          {chunk.literal && (
-            <p style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "#454039" }}>
-              <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Literal</span>
-              <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
-              {chunk.literal}
-            </p>
-          )}
-          {chunk.grammar && (
-            <p style={{ margin: 0, fontSize: "0.8rem", fontStyle: "italic", color: "#454039" }}>
-              <span style={{ fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Note</span>
-              <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
-              {chunk.grammar}
-            </p>
-          )}
-        </div>
-      )}
+        {(chunk.literal || chunk.grammar) && (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(201,122,90,0.16)" }}>
+            {chunk.literal && (
+              <p style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "#454039" }}>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Literal</span>
+                <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
+                {chunk.literal}
+              </p>
+            )}
+            {chunk.grammar && (
+              <p style={{ margin: 0, fontSize: "0.8rem", fontStyle: "italic", color: "#454039" }}>
+                <span style={{ fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Note</span>
+                <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
+                {chunk.grammar}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 
