@@ -218,7 +218,6 @@ export const TIERS: Record<TierId, TierConfig> = {
       dedicatedSupport:   true,
     },
     trialDays: 7,
-    badge: "Pro",
     highlighted: true,
   },
 }

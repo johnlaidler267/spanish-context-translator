@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, type ReactNode } from "react"
 import {
-  ArrowLeft, Check, BookOpen, Zap,
+  ArrowLeft, Check, BookOpen, GraduationCap,
   Loader2, CheckCircle2, AlertCircle, ExternalLink, RotateCcw,
 } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
@@ -46,15 +46,66 @@ import { PlanChangeDialog } from "@/components/plan-change-dialog"
 import { LegalDocLinks } from "@/components/legal-doc-links"
 import { supabase } from "@/lib/supabase"
 import { useSubscription } from "@/contexts/subscription-context"
+import { cn } from "@/lib/utils"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TIER_ICONS: Record<TierId, ReactNode> = {
   free: <BookOpen className="h-5 w-5" />,
-  pro:  <Zap className="h-5 w-5" />,
+  pro:  <GraduationCap className="h-5 w-5" />,
 }
 
 const TIER_RANK: Record<TierId, number> = { free: 0, pro: 1 }
+
+/** Neubrutalist CTA — thick border + hard offset shadow (matches pricing-card reference). */
+const UPGRADE_NEUBRUTAL_BTN =
+  "rounded-md border-[3px] border-foreground font-bold shadow-[4px_4px_0_0_var(--foreground)] " +
+  "transition-[transform,box-shadow] duration-150 ease-out " +
+  "hover:translate-x-px hover:translate-y-px hover:shadow-[3px_3px_0_0_var(--foreground)] " +
+  "active:translate-x-1 active:translate-y-1 active:shadow-none " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 " +
+  "disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:active:translate-x-0 disabled:active:translate-y-0"
+
+function upgradeTierButtonClassName(
+  tierId: TierId,
+  variant: "default" | "outline" | "secondary" | "destructive",
+): string {
+  if (variant === "destructive") {
+    return [
+      UPGRADE_NEUBRUTAL_BTN,
+      "bg-card text-destructive border-destructive",
+      "shadow-[4px_4px_0_0_var(--destructive)] hover:shadow-[3px_3px_0_0_var(--destructive)]",
+      "disabled:opacity-50",
+    ].join(" ")
+  }
+  if (variant === "default") {
+    if (tierId === "pro") {
+      return [
+        UPGRADE_NEUBRUTAL_BTN,
+        "bg-[#FDBB2D] text-foreground border-foreground hover:bg-[#f5b01a]",
+      ].join(" ")
+    }
+    return [UPGRADE_NEUBRUTAL_BTN, "bg-primary text-primary-foreground border-foreground"].join(" ")
+  }
+  if (
+    tierId === "free" &&
+    (variant === "outline" || variant === "secondary")
+  ) {
+    return [
+      "rounded-md border-2 border-border/90 bg-card text-foreground font-semibold text-sm",
+      "shadow-[2px_2px_0_0_var(--border)] transition-[transform,box-shadow] duration-150 ease-out",
+      "hover:translate-x-px hover:translate-y-px hover:shadow-[1px_1px_0_0_var(--border)]",
+      "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border focus-visible:ring-offset-2",
+      "disabled:opacity-50",
+    ].join(" ")
+  }
+  return [
+    UPGRADE_NEUBRUTAL_BTN,
+    "bg-card text-foreground border-foreground hover:bg-muted/40",
+    "disabled:opacity-50",
+  ].join(" ")
+}
 
 // ─── Subscription snapshot from DB ───────────────────────────────────────────
 
@@ -150,21 +201,48 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
 
-/** Free plan — feature lines under “Includes” (limit line rendered separately). */
-const FREE_TIER_INCLUDES: string[] = [
-  "Article mode — hover any word to understand it",
-  "Read mode — sentence by sentence, at your pace",
-  "Voice transcription",
-  "Sample texts to get started",
-]
+/** Free plan rows — feature + limit hint (numbers from `getTier("free")` at render). */
+function getFreeTierIncludeRows(): { feature: string; limitHint: string }[] {
+  const lim = getTier("free").limits
+  const day = lim.textsPerDay
+  const chars = lim.charsPerSubmission
+  const dayLabel =
+    day != null ? `${day} submission${day === 1 ? "" : "s"} per day` : "Daily submission cap"
+  const charsLabel =
+    chars != null
+      ? `Up to ${chars.toLocaleString()} characters per submission`
+      : "Character limit per submission"
 
-const FREE_TIER_LIMITS_LINE = "5 submissions per day · 600 characters per submission"
-
-const PRO_TIER_PLUS_HEADING = "Everything in free, plus"
+  return [
+    {
+      feature: "Article mode — hover any word to understand it",
+      limitHint: charsLabel,
+    },
+    {
+      feature: "Read mode — sentence by sentence, at your pace",
+      limitHint:
+        chars != null
+          ? `Same ${chars.toLocaleString()}-character cap each time`
+          : "Same per-submission length cap",
+    },
+    {
+      feature: "Voice transcription",
+      limitHint:
+        day != null ? `${dayLabel} (all modes combined)` : "Shared daily submission quota",
+    },
+    {
+      feature: "Sample texts to get started",
+      limitHint:
+        day != null ? `Uses your ${dayLabel}` : "Subject to plan submission limits",
+    },
+  ]
+}
 
 const PRO_TIER_PLUS: string[] = [
   "Unlimited submissions",
   "No character limit — paste full articles",
+  "Priority support",
+  "Grammar breakdowns"
 ]
 
 function tierBullets(tier: TierConfig): string[] {
@@ -379,37 +457,49 @@ function BillingToggle({
   interval: DbBillingInterval
   onChange: (v: DbBillingInterval) => void
 }) {
+  const pro = getTier("pro")
+  const monthlyLabel = formatPrice(pro.pricing.monthly.amountCents)
+  const annualPerMo = formatAnnualMonthlyEquivalent("pro")
+  const annualPriceNudge = `${monthlyLabel} → ${annualPerMo}/mo`
+
   return (
-    <div className="flex items-center justify-center gap-3 mb-10 font-sans text-sm">
-      <button
-        onClick={() => onChange("monthly")}
-        className={`px-3 py-1 rounded-full transition-colors ${
-          interval === "monthly"
-            ? "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        Monthly
-      </button>
-      <button
-        onClick={() => onChange("annual")}
-        className={`flex items-center gap-1.5 px-3 py-1 rounded-full transition-colors ${
-          interval === "annual"
-            ? "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        Annual
-        <span
-          className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-            interval === "annual"
-              ? "bg-primary-foreground/20 text-primary-foreground"
-              : "bg-primary/10 text-primary"
+    <div className="mb-10 flex flex-col items-center gap-2 font-sans text-sm">
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={() => onChange("monthly")}
+          aria-pressed={interval === "monthly"}
+          className={`px-3 py-1 rounded-full transition-colors ${
+            interval === "monthly"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Save up to 29%
-        </span>
-      </button>
+          Monthly
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange("annual")}
+          aria-pressed={interval === "annual"}
+          className={`flex items-center gap-1.5 rounded-full transition-colors ${
+            interval === "annual"
+              ? "bg-primary text-primary-foreground pl-3 pr-2 py-1"
+              : "text-muted-foreground hover:text-foreground px-3 py-1"
+          }`}
+        >
+          <span>Annual</span>
+          <span
+            className={cn(
+              "tabular-nums rounded px-1.5 py-0.5 text-[11px] font-bold leading-none sm:text-xs",
+              interval === "annual"
+                ? "bg-primary-foreground/20 text-primary-foreground"
+                : "bg-primary/10 text-primary",
+            )}
+          >
+            {annualPriceNudge}
+          </span>
+        </button>
+      </div>
     </div>
   )
 }
@@ -722,8 +812,8 @@ export default function UpgradePage() {
         <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
       </div>
 
-      <main className="relative z-[1] pb-16 px-4 md:px-6 [overflow-x:clip]">
-        <div className="max-w-4xl mx-auto [overflow-x:clip]">
+      <main className="relative z-[1] pb-16 px-4 md:px-6">
+        <div className="max-w-4xl mx-auto">
 
           <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -794,15 +884,16 @@ export default function UpgradePage() {
               <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 md:items-start">
+            <div className="flex flex-col gap-6 md:flex-row md:items-stretch">
               {TIER_IDS.map((id) => {
                 const tier        = getTier(id)
                 const isCurrent   = isCurrentPlanCard(sub, id, interval)
                 const isProcessing = processingTier === id
                 const anyProcessing = processingTier !== null
+                const freeIncludeRows = id === "free" ? getFreeTierIncludeRows() : null
                 const bullets =
                   id === "free"
-                    ? FREE_TIER_INCLUDES
+                    ? null
                     : id === "pro"
                       ? PRO_TIER_PLUS
                       : tierBullets(tier)
@@ -810,41 +901,109 @@ export default function UpgradePage() {
                 const pricing = interval === "annual" ? tier.pricing.annual : tier.pricing.monthly
                 const nonProPrice = id !== "pro" ? formatPrice(pricing.amountCents) : null
 
+                const bv = buttonVariant(id, sub, interval)
+                const isPro = id === "pro"
+                const isFree = id === "free"
+
                 return (
                   <Card
                     key={id}
                     className={[
-                      "relative bg-card border transition-all duration-200 ease-in-out",
-                      isCurrent
-                        ? "border-primary/60 ring-1 ring-primary/20"
-                        : tier.highlighted
-                          ? "border-primary shadow-sm"
-                          : "border-border hover:border-border/80",
+                      "relative flex min-h-0 w-full min-w-0 flex-1 flex-col rounded-lg bg-card text-card-foreground",
+                      isPro ? "overflow-visible" : "overflow-hidden",
+                      "transition-[transform,box-shadow] duration-200 ease-out",
+                      isPro
+                        ? [
+                            "border-[3px] border-primary z-[1]",
+                            "shadow-[6px_6px_0_0_var(--primary)]",
+                            "hover:-translate-x-px hover:-translate-y-px",
+                            "hover:shadow-[7px_7px_0_0_var(--primary)]",
+                          ].join(" ")
+                        : [
+                            "border-2 border-border/80",
+                            "shadow-[6px_6px_0_0_color-mix(in_oklab,var(--border)_85%,var(--foreground))]",
+                            "hover:-translate-x-px hover:-translate-y-px",
+                            "hover:border-border hover:shadow-[7px_7px_0_0_color-mix(in_oklab,var(--border)_85%,var(--foreground))]",
+                          ].join(" "),
                     ].join(" ")}
                   >
-                    {/* "Your plan" tag */}
+                    {isPro ? (
+                      <div
+                        className="h-1.5 w-full rounded-t-lg bg-[#FDBB2D] border-b border-foreground/15"
+                        aria-hidden
+                      />
+                    ) : null}
+
+                    {isPro && !isCurrent ? (
+                      <div
+                        className="pointer-events-none absolute right-2 top-2.5 z-[2] sm:right-3 sm:top-3"
+                        aria-hidden
+                      >
+                        <span
+                          className={
+                            "inline-block max-w-[11rem] text-center rounded-md border-2 border-foreground/25 " +
+                            "bg-[#FDBB2D] px-2.5 py-1 text-[10px] font-extrabold font-sans uppercase " +
+                            "tracking-wide text-foreground shadow-[2px_2px_0_0_var(--foreground)] " +
+                            "-rotate-2 sm:text-[11px]"
+                          }
+                        >
+                          Most popular
+                        </span>
+                      </div>
+                    ) : null}
+
+                    {/* "Your plan" — quiet on Free so Pro stays the visual hero */}
                     {isCurrent && (
-                      <div className="absolute -top-3 left-4">
-                        <span className="px-2.5 py-1 text-xs font-medium bg-background border border-primary/40 text-primary rounded-full">
+                      <div
+                        className={cn(
+                          "absolute left-3 z-[1] md:left-4",
+                          isPro ? "top-8 md:top-9" : "top-2.5 md:top-3",
+                        )}
+                      >
+                        <span
+                          className={
+                            isFree
+                              ? "px-2 py-0.5 text-[11px] font-medium font-sans rounded-full " +
+                                "bg-muted/50 text-muted-foreground border border-border/90"
+                              : "px-2.5 py-1 text-xs font-bold font-sans rounded-full " +
+                                "bg-[#FDBB2D]/90 text-foreground border-[3px] border-foreground " +
+                                "shadow-[2px_2px_0_0_var(--primary)]"
+                          }
+                        >
                           Your plan
                         </span>
                       </div>
                     )}
 
-                    {/* "Most popular" / badge (only when not current) */}
-                    {tier.badge && !isCurrent && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <span className="px-3 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full">
-                          {tier.badge}
+                    <CardHeader
+                      className={cn(
+                        "px-6 pb-4",
+                        isCurrent ? "pt-12" : isPro ? "pt-5" : "pt-6",
+                        isPro && !isCurrent && "pr-[7.5rem] sm:pr-[8rem]",
+                      )}
+                    >
+                      <div
+                        className={[
+                          "flex items-center gap-3 mb-3 flex-wrap",
+                          isFree ? "text-muted-foreground" : "text-foreground",
+                        ].join(" ")}
+                      >
+                        <span
+                          className={
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-card " +
+                            (isPro ? "border-primary text-primary" : "border-border text-muted-foreground")
+                          }
+                          aria-hidden
+                        >
+                          {TIER_ICONS[id]}
                         </span>
-                      </div>
-                    )}
-
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        {TIER_ICONS[id]}
-                        <span className="text-sm font-medium font-sans">
-                          {id === "pro" ? "Pro Plan" : tier.name}
+                        <span
+                          className={
+                            "min-w-0 font-sans tracking-tight " +
+                            (isPro ? "text-lg md:text-xl font-extrabold" : "text-base font-semibold")
+                          }
+                        >
+                          {isPro ? "Pro Plan" : tier.name}
                         </span>
                       </div>
 
@@ -852,7 +1011,7 @@ export default function UpgradePage() {
                       {id === "pro" ? (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-3xl font-serif text-foreground">
+                            <span className="text-4xl font-black font-sans tracking-tight text-foreground">
                               {formatPrice(
                                 interval === "annual"
                                   ? tier.pricing.annual.amountCents
@@ -881,8 +1040,10 @@ export default function UpgradePage() {
                       ) : (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-3xl font-serif text-foreground">{nonProPrice}</span>
-                            <span className="text-sm text-muted-foreground font-sans">/month</span>
+                            <span className="text-3xl font-extrabold font-sans tracking-tight text-foreground/90">
+                              {nonProPrice}
+                            </span>
+                            <span className="text-xs text-muted-foreground font-sans font-medium">/month</span>
                           </CardTitle>
 
                           {interval === "annual" && pricing.amountCents > 0 && (
@@ -905,7 +1066,7 @@ export default function UpgradePage() {
                       ) : null}
                     </CardHeader>
 
-                    <CardContent className="pt-0">
+                    <CardContent className="flex min-h-0 flex-1 flex-col pt-0">
                       {id === "free" && (
                         <p className="text-xs font-semibold font-sans text-muted-foreground uppercase tracking-wide mb-3">
                           Includes
@@ -913,52 +1074,84 @@ export default function UpgradePage() {
                       )}
                       {id === "pro" && (
                         <p className="text-xs font-semibold font-sans text-muted-foreground uppercase tracking-wide mb-3">
-                          {PRO_TIER_PLUS_HEADING}
+                          What you get
                         </p>
                       )}
-                      {/* Feature bullets */}
-                      <ul className={`space-y-2.5 ${id === "free" ? "mb-3" : "mb-6"}`}>
-                        {bullets.map((bullet) => (
-                          <li key={bullet} className="flex items-start gap-2 text-sm font-sans">
-                            <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                            <span className="text-foreground">{bullet}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      {id === "free" && (
-                        <p className="text-sm font-sans text-muted-foreground mb-6">
-                          {FREE_TIER_LIMITS_LINE}
-                        </p>
-                      )}
-
-                      {/* CTA button */}
-                      <Button
-                        onClick={() => handleSelectPlan(id)}
-                        disabled={isButtonDisabled(id, sub, anyProcessing)}
-                        variant={buttonVariant(id, sub, interval)}
-                        className="w-full font-sans"
-                      >
-                        {isProcessing ? (
-                          <span className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {buttonLabel(id, sub, interval, true)}
-                          </span>
-                        ) : (
-                          buttonLabel(id, sub, interval, false)
+                      {/* Feature bullets — flex-1 so CTAs align across cards */}
+                      <ul
+                        className={cn(
+                          "min-h-0 flex-1",
+                          freeIncludeRows ? "space-y-3.5" : "space-y-2.5",
                         )}
-                      </Button>
+                      >
+                        {freeIncludeRows
+                          ? freeIncludeRows.map((row) => (
+                              <li key={row.feature} className="flex items-start gap-2.5 text-sm font-sans">
+                                <span
+                                  className={cn(
+                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                                    "border-border text-muted-foreground",
+                                  )}
+                                  aria-hidden
+                                >
+                                  <Check className="h-3 w-3 stroke-[3]" />
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-foreground/90 leading-snug">{row.feature}</p>
+                                  <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground/85 font-normal">
+                                    {row.limitHint}
+                                  </p>
+                                </div>
+                              </li>
+                            ))
+                          : (bullets ?? []).map((bullet) => (
+                              <li key={bullet} className="flex items-start gap-2.5 text-sm font-sans">
+                                <span
+                                  className={cn(
+                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                                    isPro
+                                      ? "border-foreground text-foreground"
+                                      : "border-border text-muted-foreground",
+                                  )}
+                                  aria-hidden
+                                >
+                                  <Check className="h-3 w-3 stroke-[3]" />
+                                </span>
+                                <span className={isFree ? "text-foreground/85" : "text-foreground"}>
+                                  {bullet}
+                                </span>
+                              </li>
+                            ))}
+                      </ul>
 
-                      {/* Trial or cancellation notice */}
-                      {isCurrent && sub?.status === "trialing" && sub.trialEnd && (
-                        <p className="mt-2.5 text-center text-xs text-primary font-medium font-sans">
-                          Trial ends {formatDate(sub.trialEnd)}
-                        </p>
-                      )}
-                      {isCurrent && sub?.cancelAtPeriodEnd && sub.currentPeriodEnd && (
-                        <p className="mt-2.5 text-center text-xs text-amber-600 dark:text-amber-400 font-sans">
-                          Access until {formatDate(sub.currentPeriodEnd)}
-                        </p>
-                      )}
+                      <div className="mt-auto flex flex-col gap-4 pt-4">
+                        <Button
+                          onClick={() => handleSelectPlan(id)}
+                          disabled={isButtonDisabled(id, sub, anyProcessing)}
+                          variant={bv}
+                          className={["w-full font-sans", upgradeTierButtonClassName(id, bv)].join(" ")}
+                        >
+                          {isProcessing ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              {buttonLabel(id, sub, interval, true)}
+                            </span>
+                          ) : (
+                            buttonLabel(id, sub, interval, false)
+                          )}
+                        </Button>
+
+                        {isCurrent && sub?.status === "trialing" && sub.trialEnd && (
+                          <p className="text-center text-xs text-primary font-medium font-sans">
+                            Trial ends {formatDate(sub.trialEnd)}
+                          </p>
+                        )}
+                        {isCurrent && sub?.cancelAtPeriodEnd && sub.currentPeriodEnd && (
+                          <p className="text-center text-xs text-amber-600 dark:text-amber-400 font-sans">
+                            Access until {formatDate(sub.currentPeriodEnd)}
+                          </p>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 )
