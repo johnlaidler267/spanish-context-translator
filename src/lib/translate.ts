@@ -471,6 +471,10 @@ EXAMPLE GROUPING CATEGORIES (EXTRAPOLATE):
     {"c":"pensar en","m":"to think about","l":"think in","n":"Verb + preposition — pensar en, not pensar de."},
     {"c":"tratar de","m":"to try to","l":"treat of"},
 ]
+  "possessive pronouns": [
+    {"c":"el suyo","m":"his","l":"the his"},
+    {"c":"la nuestra","m":"ours","l":"the our"},
+  ]
 
   "proper_nouns": [
     {"c":"Héctor Bonilla","m":"Héctor Bonilla","l":"Héctor Bonilla"},
@@ -516,12 +520,6 @@ EXAMPLE GROUPING CATEGORIES (EXTRAPOLATE):
 
   "colloquial fixed expressions": [
     {"c":"pinta bien","m":"looks promising / looks good","l":"paints well"},
-  ]
-
-  "possessive pronouns": [
-    {"c":"el suyo","m":"his","l":"the his"},
-    {"c":"la tuya", "m":"yours","l":"the your"},
-    {"c":"la nuestra","m":"ours","l":"the our"},
   ]
 
 Return only a valid JSON array — no preamble, no markdown fences.
