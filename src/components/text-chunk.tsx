@@ -41,6 +41,11 @@ interface TextChunkProps {
    * Read mode keeps a compact callout.
    */
   variant?: "article" | "read"
+  /**
+   * Read mode: parent runs caret-based hit testing — skip per-span mouseenter/leave so
+   * overlapping inline boxes don’t mis-target hover.
+   */
+  delegatePointerHover?: boolean
 }
 
 interface PopupCoords {
@@ -131,6 +136,7 @@ export function TextChunk({
   onPinToggle,
   onRequestDetails,
   variant = "read",
+  delegatePointerHover = false,
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text.trim()}</span>
@@ -262,8 +268,8 @@ export function TextChunk({
   const popup = showTooltip && coords && (
     <div
       data-popup
-      onMouseEnter={onActivate}
-      onMouseLeave={onDeactivate}
+      onMouseEnter={variant === "read" ? undefined : onActivate}
+      onMouseLeave={variant === "read" ? undefined : onDeactivate}
       onTransitionEnd={handleTooltipTransitionEnd}
       style={{
         position: "fixed",
@@ -276,6 +282,8 @@ export function TextChunk({
         boxSizing: "border-box",
         transform: coords.placement === "above" ? "translateY(-100%)" : "none",
         zIndex: 9999,
+        /* Read mode: tooltip is visual-only — don’t steal mouse from sentence hit-testing */
+        pointerEvents: variant === "read" ? "none" : undefined,
         opacity: tooltipLeaving ? 0 : 1,
         transition: tooltipLeaving
           ? `opacity ${TOOLTIP_FADE_OUT_MS}ms ease-out`
@@ -360,8 +368,8 @@ export function TextChunk({
           onActivate()
           onRequestDetails?.()
         }}
-        onMouseEnter={onActivate}
-        onMouseLeave={onDeactivate}
+        onMouseEnter={delegatePointerHover ? undefined : onActivate}
+        onMouseLeave={delegatePointerHover ? undefined : onDeactivate}
         onTouchEnd={handleTouchEnd}
         onDoubleClick={(e) => {
           e.preventDefault()

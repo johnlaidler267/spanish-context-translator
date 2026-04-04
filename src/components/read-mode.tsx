@@ -1,11 +1,14 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { TextChunk, shouldGlueAfterPriorChunk } from "./text-chunk"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
+import {
+  getChunkIdFromPointerClientXY,
+  useChunkTouchExploration,
+} from "@/hooks/use-chunk-touch-exploration"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
@@ -78,6 +81,72 @@ export function ReadMode({
     sentences,
   ])
 
+  const pointerHoverRafRef = useRef<number | null>(null)
+  const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
+  const pointerLastIdRef = useRef<number | null>(null)
+
+  useLayoutEffect(() => {
+    const el = touchSurfaceRef.current
+    if (!el) return
+
+    const applyHit = (clientX: number, clientY: number) => {
+      const id = getChunkIdFromPointerClientXY(clientX, clientY, el)
+      if (id === pointerLastIdRef.current) return
+      pointerLastIdRef.current = id
+      setExploringChunkId((prev) => (prev === id ? prev : id))
+    }
+
+    const flushHitTest = () => {
+      pointerHoverRafRef.current = null
+      const p = pointerPendingRef.current
+      if (!p) return
+      applyHit(p.x, p.y)
+    }
+
+    const onMouseEnter = (e: MouseEvent) => {
+      pointerPendingRef.current = { x: e.clientX, y: e.clientY }
+      applyHit(e.clientX, e.clientY)
+    }
+
+    const onMouseMove = (e: MouseEvent) => {
+      pointerPendingRef.current = { x: e.clientX, y: e.clientY }
+      if (pointerHoverRafRef.current != null) return
+      pointerHoverRafRef.current = requestAnimationFrame(flushHitTest)
+    }
+
+    const onMouseLeave = (e: MouseEvent) => {
+      const rt = e.relatedTarget
+      if (
+        rt instanceof Element &&
+        (rt.closest("[data-popup]") || rt.closest("[data-details-box]"))
+      ) {
+        return
+      }
+      pointerPendingRef.current = null
+      pointerLastIdRef.current = null
+      if (pointerHoverRafRef.current != null) {
+        cancelAnimationFrame(pointerHoverRafRef.current)
+        pointerHoverRafRef.current = null
+      }
+      setExploringChunkId(null)
+    }
+
+    el.addEventListener("mouseenter", onMouseEnter, { passive: true })
+    el.addEventListener("mousemove", onMouseMove, { passive: true })
+    el.addEventListener("mouseleave", onMouseLeave)
+    return () => {
+      el.removeEventListener("mouseenter", onMouseEnter)
+      el.removeEventListener("mousemove", onMouseMove)
+      el.removeEventListener("mouseleave", onMouseLeave)
+      if (pointerHoverRafRef.current != null) {
+        cancelAnimationFrame(pointerHoverRafRef.current)
+        pointerHoverRafRef.current = null
+      }
+      pointerPendingRef.current = null
+      pointerLastIdRef.current = null
+    }
+  }, [readStepOffset, currentSentenceIndex])
+
   const effectivePopupId = useMemo(
     () => (exploringChunkId != null ? exploringChunkId : pinnedChunkId),
     [exploringChunkId, pinnedChunkId],
@@ -87,7 +156,6 @@ export function ReadMode({
 
   const currentSentence = sentences[currentSentenceIndex] ?? { id: 0, chunks: [] as ChunkData[] }
   const totalSentences = sentences.length
-
   /** Linear read position — changes on every sentence (and article page) so enter anim can run per step */
   const readEnterAnimKey = readStepOffset + currentSentenceIndex
   const { pageEnterStyle } = useReadingPageEnterAnimation(readEnterAnimKey)
@@ -281,6 +349,7 @@ export function ReadMode({
                 <TextChunk
                   chunk={chunk}
                   popupChunkId={effectivePopupId}
+                  delegatePointerHover
                   isTouchHighlight={exploringChunkId === chunk.id}
                   isPinned={pinnedChunkId === chunk.id}
                   onActivate={() => setExploringChunkId(chunk.id)}
