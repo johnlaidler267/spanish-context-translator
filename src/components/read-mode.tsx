@@ -73,6 +73,8 @@ export function ReadMode({
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
+  /** Desktop hover: viewport position for tooltip arrow (read mode delegates pointer to parent) */
+  const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
 
   const prevPageKeyRef = useRef(readPageKey)
 
@@ -80,6 +82,10 @@ export function ReadMode({
     currentSentenceIndex,
     sentences,
   ])
+
+  useEffect(() => {
+    if (touchExploring) setTooltipPointer(null)
+  }, [touchExploring])
 
   const pointerHoverRafRef = useRef<number | null>(null)
   const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
@@ -101,15 +107,19 @@ export function ReadMode({
       const p = pointerPendingRef.current
       if (!p) return
       applyHit(p.x, p.y)
+      setTooltipPointer({ x: p.x, y: p.y })
     }
 
     const onMouseEnter = (e: MouseEvent) => {
       pointerPendingRef.current = { x: e.clientX, y: e.clientY }
+      setTooltipPointer({ x: e.clientX, y: e.clientY })
       applyHit(e.clientX, e.clientY)
     }
 
     const onMouseMove = (e: MouseEvent) => {
       pointerPendingRef.current = { x: e.clientX, y: e.clientY }
+      // Update tooltip anchor every event; hit-test stays on rAF to avoid excess setState churn.
+      setTooltipPointer({ x: e.clientX, y: e.clientY })
       if (pointerHoverRafRef.current != null) return
       pointerHoverRafRef.current = requestAnimationFrame(flushHitTest)
     }
@@ -124,6 +134,7 @@ export function ReadMode({
       }
       pointerPendingRef.current = null
       pointerLastIdRef.current = null
+      setTooltipPointer(null)
       if (pointerHoverRafRef.current != null) {
         cancelAnimationFrame(pointerHoverRafRef.current)
         pointerHoverRafRef.current = null
@@ -350,6 +361,13 @@ export function ReadMode({
                   chunk={chunk}
                   popupChunkId={effectivePopupId}
                   delegatePointerHover
+                  followPointerClient={
+                    !touchExploring &&
+                    effectivePopupId === chunk.id &&
+                    tooltipPointer != null
+                      ? tooltipPointer
+                      : null
+                  }
                   isTouchHighlight={exploringChunkId === chunk.id}
                   isPinned={pinnedChunkId === chunk.id}
                   onActivate={() => setExploringChunkId(chunk.id)}

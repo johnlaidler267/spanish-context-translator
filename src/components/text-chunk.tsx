@@ -4,8 +4,8 @@ import {
   useState,
   useRef,
   useEffect,
-  useLayoutEffect,
   useCallback,
+  type MouseEvent,
   type TransitionEvent,
   type TouchEvent,
 } from "react"
@@ -46,6 +46,11 @@ interface TextChunkProps {
    * overlapping inline boxes don’t mis-target hover.
    */
   delegatePointerHover?: boolean
+  /**
+   * When set (e.g. read mode), tooltip arrow tracks this viewport position while the popup is open.
+   * Omit for article mode — pointer is read from `mousemove` on the chunk span instead.
+   */
+  followPointerClient?: { x: number; y: number } | null
 }
 
 interface PopupCoords {
@@ -58,10 +63,12 @@ interface PopupCoords {
   placement: "above" | "below"
 }
 
-const POPUP_WIDTH = 288
+const POPUP_WIDTH = 250
 const POPUP_EST_HEIGHT = 120
-/** Hover meaning card — slightly leisurely fade out (ms) */
-const TOOLTIP_FADE_OUT_MS = 380
+/** Hover meaning card — quick fade out (ms) */
+const TOOLTIP_FADE_OUT_MS = 20
+/** Tooltip box + arrow ease horizontally toward the pointer (ms) */
+const TOOLTIP_FOLLOW_POSITION_MS = 45
 /** Keep arrow diamond inside tooltip; min distance from edge to arrow center (px) */
 const ARROW_EDGE_INSET = 12
 
@@ -108,6 +115,30 @@ function getChunkLineRects(el: HTMLElement): { union: DOMRect; anchorLine: DOMRe
   return { union, anchorLine }
 }
 
+/**
+ * Line box that contains the pointer (wrapped chunks), else the line closest vertically to `clientY`.
+ */
+function lineRectForPointer(el: HTMLElement, clientX: number, clientY: number): { union: DOMRect; anchorLine: DOMRect } {
+  const base = getChunkLineRects(el)
+  const list = el.getClientRects()
+  let best: DOMRect | null = null
+  let bestDist = Infinity
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i]
+    if (r.width <= 0 && r.height <= 0) continue
+    if (clientY >= r.top && clientY <= r.bottom && clientX >= r.left && clientX <= r.right) {
+      return { union: base.union, anchorLine: r }
+    }
+    const midY = (r.top + r.bottom) / 2
+    const d = Math.abs(clientY - midY)
+    if (d < bestDist) {
+      bestDist = d
+      best = r
+    }
+  }
+  return { union: base.union, anchorLine: best ?? base.anchorLine }
+}
+
 /** True if chunk is only punctuation/symbols — should sit flush after the previous word in read mode */
 export function isPunctuationOnly(text: string): boolean {
   const t = text.trim()
@@ -137,6 +168,7 @@ export function TextChunk({
   onRequestDetails,
   variant = "read",
   delegatePointerHover = false,
+  followPointerClient = null,
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text.trim()}</span>
@@ -144,77 +176,136 @@ export function TextChunk({
 
   const isPopupOpen = popupChunkId === chunk.id
   const [coords, setCoords] = useState<PopupCoords | null>(null)
-  const [tooltipLeaving, setTooltipLeaving] = useState(false)
   const chunkRef = useRef<HTMLSpanElement>(null)
+  /** transitionend must not clear coords if user re-hovered before fade finished */
+  const isPopupOpenRef = useRef(isPopupOpen)
+  isPopupOpenRef.current = isPopupOpen
   const lastTapRef = useRef<{ t: number } | null>(null)
   const tapResetTimerRef = useRef<number | null>(null)
+  /** Last viewport pointer while this chunk’s tooltip is open — reflow scroll/resize */
+  const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
+  const pointerRafRef = useRef<number | null>(null)
+  const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
 
-  const calculateCoords = useCallback(() => {
-    if (!chunkRef.current) return
-    const { union, anchorLine } = getChunkLineRects(chunkRef.current)
-    const padding = 16
-    const vw = window.innerWidth
-    const tooltipWidth = POPUP_WIDTH
-    const gap = GAP_FROM_WORD[variant]
-    const edgeClearance = 16 + gap
+  const placeTooltip = useCallback(
+    (pointerX?: number | null, pointerY?: number | null) => {
+      if (!chunkRef.current) return
+      const el = chunkRef.current
+      const usePointer = pointerX != null && pointerY != null
+      if (usePointer) {
+        lastPointerRef.current = { x: pointerX, y: pointerY }
+      }
 
-    const wordCenterX = anchorLine.left + anchorLine.width * 0.48
+      const { union, anchorLine } = usePointer
+        ? lineRectForPointer(el, pointerX, pointerY)
+        : getChunkLineRects(el)
 
-    let tooltipLeft = wordCenterX - tooltipWidth / 2
-    tooltipLeft = Math.max(padding, Math.min(tooltipLeft, vw - padding - tooltipWidth))
+      const padding = 16
+      const vw = window.innerWidth
+      const tooltipWidth = POPUP_WIDTH
+      const gap = GAP_FROM_WORD[variant]
+      const edgeClearance = 16 + gap
 
-    const rawArrowCenter = wordCenterX - tooltipLeft
-    const arrowCenterX = Math.max(
-      ARROW_EDGE_INSET,
-      Math.min(tooltipWidth - ARROW_EDGE_INSET, rawArrowCenter),
-    )
+      const anchorX = usePointer
+        ? Math.max(anchorLine.left, Math.min(anchorLine.right, pointerX))
+        : anchorLine.left + anchorLine.width * 0.48
 
-    const spaceAbove = union.top
-    const spaceBelow = window.innerHeight - union.bottom
-    const placement =
-      spaceAbove < POPUP_EST_HEIGHT + edgeClearance && spaceBelow >= POPUP_EST_HEIGHT + edgeClearance
-        ? "below"
-        : "above"
+      let tooltipLeft = anchorX - tooltipWidth / 2
+      tooltipLeft = Math.max(padding, Math.min(tooltipLeft, vw - padding - tooltipWidth))
 
-    setCoords({
-      anchorTop: anchorLine.top,
-      anchorBottom: anchorLine.bottom,
-      tooltipLeft,
-      arrowCenterX,
-      placement,
-    })
-  }, [variant])
+      const rawArrowCenter = anchorX - tooltipLeft
+      const arrowCenterX = Math.max(
+        ARROW_EDGE_INSET,
+        Math.min(tooltipWidth - ARROW_EDGE_INSET, rawArrowCenter),
+      )
 
-  useLayoutEffect(() => {
-    if (!isPopupOpen && coords !== null) {
-      setTooltipLeaving(true)
-    }
-  }, [isPopupOpen, coords])
+      const spaceAbove = union.top
+      const spaceBelow = window.innerHeight - union.bottom
+      const placement =
+        spaceAbove < POPUP_EST_HEIGHT + edgeClearance && spaceBelow >= POPUP_EST_HEIGHT + edgeClearance
+          ? "below"
+          : "above"
+
+      setCoords({
+        anchorTop: anchorLine.top,
+        anchorBottom: anchorLine.bottom,
+        tooltipLeft,
+        arrowCenterX,
+        placement,
+      })
+    },
+    [variant],
+  )
+
+  const flushPendingPointer = useCallback(() => {
+    pointerRafRef.current = null
+    const p = pointerPendingRef.current
+    if (!p) return
+    placeTooltip(p.x, p.y)
+  }, [placeTooltip])
+
+  const schedulePlaceFromPointer = useCallback(
+    (clientX: number, clientY: number) => {
+      pointerPendingRef.current = { x: clientX, y: clientY }
+      if (pointerRafRef.current != null) return
+      pointerRafRef.current = requestAnimationFrame(flushPendingPointer)
+    },
+    [flushPendingPointer],
+  )
 
   useEffect(() => {
-    if (isPopupOpen) {
-      setTooltipLeaving(false)
-      calculateCoords()
-    } else if (coords === null) {
-      setTooltipLeaving(false)
+    if (!isPopupOpen) {
+      lastPointerRef.current = null
+      pointerPendingRef.current = null
+      if (pointerRafRef.current != null) {
+        cancelAnimationFrame(pointerRafRef.current)
+        pointerRafRef.current = null
+      }
+      return
     }
-  }, [isPopupOpen, calculateCoords, coords])
+    if (delegatePointerHover && followPointerClient) {
+      placeTooltip(followPointerClient.x, followPointerClient.y)
+    } else if (!delegatePointerHover) {
+      const p = lastPointerRef.current
+      placeTooltip(p?.x ?? null, p?.y ?? null)
+    } else {
+      placeTooltip(null, null)
+    }
+  }, [isPopupOpen, delegatePointerHover, followPointerClient, placeTooltip])
 
   useEffect(() => {
     if (!isPopupOpen) return
-    window.addEventListener("scroll", calculateCoords, { passive: true })
-    window.addEventListener("resize", calculateCoords)
-    return () => {
-      window.removeEventListener("scroll", calculateCoords)
-      window.removeEventListener("resize", calculateCoords)
+    const onReflow = () => {
+      const p = lastPointerRef.current
+      placeTooltip(p?.x ?? null, p?.y ?? null)
     }
-  }, [isPopupOpen, calculateCoords])
+    window.addEventListener("scroll", onReflow, { passive: true })
+    window.addEventListener("resize", onReflow)
+    return () => {
+      window.removeEventListener("scroll", onReflow)
+      window.removeEventListener("resize", onReflow)
+    }
+  }, [isPopupOpen, placeTooltip])
 
   useEffect(() => {
     return () => {
       if (tapResetTimerRef.current != null) window.clearTimeout(tapResetTimerRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    return () => {
+      if (pointerRafRef.current != null) cancelAnimationFrame(pointerRafRef.current)
+    }
+  }, [])
+
+  const handleChunkMouseMove = useCallback(
+    (e: MouseEvent<HTMLSpanElement>) => {
+      if (!isPopupOpen || delegatePointerHover) return
+      schedulePlaceFromPointer(e.clientX, e.clientY)
+    },
+    [isPopupOpen, delegatePointerHover, schedulePlaceFromPointer],
+  )
 
   const handleTouchEnd = useCallback(
     (e: TouchEvent) => {
@@ -252,18 +343,14 @@ export function TextChunk({
   const pad = 12
   const padX = 14
 
-  const showTooltip = coords !== null && (isPopupOpen || tooltipLeaving)
+  const showTooltip = coords !== null
 
-  const handleTooltipTransitionEnd = useCallback(
-    (e: TransitionEvent<HTMLDivElement>) => {
-      if (e.propertyName !== "opacity" || e.target !== e.currentTarget) return
-      if (tooltipLeaving && !isPopupOpen) {
-        setCoords(null)
-        setTooltipLeaving(false)
-      }
-    },
-    [isPopupOpen, tooltipLeaving],
-  )
+  const handleTooltipTransitionEnd = useCallback((e: TransitionEvent<HTMLDivElement>) => {
+    if (e.propertyName !== "opacity" || e.target !== e.currentTarget) return
+    if (!isPopupOpenRef.current) {
+      setCoords(null)
+    }
+  }, [])
 
   const popup = showTooltip && coords && (
     <div
@@ -284,10 +371,10 @@ export function TextChunk({
         zIndex: 9999,
         /* Read mode: tooltip is visual-only — don’t steal mouse from sentence hit-testing */
         pointerEvents: variant === "read" ? "none" : undefined,
-        opacity: tooltipLeaving ? 0 : 1,
-        transition: tooltipLeaving
-          ? `opacity ${TOOLTIP_FADE_OUT_MS}ms ease-out`
-          : undefined,
+        opacity: isPopupOpen ? 1 : 0,
+        transition: isPopupOpen
+          ? `left ${TOOLTIP_FOLLOW_POSITION_MS}ms linear, top ${TOOLTIP_FOLLOW_POSITION_MS}ms linear, opacity 0ms`
+          : `opacity ${TOOLTIP_FADE_OUT_MS}ms ease-out`,
         backgroundColor: "#f4efe9",
         border: "1px solid rgba(201, 122, 90, 0.28)",
         borderRadius: "4px",
@@ -307,6 +394,7 @@ export function TextChunk({
           width: arrowSize,
           height: arrowSize,
           left: coords.arrowCenterX,
+          transition: isPopupOpen ? `left ${TOOLTIP_FOLLOW_POSITION_MS}ms linear` : undefined,
           zIndex: 2,
           backgroundColor: "#f4efe9",
           borderLeft: "1px solid rgba(201,122,90,0.28)",
@@ -370,6 +458,7 @@ export function TextChunk({
         }}
         onMouseEnter={delegatePointerHover ? undefined : onActivate}
         onMouseLeave={delegatePointerHover ? undefined : onDeactivate}
+        onMouseMove={delegatePointerHover ? undefined : handleChunkMouseMove}
         onTouchEnd={handleTouchEnd}
         onDoubleClick={(e) => {
           e.preventDefault()
@@ -377,7 +466,7 @@ export function TextChunk({
         }}
         className={cn(
           /* Keep underline in the tree so decoration-color can fade (snap-off feels harsh) */
-          "cursor-pointer rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[1.5px]",
+          "cursor-pointer rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[3px]",
           "transition-[text-decoration-color,background-color] duration-700 ease-out md:duration-500",
           isPinned
             ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
