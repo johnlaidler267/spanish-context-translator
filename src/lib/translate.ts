@@ -683,7 +683,12 @@ function reconcileChunks(
     const chunk = normalizeRawChunk(raw as RawChunk)
     if (!chunk.chunk) continue
 
-    const idx = originalText.indexOf(chunk.chunk, pos)
+    // Allow one-boundary overlap so "de"+"el" in "del" (and similar splits) still align: after
+    // matching "de", `pos` sits on `l`; the next row "el" must match `el` inside "del", not a
+    // later substring like the one starting "ella".
+    const span = chunk.chunk
+    const searchStart = Math.max(0, pos - span.length + 1)
+    const idx = originalText.indexOf(span, searchStart)
     if (idx === -1) {
       result.push({ type: "chunk", ...chunk })
       continue
