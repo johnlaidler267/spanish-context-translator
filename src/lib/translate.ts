@@ -651,6 +651,27 @@ function shouldGlueAfterPriorChunkReadGlue(nextChunkText: string): boolean {
   return true
 }
 
+/**
+ * Attach closing punctuation/symbol-only chunks to the previous chunk so read mode does not
+ * show them as separate tappable tokens (also fixes desktop read steps that slice between word and `.`).
+ */
+function coalesceGlueablePunctuationChunks<
+  T extends { text: string; meaning?: string; literal?: string; grammar?: string },
+>(chunks: T[]): T[] {
+  if (chunks.length <= 1) return chunks
+  const out: T[] = [chunks[0]!]
+  for (let i = 1; i < chunks.length; i++) {
+    const c = chunks[i]!
+    if (shouldGlueAfterPriorChunkReadGlue(c.text)) {
+      const prev = out[out.length - 1]!
+      prev.text += c.text
+    } else {
+      out.push(c)
+    }
+  }
+  return out
+}
+
 export function splitIntoSentences(items: ReconciledItem[]) {
   const sentences: { id: number; chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> }[] = []
   let currentChunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> = []
@@ -704,7 +725,14 @@ export function splitIntoSentences(items: ReconciledItem[]) {
   if (currentChunks.length > 0) {
     sentences.push({ id: sentences.length, chunks: currentChunks })
   }
-  return sentences
+  let nextChunkId = 0
+  return sentences.map((s) => ({
+    ...s,
+    chunks: coalesceGlueablePunctuationChunks(s.chunks.map((c) => ({ ...c }))).map((c) => ({
+      ...c,
+      id: nextChunkId++,
+    })),
+  }))
 }
 
 /**
@@ -1110,11 +1138,20 @@ export function subdivideReadStepsForDesktop(
         pos = partEnd
       }
 
-      if (stepChunks.length > 0) {
+      const merged = coalesceGlueablePunctuationChunks(stepChunks.map((c) => ({ ...c })))
+      if (merged.length === 1 && shouldGlueAfterPriorChunkReadGlue(merged[0]!.text) && out.length > 0) {
+        const prevChunks = out[out.length - 1]!.chunks
+        if (prevChunks.length > 0) {
+          prevChunks[prevChunks.length - 1]!.text += merged[0]!.text
+          sliceStart = b
+          continue
+        }
+      }
+      if (merged.length > 0) {
         out.push({
           id: nextSentenceId++,
           sourcePageIndex: page,
-          chunks: stepChunks,
+          chunks: merged.map((c) => ({ ...c, id: chunkId++ })),
         })
       }
       sliceStart = b
