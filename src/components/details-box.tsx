@@ -1,11 +1,10 @@
 "use client"
 
 /**
- * DetailsBox — fixed bottom sheet that shows grammar details for a clicked chunk.
+ * DetailsBox — fixed bottom sheet for grammar details (no dimmed backdrop).
  *
  * Portals to `document.body` so `position:fixed` isn’t warped by a transformed
- * ancestor (e.g. reading shell `animate-fade-in-up`). One `motion` root + AnimatePresence
- * so dismiss is a single opacity tween (avoids iOS flicker from two parallel scrim/sheet fades).
+ * ancestor. Dismiss: X button or tap/click outside (`[data-details-box]` in parents).
  */
 
 import { createPortal } from "react-dom"
@@ -22,6 +21,7 @@ const EASE_IN_DISMISS: [number, number, number, number] = [0.42, 0, 1, 1]
 const DURATION_IN_S = 0.24
 const DURATION_OUT_S = 0.18
 const SLIDE_IN_PX = 14
+const SLIDE_OUT_PX = 12
 
 interface DetailsBoxProps {
   activeChunk: string | null
@@ -47,7 +47,7 @@ export function DetailsBox({
     reduceMotion
       ? { duration: 0 }
       : { duration: DURATION_IN_S, ease: EASE_OUT_DECEL }
-  const exitOverlay =
+  const exitMotion =
     reduceMotion
       ? { duration: 0 }
       : { duration: DURATION_OUT_S, ease: EASE_IN_DISMISS }
@@ -60,75 +60,61 @@ export function DetailsBox({
         <motion.div
           key="details-overlay"
           data-details-box
-          className="fixed inset-0 z-[70] pointer-events-none"
-          initial={false}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: exitOverlay }}
+          className={cn(
+            "fixed bottom-0 left-0 right-0 z-[70] flex justify-center px-0",
+            "pointer-events-none",
+            className,
+          )}
+          initial={{ y: SLIDE_IN_PX, opacity: 0 }}
+          animate={{ y: 0, opacity: 1, transition: enter }}
+          exit={{
+            y: SLIDE_OUT_PX,
+            opacity: 0,
+            transition: exitMotion,
+          }}
         >
-          <button
-            type="button"
-            aria-label="Dismiss details"
+          <div
             className={cn(
-              "absolute inset-0 z-0 border-0 p-0 cursor-default pointer-events-auto",
-              "bg-[rgba(0,0,0,0.18)] dark:bg-[rgba(0,0,0,0.45)]",
+              "pointer-events-auto w-full max-w-[700px] rounded-t-xl",
+              "bg-[#f9f5ef] dark:bg-[#1e1b18]",
+              "border border-b-0 border-[rgba(201,122,90,0.22)] dark:border-[rgba(201,122,90,0.15)]",
+              "shadow-[0_-4px_24px_rgba(0,0,0,0.10)]",
             )}
-            onClick={e => {
-              e.stopPropagation()
-              onClose()
-            }}
-          />
+          >
+            <div className="flex items-center gap-3 px-5 pt-4 pb-3">
+              <BookOpen className="h-4 w-4 shrink-0 text-[#c97a5a] opacity-80 block" aria-hidden />
+              <span
+                className="flex-1 min-w-0 font-serif text-lg leading-snug text-foreground truncate -translate-y-[3px]"
+                title={activeChunk ?? ""}
+              >
+                {activeChunk}
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close details"
+                className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <X className="h-4 w-4 block" />
+              </button>
+            </div>
 
-          <div className="absolute bottom-0 left-0 right-0 z-[1] flex justify-center pointer-events-none">
-            <motion.div
-              className={cn(
-                "pointer-events-auto w-full max-w-[700px] rounded-t-xl",
-                "bg-[#f9f5ef] dark:bg-[#1e1b18]",
-                "border border-b-0 border-[rgba(201,122,90,0.22)] dark:border-[rgba(201,122,90,0.15)]",
-                "shadow-[0_-4px_24px_rgba(0,0,0,0.10)]",
-                className,
+            <div className="px-5 pb-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] min-h-[3.5rem]">
+              {loading && (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm font-sans">
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
+                  <span>Looking up…</span>
+                </div>
               )}
-              initial={{ y: SLIDE_IN_PX, opacity: 0 }}
-              animate={{ y: 0, opacity: 1, transition: enter }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-3 px-5 pt-4 pb-3">
-                <BookOpen className="h-4 w-4 shrink-0 text-[#c97a5a] opacity-80 block" aria-hidden />
-                <span
-                  className="flex-1 min-w-0 font-serif text-lg leading-snug text-foreground truncate -translate-y-[3px]"
-                  title={activeChunk ?? ""}
-                >
-                  {activeChunk}
-                </span>
-                <button
-                  type="button"
-                  onClick={e => {
-                    e.stopPropagation()
-                    onClose()
-                  }}
-                  aria-label="Close details"
-                  className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                >
-                  <X className="h-4 w-4 block" />
-                </button>
-              </div>
 
-              <div className="px-5 pb-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] min-h-[3.5rem]">
-                {loading && (
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm font-sans">
-                    <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
-                    <span>Looking up…</span>
-                  </div>
-                )}
+              {error && !loading && (
+                <p className="text-sm font-sans text-muted-foreground italic">{error}</p>
+              )}
 
-                {error && !loading && (
-                  <p className="text-sm font-sans text-muted-foreground italic">{error}</p>
-                )}
-
-                {detail && !loading && !error && (
-                  <DetailContent detail={detail} />
-                )}
-              </div>
-            </motion.div>
+              {detail && !loading && !error && (
+                <DetailContent detail={detail} />
+              )}
+            </div>
           </div>
         </motion.div>
       )}
