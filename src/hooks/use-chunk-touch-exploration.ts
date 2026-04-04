@@ -173,6 +173,8 @@ export function getChunkIdFromPointerClientXY(
   return getChunkIdFromPoint(clientX, clientY)
 }
 
+export type TouchPointerClient = { x: number; y: number }
+
 /**
  * Touch down = show tooltip for word under thumb; drag = follow word under finger;
  * lift = hide. (Press-and-explore — not tap-to-toggle per word.)
@@ -181,6 +183,10 @@ export function useChunkTouchExploration(
   setActiveChunkId: Dispatch<SetStateAction<number | null>>,
   dep0: unknown,
   dep1?: unknown,
+  options?: {
+    /** Viewport coords for tooltip arrow while dragging (same role as mouse on desktop). */
+    onTouchPointerClient?: (pt: TouchPointerClient | null) => void
+  },
 ) {
   const ref = useRef<HTMLDivElement>(null)
   const touchExploringRef = useRef(false)
@@ -188,6 +194,8 @@ export function useChunkTouchExploration(
   const pendingPointRef = useRef<{ x: number; y: number } | null>(null)
   const rafRef = useRef<number | null>(null)
   const [touchExploring, setTouchExploring] = useState(false)
+  const onTouchPointerRef = useRef(options?.onTouchPointerClient)
+  onTouchPointerRef.current = options?.onTouchPointerClient
 
   useLayoutEffect(() => {
     const el = ref.current
@@ -208,6 +216,7 @@ export function useChunkTouchExploration(
       touchExploringRef.current = true
       setTouchExploring(true)
       pendingPointRef.current = { x: t.clientX, y: t.clientY }
+      onTouchPointerRef.current?.({ x: t.clientX, y: t.clientY })
       const id = getChunkIdFromPoint(t.clientX, t.clientY)
       lastEmittedIdRef.current = id
       setActiveChunkId(id)
@@ -218,6 +227,7 @@ export function useChunkTouchExploration(
       e.preventDefault()
       const tt = e.touches[0]
       pendingPointRef.current = { x: tt.clientX, y: tt.clientY }
+      onTouchPointerRef.current?.({ x: tt.clientX, y: tt.clientY })
       if (rafRef.current != null) return
       rafRef.current = requestAnimationFrame(() => {
         rafRef.current = null
@@ -229,6 +239,7 @@ export function useChunkTouchExploration(
       if (!touchExploringRef.current) return
       touchExploringRef.current = false
       setTouchExploring(false)
+      onTouchPointerRef.current?.(null)
       lastEmittedIdRef.current = null
       setActiveChunkId(null)
       pendingPointRef.current = null
@@ -249,6 +260,7 @@ export function useChunkTouchExploration(
       el.removeEventListener("touchend", endTouchExploration)
       el.removeEventListener("touchcancel", endTouchExploration)
       touchExploringRef.current = false
+      onTouchPointerRef.current?.(null)
       setTouchExploring(false)
     }
   }, [setActiveChunkId, dep0, dep1])

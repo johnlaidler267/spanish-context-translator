@@ -110,11 +110,8 @@ export function ReadMode({
     commitExploringChunkId,
     currentSentenceIndex,
     sentences,
+    { onTouchPointerClient: setTooltipPointer },
   )
-
-  useEffect(() => {
-    if (touchExploring) setTooltipPointer(null)
-  }, [touchExploring])
 
   const pointerHoverRafRef = useRef<number | null>(null)
   const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
@@ -407,9 +404,7 @@ export function ReadMode({
                   popupChunkId={effectivePopupId}
                   delegatePointerHover
                   followPointerClient={
-                    !touchExploring &&
-                    effectivePopupId === chunk.id &&
-                    tooltipPointer != null
+                    effectivePopupId === chunk.id && tooltipPointer != null
                       ? tooltipPointer
                       : null
                   }

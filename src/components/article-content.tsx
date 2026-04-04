@@ -94,11 +94,8 @@ export function ArticleContent({
     commitExploringChunkId,
     items,
     pageKey,
+    { onTouchPointerClient: setTooltipPointer },
   )
-
-  useEffect(() => {
-    if (touchExploring) setTooltipPointer(null)
-  }, [touchExploring])
 
   useLayoutEffect(() => {
     const el = touchSurfaceRef.current
@@ -293,9 +290,7 @@ export function ArticleContent({
                     popupChunkId={effectivePopupId}
                     delegatePointerHover
                     followPointerClient={
-                      !touchExploring &&
-                      effectivePopupId === id &&
-                      tooltipPointer != null
+                      effectivePopupId === id && tooltipPointer != null
                         ? tooltipPointer
                         : null
                     }

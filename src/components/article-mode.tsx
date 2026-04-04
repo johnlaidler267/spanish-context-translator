@@ -65,11 +65,12 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
 
   useEffect(() => () => cancelExploringLeaveTimer(), [cancelExploringLeaveTimer])
 
-  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(commitExploringChunkId, chunks)
-
-  useEffect(() => {
-    if (touchExploring) setTooltipPointer(null)
-  }, [touchExploring])
+  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
+    commitExploringChunkId,
+    chunks,
+    undefined,
+    { onTouchPointerClient: setTooltipPointer },
+  )
 
   useLayoutEffect(() => {
     const el = touchSurfaceRef.current
@@ -195,9 +196,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
               popupChunkId={effectivePopupId}
               delegatePointerHover
               followPointerClient={
-                !touchExploring &&
-                effectivePopupId === chunk.id &&
-                tooltipPointer != null
+                effectivePopupId === chunk.id && tooltipPointer != null
                   ? tooltipPointer
                   : null
               }
