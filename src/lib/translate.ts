@@ -729,6 +729,11 @@ function shouldGlueAfterPriorChunkReadGlue(nextChunkText: string): boolean {
   return true
 }
 
+/** Reconcile gaps that are only spaces + closing punct (e.g. ` , ` between “fue” and “a”). */
+function isClosingPunctuationOnlyGap(s: string): boolean {
+  return /^\s*[,.;:!?…]+(?:\s*[,.;:!?…]+)*\s*$/u.test(s)
+}
+
 /**
  * Attach closing punctuation/symbol-only chunks to the previous chunk so read mode does not
  * show them as separate tappable tokens (also fixes desktop read steps that slice between word and `.`).
@@ -784,6 +789,15 @@ export function coalesceGlueablePunctuationReconciledItems(
       continue
     }
 
+    if (
+      last?.type === "chunk" &&
+      isClosingPunctuationOnlyGap(pendingText) &&
+      !shouldGlueAfterPriorChunkReadGlue(span)
+    ) {
+      last.chunk += pendingText
+      pendingText = ""
+    }
+
     flushPendingText()
     out.push({
       type: "chunk",
@@ -810,6 +824,14 @@ export function splitIntoSentences(items: ReconciledItem[]) {
       continue
     }
     const span = typeof item.chunk === "string" ? item.chunk : String(item.chunk ?? "")
+    if (
+      currentChunks.length > 0 &&
+      isClosingPunctuationOnlyGap(pendingBetween) &&
+      !shouldGlueAfterPriorChunkReadGlue(span)
+    ) {
+      currentChunks[currentChunks.length - 1]!.text += pendingBetween
+      pendingBetween = ""
+    }
     const prefix = shouldGlueAfterPriorChunkReadGlue(span)
       ? pendingBetween.replace(/\s+$/, "")
       : pendingBetween

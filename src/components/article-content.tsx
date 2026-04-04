@@ -185,13 +185,31 @@ export function ArticleContent({
     }
   }, [pageKey, cancelExploringLeaveTimer])
 
-  const effectivePopupId = useMemo(
-    () => (exploringChunkId != null ? exploringChunkId : pinnedChunkId),
-    [exploringChunkId, pinnedChunkId],
-  )
-
-  // Details box state
+  // Details box state (used below for effectivePopupId — keep highlight + tooltip while sheet is open)
   const chunkDetails = useChunkDetails()
+
+  /** When the grammar sheet is open, keep the same chunk “active” even if hover exploration cleared. */
+  const detailsAnchoredChunkId = useMemo(() => {
+    const key = chunkDetails.activeChunk?.trim()
+    if (!key || !items) return null
+    let cid = 0
+    for (const it of items) {
+      if (it.type !== "chunk") continue
+      if (it.chunk === chunkDetails.activeChunk) return cid
+      cid++
+    }
+    return null
+  }, [chunkDetails.activeChunk, items])
+
+  const effectivePopupId = useMemo(
+    () =>
+      exploringChunkId != null
+        ? exploringChunkId
+        : pinnedChunkId != null
+          ? pinnedChunkId
+          : detailsAnchoredChunkId,
+    [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId],
+  )
   const { pageEnterStyle } = useReadingPageEnterAnimation(pageKey)
 
   /** Reconstruct full page text for LLM sentence context */
@@ -313,7 +331,10 @@ export function ArticleContent({
                         ? tooltipPointer
                         : null
                     }
-                    isTouchHighlight={exploringChunkId === id}
+                    isTouchHighlight={
+                      exploringChunkId === id ||
+                      (chunkDetails.activeChunk != null && chunkDetails.activeChunk === item.chunk)
+                    }
                     isPinned={pinnedChunkId === id}
                     onActivate={() => commitExploringChunkId(id)}
                     onDeactivate={() => {

@@ -207,14 +207,29 @@ export function ReadMode({
     }
   }, [readStepOffset, currentSentenceIndex, cancelGapClearExplore])
 
-  const effectivePopupId = useMemo(
-    () => (exploringChunkId != null ? exploringChunkId : pinnedChunkId),
-    [exploringChunkId, pinnedChunkId],
-  )
-
   const chunkDetails = useChunkDetails()
 
   const currentSentence = sentences[currentSentenceIndex] ?? { id: 0, chunks: [] as ChunkData[] }
+
+  /** Keep tooltip + underline on the word that opened the grammar sheet. */
+  const detailsAnchoredChunkId = useMemo(() => {
+    const key = chunkDetails.activeChunk?.trim()
+    if (!key) return null
+    for (const ch of currentSentence.chunks) {
+      if (ch.text === chunkDetails.activeChunk) return ch.id
+    }
+    return null
+  }, [chunkDetails.activeChunk, currentSentence.chunks])
+
+  const effectivePopupId = useMemo(
+    () =>
+      exploringChunkId != null
+        ? exploringChunkId
+        : pinnedChunkId != null
+          ? pinnedChunkId
+          : detailsAnchoredChunkId,
+    [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId],
+  )
   const totalSentences = sentences.length
   /** Linear read position — changes on every sentence (and article page) so enter anim can run per step */
   const readEnterAnimKey = readStepOffset + currentSentenceIndex
@@ -428,7 +443,10 @@ export function ReadMode({
                       ? tooltipPointer
                       : null
                   }
-                  isTouchHighlight={exploringChunkId === chunk.id}
+                  isTouchHighlight={
+                    exploringChunkId === chunk.id ||
+                    (chunkDetails.activeChunk != null && chunkDetails.activeChunk === chunk.text)
+                  }
                   isPinned={pinnedChunkId === chunk.id}
                   onActivate={() => commitExploringChunkId(chunk.id)}
                   onDeactivate={() => {
