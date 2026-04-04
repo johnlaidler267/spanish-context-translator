@@ -34,7 +34,7 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="pointer-events-auto text-foreground hover:bg-muted/50 -ml-2 min-h-11 min-w-11 max-md:min-h-[2.75rem] max-md:min-w-[2.75rem] max-md:px-3 max-md:h-11 max-md:w-11 [&_svg]:max-md:h-5 [&_svg]:max-md:w-5"
+          className="back-nav-control pointer-events-auto text-foreground hover:bg-muted/50 -ml-2 min-h-11 min-w-11 max-md:min-h-[2.75rem] max-md:min-w-[2.75rem] max-md:px-3 max-md:h-11 max-md:w-11 [&_svg]:max-md:h-5 [&_svg]:max-md:w-5"
         >
           <ArrowLeft className="h-4 w-4 mr-1.5 max-md:mr-0" />
           <span className="hidden sm:inline text-sm font-sans">Inicio</span>

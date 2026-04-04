@@ -46,6 +46,26 @@
   animation: levitate 4s ease-in-out infinite;
 }
 
+/* Back navigation — arrow slides left with a slight overshoot (BackToHomeLink, reading header) */
+.back-nav-control svg {
+  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center;
+}
+.back-nav-control:hover svg,
+.back-nav-control:focus-visible svg {
+  transform: translateX(-6px) scale(1.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back-nav-control svg {
+    transition: none;
+  }
+  .back-nav-control:hover svg,
+  .back-nav-control:focus-visible svg {
+    transform: none;
+  }
+}
+
 /* Shell height: CSS viewport units only — do NOT bind to visualViewport.height (keyboard shrinks it and creates a gap below). */
 @layer utilities {
   .min-h-app {

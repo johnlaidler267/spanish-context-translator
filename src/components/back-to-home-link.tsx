@@ -2,6 +2,7 @@
 
 import { useNavigate } from "react-router-dom"
 import { beginRouteTransition } from "@/lib/route-transition-shell"
+import { cn } from "@/lib/utils"
 
 type Props = {
   className?: string
@@ -17,7 +18,7 @@ export function BackToHomeLink({ className, children }: Props) {
   return (
     <a
       href="/"
-      className={className}
+      className={cn("back-nav-control", className)}
       onClick={(e) => {
         e.preventDefault()
         beginRouteTransition(560)
