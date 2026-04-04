@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { Sun, Moon, Settings2 } from "lucide-react"
+import { Sun, Moon, Settings2, Loader2 } from "lucide-react"
 import { useSubscription } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
 import { getTier } from "@/lib/tiers"
@@ -25,6 +25,8 @@ type PlanPill =
   | { mode: "link"; to: string; primary: string; secondary: string }
   | { mode: "signin"; primary: string; secondary: string }
 
+type LinkPlanPill = Extract<PlanPill, { mode: "link" }>
+
 const GUEST_PLAN_PILL: PlanPill = {
   mode: "signin",
   primary: "Sign in",
@@ -40,11 +42,11 @@ function planPillFromRow(row: {
   plan_id: string
   status: string
   trial_end: string | null
-} | null): PlanPill {
+} | null): LinkPlanPill {
   const toSettingsBilling = "/settings?tab=billing"
   const toUpgrade = "/upgrade"
   /** Logged-in user with no subscription row yet — treat as free tier in UI. */
-  const authenticatedFreePill: PlanPill = {
+  const authenticatedFreePill: LinkPlanPill = {
     mode: "link",
     to: toUpgrade,
     primary: "Free Plan",
@@ -90,24 +92,33 @@ function planPillFromRow(row: {
   return authenticatedFreePill
 }
 
+function PlanBadgeLoading() {
+  return (
+    <span
+      className="inline-flex items-center justify-center gap-2 min-h-[1.25em] min-w-[5.5rem]"
+      aria-busy="true"
+      aria-label="Loading plan"
+    >
+      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground opacity-70" aria-hidden />
+    </span>
+  )
+}
+
 /** Landing plan pill — subscription copy from DB; `useSubscription` invalidates when status changes. */
 function PlanBadgeContent() {
   const { status: ctxStatus } = useSubscription()
-  const { openAuthModal } = useAuth()
-  const [pill, setPill] = useState<PlanPill>(GUEST_PLAN_PILL)
+  const { user, isLoading: authLoading, openAuthModal } = useAuth()
+  const [pill, setPill] = useState<LinkPlanPill | null>(null)
 
   useEffect(() => {
+    if (!user) {
+      setPill(null)
+      return
+    }
+
     let cancelled = false
 
     void (async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (cancelled) return
-
-      if (!user) {
-        setPill(GUEST_PLAN_PILL)
-        return
-      }
-
       const { data } = await supabase
         .from("user_subscriptions")
         .select("plan_id, status, trial_end")
@@ -122,7 +133,42 @@ function PlanBadgeContent() {
     return () => {
       cancelled = true
     }
-  }, [ctxStatus])
+  }, [user?.id, ctxStatus])
+
+  if (authLoading) {
+    return <PlanBadgeLoading />
+  }
+
+  if (!user) {
+    const guest = GUEST_PLAN_PILL
+    const inner = (
+      <>
+        <span className="plan-badge-lead">
+          <span className="plan-badge-plan">{guest.primary}</span>
+          {guest.secondary ? (
+            <span className="plan-badge-dot" aria-hidden>
+              ·
+            </span>
+          ) : null}
+        </span>
+        {guest.secondary ? <span className="plan-badge-upgrade">{guest.secondary}</span> : null}
+      </>
+    )
+    return (
+      <button
+        type="button"
+        className="contents cursor-pointer text-left border-0 bg-transparent p-0 [font:inherit] text-inherit"
+        onClick={() => openAuthModal()}
+        aria-label="Sign in"
+      >
+        {inner}
+      </button>
+    )
+  }
+
+  if (pill === null) {
+    return <PlanBadgeLoading />
+  }
 
   const inner = (
     <>
@@ -137,19 +183,6 @@ function PlanBadgeContent() {
       {pill.secondary ? <span className="plan-badge-upgrade">{pill.secondary}</span> : null}
     </>
   )
-
-  if (pill.mode === "signin") {
-    return (
-      <button
-        type="button"
-        className="contents cursor-pointer text-left border-0 bg-transparent p-0 [font:inherit] text-inherit"
-        onClick={() => openAuthModal()}
-        aria-label="Sign in"
-      >
-        {inner}
-      </button>
-    )
-  }
 
   return (
     <Link to={pill.to} className="contents">

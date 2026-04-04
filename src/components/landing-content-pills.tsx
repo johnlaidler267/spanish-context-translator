@@ -26,7 +26,11 @@ export function LandingContentPills({
   const busy = disabled || randomPending || learnPending
 
   const neuPress =
-    "transition-all shadow-[3px_3px_0px_black] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px] dark:shadow-[3px_3px_0px_rgba(232,228,220,0.28)]"
+    "transition-all shadow-[3px_3px_0px_black] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] " +
+    "active:shadow-none active:translate-x-[3px] active:translate-y-[3px] " +
+    "dark:shadow-[4px_4px_0px_rgba(232,228,220,0.45)] " +
+    "dark:hover:shadow-none dark:hover:translate-x-[3px] dark:hover:translate-y-[3px] " +
+    "dark:active:shadow-none dark:active:translate-x-[3px] dark:active:translate-y-[3px]"
 
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>

@@ -57,14 +57,20 @@ const TIER_ICONS: Record<TierId, ReactNode> = {
 
 const TIER_RANK: Record<TierId, number> = { free: 0, pro: 1 }
 
-/** Neubrutalist CTA — thick border + hard offset shadow (matches pricing-card reference). */
-const UPGRADE_NEUBRUTAL_BTN =
-  "rounded-md border-[3px] border-foreground font-bold shadow-[4px_4px_0_0_var(--foreground)] " +
-  "transition-[transform,box-shadow] duration-150 ease-out " +
-  "hover:translate-x-px hover:translate-y-px hover:shadow-[3px_3px_0_0_var(--foreground)] " +
-  "active:translate-x-1 active:translate-y-1 active:shadow-none " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 " +
-  "disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:active:translate-x-0 disabled:active:translate-y-0"
+/**
+ * Same press/hover motion as homepage Random / Learn pills
+ * ([landing-content-pills.tsx](src/components/landing-content-pills.tsx) `neuPress`).
+ */
+const UPGRADE_PILL_PRESS =
+  "transition-all shadow-[3px_3px_0px_black] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] " +
+  "active:shadow-none active:translate-x-[3px] active:translate-y-[3px] " +
+  /* dark:shadow + plain hover:shadow-none fight in the cascade — dark:hover/active must be explicit */
+  "dark:shadow-[4px_4px_0px_rgba(232,228,220,0.45)] " +
+  "dark:hover:shadow-none dark:hover:translate-x-[3px] dark:hover:translate-y-[3px] " +
+  "dark:active:shadow-none dark:active:translate-x-[3px] dark:active:translate-y-[3px]"
+
+const UPGRADE_TIER_BTN_FOCUS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35 focus-visible:ring-offset-2"
 
 function upgradeTierButtonClassName(
   tierId: TierId,
@@ -72,20 +78,29 @@ function upgradeTierButtonClassName(
 ): string {
   if (variant === "destructive") {
     return [
-      UPGRADE_NEUBRUTAL_BTN,
-      "bg-card text-destructive border-destructive",
-      "shadow-[4px_4px_0_0_var(--destructive)] hover:shadow-[3px_3px_0_0_var(--destructive)]",
+      "rounded-md border-[3px] border-destructive font-bold",
+      UPGRADE_PILL_PRESS,
+      UPGRADE_TIER_BTN_FOCUS,
+      "bg-card text-destructive",
       "disabled:opacity-50",
     ].join(" ")
   }
   if (variant === "default") {
     if (tierId === "pro") {
       return [
-        UPGRADE_NEUBRUTAL_BTN,
-        "bg-[#FDBB2D] text-foreground border-foreground hover:bg-[#f5b01a]",
+        "rounded-md border-[3px] border-foreground font-bold",
+        UPGRADE_PILL_PRESS,
+        UPGRADE_TIER_BTN_FOCUS,
+        "bg-[#FDBB2D] text-foreground hover:bg-[#f5b01a]",
+        "dark:border-[rgba(234,224,213,0.22)] dark:bg-primary dark:text-primary-foreground dark:hover:bg-[#c97a5a]",
       ].join(" ")
     }
-    return [UPGRADE_NEUBRUTAL_BTN, "bg-primary text-primary-foreground border-foreground"].join(" ")
+    return [
+      "rounded-md border-[3px] border-foreground font-bold",
+      UPGRADE_PILL_PRESS,
+      UPGRADE_TIER_BTN_FOCUS,
+      "bg-primary text-primary-foreground",
+    ].join(" ")
   }
   if (
     tierId === "free" &&
@@ -93,16 +108,17 @@ function upgradeTierButtonClassName(
   ) {
     return [
       "rounded-md border-2 border-border/90 bg-card text-foreground font-semibold text-sm",
-      "shadow-[2px_2px_0_0_var(--border)] transition-[transform,box-shadow] duration-150 ease-out",
-      "hover:translate-x-px hover:translate-y-px hover:shadow-[1px_1px_0_0_var(--border)]",
-      "active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border focus-visible:ring-offset-2",
+      UPGRADE_PILL_PRESS,
+      UPGRADE_TIER_BTN_FOCUS,
+      "hover:border-[#c97a5a]/35 hover:bg-[#faf8f5] dark:hover:border-[#c97a5a]/30 dark:hover:bg-[#22211e]",
       "disabled:opacity-50",
     ].join(" ")
   }
   return [
-    UPGRADE_NEUBRUTAL_BTN,
-    "bg-card text-foreground border-foreground hover:bg-muted/40",
+    "rounded-md border-[3px] border-foreground font-bold",
+    UPGRADE_PILL_PRESS,
+    UPGRADE_TIER_BTN_FOCUS,
+    "bg-card text-foreground hover:bg-muted/40",
     "disabled:opacity-50",
   ].join(" ")
 }
@@ -932,6 +948,10 @@ export default function UpgradePage() {
                             "shadow-[6px_6px_0_0_var(--primary)]",
                             "hover:-translate-x-px hover:-translate-y-px",
                             "hover:shadow-[7px_7px_0_0_var(--primary)]",
+                            "dark:border-[#c97a5a]/55",
+                            "dark:shadow-[5px_5px_0_0_rgba(176,107,86,0.32)]",
+                            "dark:hover:border-[#c97a5a]/70",
+                            "dark:hover:shadow-[6px_6px_0_0_rgba(201,122,90,0.38)]",
                           ].join(" ")
                         : [
                             "border-2 border-border/80",
@@ -943,7 +963,7 @@ export default function UpgradePage() {
                   >
                     {isPro ? (
                       <div
-                        className="h-1.5 w-full rounded-t-lg bg-[#FDBB2D] border-b border-foreground/15"
+                        className="h-1.5 w-full rounded-t-lg bg-[#FDBB2D] border-b border-foreground/15 dark:bg-primary dark:border-b-white/10"
                         aria-hidden
                       />
                     ) : null}
@@ -958,6 +978,8 @@ export default function UpgradePage() {
                             "inline-block max-w-[11rem] text-center rounded-md border-2 border-foreground/25 " +
                             "bg-[#FDBB2D] px-2.5 py-1 text-[10px] font-extrabold font-sans uppercase " +
                             "tracking-wide text-foreground shadow-[2px_2px_0_0_var(--foreground)] " +
+                            "dark:border-[rgba(234,224,213,0.28)] dark:bg-primary dark:text-primary-foreground " +
+                            "dark:shadow-[2px_2px_0_0_rgba(234,224,213,0.14)] " +
                             "-rotate-2 sm:text-[11px]"
                           }
                         >
@@ -981,7 +1003,9 @@ export default function UpgradePage() {
                                 "bg-muted/50 text-muted-foreground border border-border/90"
                               : "px-2.5 py-1 text-xs font-bold font-sans rounded-full " +
                                 "bg-[#FDBB2D]/90 text-foreground border-[3px] border-foreground " +
-                                "shadow-[2px_2px_0_0_var(--primary)]"
+                                "shadow-[2px_2px_0_0_var(--primary)] " +
+                                "dark:border-[rgba(234,224,213,0.28)] dark:bg-primary dark:text-primary-foreground " +
+                                "dark:shadow-[2px_2px_0_0_rgba(176,107,86,0.45)]"
                           }
                         >
                           Your plan
@@ -1005,7 +1029,9 @@ export default function UpgradePage() {
                         <span
                           className={
                             "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-card " +
-                            (isPro ? "border-primary text-primary" : "border-border text-muted-foreground")
+                            (isPro
+                              ? "border-primary text-primary dark:border-[#c97a5a]/70 dark:text-[rgba(234,224,213,0.88)]"
+                              : "border-border text-muted-foreground")
                           }
                           aria-hidden
                         >
@@ -1124,7 +1150,7 @@ export default function UpgradePage() {
                                   className={cn(
                                     "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
                                     isPro
-                                      ? "border-foreground text-foreground"
+                                      ? "border-foreground text-foreground dark:border-[#c97a5a]/55 dark:text-[rgba(234,224,213,0.82)]"
                                       : "border-border text-muted-foreground",
                                   )}
                                   aria-hidden
