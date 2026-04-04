@@ -11,6 +11,7 @@ import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
+import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
 
 export type ArticlePaginationState = {
   pageIndex: number
@@ -58,6 +59,7 @@ export function ArticleContent({
 
   // Details box state
   const chunkDetails = useChunkDetails()
+  const { pageEnterClassName, onPageEnterAnimationEnd } = useReadingPageEnterAnimation(pageKey)
 
   /** Reconstruct full page text for LLM sentence context */
   const pageText = useMemo(() => {
@@ -110,10 +112,12 @@ export function ArticleContent({
       ) : null}
       <article
         ref={touchSurfaceRef}
+        onAnimationEnd={onPageEnterAnimationEnd}
         className={cn(
           "font-serif text-xl md:text-2xl leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
           "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
+          pageEnterClassName,
         )}
       >
         {loading && (

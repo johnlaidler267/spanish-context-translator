@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { TextChunk, shouldGlueAfterPriorChunk } from "./text-chunk"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { useChunkTouchExploration } from "@/hooks/use-chunk-touch-exploration"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
+import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
 
 interface ChunkData {
   id: number
@@ -82,6 +84,7 @@ export function ReadMode({
   )
 
   const chunkDetails = useChunkDetails()
+  const { pageEnterClassName, onPageEnterAnimationEnd } = useReadingPageEnterAnimation(readPageKey)
 
   const currentSentence = sentences[currentSentenceIndex] ?? { id: 0, chunks: [] as ChunkData[] }
   const totalSentences = sentences.length
@@ -259,9 +262,12 @@ export function ReadMode({
         )}
         <div
           ref={touchSurfaceRef}
-          className={`block w-full font-serif text-3xl md:text-5xl lg:text-6xl max-md:leading-[1.52] md:leading-snug text-center text-foreground text-balance selection:bg-primary/20 ${
-            touchExploring ? "touch-none select-none" : ""
-          }`}
+          onAnimationEnd={onPageEnterAnimationEnd}
+          className={cn(
+            "block w-full font-serif text-3xl md:text-5xl lg:text-6xl max-md:leading-[1.52] md:leading-snug text-center text-foreground text-balance selection:bg-primary/20",
+            touchExploring && "touch-none select-none",
+            pageEnterClassName,
+          )}
         >
           {currentSentence.chunks.map((chunk: ChunkData, index: number) => {
             const next = currentSentence.chunks[index + 1]
