@@ -106,10 +106,11 @@ export function ReadMode({
     [cancelGapClearExplore],
   )
 
-  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(commitExploringChunkId, [
+  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
+    commitExploringChunkId,
     currentSentenceIndex,
     sentences,
-  ])
+  )
 
   useEffect(() => {
     if (touchExploring) setTooltipPointer(null)

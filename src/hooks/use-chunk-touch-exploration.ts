@@ -179,7 +179,8 @@ export function getChunkIdFromPointerClientXY(
  */
 export function useChunkTouchExploration(
   setActiveChunkId: Dispatch<SetStateAction<number | null>>,
-  effectDeps: unknown[],
+  dep0: unknown,
+  dep1?: unknown,
 ) {
   const ref = useRef<HTMLDivElement>(null)
   const touchExploringRef = useRef(false)
@@ -250,7 +251,7 @@ export function useChunkTouchExploration(
       touchExploringRef.current = false
       setTouchExploring(false)
     }
-  }, [setActiveChunkId, ...effectDeps])
+  }, [setActiveChunkId, dep0, dep1])
 
   useLayoutEffect(() => {
     if (touchExploring) {

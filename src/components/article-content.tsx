@@ -90,10 +90,11 @@ export function ArticleContent({
 
   useEffect(() => () => cancelExploringLeaveTimer(), [cancelExploringLeaveTimer])
 
-  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(commitExploringChunkId, [
+  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
+    commitExploringChunkId,
     items,
     pageKey,
-  ])
+  )
 
   useEffect(() => {
     if (touchExploring) setTooltipPointer(null)

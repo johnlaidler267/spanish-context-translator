@@ -65,7 +65,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
 
   useEffect(() => () => cancelExploringLeaveTimer(), [cancelExploringLeaveTimer])
 
-  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(commitExploringChunkId, [chunks])
+  const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(commitExploringChunkId, chunks)
 
   useEffect(() => {
     if (touchExploring) setTooltipPointer(null)
