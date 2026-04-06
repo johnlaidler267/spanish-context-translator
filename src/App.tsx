@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
-import { Link, Navigate, Route, Routes } from "react-router-dom"
+import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom"
 import SettingsPage from "@/pages/settings"
 import { LandingScreen } from "./components/landing-screen"
 import { LoadingOverlay } from "./components/loading-overlay"
@@ -9,7 +9,6 @@ import { ReadingHeader } from "./components/reading-header"
 import { ArticleContent } from "./components/article-content"
 import { ReadMode } from "./components/read-mode"
 import { SubscriptionLapsedModal } from "./components/subscription-lapsed-modal"
-import { LockedView } from "./components/locked-view"
 import { useSubscription } from "./contexts/subscription-context"
 import {
   buildSentencePages,
@@ -51,6 +50,7 @@ const ENFORCE_USAGE_LIMITS =
   !IS_LOCAL_DEV || import.meta.env.VITE_ENFORCE_USAGE_IN_DEV === "true"
 
 export default function App() {
+  const navigate = useNavigate()
   const { isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
   const { user, isLoading: authLoading } = useAuth()
 
@@ -118,10 +118,14 @@ export default function App() {
     return () => mq.removeEventListener("change", sync)
   }, [])
 
+  const dismissLapsedModalAndGoHome = useCallback(() => {
+    dismissPopup()
+    navigate("/", { replace: true })
+  }, [dismissPopup, navigate])
+
   const handleTextSubmit = useCallback(
     async (text: string, options?: { wikipediaArticleTitle?: string }) => {
       if (!text.trim()) return
-      if (!IS_LOCAL_DEV && isLapsed) return
 
       // Guests: no track-usage — cap anonymous previews in localStorage (guest_tries_used).
       if (!user && hasReachedGuestLimit()) {
@@ -253,7 +257,7 @@ export default function App() {
         setAppState("landing")
       }
     },
-    [isLapsed, user, bump, articlePageSplitLimits],
+    [user, bump, articlePageSplitLimits],
   )
 
   const handleBack = useCallback(() => {
@@ -343,15 +347,6 @@ export default function App() {
 
   const viewportMain =
     "min-h-app flex flex-col max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden overflow-hidden"
-
-  if (!IS_LOCAL_DEV && isLapsed) {
-    return (
-      <div className={`min-h-app bg-background ${viewportMain}`}>
-        {!popupDismissed && <SubscriptionLapsedModal onDismiss={dismissPopup} />}
-        <LockedView />
-      </div>
-    )
-  }
 
   if (authLoading || subscriptionLoading) {
     return (
@@ -549,6 +544,12 @@ export default function App() {
 
   return (
     <>
+      {!IS_LOCAL_DEV && isLapsed && !popupDismissed && (
+        <SubscriptionLapsedModal
+          onDismiss={dismissLapsedModalAndGoHome}
+          onDismissForUpgrade={dismissPopup}
+        />
+      )}
       <GuestSignupModal open={guestSignupOpen} onClose={() => setGuestSignupOpen(false)} />
       <Routes>
         <Route path="/settings" element={<SettingsPage />} />

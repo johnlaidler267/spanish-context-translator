@@ -6,9 +6,13 @@ import { Button } from "@/components/ui/button"
 
 interface SubscriptionLapsedModalProps {
   onDismiss: () => void
+  onDismissForUpgrade: () => void
 }
 
-export function SubscriptionLapsedModal({ onDismiss }: SubscriptionLapsedModalProps) {
+export function SubscriptionLapsedModal({
+  onDismiss,
+  onDismissForUpgrade,
+}: SubscriptionLapsedModalProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -36,7 +40,7 @@ export function SubscriptionLapsedModal({ onDismiss }: SubscriptionLapsedModalPr
         </p>
 
         <div className="mt-6 flex flex-col gap-3">
-          <Link to="/settings" onClick={onDismiss}>
+          <Link to="/upgrade" onClick={onDismissForUpgrade}>
             <Button className="w-full">View pricing plans</Button>
           </Link>
           <Button
