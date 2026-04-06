@@ -12,6 +12,7 @@ import { SubscriptionLapsedModal } from "./components/subscription-lapsed-modal"
 import { useSubscription } from "./contexts/subscription-context"
 import {
   buildSentencePages,
+  clampPageLimitsForLlmBatching,
   mergeArticlePagesIfWholeTextFitsLimits,
   mergeReconciledPagesToSentences,
   pageSourceText,
@@ -150,13 +151,14 @@ export default function App() {
           window.matchMedia("(max-width: 767px)").matches
         const pageLimits = articlePageSplitLimits
         const hasMobileHeading = isMobile && Boolean(heading)
-        const effectivePageLimits = hasMobileHeading
+        const rawEffectiveLimits = hasMobileHeading
           ? {
               maxWords: Math.max(800, Math.round(pageLimits.maxWords * 0.84)),
               // Extra margin: in-flow title uses body space the char probe does not reserve.
               maxChars: Math.round(pageLimits.maxChars * 0.84 * 0.88),
             }
           : pageLimits
+        const effectivePageLimits = clampPageLimitsForLlmBatching(rawEffectiveLimits)
         let pages = buildSentencePages(sents, effectivePageLimits)
         if (pages.length === 0) pages = [[trimmed]]
         pages = mergeArticlePagesIfWholeTextFitsLimits(

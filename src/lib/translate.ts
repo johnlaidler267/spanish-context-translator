@@ -59,7 +59,23 @@ const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
  * and always tripped TPM — unrelated to how short the user’s Spanish is.
  * 4k further reduces “requested” TPM vs 5k; if you still see 429s, wait or upgrade Groq.
  */
-const TRANSLATE_MAX_COMPLETION_TOKENS =6000
+const TRANSLATE_MAX_COMPLETION_TOKENS = 6000
+
+/**
+ * Spanish character budget for a single `translatePageText` completion.
+ * {@link PageSplitLimits.maxChars} comes from viewport fill and can be several thousand; per-word
+ * chunk JSON is far larger than the source, so one “screen-sized” paste must not always mean one API call.
+ * Tune down if `finish_reason: length` or long plain tails persist; up slightly if article pages feel too fragmented.
+ */
+export const LLM_CHUNK_INPUT_CHAR_CAP = 1800
+
+/** Clamp DOM-measured {@link PageSplitLimits} so each batch stays within {@link LLM_CHUNK_INPUT_CHAR_CAP}. */
+export function clampPageLimitsForLlmBatching(limits: PageSplitLimits): PageSplitLimits {
+  return {
+    maxWords: limits.maxWords,
+    maxChars: Math.min(limits.maxChars, LLM_CHUNK_INPUT_CHAR_CAP),
+  }
+}
 
 async function parseChatJsonErrorBody(res: Response): Promise<string> {
   try {
@@ -188,6 +204,11 @@ function combineAssistantPayloadsForChunkParse(data: unknown): string {
   const r = msg.reasoning
   if (typeof r === "string" && r.trim()) parts.push(r.trim())
   return parts.join("\n\n")
+}
+
+function chatFinishReasonFromOpenAiStylePayload(data: unknown): string | undefined {
+  const fr = (data as { choices?: Array<{ finish_reason?: string }> })?.choices?.[0]?.finish_reason
+  return typeof fr === "string" ? fr : undefined
 }
 
 /**
@@ -427,7 +448,13 @@ const PROMPT = (input: string) => `You are a Spanish to english tutor. Break the
 
 Each chunk: {"c": Spanish, "m": English meaning in context, "l": word-for-word, "n": grammar note — omit key entirely if obvious}
 
+CRITICAL — the "c" field (Spanish):
+- It must be copied verbatim from the source text below: exact same characters, accents, line-break joins (as single spaces), odd spellings, OCR noise, old orthography, and typos. The UI finds each chunk with a string search.
+- Never put a "corrected" or modernized spelling in "c". If you want to note what the word probably should be, say that only in "n" or "l", while "c" stays exactly what appears in the source.
+
 Default to one word per chunk. Never chunk punctuation.
+
+Keep optional "n" (grammar notes) very short (about one line each). Long notes make the JSON too large and the response can be cut off before the whole Spanish source is chunked.
 
 EXAMPLE GROUPING CATEGORIES (EXTRAPOLATE):
 {
@@ -522,7 +549,9 @@ EXAMPLE GROUPING CATEGORIES (EXTRAPOLATE):
   ]
 
 Return only a valid JSON array — no preamble, no markdown fences.
-Text: "${input}"`
+
+Spanish source (chunk the Spanish below; line breaks in the original are normalized to single spaces — still match letters and punctuation exactly):
+${input}`
 
 /** LLM JSON uses short keys (c,m,l,n); internal pipeline uses long names. */
 export type RawChunk = {
@@ -671,6 +700,24 @@ function tryUnwrapEmbeddedReconciledJson(
     return items
   } catch {
     return null
+  }
+}
+
+/**
+ * Last-line guard when a completion is still truncated (verbose model, cap mis-tuned, or missing `finish_reason`).
+ * Distinct from viewport pagination: {@link LLM_CHUNK_INPUT_CHAR_CAP} should keep batches small enough that this rarely fires.
+ */
+function assertReconcileDidNotLeaveLongPlainTail(items: ReconciledItem[], sourceLen: number): void {
+  if (items.length === 0 || sourceLen < 120) return
+  const last = items[items.length - 1]!
+  if (last.type !== "text") return
+  const tail = last.text
+  if (!/[\p{L}]/u.test(tail)) return
+  const minSuspicious = Math.max(160, Math.floor(sourceLen * 0.09))
+  if (tail.length >= minSuspicious) {
+    throw new Error(
+      "Chunking was cut off mid-page (model output limit). Tap Retry on this article page; if it keeps happening, lower LLM_CHUNK_INPUT_CHAR_CAP or raise TRANSLATE_MAX_COMPLETION_TOKENS.",
+    )
   }
 }
 
@@ -1051,14 +1098,18 @@ export function pageSourceText(pageSentences: string[]): string {
 }
 
 /**
- * After `buildSentencePages`, use one LLM page when the full article fits the same
- * char budget. Static mobile fallback uses a low word cap (~68) *and* a char cap; the
- * word check can split into two pages even when the whole text still fits under
- * `maxChars`, leaving a tiny or confusing second page. DOM-measured limits rarely
- * hit this because `maxWords` is huge and only `maxChars` binds.
+ * After `buildSentencePages`, optionally merge into a single `translatePageText` batch on desktop.
  *
- * On mobile, merging to a single page is skipped when multiple batches already exist:
- * one tall page clips under `overflow-y` layout and would hide the pagination footer.
+ * Merge only when the full paste fits **both** (a) the incoming `limits.maxChars` (already clamped for LLM
+ * via {@link clampPageLimitsForLlmBatching} at the call site) and (b) {@link LLM_CHUNK_INPUT_CHAR_CAP}
+ * defensively here so callers never collapse more Spanish into one completion than the model can chunk.
+ *
+ * Static mobile fallback uses a low word cap (~68) *and* a char cap; the word check can split into two
+ * pages even when the whole text still fits under `maxChars`, leaving a tiny second page. DOM-measured
+ * limits rarely hit that because `maxWords` is huge and only `maxChars` binds.
+ *
+ * On mobile, merging to a single page is skipped when multiple batches already exist: one tall page clips
+ * under `overflow-y` layout and would hide the pagination footer.
  */
 export function mergeArticlePagesIfWholeTextFitsLimits(
   pages: string[][],
@@ -1076,7 +1127,8 @@ export function mergeArticlePagesIfWholeTextFitsLimits(
     return nonEmpty
   }
 
-  if (t.length > 0 && t.length <= limits.maxChars) {
+  const mergeBudget = Math.min(limits.maxChars, LLM_CHUNK_INPUT_CHAR_CAP)
+  if (t.length > 0 && t.length <= mergeBudget) {
     return [[t]]
   }
   return nonEmpty
@@ -1084,8 +1136,14 @@ export function mergeArticlePagesIfWholeTextFitsLimits(
 
 /** Single LLM call: chunk JSON → reconciled items for one page of source text. */
 export async function translatePageText(input: string): Promise<ReconciledItem[]> {
-  const systemContent = "You are an intuitive spanish language chunking expert."
-  const userContent = PROMPT(input)
+  const canonical = squashWsForReconcileCompare(input)
+  if (!canonical) {
+    throw new Error("No text to translate.")
+  }
+
+  const systemContent =
+    "You are an intuitive Spanish chunking expert. Every JSON \"c\" value must be an exact contiguous substring of the user's Spanish (after runs of whitespace are single spaces): same letters, accents, and apparent errors—never substitute cleaned-up or modernized spellings in \"c\"; use \"m\", \"l\", or \"n\" for glosses and commentary."
+  const userContent = PROMPT(canonical)
 
   const base = {
     model: translateModel(),
@@ -1109,6 +1167,12 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   }
 
   const data = await res.json()
+  const finish = chatFinishReasonFromOpenAiStylePayload(data)
+  if (finish === "length") {
+    throw new Error(
+      "The model hit its output limit before finishing chunking this page. Tap Retry, or adjust LLM_CHUNK_INPUT_CHAR_CAP / TRANSLATE_MAX_COMPLETION_TOKENS if this is frequent.",
+    )
+  }
   const raw = combineAssistantPayloadsForChunkParse(data)
   console.log("[translatePageText] assistant text", raw)
   const parsed = extractChunkJsonArrayFromText(raw)
@@ -1120,7 +1184,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   }
 
   if (chunks.length === 1) {
-    const unwrapped = tryUnwrapEmbeddedReconciledJson(chunks[0]!.chunk, input)
+    const unwrapped = tryUnwrapEmbeddedReconciledJson(chunks[0]!.chunk, canonical)
     if (unwrapped) {
       if (!unwrapped.some((item) => item.type === "chunk")) {
         throw new Error(
@@ -1131,12 +1195,13 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     }
   }
 
-  const reconciled = reconcileChunks(chunks, input)
+  const reconciled = reconcileChunks(chunks, canonical)
   if (!reconciled.some((item) => item.type === "chunk")) {
     throw new Error(
       "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
     )
   }
+  assertReconcileDidNotLeaveLongPlainTail(reconciled, canonical.length)
   return coalesceGlueablePunctuationReconciledItems(reconciled)
 }
 

@@ -176,6 +176,39 @@ export function shouldGlueAfterPriorChunk(nextChunkText: string): boolean {
   return true
 }
 
+const HAS_LETTER_OR_NUMBER = /\p{L}|\p{N}/u
+
+/**
+ * Leading/trailing glue (spaces, ¿, commas, etc.) stays outside the underlined span;
+ * letters/numbers and spaces *between* them stay inside so multi-word chunks still read as one unit.
+ */
+function splitChunkTextForUnderline(text: string): { prefix: string; underline: string; suffix: string } {
+  if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
+    const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    const graphemes = Array.from(segmenter.segment(text), (s) => s.segment)
+    let i = 0
+    while (i < graphemes.length && !HAS_LETTER_OR_NUMBER.test(graphemes[i]!)) i++
+    let j = graphemes.length
+    while (j > i && !HAS_LETTER_OR_NUMBER.test(graphemes[j - 1]!)) j--
+    return {
+      prefix: graphemes.slice(0, i).join(""),
+      underline: graphemes.slice(i, j).join(""),
+      suffix: graphemes.slice(j).join(""),
+    }
+  }
+  const chars = [...text]
+  const isWordish = (c: string) => /^[\p{L}\p{M}\p{N}]$/u.test(c)
+  let i = 0
+  while (i < chars.length && !isWordish(chars[i]!)) i++
+  let j = chars.length
+  while (j > i && !isWordish(chars[j - 1]!)) j--
+  return {
+    prefix: chars.slice(0, i).join(""),
+    underline: chars.slice(i, j).join(""),
+    suffix: chars.slice(j).join(""),
+  }
+}
+
 export function TextChunk({
   chunk,
   popupChunkId,
@@ -397,6 +430,9 @@ export function TextChunk({
   const gap = GAP_FROM_WORD[variant]
   const arrowSize = ARROW_BOX[variant]
 
+  const { prefix, underline, suffix } = splitChunkTextForUnderline(chunk.text)
+  const underlineText = underline.length > 0 ? underline : chunk.text
+
   /**
    * Inner padding so the title/body never sit under the rotated diamond (half sits inside the card).
    * Finger clearance vs the word uses `gap` only — no separate stem (stem + % positioning broke on “below”).
@@ -535,18 +571,24 @@ export function TextChunk({
           e.preventDefault()
           onPinToggle?.()
         }}
-        className={cn(
-          /* Keep underline in the tree so decoration-color can fade (snap-off feels harsh) */
-          "cursor-pointer rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[3px]",
-          "transition-[text-decoration-color,background-color] duration-700 ease-out md:duration-500",
-          isPinned
-            ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
-            : isTouchHighlight
-              ? "text-foreground decoration-[#c97a5a]/60 bg-transparent"
-              : "text-foreground decoration-transparent",
-        )}
+        className="inline cursor-pointer"
       >
-        {chunk.text}
+        {prefix ? <span>{prefix}</span> : null}
+        <span
+          className={cn(
+            /* Keep underline in the tree so decoration-color can fade (snap-off feels harsh) */
+            "rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[3px]",
+            "transition-[text-decoration-color,background-color] duration-700 ease-out md:duration-500",
+            isPinned
+              ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
+              : isTouchHighlight
+                ? "text-foreground decoration-[#c97a5a]/60 bg-transparent"
+                : "text-foreground decoration-transparent",
+          )}
+        >
+          {underlineText}
+        </span>
+        {suffix ? <span>{suffix}</span> : null}
       </span>
 
       {typeof document !== "undefined" && popup && createPortal(popup, document.body)}
