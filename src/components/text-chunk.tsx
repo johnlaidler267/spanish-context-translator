@@ -527,7 +527,7 @@ export function TextChunk({
         className="chunk-tooltip-body"
         key={chunk.id != null ? `c${chunk.id}-${chunk.meaning}` : `${chunk.text}-${chunk.meaning}`}
       >
-        <p style={{ fontSize: "1.05rem", fontFamily: "var(--font-serif)", fontWeight: 600, color: "#3a332e", lineHeight: 1.3, margin: 0 }}>
+        <p style={{ fontSize: "1.05rem", fontFamily: "var(--font-reading)", fontWeight: 600, color: "#3a332e", lineHeight: 1.3, margin: 0 }}>
           {chunk.meaning}
         </p>
 

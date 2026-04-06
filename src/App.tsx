@@ -461,16 +461,8 @@ export default function App() {
 
     readingHome = (
       <main
-        className={`min-h-app bg-background ${viewportMain}${
-          readingTheme === "light" ? " reading-main-paper-light" : ""
-        }`}
-        style={{
-          ...(readingTheme === "light" ? {
-            backgroundImage: "linear-gradient(rgba(255,252,247,0.5), rgba(255,252,247,0.5)), url(/paper-texture.png)",
-            backgroundSize: "auto, 600px auto",
-          } : {}),
-          maxHeight: "100dvh",
-        }}
+        className={`min-h-app bg-background ${viewportMain}`}
+        style={{ maxHeight: "100dvh" }}
       >
         <div className="shrink-0">
           <ReadingHeader

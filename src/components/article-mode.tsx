@@ -191,7 +191,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
       <article
         ref={touchSurfaceRef}
         className={cn(
-          "font-serif text-[1.5625rem] md:text-2xl leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
+          "font-reading text-[1.5625rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
           touchExploring && "touch-none select-none",
         )}
       >

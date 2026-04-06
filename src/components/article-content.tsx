@@ -212,6 +212,12 @@ export function ArticleContent({
   )
   const { pageEnterStyle } = useReadingPageEnterAnimation(pageKey)
 
+  /** Replacing `key={pageKey}` remount — keep scroll at top per page without remounting (WebKit skips enter anim on fresh nodes). */
+  useLayoutEffect(() => {
+    const el = touchSurfaceRef.current
+    if (el) el.scrollTop = 0
+  }, [pageKey])
+
   /** Reconstruct full page text for LLM sentence context */
   const pageText = useMemo(() => {
     if (!items) return ""
@@ -264,11 +270,10 @@ export function ArticleContent({
         </h1>
       ) : null}
       <article
-        key={pageKey}
         ref={touchSurfaceRef}
         style={pageEnterStyle}
         className={cn(
-          "font-serif text-[1.5625rem] md:text-2xl leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
+          "font-reading text-[1.5625rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
           "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
         )}
