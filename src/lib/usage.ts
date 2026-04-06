@@ -24,6 +24,7 @@ import { getLimit, getTier, type TierId, type TierLimits } from "@/lib/tiers"
 export type UsageMetric =
   | "texts_submitted"       // monthly counter
   | "texts_submitted_today" // read-only daily counter (auto-reset by RPC)
+  | "chars_processed_today" // read-only daily source-char counter (UTC)
   | "chunks_returned"
   | "pages_processed"
   | "chars_processed"
@@ -42,6 +43,10 @@ interface MetricConfig {
 export const METRIC_CONFIG: Record<UsageMetric, MetricConfig> = {
   texts_submitted:       { label: "Texts submitted",       limitKey: "textsPerMonth" },
   texts_submitted_today: { label: "Texts submitted today", limitKey: "textsPerDay"   },
+  chars_processed_today: {
+    label:    "Characters processed today",
+    limitKey: "charsPerUtcDay",
+  },
   chunks_returned:       { label: "Chunks returned",       limitKey: "chunksPerRequest"   },
   pages_processed:       { label: "Pages processed",       limitKey: "pagesPerSubmission" },
   chars_processed:       { label: "Characters processed",  limitKey: "charsPerSubmission" },
@@ -84,6 +89,7 @@ export function buildUsageLimitsFromTier(tierId: TierId): UsageLimits {
   return {
     texts_submitted:       L.textsPerMonth,
     texts_submitted_today: L.textsPerDay,
+    chars_processed_today: L.charsPerUtcDay,
     chunks_returned:       L.chunksPerRequest,
     pages_processed:       L.pagesPerSubmission,
     chars_processed:       L.charsPerSubmission,

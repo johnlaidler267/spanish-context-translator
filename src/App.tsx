@@ -172,6 +172,7 @@ export default function App() {
                 const guard = checkLimits(preflight.counters, preflight.limits, {
                   texts_submitted: 1,
                   texts_submitted_today: 1,
+                  chars_processed_today: trimmed.length,
                   pages_processed: pages.length,
                   chars_processed: trimmed.length,
                 })

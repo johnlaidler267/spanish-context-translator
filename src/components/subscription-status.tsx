@@ -49,7 +49,10 @@ const MONTHLY_BAR_METRICS: UsageMetric[] = ["texts_submitted"]
  * Daily-rate metrics shown as progress bars only when the tier has a cap.
  * Currently only the free tier has a daily text limit.
  */
-const DAILY_BAR_METRICS: UsageMetric[] = ["texts_submitted_today"]
+const DAILY_BAR_METRICS: UsageMetric[] = [
+  "texts_submitted_today",
+  "chars_processed_today",
+]
 
 /** Per-request limits shown as plain facts ("up to X per submission"). */
 const PER_REQUEST_FACTS: { metric: UsageMetric; label: string }[] = [

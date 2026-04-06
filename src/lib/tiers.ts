@@ -11,7 +11,7 @@
  * features; major when restructuring the shape itself.
  */
 
-export const TIERS_CONFIG_VERSION = "2.0.2"
+export const TIERS_CONFIG_VERSION = "2.0.3"
 
 function normalizeStripePriceId(raw: string): string {
   let v = raw.trim()
@@ -97,6 +97,11 @@ export interface TierLimits {
    * null = no daily cap.
    */
   textsPerDay: number | null
+  /**
+   * Max cumulative source characters accepted per UTC calendar day (all submissions).
+   * null = no daily character cap.
+   */
+  charsPerUtcDay: number | null
   /** Max chunks returned in a single translation request. */
   chunksPerRequest: number | null
   /** Max source-text pages processed per submission. */
@@ -171,6 +176,8 @@ export const TIERS: Record<TierId, TierConfig> = {
       /** Monthly cap — keep in sync with /upgrade + track-usage; free tier messaging emphasizes daily + chars. */
       textsPerMonth:      null,
       textsPerDay:        5,
+      /** 5 × charsPerSubmission — total source volume per UTC day, not just submission count. */
+      charsPerUtcDay:     3000,
       chunksPerRequest:   80,
       /** null = an "article" may span multiple LLM pages; cap submissions/day via textsPerDay. */
       pagesPerSubmission: null,
@@ -203,6 +210,7 @@ export const TIERS: Record<TierId, TierConfig> = {
     limits: {
       textsPerMonth:      null,
       textsPerDay:        null,
+      charsPerUtcDay:     null,
       chunksPerRequest:   null,
       pagesPerSubmission: null,
       savedTranslations:  null,

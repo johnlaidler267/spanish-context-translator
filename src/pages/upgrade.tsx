@@ -228,11 +228,16 @@ function getFreeTierIncludeRows(): { feature: string; limitHint: string }[] {
     chars != null
       ? `Up to ${chars.toLocaleString()} characters per submission`
       : "Character limit per submission"
+  const charsDay = lim.charsPerUtcDay
+  const charsDayHint =
+    charsDay != null
+      ? `Up to ${charsDay.toLocaleString()} characters total per day (UTC), all submissions combined`
+      : null
 
   return [
     {
       feature: "Article mode — hover any word to understand it",
-      limitHint: charsLabel,
+      limitHint: [charsLabel, charsDayHint].filter(Boolean).join(" · "),
     },
     {
       feature: "Read mode — sentence by sentence, at your pace",
@@ -270,6 +275,8 @@ function tierBullets(tier: TierConfig): string[] {
   )
   if (limits.textsPerDay !== null)
     bullets.push(`${limits.textsPerDay} submissions per day`)
+  if (limits.charsPerUtcDay !== null)
+    bullets.push(`Up to ${limits.charsPerUtcDay.toLocaleString()} characters per day total (UTC)`)
   if (limits.charsPerSubmission !== null)
     bullets.push(`Up to ${limits.charsPerSubmission.toLocaleString()} characters per submission`)
   if (limits.savedTranslations === null)
