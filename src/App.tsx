@@ -461,7 +461,9 @@ export default function App() {
 
     readingHome = (
       <main
-        className={`min-h-app bg-background ${viewportMain}`}
+        className={`min-h-app bg-background ${viewportMain}${
+          readingTheme === "light" ? " reading-main-paper-light" : ""
+        }`}
         style={{
           ...(readingTheme === "light" ? {
             backgroundImage: "linear-gradient(rgba(255,252,247,0.5), rgba(255,252,247,0.5)), url(/paper-texture.png)",

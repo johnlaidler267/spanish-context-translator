@@ -412,7 +412,7 @@ export function ReadMode({
           ref={touchSurfaceRef}
           style={pageEnterStyle}
           className={cn(
-            "block w-full font-serif text-3xl md:text-5xl lg:text-6xl max-md:leading-[1.52] md:leading-snug text-center text-foreground text-balance selection:bg-primary/20",
+            "block w-full font-serif text-[2.34375rem] md:text-5xl lg:text-6xl max-md:leading-[1.52] md:leading-snug text-center text-foreground text-balance selection:bg-primary/20",
             touchExploring && "touch-none select-none",
           )}
         >

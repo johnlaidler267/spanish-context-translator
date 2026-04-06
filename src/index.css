@@ -87,6 +87,14 @@ html.lector-reading-session .global-corner-letter {
   display: none !important;
 }
 
+/* Light reading: paper texture on main (App.tsx); below md — plain white, no texture */
+@media (max-width: 767px) {
+  main.reading-main-paper-light {
+    background-image: none !important;
+    background-color: #fff !important;
+  }
+}
+
 /* Article / read: page change enter (global so JIT/Tailwind cannot drop it) */
 @keyframes reading-page-enter {
   from {
@@ -105,16 +113,25 @@ html.lector-reading-session .global-corner-letter {
 
 /* Mobile: min-height with dvh/svh — no JS pixel height (keyboard-safe) */
 @media (max-width: 767px) {
+  /*
+   * Disable double-tap zoom (common on textarea / composer) while keeping pinch-zoom.
+   * touch-action is not inherited — set on html/body and descendants (incl. portaled UI).
+   */
   html {
     min-height: 100svh;
     min-height: 100dvh;
     overflow: hidden;
+    touch-action: manipulation;
   }
   body {
     min-height: 100svh;
     min-height: 100dvh;
     overflow: hidden;
     overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+  body * {
+    touch-action: manipulation;
   }
   #root {
     min-height: 100svh;
@@ -142,13 +159,13 @@ html.lector-reading-session .global-corner-letter {
     overflow-y: auto !important;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+    touch-action: manipulation;
   }
   html.mobile-scroll-upgrade body {
     overflow-x: hidden !important;
     overflow-y: auto !important;
     overscroll-behavior-y: contain;
-    touch-action: pan-y;
+    touch-action: manipulation;
   }
   html.mobile-scroll-upgrade #root {
     overflow: visible !important;
