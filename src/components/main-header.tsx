@@ -6,6 +6,7 @@ import { Sun, Moon, Settings2, Loader2 } from "lucide-react"
 import { useSubscription } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
 import { getTier } from "@/lib/tiers"
+import { subscriptionRowShowsAsFreePlan } from "@/lib/subscription-display"
 import { supabase } from "@/lib/supabase"
 import type { ReadingTheme } from "./theme-toggle"
 
@@ -53,7 +54,7 @@ function planPillFromRow(row: {
     secondary: "Upgrade",
   }
 
-  if (!row) return authenticatedFreePill
+  if (!row || subscriptionRowShowsAsFreePlan(row)) return authenticatedFreePill
 
   let name = "Plan"
   try {
@@ -73,8 +74,6 @@ function planPillFromRow(row: {
       secondary: `${d} ${dayWord} left`,
     }
   }
-
-  if (status === "active" && row.plan_id === "free") return authenticatedFreePill
 
   if (status === "active" && row.plan_id !== "free") {
     return { mode: "link", to: toSettingsBilling, primary: name, secondary: "Plan" }

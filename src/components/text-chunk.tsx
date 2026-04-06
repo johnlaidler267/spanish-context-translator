@@ -160,6 +160,11 @@ export function isPunctuationOnly(text: string): boolean {
   return /^[^\w\u00C0-\u024F]+$/.test(t)
 }
 
+/** Inter-word gap rows from read merge (`text` is only whitespace) — no tooltip / hit target */
+function isWhitespaceOnlyChunkText(text: string): boolean {
+  return !/[^\s]/u.test(text)
+}
+
 /** Punctuation-only chunks that still need a normal space from the previous token (e.g. ". ¿Cómo…") */
 const OPENING_PUNCT_RE = /^[¿¡(«"“‘\u201C\u2018]/
 
@@ -188,6 +193,10 @@ export function TextChunk({
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text.trim()}</span>
+  }
+
+  if (isWhitespaceOnlyChunkText(chunk.text)) {
+    return <span>{chunk.text}</span>
   }
 
   const isPopupOpen = popupChunkId === chunk.id

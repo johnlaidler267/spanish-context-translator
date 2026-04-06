@@ -22,10 +22,15 @@ import {
   getTier,
   formatPrice,
   formatAnnualMonthlyEquivalent,
+  normalizeTierId,
   type TierId,
   type TierConfig,
   type DbBillingInterval,
 } from "@/lib/tiers"
+import {
+  pricingUiPlanIdFromRow,
+  subscriptionRowShowsAsFreePlan,
+} from "@/lib/subscription-display"
 import {
   startCheckout,
   openBillingPortal,
@@ -135,6 +140,23 @@ interface SubSnapshot {
   trialEnd:            string | null
 }
 
+function pricingUiPlanId(sub: SubSnapshot | null): TierId {
+  if (!sub) return "free"
+  return pricingUiPlanIdFromRow({
+    plan_id:   sub.planId,
+    status:    sub.status,
+    trial_end: sub.trialEnd,
+  })
+}
+
+function subRowLike(sub: SubSnapshot): {
+  plan_id: string
+  status: string
+  trial_end: string | null
+} {
+  return { plan_id: sub.planId, status: sub.status, trial_end: sub.trialEnd }
+}
+
 function normalizePriceId(id: string | null | undefined): string {
   return (id ?? "").trim()
 }
@@ -156,11 +178,13 @@ function isCurrentPlanCard(
   uiInterval: DbBillingInterval,
 ): boolean {
   if (!sub) return false
-  if (cardTierId === "free") return sub.planId === "free"
-  if (sub.planId !== cardTierId) return false
-  if (sub.planId === "free") return false
+  const displayPlan = pricingUiPlanId(sub)
+  if (cardTierId === "free") return displayPlan === "free"
+  if (displayPlan !== cardTierId) return false
+  const billedTier = normalizeTierId(sub.planId)
+  if (billedTier === "free") return false
   const activeInterval = sub.billingInterval ?? "monthly"
-  const subPrice = normalizePriceId(stripePriceIdForTierInterval(sub.planId, activeInterval))
+  const subPrice = normalizePriceId(stripePriceIdForTierInterval(billedTier, activeInterval))
   const cardPrice = normalizePriceId(stripePriceIdForTierInterval(cardTierId, uiInterval))
   if (subPrice && cardPrice && subPrice === cardPrice) return true
   return activeInterval === uiInterval
@@ -180,7 +204,7 @@ async function fetchSubSnapshot(userId: string): Promise<SubSnapshot | null> {
   if (error || !data) return null
 
   return {
-    planId:                data.plan_id as TierId,
+    planId:                normalizeTierId(data.plan_id as string),
     status:                data.status,
     billingInterval:       (data.billing_interval as DbBillingInterval) ?? null,
     currentPeriodEnd:      data.current_period_end ?? null,
@@ -302,17 +326,18 @@ function buttonLabel(
   isProcessing: boolean,
 ): string {
   if (isProcessing) return "Processing…"
-  if (!sub || sub.planId === "free") {
+  const plan = pricingUiPlanId(sub)
+  if (!sub || plan === "free") {
     if (id === "free") return "Current plan"
     return `Subscribe to ${getTier(id).name}`
   }
-  if (id === sub.planId) {
+  if (id === plan) {
     if (isCurrentPlanCard(sub, id, uiInterval)) {
       return sub.cancelAtPeriodEnd ? "Reactivate" : "Manage subscription"
     }
     return uiInterval === "annual" ? "Switch to annual billing" : "Switch to monthly billing"
   }
-  if (TIER_RANK[id] > TIER_RANK[sub.planId]) return `Upgrade to ${getTier(id).name}`
+  if (TIER_RANK[id] > TIER_RANK[plan]) return `Upgrade to ${getTier(id).name}`
   if (id === "free") return "Cancel subscription"
   return `Downgrade to ${getTier(id).name}`
 }
@@ -323,7 +348,8 @@ function buttonVariant(
   uiInterval: DbBillingInterval,
 ): "default" | "outline" | "secondary" | "destructive" {
   if (!sub) return "outline"
-  if (id === sub.planId && isCurrentPlanCard(sub, id, uiInterval)) {
+  const plan = pricingUiPlanId(sub)
+  if (id === plan && isCurrentPlanCard(sub, id, uiInterval)) {
     return sub.cancelAtPeriodEnd ? "default" : "outline"
   }
   if (id === "free") return "destructive"
@@ -333,9 +359,10 @@ function buttonVariant(
 
 function isButtonDisabled(id: TierId, sub: SubSnapshot | null, anyProcessing: boolean): boolean {
   if (anyProcessing) return true
-  // Free tier with no stripe subscription — already on free, nothing to do
-  if (id === "free" && (!sub || !sub.hasStripeSubscription)) return true
-  return false
+  if (id !== "free") return false
+  if (!sub) return true
+  if (subscriptionRowShowsAsFreePlan(subRowLike(sub))) return true
+  return !sub.hasStripeSubscription
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -721,7 +748,7 @@ export default function UpgradePage() {
       // Reactivation: same plan + same price (interval) while cancelAtPeriodEnd is true
       if (
         sub &&
-        sub.planId === tierId &&
+        pricingUiPlanId(sub) === tierId &&
         sub.cancelAtPeriodEnd &&
         isCurrentPlanCard(sub, tierId, interval)
       ) {
@@ -732,7 +759,7 @@ export default function UpgradePage() {
       // Manage: same plan & same Stripe price, no pending cancellation → billing portal
       if (
         sub &&
-        sub.planId === tierId &&
+        pricingUiPlanId(sub) === tierId &&
         sub.hasStripeSubscription &&
         isCurrentPlanCard(sub, tierId, interval) &&
         !sub.cancelAtPeriodEnd
@@ -754,17 +781,25 @@ export default function UpgradePage() {
           ? tier.pricing.annual.stripePriceId
           : tier.pricing.monthly.stripePriceId
 
-      const currentRank = sub ? TIER_RANK[sub.planId] : 0
+      const currentRank = sub ? TIER_RANK[pricingUiPlanId(sub)] : 0
       const targetRank  = TIER_RANK[tierId]
 
-      // Cancellation: downgrade to free
-      if (tierId === "free" && sub?.hasStripeSubscription) {
+      // Cancellation: downgrade to free (only when UI treats them as on a paid plan)
+      if (
+        tierId === "free" &&
+        sub?.hasStripeSubscription &&
+        pricingUiPlanId(sub) !== "free"
+      ) {
         setPendingAction({ type: "cancel", targetId: "free", targetPriceId: null })
         return
       }
 
       // Downgrade: lower paid tier
-      if (sub?.hasStripeSubscription && targetRank < currentRank) {
+      if (
+        sub?.hasStripeSubscription &&
+        pricingUiPlanId(sub) !== "free" &&
+        targetRank < currentRank
+      ) {
         setPendingAction({ type: "downgrade", targetId: tierId, targetPriceId: priceId })
         return
       }
@@ -773,9 +808,10 @@ export default function UpgradePage() {
       // (create-checkout-session + existing sub only opens the generic Billing Portal — no upgrade.)
       if (
         sub?.hasStripeSubscription &&
+        pricingUiPlanId(sub) !== "free" &&
         priceId &&
         (targetRank > currentRank ||
-          (tierId === sub.planId && !isCurrentPlanCard(sub, tierId, interval)))
+          (tierId === pricingUiPlanId(sub) && !isCurrentPlanCard(sub, tierId, interval)))
       ) {
         setProcessingTier(tierId)
         try {
@@ -890,7 +926,7 @@ export default function UpgradePage() {
           </div>
 
           {/* Current plan summary bar */}
-          {!subLoading && sub && sub.planId !== "free" && (
+          {!subLoading && sub && pricingUiPlanId(sub) !== "free" && (
             <CurrentPlanSummary
               sub={sub}
               onReactivate={handleReactivate}
