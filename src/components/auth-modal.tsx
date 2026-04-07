@@ -40,7 +40,7 @@ export function AuthModal() {
 
         <div className="mb-6">
           <h2 id="auth-modal-title" className="font-serif text-2xl font-medium text-foreground">
-            Sign in to Lector
+            Sign in to LexaLens
           </h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Save your reading history and unlock your free plan.

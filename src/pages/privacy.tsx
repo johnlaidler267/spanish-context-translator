@@ -7,7 +7,7 @@ export default function PrivacyPage() {
   return (
     <LegalPageShell title="Privacy Policy" lastUpdated="April 2, 2026">
       <p className="text-muted-foreground">
-        This Privacy Policy describes how Lector (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) collects, uses,
+        This Privacy Policy describes how LexaLens (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) collects, uses,
         and shares information when you use our Spanish reading and translation companion (the &quot;Service&quot;).
       </p>
 

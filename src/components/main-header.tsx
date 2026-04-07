@@ -218,10 +218,10 @@ export function MainHeader({
           <Link
             to="/"
             className="pointer-events-auto min-w-0 shrink select-none"
-            aria-label="ReveaLang — home"
+            aria-label="LexaLens — home"
           >
             <span className="font-fraunces text-[1.2rem] font-semibold leading-none tracking-[-0.03em] text-foreground antialiased max-md:text-[1.15rem] md:text-[1.35rem] [font-feature-settings:'kern'_1,'liga'_1]">
-            Taplingual
+            LexaLens
             </span>
           </Link>
           <div className="flex items-center gap-2 md:gap-3 pointer-events-auto shrink-0">

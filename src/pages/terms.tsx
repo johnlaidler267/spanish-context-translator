@@ -7,14 +7,14 @@ export default function TermsPage() {
   return (
     <LegalPageShell title="Terms of Service" lastUpdated="April 2, 2026">
       <p className="text-muted-foreground">
-        These Terms of Service (&quot;Terms&quot;) govern your use of Lector (the &quot;Service&quot;), a Spanish
+        These Terms of Service (&quot;Terms&quot;) govern your use of LexaLens (the &quot;Service&quot;), a Spanish
         reading and translation companion operated by us (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). By
         accessing or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
       </p>
 
       <Section title="1. The Service">
         <p>
-          Lector helps you read and study Spanish text by providing translations, explanations, and related features
+          LexaLens helps you read and study Spanish text by providing translations, explanations, and related features
           that may use third-party artificial intelligence and language models. Features and availability may change
           over time. We do not guarantee uninterrupted or error-free operation.
         </p>
