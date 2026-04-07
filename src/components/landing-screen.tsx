@@ -11,6 +11,7 @@ import {
   generateRandomSpanish,
 } from "@/lib/translate"
 import { VoiceInputButton } from "./voice-input-button"
+import { AppErrorModal } from "./app-error-modal"
 import type { ReadingTheme } from "./theme-toggle"
 
 interface LandingScreenProps {
@@ -196,7 +197,6 @@ export function LandingScreen({
               randomPending={isRolling}
               learnPending={isLearning}
               disabled={isLoading}
-              learnError={learnError}
             />
             <div className="order-2 md:order-1 flex flex-col gap-2 w-full relative md:pb-1">
             <div className="textarea-wrapper w-full">
@@ -270,6 +270,13 @@ export function LandingScreen({
       </div>
       </div>
     </div>
+      {learnError && (
+        <AppErrorModal
+          title="Couldn’t load sample text"
+          message={learnError}
+          onDismiss={() => setLearnError(null)}
+        />
+      )}
     </>
   )
 }

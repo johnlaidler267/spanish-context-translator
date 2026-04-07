@@ -954,6 +954,25 @@ function countWordsInSentence(s: string): number {
 }
 
 /**
+ * Drop consecutive lines that are the same after collapsing internal whitespace and trimming.
+ * Many PDF/ebook copies duplicate each line; once newlines become spaces the source repeats
+ * whole phrases (`...Pastora Había nacido...`). The model chunks a single narrative stream, so
+ * {@link reconcileChunks} would jump with `indexOf` and leave huge plain-text gaps.
+ */
+export function dedupeConsecutiveDuplicateLines(text: string): string {
+  const lines = text.split(/\r?\n/)
+  const out: string[] = []
+  let prevKey = ""
+  for (const line of lines) {
+    const key = line.replace(/\s+/g, " ").trim()
+    if (key !== "" && key === prevKey) continue
+    out.push(line)
+    prevKey = key === "" ? "" : key
+  }
+  return out.join("\n")
+}
+
+/**
  * Split source Spanish into sentences without cutting mid-sentence.
  * Uses `Intl.Segmenter` when available (es).
  */

@@ -19,6 +19,7 @@ import {
 } from "@/hooks/use-chunk-touch-exploration"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
+import { AppErrorModal } from "./app-error-modal"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
 
@@ -81,6 +82,11 @@ export function ReadMode({
   nextPageError = null,
   onRetryNextPage,
 }: ReadModeProps) {
+  const [nextPageErrorDismissed, setNextPageErrorDismissed] = useState(false)
+  useEffect(() => {
+    setNextPageErrorDismissed(false)
+  }, [nextPageError])
+
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
@@ -495,13 +501,17 @@ export function ReadMode({
         </Button>
       </div>
 
-      {nextPageError && onRetryNextPage && (
-        <div className="shrink-0 border-t border-border/60 bg-muted/30 px-4 py-3 text-center">
-          <p className="mb-2 font-sans text-sm text-muted-foreground">{nextPageError}</p>
-          <Button type="button" size="sm" variant="outline" onClick={onRetryNextPage}>
-            Retry loading next section
-          </Button>
-        </div>
+      {nextPageError && onRetryNextPage && !nextPageErrorDismissed && (
+        <AppErrorModal
+          title="Couldn’t load next section"
+          message={nextPageError}
+          onDismiss={() => setNextPageErrorDismissed(true)}
+          onRetry={() => {
+            setNextPageErrorDismissed(false)
+            onRetryNextPage()
+          }}
+          retryLabel="Retry loading next section"
+        />
       )}
 
       {edgeSwipeEnabled && (

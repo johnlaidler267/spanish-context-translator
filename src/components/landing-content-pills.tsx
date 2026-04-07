@@ -10,7 +10,6 @@ interface LandingContentPillsProps {
   learnPending: boolean
   /** e.g. submit in flight */
   disabled: boolean
-  learnError: string | null
   className?: string
 }
 
@@ -20,7 +19,6 @@ export function LandingContentPills({
   randomPending,
   learnPending,
   disabled,
-  learnError,
   className,
 }: LandingContentPillsProps) {
   const busy = disabled || randomPending || learnPending
@@ -78,15 +76,6 @@ export function LandingContentPills({
           Learn
         </button>
       </div>
-
-      {learnError && (
-        <p
-          className="w-full max-w-md text-center text-xs text-destructive/90 font-sans px-2 md:px-0 md:text-left"
-          role="alert"
-        >
-          {learnError}
-        </p>
-      )}
     </div>
   )
 }

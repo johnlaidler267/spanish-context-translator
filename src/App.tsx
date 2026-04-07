@@ -13,6 +13,7 @@ import { useSubscription } from "./contexts/subscription-context"
 import {
   buildSentencePages,
   clampPageLimitsForLlmBatching,
+  dedupeConsecutiveDuplicateLines,
   mergeArticlePagesIfWholeTextFitsLimits,
   mergeReconciledPagesToSentences,
   pageSourceText,
@@ -28,6 +29,7 @@ import type { ReadingTheme } from "./components/theme-toggle"
 import { getStoredLandingDraft, setStoredLandingDraft } from "./lib/landing-draft-storage"
 import { getStoredReadingTheme, setStoredReadingTheme } from "./lib/theme-storage"
 import { Button } from "./components/ui/button"
+import { AppErrorModal } from "./components/app-error-modal"
 import { RateLimitModal } from "./components/rate-limit-modal"
 import { isRateLimitApiMessage } from "./lib/api-errors"
 import { useAuth } from "./contexts/auth-context"
@@ -133,7 +135,7 @@ export default function App() {
         setGuestSignupOpen(true)
         return
       }
-      const trimmed = text.trim()
+      const trimmed = dedupeConsecutiveDuplicateLines(text).trim()
       const heading = options?.wikipediaArticleTitle?.trim() ?? ""
       setArticleModeHeading(heading || null)
       setLandingDraft(trimmed)
@@ -370,9 +372,7 @@ export default function App() {
         onThemeChange={setReadingTheme}
       />
       {error && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-3 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg text-sm max-w-md">
-          ⚠️ {error}
-        </div>
+        <AppErrorModal message={error} onDismiss={() => setError("")} />
       )}
     </main>
   )

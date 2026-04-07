@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
+import { AppErrorModal } from "./app-error-modal"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
 
@@ -57,6 +58,11 @@ export function ArticleContent({
   pageKey = 0,
   articleHeading = null,
 }: ArticleContentProps) {
+  const [errorModalDismissed, setErrorModalDismissed] = useState(false)
+  useEffect(() => {
+    setErrorModalDismissed(false)
+  }, [pageKey, errorMessage])
+
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
@@ -246,7 +252,11 @@ export function ArticleContent({
 
   let chunkId = 0
 
+  const showTranslationErrorModal =
+    Boolean(errorMessage && !loading && !errorModalDismissed)
+
   return (
+    <>
     <div
       className={cn(
         "w-full mx-auto px-6 md:px-8 md:pt-24 pb-10 md:pb-16",
@@ -282,16 +292,6 @@ export function ArticleContent({
           <div className="flex items-center gap-2 text-muted-foreground font-sans text-base py-8">
             <Loader2 className="h-5 w-5 animate-spin shrink-0" aria-hidden />
             <span>Translating this page…</span>
-          </div>
-        )}
-        {!loading && errorMessage && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 font-sans text-sm text-destructive">
-            <p className="mb-3">{errorMessage}</p>
-            {onRetry && (
-              <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-                Retry translation
-              </Button>
-            )}
           </div>
         )}
         {!loading && !errorMessage && items && (
@@ -421,5 +421,15 @@ export function ArticleContent({
         onClose={chunkDetails.close}
       />
     </div>
+    {showTranslationErrorModal && (
+      <AppErrorModal
+        title="Translation failed"
+        message={errorMessage!}
+        onDismiss={() => setErrorModalDismissed(true)}
+        onRetry={onRetry}
+        retryLabel="Retry translation"
+      />
+    )}
+    </>
   )
 }
