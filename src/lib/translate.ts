@@ -1512,8 +1512,14 @@ export async function translate(
 }
 
 export async function generateRandomSpanish(): Promise<string> {
-  const base = {
-    model: translateModel(),
+  /**
+   * Use {@link learnModel} (not {@link translateModel}): the translate model on Groq is a
+   * reasoning model whose hidden reasoning shares the completion budget — with a low
+   * `max_tokens` the visible paragraph was often truncated mid-sentence. The learn stack
+   * is already used for similar short Spanish generation (Learn pill) without that issue.
+   */
+  const res = await fetchChatCompletion({
+    model: learnModel(),
     messages: [
       {
         role: "user",
@@ -1525,24 +1531,19 @@ Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translati
       },
     ],
     temperature: 1.5,
-    max_tokens: 300,
-  }
-  const res = await fetchChatCompletion(
-    translationProvider() === "groq"
-      ? {
-          ...base,
-          reasoning_effort: TRANSLATE_REASONING_EFFORT,
-          reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
-        }
-      : base,
-  )
+    max_tokens: 800,
+  })
 
   if (!res.ok) {
     const detail = await parseChatJsonErrorBody(res)
     throwChatHttpError(res, detail)
   }
-  const data = await res.json()
-  return data.choices[0].message.content.trim()
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: unknown } }>
+  }
+  const out = stringifyMessageContent(data.choices?.[0]?.message?.content)
+  if (!out) throw new Error("Empty response from language model.")
+  return out
 }
 
 const LEARN_TOPIC_PROMPT = `Pick a random subject from this list, then pick a specific topic within that subject entirely on your own. Write a single paragraph of 75–100 words about it.
