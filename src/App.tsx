@@ -245,12 +245,18 @@ export default function App() {
         setReadEnterLastStepNonce(0)
         setReadLastConsumedEnterNonce(0)
 
-        await cacheRef.current.loadPage(0, pageSourceText(pages[0]!), translatePageText)
-        bump()
         setAppState("reading")
-
-        // Guests: count only after success; limit is enforced before submit (modal blocks new articles).
-        if (!user) incrementGuestUses()
+        void cacheRef.current
+          .loadPage(0, pageSourceText(pages[0]!), translatePageText)
+          .then(() => {
+            bump()
+            // Guests: count only after success; limit is enforced before submit (modal blocks new articles).
+            if (!user) incrementGuestUses()
+          })
+          .catch(() => {
+            // Error details are stored in TranslationCache and surfaced by existing modal logic.
+            bump()
+          })
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Something went wrong."
         if (isRateLimitApiMessage(msg)) {

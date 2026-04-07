@@ -70,6 +70,8 @@ interface TextChunkProps {
 interface PopupCoords {
   anchorTop: number
   anchorBottom: number
+  /** Viewport Y: top edge of the tooltip box */
+  tooltipTop: number
   /** Viewport X: left edge of the tooltip box */
   tooltipLeft: number
   /** Tooltip-local X: horizontal center of the arrow (points at word center) */
@@ -78,18 +80,27 @@ interface PopupCoords {
 }
 
 const POPUP_WIDTH = 250
-const POPUP_EST_HEIGHT = 120
+const POPUP_MIN_HEIGHT = 120
+const POPUP_MAX_HEIGHT = 360
 /** Hover meaning card — quick fade out (ms) */
 const TOOLTIP_FADE_OUT_MS = 0
 /** Tooltip box + arrow ease horizontally toward the pointer (ms) */
 const TOOLTIP_FOLLOW_POSITION_MS = 45
 /** Keep arrow diamond inside tooltip; min distance from edge to arrow center (px) */
 const ARROW_EDGE_INSET = 12
+const VIEWPORT_EDGE_PADDING = 8
 
 /** Vertical gap from word to tooltip (article: farther so finger doesn’t cover the card) */
 const GAP_FROM_WORD: Record<"article" | "read", number> = { read: 10, article: 36 }
 /** Diamond “arrow” size (px); article uses a larger tip + gap so the callout clears the finger */
 const ARROW_BOX: Record<"article" | "read", number> = { read: 10, article: 15 }
+
+function estimateTooltipHeight(chunk: ChunkData): number {
+  // Rough estimate for placement only; tooltip content remains auto-sized by the browser.
+  const chars = `${chunk.meaning ?? ""} ${chunk.literal ?? ""} ${chunk.grammar ?? ""}`.trim().length
+  const est = POPUP_MIN_HEIGHT + Math.ceil(chars / 36) * 14
+  return Math.max(POPUP_MIN_HEIGHT, Math.min(POPUP_MAX_HEIGHT, est))
+}
 
 /**
  * Inline wrapped chunks: union bounding box top = first line, but the reader is often on the last line.
@@ -260,7 +271,9 @@ export function TextChunk({
 
       const padding = 16
       const vw = window.innerWidth
+      const vh = window.innerHeight
       const tooltipWidth = POPUP_WIDTH
+      const tooltipHeightEst = estimateTooltipHeight(chunk)
       const gap = GAP_FROM_WORD[variant]
       const edgeClearance = 16 + gap
 
@@ -280,13 +293,24 @@ export function TextChunk({
       const spaceAbove = union.top
       const spaceBelow = window.innerHeight - union.bottom
       const placement =
-        spaceAbove < POPUP_EST_HEIGHT + edgeClearance && spaceBelow >= POPUP_EST_HEIGHT + edgeClearance
+        spaceAbove < tooltipHeightEst + edgeClearance &&
+        spaceBelow >= tooltipHeightEst + edgeClearance
           ? "below"
           : "above"
+
+      const tooltipTopUnclamped =
+        placement === "above"
+          ? anchorLine.top - gap - tooltipHeightEst
+          : anchorLine.bottom + gap
+      const tooltipTop = Math.max(
+        VIEWPORT_EDGE_PADDING,
+        Math.min(tooltipTopUnclamped, vh - VIEWPORT_EDGE_PADDING - tooltipHeightEst),
+      )
 
       const next: PopupCoords = {
         anchorTop: anchorLine.top,
         anchorBottom: anchorLine.bottom,
+        tooltipTop,
         tooltipLeft,
         arrowCenterX,
         placement,
@@ -296,6 +320,7 @@ export function TextChunk({
           prev &&
           prev.placement === next.placement &&
           prev.tooltipLeft === next.tooltipLeft &&
+          prev.tooltipTop === next.tooltipTop &&
           prev.anchorTop === next.anchorTop &&
           prev.anchorBottom === next.anchorBottom &&
           prev.arrowCenterX === next.arrowCenterX
@@ -462,14 +487,11 @@ export function TextChunk({
       onTransitionEnd={handleTooltipTransitionEnd}
       style={{
         position: "fixed",
-        top:
-          coords.placement === "above"
-            ? coords.anchorTop - gap
-            : coords.anchorBottom + gap,
+        top: coords.tooltipTop,
         left: coords.tooltipLeft,
         width: POPUP_WIDTH,
         boxSizing: "border-box",
-        transform: coords.placement === "above" ? "translateY(-100%)" : "none",
+        transform: "none",
         zIndex: 9999,
         /* Portaled above text — pass pointer through so hit-testing stays on the article/read surface */
         pointerEvents: "none",
