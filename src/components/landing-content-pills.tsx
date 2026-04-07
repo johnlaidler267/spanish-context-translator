@@ -25,13 +25,6 @@ export function LandingContentPills({
 }: LandingContentPillsProps) {
   const busy = disabled || randomPending || learnPending
 
-  const neuPress =
-    "transition-all shadow-[3px_3px_0px_black] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] " +
-    "active:shadow-none active:translate-x-[3px] active:translate-y-[3px] " +
-    "dark:shadow-[4px_4px_0px_rgba(232,228,220,0.45)] " +
-    "dark:hover:shadow-none dark:hover:translate-x-[3px] dark:hover:translate-y-[3px] " +
-    "dark:active:shadow-none dark:active:translate-x-[3px] dark:active:translate-y-[3px]"
-
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>
       <div
@@ -45,8 +38,7 @@ export function LandingContentPills({
           disabled={busy}
           aria-busy={randomPending}
           className={cn(
-            "content-pill inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium",
-            neuPress,
+            "content-pill inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
             "border-black/[0.08] bg-white text-[#3a332e]",
             "hover:border-[#c97a5a]/35 hover:bg-[#faf8f5]",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35",
@@ -69,8 +61,7 @@ export function LandingContentPills({
           disabled={busy}
           aria-busy={learnPending}
           className={cn(
-            "content-pill inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium",
-            neuPress,
+            "content-pill inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
             "border-black/[0.08] bg-white text-[#3a332e]",
             "hover:border-[#c97a5a]/35 hover:bg-[#faf8f5]",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35",
