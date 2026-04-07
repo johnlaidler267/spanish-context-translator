@@ -264,8 +264,8 @@ export function ArticleContent({
           ? "max-md:pb-[max(5.5rem,env(safe-area-inset-bottom,0px)+4.5rem)]"
           : "max-md:pb-[max(2.5rem,env(safe-area-inset-bottom,0px)+1.5rem)]",
         articleHeading
-          ? "max-md:pt-[calc(env(safe-area-inset-top,0px)+5rem)]"
-          : "max-md:pt-[calc(env(safe-area-inset-top,0px)+var(--reading-content-top))]",
+          ? "max-md:pt-[calc(env(safe-area-inset-top,0px)+4rem)]"
+          : "max-md:pt-[calc(env(safe-area-inset-top,0px)+6.25rem)]",
         "flex w-full flex-1 flex-col min-h-0 max-md:overflow-hidden",
         "md:min-h-[calc(100dvh-7.25rem)]",
       )}

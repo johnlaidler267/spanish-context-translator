@@ -450,6 +450,7 @@ Each chunk: {"c": Spanish, "m": English meaning in context, "l": closest English
 
 Example of "l":
 {"c": "caseras", "m": homemade, "l": “of/from the house” → from casa (house) + -ero/a (related to)}
+{"c": "acercaba", "approached", "was bringing closer”}
 
 CRITICAL — the "c" field (Spanish):
 - It must be copied verbatim from the source text below: exact same characters, accents, line-break joins (as single spaces), odd spellings, OCR noise, old orthography, and typos. The UI finds each chunk with a string search.
