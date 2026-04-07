@@ -59,7 +59,7 @@ const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
  * and always tripped TPM — unrelated to how short the user’s Spanish is.
  * 4k further reduces “requested” TPM vs 5k; if you still see 429s, wait or upgrade Groq.
  */
-const TRANSLATE_MAX_COMPLETION_TOKENS = 6000
+const TRANSLATE_MAX_COMPLETION_TOKENS = 8000
 
 /**
  * Spanish character budget for a single `translatePageText` completion.

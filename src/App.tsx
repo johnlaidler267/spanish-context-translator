@@ -38,7 +38,7 @@ import { GuestSignupModal } from "./components/guest-signup-modal"
 import { hasReachedGuestLimit, incrementGuestUses } from "./lib/guest-usage"
 import { checkLimits } from "./lib/enforce"
 import {
-  METRIC_CONFIG,
+  formatPlanLimitModal,
   broadcastUsageUpdated,
   fetchCurrentUsage,
   trackUsage,
@@ -101,7 +101,10 @@ export default function App() {
   }, [])
   const [error, setError] = useState("")
   const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null)
-  const [planLimitMessage, setPlanLimitMessage] = useState<string | null>(null)
+  const [planLimitModal, setPlanLimitModal] = useState<{
+    title: string
+    message: string
+  } | null>(null)
   /** After closing the rate-limit modal, don’t reopen until retry/new submit or the error clears. */
   const rateLimitModalSuppressedRef = useRef(false)
   /** Narrow viewport: shorter read-mode steps (LLM page size unchanged). */
@@ -142,7 +145,7 @@ export default function App() {
       setError("")
       rateLimitModalSuppressedRef.current = false
       setRateLimitMessage(null)
-      setPlanLimitMessage(null)
+      setPlanLimitModal(null)
       setAppState("loading")
 
       try {
@@ -185,13 +188,8 @@ export default function App() {
                   chars_processed: trimmed.length,
                 })
                 if (!guard.allowed) {
-                  const names = guard.blocked
-                    .map((s) => METRIC_CONFIG[s.metric]?.label ?? s.metric)
-                    .join(", ")
-                  setPlanLimitMessage(
-                    names
-                      ? `You've reached your plan limit for: ${names}.`
-                      : "You've reached a plan limit.",
+                  setPlanLimitModal(
+                    formatPlanLimitModal(guard.blocked.map((s) => s.metric)),
                   )
                   setAppState("landing")
                   return
@@ -213,12 +211,7 @@ export default function App() {
               pages_processed: pages.length,
             })
             if (!usage.allowed && ENFORCE_USAGE_LIMITS) {
-              const names = usage.exceeded.map((m) => METRIC_CONFIG[m]?.label ?? m).join(", ")
-              setPlanLimitMessage(
-                names
-                  ? `You've reached your plan limit for: ${names}.`
-                  : "You've reached a plan limit.",
-              )
+              setPlanLimitModal(formatPlanLimitModal(usage.exceeded))
               setAppState("landing")
               return
             }
@@ -278,7 +271,7 @@ export default function App() {
     setArticlePageIndex(0)
     setError("")
     setRateLimitMessage(null)
-    setPlanLimitMessage(null)
+    setPlanLimitModal(null)
     rateLimitModalSuppressedRef.current = false
     setViewMode("article")
     bump()
@@ -331,7 +324,7 @@ export default function App() {
   }, [])
 
   const dismissPlanLimitModal = useCallback(() => {
-    setPlanLimitMessage(null)
+    setPlanLimitModal(null)
   }, [])
 
   /** Dev: dismiss rate-limit modal, clear throttled page errors, and retry loads. */
@@ -560,22 +553,22 @@ export default function App() {
         <Route path="/" element={indexElement} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {(rateLimitMessage || planLimitMessage) && (
+      {(rateLimitMessage || planLimitModal) && (
         <RateLimitModal
-          message={rateLimitMessage ?? planLimitMessage!}
+          message={rateLimitMessage ?? planLimitModal!.message}
           onDismiss={
             rateLimitMessage
               ? dismissRateLimitModal
               : dismissPlanLimitModal
           }
           title={
-            planLimitMessage && !rateLimitMessage
-              ? "Plan limit reached"
+            planLimitModal && !rateLimitMessage
+              ? planLimitModal.title
               : undefined
           }
-          showProviderHint={!planLimitMessage || !!rateLimitMessage}
+          showProviderHint={!planLimitModal || !!rateLimitMessage}
           extraFooter={
-            planLimitMessage && !rateLimitMessage && (
+            planLimitModal && !rateLimitMessage && (
               <p className="mt-4 text-sm text-muted-foreground">
                 <Link
                   to="/upgrade"

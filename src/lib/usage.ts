@@ -63,6 +63,65 @@ export const PER_SUBMISSION_LIMIT_METRICS = new Set<UsageMetric>([
   "chunks_returned",
 ])
 
+const metricLabel = (m: UsageMetric): string => METRIC_CONFIG[m]?.label ?? m
+
+/**
+ * Title + body for the plan-limit modal. Per-submission caps (chars/pages per submit) use
+ * submission wording; monthly/daily caps use "reached your plan limit".
+ */
+export function formatPlanLimitModal(blocked: UsageMetric[]): { title: string; message: string } {
+  const perSub = blocked.filter((m) => PER_SUBMISSION_LIMIT_METRICS.has(m))
+  const period = blocked.filter((m) => !PER_SUBMISSION_LIMIT_METRICS.has(m))
+
+  if (period.length > 0 && perSub.length > 0) {
+    return {
+      title: "Plan limit reached",
+      message:
+        `You've reached your plan limit for: ${period.map(metricLabel).join(", ")}. ` +
+        `This submission also exceeds your plan's allowance for: ${perSub.map(metricLabel).join(", ")}.`,
+    }
+  }
+
+  if (period.length > 0) {
+    const names = period.map(metricLabel).join(", ")
+    return {
+      title: "Plan limit reached",
+      message: names ? `You've reached your plan limit for: ${names}.` : "You've reached a plan limit.",
+    }
+  }
+
+  if (perSub.length > 0) {
+    const title = "Submission exceeds plan allowance"
+    if (perSub.length === 1 && perSub[0] === "chars_processed") {
+      return {
+        title,
+        message: "This submission exceeds the character allowance for your plan.",
+      }
+    }
+    if (perSub.length === 1 && perSub[0] === "pages_processed") {
+      return {
+        title,
+        message: "This submission exceeds the page allowance for your plan.",
+      }
+    }
+    if (perSub.length === 1 && perSub[0] === "chunks_returned") {
+      return {
+        title,
+        message: "This submission exceeds the chunk allowance for your plan.",
+      }
+    }
+    return {
+      title,
+      message: `This submission exceeds your plan's allowance for: ${perSub.map(metricLabel).join(", ")}.`,
+    }
+  }
+
+  return {
+    title: "Plan limit reached",
+    message: "You've reached a plan limit.",
+  }
+}
+
 // ─── Response types ───────────────────────────────────────────────────────────
 
 export type UsageCounters = Record<UsageMetric, number>

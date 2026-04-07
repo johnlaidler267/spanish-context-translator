@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, type Dispatch, type SetStateAction } from "react"
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, type Dispatch, type SetStateAction } from "react"
 import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout-fix"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { useAuth } from "@/contexts/auth-context"
@@ -73,6 +73,8 @@ export function LandingScreen({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const landingColumnRef = useRef<HTMLDivElement>(null)
+  const composerFormRef = useRef<HTMLFormElement>(null)
+  const composerSubmitBtnRef = useRef<HTMLButtonElement>(null)
   useVirtualKeyboardLayoutFix(landingColumnRef)
   const [isRolling, setIsRolling] = useState(false)
   const [isLearning, setIsLearning] = useState(false)
@@ -132,16 +134,44 @@ export function LandingScreen({
 
   const sampleText = `El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles. Ella pensaba en su abuela, quien siempre le contaba historias de este lugar mágico.`
 
-  const handleSubmit = () => {
-    if (!text.trim()) return
+  const handleComposerSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!text.trim() || isLoading) return
     const wiki = learnArticleTitleRef.current?.trim() ?? ""
     onSubmit(text.trim(), wiki ? { wikipediaArticleTitle: wiki } : undefined)
   }
 
+  /**
+   * iOS Safari: tapping submit after editing often blurs the textarea first; the keyboard
+   * dismisses and the viewport jumps, and the synthetic `click` never fires. A non-passive
+   * `touchend` + `preventDefault` + `requestSubmit` runs the form handler; passive:false is
+   * required or the browser still synthesizes a duplicate click.
+   */
+  useLayoutEffect(() => {
+    const btn = composerSubmitBtnRef.current
+    const form = composerFormRef.current
+    if (!btn || !form) return
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (btn.disabled) return
+      e.preventDefault()
+      try {
+        form.requestSubmit(btn)
+      } catch {
+        /* requestSubmit throws if submitter is invalid — ignore */
+      }
+    }
+
+    btn.addEventListener("touchend", onTouchEnd, { passive: false })
+    return () => btn.removeEventListener("touchend", onTouchEnd)
+  }, [])
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault()
-      handleSubmit()
+      const form = composerFormRef.current
+      const btn = composerSubmitBtnRef.current
+      if (form && btn) form.requestSubmit(btn)
     }
   }
 
@@ -230,6 +260,11 @@ export function LandingScreen({
               disabled={isLoading}
             />
             <div className="order-2 md:order-1 flex flex-col gap-2 w-full relative md:pb-1">
+            <form
+              ref={composerFormRef}
+              className="contents"
+              onSubmit={handleComposerSubmit}
+            >
             <div className="textarea-wrapper w-full">
               <span className="corner corner-tl" aria-hidden />
               <span className="corner corner-tr" aria-hidden />
@@ -259,8 +294,8 @@ export function LandingScreen({
               <div className="textarea-toolbar max-md:justify-end md:justify-start" aria-label="Composer actions">
                 <div className="textarea-toolbar-right">
                   <button
-                    type="button"
-                    onClick={handleSubmit}
+                    ref={composerSubmitBtnRef}
+                    type="submit"
                     disabled={!text.trim() || isLoading}
                     className={`submit-arrow-btn ${text.trim() ? "submit-arrow-btn--visible" : ""}`}
                     aria-label="Start reading"
@@ -283,6 +318,7 @@ export function LandingScreen({
               <span className="word-counter-label">words</span>
               <span className="word-counter-value">{text.trim() ? text.trim().split(/\s+/).length.toString().padStart(2, "0") : "00"}</span>
             </p>
+            </form>
             </div>
           </div>
         </div>

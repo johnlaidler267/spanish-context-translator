@@ -23,6 +23,20 @@ interface SubscriptionContextValue {
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null)
 
+function lapsedModalSessionKey(userId: string | undefined) {
+  return userId ? `lapsed_modal_ack_${userId}` : "lapsed_modal_ack"
+}
+
+function readLapsedModalAckSession(userId: string | undefined): boolean {
+  if (typeof window === "undefined") return false
+  return sessionStorage.getItem(lapsedModalSessionKey(userId)) === "1"
+}
+
+function writeLapsedModalAckSession(userId: string | undefined) {
+  if (typeof window === "undefined" || !userId) return
+  sessionStorage.setItem(lapsedModalSessionKey(userId), "1")
+}
+
 /**
  * Survives React Strict Mode remounts (useRef resets; component state resets isLoading to true).
  * After the first completed check in this tab, default rechecks do not toggle the global spinner.
@@ -51,13 +65,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       const result = await checkSubscriptionStatus()
       setStatus(result.status)
       if (result.status === "lapsed") {
-        setPopupDismissed(false) // Re-trigger popup on return
+        setPopupDismissed(readLapsedModalAckSession(user?.id))
       }
     } finally {
       setIsLoading(false)
       subscriptionBlockingCheckDone = true
     }
-  }, [])
+  }, [user?.id])
 
   // After auth finishes its initial session read, and when user id changes (sign in/out).
   // Avoids a second supabase.auth.onAuthStateChange subscription (each one takes the GoTrue lock).
@@ -66,11 +80,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     void recheck()
   }, [authLoading, user?.id, recheck])
 
-  // Re-trigger popup when user returns to app (tab focus, navigate back)
+  // Refresh status when user returns to the tab (do not re-open lapsed modal if dismissed this session).
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && (status === "lapsed" || status === "past_due")) {
-        if (status === "lapsed") setPopupDismissed(false)
         void recheck({ silent: true })
       }
     }
@@ -79,8 +92,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [status, recheck])
 
   const dismissPopup = useCallback(() => {
+    writeLapsedModalAckSession(user?.id)
     setPopupDismissed(true)
-  }, [])
+  }, [user?.id])
 
   const value: SubscriptionContextValue = {
     status,
