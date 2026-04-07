@@ -10,7 +10,7 @@ import type { PageSplitLimits } from "@/lib/translate"
 import { resolvePageSplitLimits } from "@/lib/translate"
 
 /** Keep sentence batching conservative vs measured fill (wide glyphs, punctuation). */
-const CHAR_BUDGET_SAFETY = 0.9
+const CHAR_BUDGET_SAFETY = 0.84
 
 /** Desktop article outer padding top/bottom (matches ArticleContent md:pt-24 / md:pb-16). */
 const DESKTOP_ARTICLE_TOP_PX = 96
@@ -21,7 +21,7 @@ const DESKTOP_ARTICLE_TO_FOOTER_GAP_PX = 32
  * Desktop pagination footer reserve (buttons are 44px tall + border/padding).
  * Keep this slightly conservative so text never collides with footer controls.
  */
-const DESKTOP_PAGINATION_FOOTER_PX = 56
+const DESKTOP_PAGINATION_FOOTER_PX = 64
 
 /** Mobile horizontal padding — ArticleContent px-6. */
 const MOBILE_PAD_X_PX = 24 * 2

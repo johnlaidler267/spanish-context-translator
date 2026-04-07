@@ -74,6 +74,7 @@ interface SubData {
 
 interface LoadedState {
   sub:      SubData | null
+  usageTierId: TierId | null
   counters: UsageCounters
   limits:   UsageLimits
   period:   { start: string; end: string } | null
@@ -345,7 +346,7 @@ function WarningBanner({ warned, exceeded }: {
 
 function useSubscriptionData(tracker?: UsageTracker) {
   const [state, setState] = useState<LoadedState>({
-    sub: null, counters: zeroCounts(), limits: nullLimits(), period: null,
+    sub: null, usageTierId: null, counters: zeroCounts(), limits: nullLimits(), period: null,
   })
   const [loading, setLoading] = useState(true)
   const [error,   setError  ] = useState<string | null>(null)
@@ -387,9 +388,10 @@ function useSubscriptionData(tracker?: UsageTracker) {
 
       // Usage counters — use tracker if provided to skip a network call
       if (tracker) {
-        await tracker.refresh()
+        const usage = await tracker.refresh()
         setState({
           sub,
+          usageTierId: usage.tierId ?? null,
           counters: tracker.counters,
           limits:   tracker.limits,
           period:   tracker.period,
@@ -398,6 +400,7 @@ function useSubscriptionData(tracker?: UsageTracker) {
         const usage = await fetchCurrentUsage()
         setState({
           sub,
+          usageTierId: usage.tierId ?? null,
           counters: usage.counters,
           limits:   usage.limits,
           period:   usage.period,
@@ -470,7 +473,10 @@ export function SubscriptionStatus({
     return s.exceeded && s.limit !== null
   })
 
-  const tierId = sub?.planId ?? "free"
+  const usageTierId = state.usageTierId ?? "free"
+  const isCanceledOrAbsent = !sub || sub.status === "canceled"
+  // Reconciliation rule: canceled (or missing) Stripe subscription always presents as free.
+  const tierId: TierId = isCanceledOrAbsent ? "free" : usageTierId
   const tier   = getTier(tierId)
   const price  = formatPrice(tier.pricing.monthly.amountCents)
 
@@ -539,16 +545,27 @@ export function SubscriptionStatus({
             <span className="font-medium text-foreground font-sans text-sm">
               {tier.name} Plan
             </span>
-            {sub?.status && <StatusPill status={sub.status} />}
+            {sub?.status && sub.status !== "canceled" && <StatusPill status={sub.status} />}
           </div>
 
           {/* Price */}
-          <div className="flex items-baseline gap-1 mb-2">
-            <span className="text-2xl font-serif text-foreground">{price}</span>
-            {tier.pricing.monthly.amountCents > 0 && (
-              <span className="text-sm text-muted-foreground font-sans">/mo</span>
-            )}
-          </div>
+          {sub?.status === "canceled" ? (
+            <div className="mb-2 space-y-1">
+              <p className="text-sm text-muted-foreground font-sans">No active paid subscription</p>
+              {sub.planId !== "free" && (
+                <p className="text-xs text-muted-foreground font-sans">
+                  {getTier(sub.planId).name} trial ended
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-1 mb-2">
+              <span className="text-2xl font-serif text-foreground">{price}</span>
+              {tier.pricing.monthly.amountCents > 0 && (
+                <span className="text-sm text-muted-foreground font-sans">/mo</span>
+              )}
+            </div>
+          )}
 
           {/* Trial end / billing date */}
           {sub?.status === "trialing" && sub.trialEnd ? (
