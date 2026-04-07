@@ -108,6 +108,8 @@ export function LandingScreen({
       const paragraph = await generateRandomSpanish()
       learnArticleTitleRef.current = null
       setText(paragraph)
+    } catch (e) {
+      setLearnError(e instanceof Error ? e.message : "No se pudo generar el texto.")
     } finally {
       setIsRolling(false)
     }
