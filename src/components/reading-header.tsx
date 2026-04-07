@@ -35,7 +35,7 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
           aria-label="LexaLens — home"
         >
           <span className="font-fraunces text-[1.2rem] font-semibold leading-none tracking-[-0.03em] text-foreground antialiased max-md:text-[1.15rem] md:text-[1.35rem] [font-feature-settings:'kern'_1,'liga'_1]">
-            LexaLens
+            Lexa<span style={{ color: "#A24D38" }}>Lens</span>
           </span>
         </Link>
 
