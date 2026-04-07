@@ -426,7 +426,10 @@ export function ArticleContent({
         title="Translation failed"
         message={errorMessage!}
         onDismiss={() => setErrorModalDismissed(true)}
-        onRetry={onRetry}
+        onRetry={() => {
+          setErrorModalDismissed(true)
+          onRetry?.()
+        }}
         retryLabel="Retry translation"
       />
     )}

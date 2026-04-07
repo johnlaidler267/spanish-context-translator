@@ -297,6 +297,7 @@ export default function App() {
     rateLimitModalSuppressedRef.current = false
     const i = articlePageIndex
     cacheRef.current.clearPage(i)
+    bump()
     void cacheRef.current
       .loadPage(i, pageSourceText(sourcePages[i]!), translatePageText)
       .then(bump)

@@ -246,6 +246,7 @@ export function TextChunk({
   const isPopupOpen = popupChunkId === chunk.id
   const [coords, setCoords] = useState<PopupCoords | null>(null)
   const chunkRef = useRef<HTMLSpanElement>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
   /** transitionend must not clear coords if user re-hovered before fade finished */
   const isPopupOpenRef = useRef(isPopupOpen)
   isPopupOpenRef.current = isPopupOpen
@@ -255,6 +256,7 @@ export function TextChunk({
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const pointerRafRef = useRef<number | null>(null)
   const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
+  const measuredTooltipHeightRef = useRef<number | null>(null)
 
   const placeTooltip = useCallback(
     (pointerX?: number | null, pointerY?: number | null) => {
@@ -273,8 +275,10 @@ export function TextChunk({
       const vw = window.innerWidth
       const vh = window.innerHeight
       const tooltipWidth = POPUP_WIDTH
-      const tooltipHeightEst = estimateTooltipHeight(chunk)
+      const tooltipHeightEst =
+        measuredTooltipHeightRef.current ?? estimateTooltipHeight(chunk)
       const gap = GAP_FROM_WORD[variant]
+      const gapForAbove = variant === "read" ? Math.max(4, gap - 2) : gap
       const edgeClearance = 16 + gap
 
       const anchorX = usePointer
@@ -300,7 +304,7 @@ export function TextChunk({
 
       const tooltipTopUnclamped =
         placement === "above"
-          ? anchorLine.top - gap - tooltipHeightEst
+          ? anchorLine.top - gapForAbove - tooltipHeightEst
           : anchorLine.bottom + gap
       const tooltipTop = Math.max(
         VIEWPORT_EDGE_PADDING,
@@ -373,6 +377,37 @@ export function TextChunk({
     }
   }, [
     isPopupOpen,
+    delegatePointerHover,
+    followPointerClient,
+    followPointerRef,
+    placeTooltip,
+  ])
+
+  useLayoutEffect(() => {
+    if (!isPopupOpen || !tooltipRef.current) return
+    const h = Math.ceil(tooltipRef.current.getBoundingClientRect().height)
+    if (!Number.isFinite(h) || h <= 0) return
+    if (measuredTooltipHeightRef.current === h) return
+    measuredTooltipHeightRef.current = h
+    if (delegatePointerHover && followPointerClient) {
+      placeTooltip(followPointerClient.x, followPointerClient.y)
+      return
+    }
+    if (delegatePointerHover && followPointerRef?.current) {
+      const p = followPointerRef.current
+      if (p) placeTooltip(p.x, p.y)
+      else placeTooltip(null, null)
+      return
+    }
+    const p = lastPointerRef.current
+    placeTooltip(p?.x ?? null, p?.y ?? null)
+  }, [
+    isPopupOpen,
+    coords?.placement,
+    coords?.tooltipTop,
+    chunk.meaning,
+    chunk.literal,
+    chunk.grammar,
     delegatePointerHover,
     followPointerClient,
     followPointerRef,
@@ -457,14 +492,18 @@ export function TextChunk({
 
   const { prefix, underline, suffix } = splitChunkTextForUnderline(chunk.text)
   const underlineText = underline.length > 0 ? underline : chunk.text
+  const normalizedMeaning = chunk.meaning.trim().toLocaleLowerCase()
+  const normalizedLiteral = chunk.literal?.trim().toLocaleLowerCase() ?? ""
+  const showLiteral = normalizedLiteral.length > 0 && normalizedLiteral !== normalizedMeaning
 
   /**
    * Inner padding so the title/body never sit under the rotated diamond (half sits inside the card).
    * Finger clearance vs the word uses `gap` only — no separate stem (stem + % positioning broke on “below”).
    */
-  const tailInset = arrowSize + 10
-  const pad = 12
-  const padX = 14
+  // Reserve only a small inset for the arrow so top whitespace stays tight.
+  const tailInset = Math.round(arrowSize * 0.45) + 2
+  const pad = 9
+  const padX = 11
 
   const showTooltip = coords !== null
   /** Same motion for mouse + touch: no CSS interpolation while a live pointer drives placement. */
@@ -483,6 +522,7 @@ export function TextChunk({
 
   const popup = showTooltip && coords && (
     <div
+      ref={tooltipRef}
       data-popup
       onTransitionEnd={handleTooltipTransitionEnd}
       style={{
@@ -549,13 +589,13 @@ export function TextChunk({
         className="chunk-tooltip-body"
         key={chunk.id != null ? `c${chunk.id}-${chunk.meaning}` : `${chunk.text}-${chunk.meaning}`}
       >
-        <p style={{ fontSize: "1.05rem", fontFamily: "var(--font-reading)", fontWeight: 600, color: "#3a332e", lineHeight: 1.3, margin: 0 }}>
+        <p style={{ fontSize: "1.14rem", fontFamily: "var(--font-reading)", fontWeight: 600, color: "#3a332e", lineHeight: 1.28, margin: 0 }}>
           {chunk.meaning}
         </p>
 
-        {(chunk.literal || chunk.grammar) && (
+        {(showLiteral || chunk.grammar) && (
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(201,122,90,0.16)" }}>
-            {chunk.literal && (
+            {showLiteral && (
               <p style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "#454039" }}>
                 <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Literal</span>
                 <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>

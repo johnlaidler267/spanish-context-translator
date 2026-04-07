@@ -446,7 +446,10 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
 
 const PROMPT = (input: string) => `You are a Spanish to english tutor. Break the input into chunks based on the following groups.
 
-Each chunk: {"c": Spanish, "m": English meaning in context, "l": word-for-word, "n": grammar note — omit key entirely if obvious}
+Each chunk: {"c": Spanish, "m": English meaning in context, "l": closest English rendering of the word’s internal construction, even if unnatural, "n": grammar note — omit key entirely if obvious}
+
+Example of "l":
+{"c": "caseras", "m": homemade, "l": “of/from the house” → from casa (house) + -ero/a (related to)}
 
 CRITICAL — the "c" field (Spanish):
 - It must be copied verbatim from the source text below: exact same characters, accents, line-break joins (as single spaces), odd spellings, OCR noise, old orthography, and typos. The UI finds each chunk with a string search.
@@ -454,7 +457,7 @@ CRITICAL — the "c" field (Spanish):
 
 Default to one word per chunk. Never chunk punctuation.
 
-Keep optional "n" (grammar notes) very short (about one line each). Long notes make the JSON too large and the response can be cut off before the whole Spanish source is chunked.
+Keep optional "n" (grammar notes) very short (about one line each). 
 
 EXAMPLE GROUPING CATEGORIES (EXTRAPOLATE):
 {

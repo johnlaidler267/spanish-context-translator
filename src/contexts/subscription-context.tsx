@@ -23,14 +23,29 @@ interface SubscriptionContextValue {
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null)
 
+/**
+ * Survives React Strict Mode remounts (useRef resets; component state resets isLoading to true).
+ * After the first completed check in this tab, default rechecks do not toggle the global spinner.
+ */
+let subscriptionBlockingCheckDone = false
+
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth()
   const [status, setStatus] = useState<SubscriptionStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [popupDismissed, setPopupDismissed] = useState(false)
 
+  useEffect(() => {
+    subscriptionBlockingCheckDone = false
+  }, [user?.id])
+
   const recheck = useCallback(async (opts?: { silent?: boolean }) => {
-    const silent = opts?.silent === true
+    const silent =
+      opts?.silent === true
+        ? true
+        : opts?.silent === false
+          ? false
+          : subscriptionBlockingCheckDone
     if (!silent) setIsLoading(true)
     try {
       const result = await checkSubscriptionStatus()
@@ -39,7 +54,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         setPopupDismissed(false) // Re-trigger popup on return
       }
     } finally {
-      if (!silent) setIsLoading(false)
+      setIsLoading(false)
+      subscriptionBlockingCheckDone = true
     }
   }, [])
 
