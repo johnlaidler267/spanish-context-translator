@@ -15,6 +15,13 @@ const CHAR_BUDGET_SAFETY = 0.9
 /** Desktop article outer padding top/bottom (matches ArticleContent md:pt-24 / md:pb-16). */
 const DESKTOP_ARTICLE_TOP_PX = 96
 const DESKTOP_ARTICLE_BOTTOM_PX = 64
+/** Desktop article spacing before footer (matches ArticleContent `md:mb-8`). */
+const DESKTOP_ARTICLE_TO_FOOTER_GAP_PX = 32
+/**
+ * Desktop pagination footer reserve (buttons are 44px tall + border/padding).
+ * Keep this slightly conservative so text never collides with footer controls.
+ */
+const DESKTOP_PAGINATION_FOOTER_PX = 56
 
 /** Mobile horizontal padding — ArticleContent px-6. */
 const MOBILE_PAD_X_PX = 24 * 2
@@ -75,7 +82,14 @@ function articleBodyHeightPx(isMobile: boolean): number {
     return Math.max(120, vh - top - bottom)
   }
 
-  return Math.max(160, vh - DESKTOP_ARTICLE_TOP_PX - DESKTOP_ARTICLE_BOTTOM_PX)
+  return Math.max(
+    160,
+    vh -
+      DESKTOP_ARTICLE_TOP_PX -
+      DESKTOP_ARTICLE_BOTTOM_PX -
+      DESKTOP_ARTICLE_TO_FOOTER_GAP_PX -
+      DESKTOP_PAGINATION_FOOTER_PX,
+  )
 }
 
 /**
