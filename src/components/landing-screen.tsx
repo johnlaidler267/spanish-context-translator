@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef, useCallback, type Dispatch, type SetStateAction } from "react"
 import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout-fix"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
+import { useAuth } from "@/contexts/auth-context"
+import { useSubscription } from "@/contexts/subscription-context"
+import { supabase } from "@/lib/supabase"
 import { MainHeader } from "./main-header"
 import { LandingContentPills } from "./landing-content-pills"
 import {
@@ -42,6 +45,32 @@ export function LandingScreen({
   theme,
   onThemeChange,
 }: LandingScreenProps) {
+  const { user } = useAuth()
+  const { status: subscriptionStatus } = useSubscription()
+  /** When true, hide the header plan pill (active paid Pro — not trial / past_due). */
+  const [landingHidePlanBanner, setLandingHidePlanBanner] = useState(false)
+
+  useEffect(() => {
+    if (!user) {
+      setLandingHidePlanBanner(false)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from("user_subscriptions")
+        .select("plan_id, status")
+        .eq("user_id", user.id)
+        .is("archived_at", null)
+        .maybeSingle<{ plan_id: string; status: string }>()
+      if (cancelled) return
+      setLandingHidePlanBanner(data?.status === "active" && data?.plan_id === "pro")
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id, subscriptionStatus])
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const landingColumnRef = useRef<HTMLDivElement>(null)
   useVirtualKeyboardLayoutFix(landingColumnRef)
@@ -137,7 +166,7 @@ export function LandingScreen({
   return (
     <>
     <div className="landing-route-shell landing-route-enter relative z-10 flex w-full flex-col min-h-app max-md:min-h-0 max-md:flex-1">
-      <MainHeader theme={theme} onThemeChange={onThemeChange} showPlanBanner />
+      <MainHeader theme={theme} onThemeChange={onThemeChange} showPlanBanner={!landingHidePlanBanner} />
       <div
         className="landing-page flex flex-col items-stretch md:items-center md:justify-start md:pt-[clamp(3.5rem,10vh,6.5rem)] min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
         style={{ position: "relative" }}
