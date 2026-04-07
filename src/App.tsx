@@ -431,6 +431,7 @@ export default function App() {
         return
       }
       if (cache.isLoading(idx)) return
+      bump()
       void cache
         .loadPage(idx, pageSourceText(sourcePages[idx]!), translatePageText)
         .then(() => {

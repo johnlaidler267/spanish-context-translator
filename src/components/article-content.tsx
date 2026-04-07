@@ -283,7 +283,7 @@ export function ArticleContent({
         ref={touchSurfaceRef}
         style={pageEnterStyle}
         className={cn(
-          "font-reading text-[1.5625rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
+          "font-reading text-[1.5625rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20 indent-5 md:indent-7",
           "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
         )}
@@ -359,7 +359,7 @@ export function ArticleContent({
         <footer className={cn(
           "flex items-center justify-between gap-4",
           // Desktop: in-flow, pushed to bottom by mt-auto
-          "mt-auto shrink-0 border-t border-border/60 pt-8",
+          "mt-auto shrink-0 border-t border-border/60 pt-1",
           // Mobile: fixed to screen bottom, always visible
           "max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:z-30",
           "max-md:mt-0 max-md:border-t max-md:border-border/40 max-md:bg-background",

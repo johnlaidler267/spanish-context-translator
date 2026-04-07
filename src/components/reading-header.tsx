@@ -1,8 +1,7 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { ArrowLeft, Moon, Sun, Settings2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Moon, Sun, Settings2 } from "lucide-react"
 import { ModeToggle, type ViewMode } from "./mode-toggle"
 import { type ReadingTheme } from "./theme-toggle"
 import { READING_HEADER_BAND_REM } from "@/lib/reading-layout"
@@ -29,16 +28,16 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
       <div className="absolute inset-x-0 top-0 z-[1] hidden md:block h-24 min-h-24 bg-gradient-to-b from-background/80 via-background/40 to-transparent" />
 
       <div className="relative z-[2] flex items-center justify-between px-4 md:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))]">
-        {/* Back button */}
-        <Button
-          variant="ghost"
-          size="sm"
+        <Link
+          to="/"
           onClick={onBack}
-          className="back-nav-control pointer-events-auto text-foreground hover:bg-muted/50 -ml-2 min-h-11 min-w-11 max-md:min-h-[2.75rem] max-md:min-w-[2.75rem] max-md:px-3 max-md:h-11 max-md:w-11 [&_svg]:max-md:h-5 [&_svg]:max-md:w-5"
+          className="pointer-events-auto min-w-0 shrink select-none"
+          aria-label="LexaLens — home"
         >
-          <ArrowLeft className="h-4 w-4 mr-1.5 max-md:mr-0" />
-          <span className="hidden sm:inline text-sm font-sans">Inicio</span>
-        </Button>
+          <span className="font-fraunces text-[1.2rem] font-semibold leading-none tracking-[-0.03em] text-foreground antialiased max-md:text-[1.15rem] md:text-[1.35rem] [font-feature-settings:'kern'_1,'liga'_1]">
+            LexaLens
+          </span>
+        </Link>
 
         {/* Right side: Mode toggle + Theme + Settings */}
         <div className="pointer-events-auto flex items-center gap-2 md:gap-3">
