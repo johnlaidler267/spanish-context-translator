@@ -1,4 +1,32 @@
+import { isRetryableTranslationFailure } from "@/lib/api-errors"
 import type { ReconciledItem } from "@/lib/translate"
+
+const AUTO_RETRY_DELAYS_MS = [0, 900, 2200, 4500] as const
+const AUTO_RETRY_MAX_ATTEMPTS = AUTO_RETRY_DELAYS_MS.length
+
+async function translateWithAutoRetries(
+  translateOnce: () => Promise<ReconciledItem[]>,
+): Promise<ReconciledItem[]> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt < AUTO_RETRY_MAX_ATTEMPTS; attempt++) {
+    const delay = AUTO_RETRY_DELAYS_MS[attempt] ?? 0
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay))
+    try {
+      return await translateOnce()
+    } catch (e) {
+      lastErr = e
+      const msg = e instanceof Error ? e.message : String(e)
+      if (
+        attempt < AUTO_RETRY_MAX_ATTEMPTS - 1 &&
+        isRetryableTranslationFailure(msg)
+      ) {
+        continue
+      }
+      throw e
+    }
+  }
+  throw lastErr
+}
 
 /**
  * Per-page translation cache shared by Article and Read modes.
@@ -49,7 +77,7 @@ export class TranslationCache {
     const existing = this.inFlight.get(index)
     if (existing) return existing
 
-    const p = translateFn(pageText)
+    const p = translateWithAutoRetries(() => translateFn(pageText))
       .then((items) => {
         this.resolved.set(index, items)
         this.errors.delete(index)

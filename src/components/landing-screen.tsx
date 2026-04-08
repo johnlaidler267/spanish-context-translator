@@ -32,7 +32,7 @@ import type { ReadingTheme } from "./theme-toggle"
 interface LandingScreenProps {
   draftText: string
   onDraftChange: Dispatch<SetStateAction<string>>
-  onSubmit: (text: string, options?: { wikipediaArticleTitle?: string }) => void
+  onSubmit: (text: string) => void
   isLoading: boolean
   theme: ReadingTheme
   onThemeChange: (theme: ReadingTheme) => void
@@ -62,6 +62,23 @@ function writeCachedSubscriptionRow(userId: string, row: SubscriptionRowLike) {
   } catch {
     /* quota / private mode */
   }
+}
+
+/** Silent backoff before surfacing pill fetch errors (matches translation auto-retry spirit). */
+const PILL_FETCH_RETRY_DELAYS_MS = [0, 800, 2000, 4000] as const
+
+async function fetchLandingSnippetWithRetries<T>(fn: () => Promise<T>): Promise<T> {
+  let last: unknown
+  for (let i = 0; i < PILL_FETCH_RETRY_DELAYS_MS.length; i++) {
+    const delay = PILL_FETCH_RETRY_DELAYS_MS[i] ?? 0
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay))
+    try {
+      return await fn()
+    } catch (e) {
+      last = e
+    }
+  }
+  throw last instanceof Error ? last : new Error(String(last))
 }
 
 const PLACEHOLDERS = [
@@ -161,7 +178,9 @@ export function LandingScreen({
   const [isRolling, setIsRolling] = useState(false)
   const [isLearning, setIsLearning] = useState(false)
   const [learnError, setLearnError] = useState<string | null>(null)
-  const learnArticleTitleRef = useRef<string | null>(null)
+  const [learnErrorKind, setLearnErrorKind] = useState<"random" | "learn" | null>(
+    null,
+  )
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [placeholderVisible, setPlaceholderVisible] = useState(true)
   const [focused, setFocused] = useState(false)
@@ -187,12 +206,16 @@ export function LandingScreen({
   const handleRandomPill = async () => {
     if (isRolling) return
     setLearnError(null)
+    setLearnErrorKind(null)
     setIsRolling(true)
     try {
-      const paragraph = await generateRandomSpanish()
+      const paragraph = await fetchLandingSnippetWithRetries<string>(() =>
+        generateRandomSpanish(),
+      )
       learnArticleTitleRef.current = null
       setText(paragraph)
     } catch (e) {
+      setLearnErrorKind("random")
       setLearnError(e instanceof Error ? e.message : "No se pudo generar el texto.")
     } finally {
       setIsRolling(false)
@@ -202,12 +225,16 @@ export function LandingScreen({
   const handleLearnPill = async () => {
     if (isLearning || isLoading) return
     setLearnError(null)
+    setLearnErrorKind(null)
     setIsLearning(true)
     try {
-      const { title, intro } = await fetchLearnRandomParagraph()
-      learnArticleTitleRef.current = title
+      const intro = await fetchLandingSnippetWithRetries<string>(() =>
+        fetchLearnRandomParagraph(),
+      )
+      learnArticleTitleRef.current = null
       setText(intro)
     } catch (e) {
+      setLearnErrorKind("learn")
       setLearnError(e instanceof Error ? e.message : "No se pudo generar el texto.")
     } finally {
       setIsLearning(false)
@@ -219,8 +246,7 @@ export function LandingScreen({
   const handleComposerSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!text.trim() || isLoading) return
-    const wiki = learnArticleTitleRef.current?.trim() ?? ""
-    onSubmit(text.trim(), wiki ? { wikipediaArticleTitle: wiki } : undefined)
+    onSubmit(text.trim())
   }
 
   /**
@@ -258,7 +284,6 @@ export function LandingScreen({
   }
 
   const handleTrySample = () => {
-    learnArticleTitleRef.current = null
     onSubmit(sampleText)
   }
 
@@ -356,7 +381,7 @@ export function LandingScreen({
                 <textarea
                   ref={textareaRef}
                   value={text}
-                  onChange={(e) => { learnArticleTitleRef.current = null; setText(e.target.value) }}
+                  onChange={(e) => setText(e.target.value)}
                   onKeyDown={handleKeyDown}
                   onFocus={() => setFocused(true)}
                   onBlur={() => {
@@ -450,9 +475,20 @@ export function LandingScreen({
     </div>
       {learnError && (
         <AppErrorModal
-          title="Couldn’t load sample text"
+          title="Couldn’t load text"
           message={learnError}
-          onDismiss={() => setLearnError(null)}
+          onDismiss={() => {
+            setLearnError(null)
+            setLearnErrorKind(null)
+          }}
+          onRetry={() => {
+            const kind = learnErrorKind
+            setLearnError(null)
+            setLearnErrorKind(null)
+            if (kind === "random") void handleRandomPill()
+            else if (kind === "learn") void handleLearnPill()
+          }}
+          retryLabel="Try again"
         />
       )}
     </>

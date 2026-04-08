@@ -36,6 +36,7 @@ export function AppErrorModal({
 
   return createPortal(
     <div
+      data-app-error-modal
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ isolation: "isolate" }}
     >
@@ -46,7 +47,7 @@ export function AppErrorModal({
       />
 
       <div
-        className="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg"
+        className="relative z-10 w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="app-error-title"
@@ -68,7 +69,7 @@ export function AppErrorModal({
 
         <div className="mt-6 flex flex-col gap-2">
           {onRetry && (
-            <Button className="w-full" onClick={onRetry}>
+            <Button type="button" className="w-full" onClick={onRetry}>
               {retryLabel}
             </Button>
           )}

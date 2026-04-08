@@ -15,7 +15,7 @@ function translationProvider(): "groq" | "gemini" {
 const GROQ_TRANSLATE_MODEL = "openai/gpt-oss-120b"
 const GROQ_LEARN_MODEL = "llama-3.1-8b-instant" as const
 /** Must match a model id from the Generative Language API (see ListModels / Gemini docs). `gemini-3.0-flash` is not valid — use e.g. `gemini-2.0-flash` or `gemini-3-flash` if your project lists it. */
-const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash"
+const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash-liteAAd"
 const GEMINI_LEARN_MODEL_DEFAULT = "gemini-2.5-flash-lite"
 
 function translateModel(): string {
@@ -242,44 +242,6 @@ function sliceBalancedJsonArrayFrom(raw: string, start: number): string | null {
     }
     if (c === "[") depth++
     if (c === "]") {
-      depth--
-      if (depth === 0) return raw.slice(start, i + 1)
-    }
-  }
-  return null
-}
-
-/**
- * Balanced `{`…`}` span starting at `start` (must be `{`); ignores `}` inside double-quoted JSON strings.
- */
-function sliceBalancedJsonObjectFrom(raw: string, start: number): string | null {
-  if (start < 0 || start >= raw.length || raw[start] !== "{") return null
-  let depth = 0
-  let inStr = false
-  let esc = false
-  for (let i = start; i < raw.length; i++) {
-    const c = raw[i]!
-    if (inStr) {
-      if (esc) {
-        esc = false
-        continue
-      }
-      if (c === "\\") {
-        esc = true
-        continue
-      }
-      if (c === '"') {
-        inStr = false
-        continue
-      }
-      continue
-    }
-    if (c === '"') {
-      inStr = true
-      continue
-    }
-    if (c === "{") depth++
-    if (c === "}") {
       depth--
       if (depth === 0) return raw.slice(start, i + 1)
     }
@@ -1481,7 +1443,7 @@ Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translati
   return out
 }
 
-const LEARN_TOPIC_PROMPT = `Pick a random subject from this list, then pick a specific topic within that subject entirely on your own. Write a single paragraph of 75–100 words about it.
+const LEARN_PARAGRAPH_PROMPT = `Pick a random subject from this list, then pick a specific topic within that subject entirely on your own. Write a single paragraph of 75–100 words about it.
 
 Subjects:
 - Physics
@@ -1501,13 +1463,9 @@ Do not always pick the same subject or the same kinds of topics. Vary widely acr
 
 Write in plain, engaging prose. No bullet points in the paragraph. Assume the reader is intelligent but not an expert. End on something that makes them want to know more.
 
-Write the title and the entire paragraph in Spanish.
+Write the entire paragraph in Spanish.
 
-If the paragraph contains double-quote characters ("), escape each one as backslash-quote (\\") inside the JSON string.
-
-Return only a single JSON object with exactly these keys (no markdown fences, no other text):
-- "title": a short, specific title for this piece (plain text, one line, suitable as an article headline)
-- "paragraph": the paragraph only (no title inside this field)`
+Return only the Spanish paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`
 
 const LEARN_RANDOM_MAX_WORDS = 100
 
@@ -1519,137 +1477,14 @@ function truncateLearnParagraphToWordLimit(text: string, maxWords: number): stri
   return `${words.slice(0, maxWords).join(" ")}…`
 }
 
-export type LearnRandomParagraphResult = {
-  /** Short headline for article mode (Spanish). */
-  title: string
-  /** Body text (Spanish). */
-  intro: string
-}
-
-/** Read a JSON double-quoted string starting at `start` (index of opening `"`). */
-function readJsonDoubleQuotedString(raw: string, start: number): { end: number; value: string } | null {
-  if (start < 0 || start >= raw.length || raw[start] !== '"') return null
-  let i = start + 1
-  let value = ""
-  while (i < raw.length) {
-    const c = raw[i]!
-    if (c === "\\") {
-      if (i + 1 >= raw.length) return null
-      const n = raw[i + 1]!
-      if (n === "n") {
-        value += "\n"
-        i += 2
-        continue
-      }
-      if (n === "r") {
-        value += "\r"
-        i += 2
-        continue
-      }
-      if (n === "t") {
-        value += "\t"
-        i += 2
-        continue
-      }
-      if (n === "u" && i + 5 < raw.length) {
-        const hex = raw.slice(i + 2, i + 6)
-        if (/^[0-9a-fA-F]{4}$/.test(hex)) {
-          value += String.fromCharCode(parseInt(hex, 16))
-          i += 6
-          continue
-        }
-      }
-      value += n
-      i += 2
-      continue
-    }
-    if (c === '"') return { end: i + 1, value }
-    value += c
-    i++
-  }
-  return null
-}
-
 /**
- * When jsonrepair/JSON.parse fail (unescaped quotes, etc.), pull title/paragraph by scanning for keys.
- */
-function tryParseLearnTopicLoose(blob: string): { title: string; paragraph: string } | null {
-  const findStringAfterKey = (key: string): string | null => {
-    const needle = `"${key}"`
-    let from = 0
-    while (from < blob.length) {
-      const k = blob.indexOf(needle, from)
-      if (k === -1) return null
-      const afterKey = k + needle.length
-      const colon = blob.indexOf(":", afterKey)
-      if (colon === -1) return null
-      let i = colon + 1
-      while (i < blob.length && /\s/.test(blob[i]!)) i++
-      const read = readJsonDoubleQuotedString(blob, i)
-      if (read) return read.value
-      from = afterKey
-    }
-    return null
-  }
-  const title = findStringAfterKey("title")
-  const paragraph = findStringAfterKey("paragraph")
-  if (!title || !paragraph) return null
-  return { title, paragraph }
-}
-
-function parseLearnTopicJson(raw: string): { title: string; paragraph: string } {
-  const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/m, "").trim()
-  const objStart = cleaned.indexOf("{")
-  const jsonBlob =
-    objStart >= 0 ? sliceBalancedJsonObjectFrom(cleaned, objStart) : cleaned.match(/\{[\s\S]*\}/)?.[0]
-  if (!jsonBlob) throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
-
-  const normalize = (title: string, paragraph: string) => ({
-    title: title.replace(/\s+/g, " ").trim(),
-    paragraph: paragraph.replace(/\s+/g, " ").trim(),
-  })
-
-  const validate = (title: string, paragraph: string): { title: string; paragraph: string } => {
-    if (!title || !paragraph || paragraph.length < 40) {
-      throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
-    }
-    return { title, paragraph }
-  }
-
-  try {
-    const repaired = jsonrepair(jsonBlob)
-    const parsed = JSON.parse(repaired) as { title?: unknown; paragraph?: unknown }
-    const title = typeof parsed.title === "string" ? parsed.title : ""
-    const paragraph = typeof parsed.paragraph === "string" ? parsed.paragraph : ""
-    const n = normalize(title, paragraph)
-    return validate(n.title, n.paragraph)
-  } catch {
-    try {
-      const parsed = JSON.parse(jsonBlob) as { title?: unknown; paragraph?: unknown }
-      const title = typeof parsed.title === "string" ? parsed.title : ""
-      const paragraph = typeof parsed.paragraph === "string" ? parsed.paragraph : ""
-      const n = normalize(title, paragraph)
-      return validate(n.title, n.paragraph)
-    } catch {
-      /* fall through */
-    }
-    const loose = tryParseLearnTopicLoose(jsonBlob) ?? tryParseLearnTopicLoose(cleaned)
-    if (loose) {
-      const n = normalize(loose.title, loose.paragraph)
-      return validate(n.title, n.paragraph)
-    }
-    throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
-  }
-}
-
-/**
- * Learn pill: topic title + paragraph via the configured learn model (Spanish, ~75–100 words).
+ * Learn pill: topic paragraph via the configured learn model (Spanish, ~75–100 words).
  * Replaces the former Spanish Wikipedia featured-article fetch.
  */
-export async function fetchLearnRandomParagraph(): Promise<LearnRandomParagraphResult> {
+export async function fetchLearnRandomParagraph(): Promise<string> {
   const res = await fetchChatCompletion({
     model: learnModel(),
-    messages: [{ role: "user", content: LEARN_TOPIC_PROMPT }],
+    messages: [{ role: "user", content: LEARN_PARAGRAPH_PROMPT }],
     temperature: 1.5,
     max_tokens: 500,
   })
@@ -1659,11 +1494,16 @@ export async function fetchLearnRandomParagraph(): Promise<LearnRandomParagraphR
     throwChatHttpError(res, detail)
   }
 
-  const data = await res.json()
-  const raw = data.choices?.[0]?.message?.content?.trim() ?? ""
-  const { title, paragraph } = parseLearnTopicJson(raw)
-  const intro = truncateLearnParagraphToWordLimit(paragraph, LEARN_RANDOM_MAX_WORDS)
-  return { title, intro }
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: unknown } }>
+  }
+  const raw = stringifyMessageContent(data.choices?.[0]?.message?.content)
+  if (!raw?.trim()) throw new Error("Empty response from language model.")
+  const intro = truncateLearnParagraphToWordLimit(raw, LEARN_RANDOM_MAX_WORDS)
+  if (intro.length < 40) {
+    throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
+  }
+  return intro
 }
 
 /** Spanish-first speech-to-text via Groq Whisper (proxied through Edge Function). */

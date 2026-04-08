@@ -87,7 +87,6 @@ export default function App() {
    * Read mode shows subdivided steps for the current article page only; no extra LLM preload.
    */
   const [sourcePages, setSourcePages] = useState<string[][]>([])
-  const [articleModeHeading, setArticleModeHeading] = useState<string | null>(null)
   const [articlePageIndex, setArticlePageIndex] = useState(0)
   const [readingSessionId, setReadingSessionId] = useState(0)
   /** Increment when Read mode goes to previous article page from first step (land on last read step). */
@@ -130,7 +129,7 @@ export default function App() {
   }, [dismissPopup, navigate])
 
   const handleTextSubmit = useCallback(
-    async (text: string, options?: { wikipediaArticleTitle?: string }) => {
+    async (text: string) => {
       if (!text.trim()) return
 
       // Guests: no track-usage — cap anonymous previews in localStorage (guest_tries_used).
@@ -139,8 +138,6 @@ export default function App() {
         return
       }
       const trimmed = dedupeConsecutiveDuplicateLines(text).trim()
-      const heading = options?.wikipediaArticleTitle?.trim() ?? ""
-      setArticleModeHeading(heading || null)
       setLandingDraft(trimmed)
       setError("")
       rateLimitModalSuppressedRef.current = false
@@ -154,16 +151,7 @@ export default function App() {
         const isMobile =
           typeof window !== "undefined" &&
           window.matchMedia("(max-width: 767px)").matches
-        const pageLimits = articlePageSplitLimits
-        const hasMobileHeading = isMobile && Boolean(heading)
-        const rawEffectiveLimits = hasMobileHeading
-          ? {
-              maxWords: Math.max(800, Math.round(pageLimits.maxWords * 0.84)),
-              // Extra margin: in-flow title uses body space the char probe does not reserve.
-              maxChars: Math.round(pageLimits.maxChars * 0.84 * 0.88),
-            }
-          : pageLimits
-        const effectivePageLimits = clampPageLimitsForLlmBatching(rawEffectiveLimits)
+        const effectivePageLimits = clampPageLimitsForLlmBatching(articlePageSplitLimits)
         let pages = buildSentencePages(sents, effectivePageLimits)
         if (pages.length === 0) pages = [[trimmed]]
         pages = mergeArticlePagesIfWholeTextFitsLimits(
@@ -265,7 +253,6 @@ export default function App() {
   const handleBack = useCallback(() => {
     setAppState("landing")
     setSourcePages([])
-    setArticleModeHeading(null)
     cacheRef.current = new TranslationCache()
     setArticlePageIndex(0)
     setError("")
@@ -482,7 +469,6 @@ export default function App() {
                 errorMessage={articleErr ?? null}
                 onRetry={articleErr ? retryArticlePage : undefined}
                 pageKey={articlePageIndex}
-                articleHeading={articlePageIndex === 0 ? articleModeHeading : null}
                 pagination={
                   totalPages > 1
                     ? {
@@ -525,7 +511,6 @@ export default function App() {
                 errorMessage={articleErr ?? null}
                 onRetry={articleErr ? retryArticlePage : undefined}
                 pageKey={articlePageIndex}
-                articleHeading={articlePageIndex === 0 ? articleModeHeading : null}
                 pagination={null}
               />
             </div>

@@ -296,6 +296,7 @@ export function ReadMode({
   const handleGlobalClick = useCallback(
     (e: MouseEvent) => {
       const target = e.target as HTMLElement
+      if (target.closest("[data-app-error-modal]")) return
       if (
         !target.closest("[data-chunk]") &&
         !target.closest("[data-popup]") &&

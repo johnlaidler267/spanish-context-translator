@@ -43,8 +43,6 @@ interface ArticleContentProps {
   onRetry?: () => void
   pagination?: ArticlePaginationState | null
   pageKey?: number
-  /** Optional heading — shown bold above body on page 1 only */
-  articleHeading?: string | null
 }
 
 const CHUNK_HOVER_GAP_CLEAR_MS = 90
@@ -56,7 +54,6 @@ export function ArticleContent({
   onRetry,
   pagination = null,
   pageKey = 0,
-  articleHeading = null,
 }: ArticleContentProps) {
   const [errorModalDismissed, setErrorModalDismissed] = useState(false)
   useEffect(() => {
@@ -232,6 +229,7 @@ export function ArticleContent({
 
   const handleGlobalClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement
+    if (target.closest("[data-app-error-modal]")) return
     if (
       !target.closest("[data-chunk]") &&
       !target.closest("[data-popup]") &&
@@ -263,9 +261,7 @@ export function ArticleContent({
         pagination && pagination.pageCount > 1
           ? "max-md:pb-[max(5.5rem,env(safe-area-inset-bottom,0px)+4.5rem)]"
           : "max-md:pb-[max(2.5rem,env(safe-area-inset-bottom,0px)+1.5rem)]",
-        articleHeading
-          ? "max-md:pt-[calc(env(safe-area-inset-top,0px)+4rem)]"
-          : "max-md:pt-[calc(env(safe-area-inset-top,0px)+6.25rem)]",
+        "max-md:pt-[calc(env(safe-area-inset-top,0px)+6.25rem)]",
         "flex w-full flex-1 flex-col min-h-0 max-md:overflow-hidden",
         "md:min-h-[calc(100dvh-7.25rem)]",
       )}
@@ -274,11 +270,6 @@ export function ArticleContent({
         ["--reading-content-top" as string]: `${READING_CONTENT_TOP_MOBILE_REM}rem`,
       }}
     >
-      {articleHeading ? (
-        <h1 className="mb-4 shrink-0 font-sans text-xl font-bold leading-snug tracking-tight text-foreground md:mb-6 md:text-2xl">
-          {articleHeading}
-        </h1>
-      ) : null}
       <article
         ref={touchSurfaceRef}
         style={pageEnterStyle}

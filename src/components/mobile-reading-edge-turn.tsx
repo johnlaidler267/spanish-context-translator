@@ -51,7 +51,7 @@ export function MobileReadingEdgeTurn({
     const eligibleTarget = (target: EventTarget | null) => {
       if (!(target instanceof Element)) return false
       return !target.closest(
-        "[data-chunk],[data-popup],[data-details-box],button,a,input,textarea,select,[role='dialog']",
+        "[data-chunk],[data-popup],[data-details-box],[data-app-error-modal],button,a,input,textarea,select,[role='dialog'],[role='alertdialog']",
       )
     }
 
