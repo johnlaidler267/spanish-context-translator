@@ -212,7 +212,6 @@ export function LandingScreen({
       const paragraph = await fetchLandingSnippetWithRetries<string>(() =>
         generateRandomSpanish(),
       )
-      learnArticleTitleRef.current = null
       setText(paragraph)
     } catch (e) {
       setLearnErrorKind("random")
@@ -231,7 +230,6 @@ export function LandingScreen({
       const intro = await fetchLandingSnippetWithRetries<string>(() =>
         fetchLearnRandomParagraph(),
       )
-      learnArticleTitleRef.current = null
       setText(intro)
     } catch (e) {
       setLearnErrorKind("learn")

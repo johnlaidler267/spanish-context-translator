@@ -406,29 +406,37 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
 }
 
-const PROMPT = (input: string) => `You are a Spanish chunking expert. Break Spanish into learner chunks.
-
-RULE: ONE WORD = ONE CHUNK unless a phrase is a frozen unit (idiom, fixed connector, clitic pair, proper noun, lexicalized compound).
+const PROMPT = (input: string) => `You are a Spanish chunking expert. Below is a JSON array that has been partially completed. Continue it — chunk the remaining Spanish, following the exact same pattern.
 
 FORMAT: {"c": exact substring from source, "m": English meaning, "l": literal rendering, "n": grammar note — omit if obvious}
 
-EXAMPLES:
+RULE: One word = one chunk unless the phrase is a frozen unit (idiom, fixed connector, clitic pair, proper noun, lexicalized compound).
 
-INPUT: "La famosa paradoja del gato de Schrödinger ilustra los principios cuánticos."
-OUTPUT: [{"c":"La","m":"the","l":"the"},{"c":"famosa","m":"famous","l":"famous"},{"c":"paradoja","m":"paradox","l":"paradox"},{"c":"del","m":"of the","l":"of the"},{"c":"gato","m":"cat","l":"cat"},{"c":"de","m":"of","l":"of"},{"c":"Schrödinger","m":"Schrödinger","l":"Schrödinger"},{"c":"ilustra","m":"illustrates","l":"illustrates"},{"c":"los","m":"the","l":"the"},{"c":"principios","m":"principles","l":"principles"},{"c":"cuánticos","m":"quantum","l":"quantum"}]
+Already chunked:
+[
+{"c":"Aunque","m":"although","l":"although"},
+{"c":"de vez en cuando","m":"from time to time","l":"of time in when"},
+{"c":"se lo","m":"it to him","l":"it to him","n":"clitic cluster"},
+{"c":"mencionaba","m":"mentioned","l":"was mentioning"},
+{"c":"a","m":"to","l":"to"},
+{"c":"su","m":"his","l":"his"},
+{"c":"mejor","m":"best","l":"best"},
+{"c":"amigo","m":"friend","l":"friend"},
+{"c":"no","m":"not","l":"not"},
+{"c":"se daba cuenta de","m":"realized","l":"gave itself account of","n":"darse cuenta de — to realize"},
+{"c":"que","m":"that","l":"that"},
+{"c":"el","m":"the","l":"the"},
+{"c":"medio ambiente","m":"environment","l":"middle surroundings","n":"lexicalized compound"},
+{"c":"estaba","m":"was","l":"was"},
+{"c":"cambiando","m":"changing","l":"changing"},
+{"c":"hasta que","m":"until","l":"until that"},
+{"c":"de","m":"of","l":"of"},
+{"c":"pronto","m":"suddenly","l":"sudden"},
+{"c":"llegaron","m":"arrived","l":"arrived"},
+{"c":"las","m":"the","l":"the"},
+{"c":"noticias","m":"the news","l":"the news"}
 
-INPUT: "Esperó hasta que llegó el tren pero de pronto se lo llevaron."
-OUTPUT: [{"c":"Esperó","m":"waited","l":"waited"},{"c":"hasta que","m":"until","l":"until that"},{"c":"llegó","m":"arrived","l":"arrived"},{"c":"el","m":"the","l":"the"},{"c":"tren","m":"train","l":"train"},{"c":"pero","m":"but","l":"but"},{"c":"de pronto","m":"suddenly","l":"of sudden"},{"c":"se lo","m":"it to him","l":"it to him","n":"clitic cluster"},{"c":"llevaron","m":"they took","l":"they carried"}]
-
-INPUT: "No se daba cuenta de que el medio ambiente estaba en peligro."
-OUTPUT: [{"c":"No","m":"not","l":"not"},{"c":"se daba cuenta de","m":"realized","l":"gave itself account of","n":"darse cuenta de — to realize"},{"c":"que","m":"that","l":"that"},{"c":"el","m":"the","l":"the"},{"c":"medio ambiente","m":"environment","l":"middle surroundings","n":"lexicalized compound"},{"c":"estaba","m":"was","l":"was"},{"c":"en","m":"in","l":"in"},{"c":"peligro","m":"danger","l":"danger"}]
-
-INPUT: "A partir de entonces vivió de vez en cuando en Buenos Aires."
-OUTPUT: [{"c":"A partir de","m":"starting from","l":"at leaving from"},{"c":"entonces","m":"then","l":"then"},{"c":"vivió","m":"lived","l":"lived"},{"c":"de vez en cuando","m":"from time to time","l":"of time in when"},{"c":"en","m":"in","l":"in"},{"c":"Buenos Aires","m":"Buenos Aires","l":"Good Airs","n":"proper noun"}]
-
-Return only a valid JSON array. No preamble. No markdown.
-
-Spanish source:
+Remaining Spanish to chunk:
 ${input}`
 
 /** LLM JSON uses short keys (c,m,l,n); internal pipeline uses long names. */
