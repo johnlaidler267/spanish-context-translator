@@ -42,6 +42,8 @@ export function DetailsBox({
   className,
 }: DetailsBoxProps) {
   const open = Boolean(activeChunk?.trim())
+  const headerWord =
+    activeChunk != null && activeChunk.trim() ? chunkTextForWordDisplay(activeChunk) : ""
   const reduceMotion = useReducedMotion()
 
   const enter =
@@ -86,9 +88,9 @@ export function DetailsBox({
               <BookOpen className="h-4 w-4 shrink-0 text-[#c97a5a] opacity-80 block" aria-hidden />
               <span
                 className="flex-1 min-w-0 font-serif text-lg leading-snug text-foreground truncate -translate-y-[3px]"
-                title={activeChunk ?? ""}
+                title={headerWord}
               >
-                {activeChunk}
+                {headerWord}
               </span>
               <button
                 type="button"
