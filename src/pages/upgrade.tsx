@@ -52,7 +52,7 @@ import {
 import { PlanChangeDialog } from "@/components/plan-change-dialog"
 import { LegalDocLinks } from "@/components/legal-doc-links"
 import { supabase } from "@/lib/supabase"
-import { useSubscription } from "@/contexts/subscription-context"
+import { invokeSubscriptionRecheck } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
 
@@ -255,16 +255,10 @@ function getFreeTierIncludeRows(): { feature: string; limitHint: string }[] {
     chars != null
       ? `Up to ${chars.toLocaleString()} characters per submission`
       : "Character limit per submission"
-  const charsDay = lim.charsPerUtcDay
-  const charsDayHint =
-    charsDay != null
-      ? `Up to ${charsDay.toLocaleString()} characters total per day (UTC), all submissions combined`
-      : null
-
   return [
     {
       feature: "Article mode — hover any word to understand it",
-      limitHint: [charsLabel, charsDayHint].filter(Boolean).join(" · "),
+      limitHint: charsLabel,
     },
     {
       feature: "Read mode — sentence by sentence, at your pace",
@@ -302,8 +296,6 @@ function tierBullets(tier: TierConfig): string[] {
   )
   if (limits.textsPerDay !== null)
     bullets.push(`${limits.textsPerDay} submissions per day`)
-  if (limits.charsPerUtcDay !== null)
-    bullets.push(`Up to ${limits.charsPerUtcDay.toLocaleString()} characters per day total (UTC)`)
   if (limits.charsPerSubmission !== null)
     bullets.push(`Up to ${limits.charsPerSubmission.toLocaleString()} characters per submission`)
   if (limits.savedTranslations === null)
@@ -564,7 +556,6 @@ interface PendingAction {
 }
 
 export default function UpgradePage() {
-  const { recheck } = useSubscription()
   const { user, openAuthModal } = useAuth()
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [interval, setInterval] = useState<DbBillingInterval>("monthly")
@@ -687,13 +678,13 @@ export default function UpgradePage() {
         } else {
           await loadSub()
         }
-        await recheck()
+        await invokeSubscriptionRecheck()
         clearCheckoutParam()
       } finally {
         setConfirmingActivation(false)
       }
     })
-  }, [loadSub, recheck, openAuthModal])
+  }, [loadSub, openAuthModal])
 
   // ── Reactivation ───────────────────────────────────────────────────────────
   const handleReactivate = useCallback(async () => {
@@ -871,7 +862,7 @@ export default function UpgradePage() {
             kind: "upgrade",
             tierName: getTier(result.planId).name,
           })
-          await recheck()
+          await invokeSubscriptionRecheck()
         } catch (e) {
           if (e instanceof SubscriptionError && e.code === SUBSCRIPTION_IDENTITY_REQUIRED_CODE) {
             openAuthModal()
@@ -905,7 +896,7 @@ export default function UpgradePage() {
         setProcessingTier(null)
       }
     },
-    [interval, sub, handleReactivate, recheck, user?.is_anonymous, openAuthModal],
+    [interval, sub, handleReactivate, user?.is_anonymous, openAuthModal],
   )
 
   // ─── Render ────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { Moon, Sun, Settings2 } from "lucide-react"
+import { ChevronLeft, Moon, Sun, Settings2 } from "lucide-react"
 import { ModeToggle, type ViewMode } from "./mode-toggle"
 import { type ReadingTheme } from "./theme-toggle"
 import { READING_HEADER_BAND_REM } from "@/lib/reading-layout"
@@ -31,12 +31,10 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
         <Link
           to="/"
           onClick={onBack}
-          className="pointer-events-auto min-w-0 shrink select-none"
-          aria-label="LexaLens — home"
+          className="pointer-events-auto flex h-9 w-9 max-md:h-11 max-md:w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/50"
+          aria-label="Back to home"
         >
-          <span className="font-fraunces text-[1.2rem] font-semibold leading-none tracking-[-0.03em] text-foreground antialiased max-md:text-[1.15rem] md:text-[1.35rem] [font-feature-settings:'kern'_1,'liga'_1]">
-            Lexa<span style={{ color: "#A24D38" }}>Lens</span>
-          </span>
+          <ChevronLeft className="h-5 w-5 max-md:h-[1.35rem] max-md:w-[1.35rem]" strokeWidth={2.25} aria-hidden />
         </Link>
 
         {/* Right side: Mode toggle + Theme + Settings */}

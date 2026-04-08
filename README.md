@@ -103,7 +103,7 @@ All migrations live in `supabase/migrations/`. Run `npx supabase@latest db push`
 | `0007_error_handling` | `past_due_since` grace period; webhook retry tracking |
 | `0008_increment_usage_utc_daily` | Daily `texts_today` reset uses UTC calendar date |
 | `0009_fix_extra_counters_null` | Harden `increment_usage` / `extra_counters` null handling |
-| `0010_chars_today_daily` | Daily UTC source-character counter (`chars_today`) for free-tier `charsPerUtcDay` |
+| `0010_chars_today_daily` | Adds `chars_today` / `chars_today_date` to `usage_records` (legacy; no longer used for tier limits) |
 | `0010_fix_trial_trigger_on_insert` | Trial trigger runs on INSERT so `has_used_trial` is set when `trial_start` is present |
 | `0011_plan_id_free_pro_only` | DB enum is `free` / `pro` only; legacy `unlimited` rows merged to `pro` |
 
@@ -152,7 +152,7 @@ Plans are defined in `src/lib/tiers.ts` (frontend) and mirrored in `supabase/fun
 | Free | $0 | — | — |
 | Pro | $7/mo | $59/yr | 7 days |
 
-Free tier (see `limits` in `TIERS.free` in `tiers.ts`): **daily submission cap** (`textsPerDay`), **daily UTC source-character cap** (`charsPerUtcDay`), **per-submission** character cap, and chunk limits. Pro has uncapped submissions/characters for normal use. Article **pages** use **per-request** semantics where applicable (not a separate cumulative page bank on free).
+Free tier (see `limits` in `TIERS.free` in `tiers.ts`): **daily submission cap** (`textsPerDay`), **per-submission** character cap, and chunk limits. Pro has uncapped submissions/characters for normal use. Article **pages** use **per-request** semantics where applicable (not a separate cumulative page bank on free).
 
 ### Limit Enforcement
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Sun, Moon, Settings2, Loader2 } from "lucide-react"
-import { useSubscription } from "@/contexts/subscription-context"
+import { useSubscriptionOptional } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
 import { getTier } from "@/lib/tiers"
 import { subscriptionRowShowsAsFreePlan } from "@/lib/subscription-display"
@@ -106,9 +106,9 @@ function PlanBadgeLoading() {
   )
 }
 
-/** Landing plan pill — subscription copy from DB; `useSubscription` invalidates when status changes. */
+/** Landing plan pill — subscription copy from DB; context status invalidates when coarse status changes. */
 function PlanBadgeContent() {
-  const { status: ctxStatus } = useSubscription()
+  const ctxStatus = useSubscriptionOptional()?.status ?? null
   const { user, isLoading: authLoading, openAuthModal } = useAuth()
   const [pill, setPill] = useState<LinkPlanPill | null>(null)
 
@@ -223,8 +223,14 @@ export function MainHeader({
             className="pointer-events-auto min-w-0 shrink select-none"
             aria-label="LexaLens — home"
           >
-            <span className="font-fraunces text-[1.2rem] font-semibold leading-none tracking-[-0.03em] text-foreground antialiased max-md:text-[1.15rem] md:text-[1.35rem] [font-feature-settings:'kern'_1,'liga'_1]">
-            LexaLens
+            <span
+              className={
+                "font-fraunces text-[1.2rem] font-bold leading-none tracking-[-0.03em] antialiased max-md:text-[1.15rem] md:text-[1.35rem] " +
+                "[font-feature-settings:'kern'_1,'liga'_1] inline-block bg-gradient-to-br from-[#2f2926] via-[#4a3f38] to-[#c97a5a] " +
+                "bg-clip-text text-transparent dark:from-[#e8dfd4] dark:via-[#d4a896] dark:to-[#b06b56]"
+              }
+            >
+              LexaLens
             </span>
           </Link>
           <div className="flex items-center gap-2 md:gap-3 pointer-events-auto shrink-0">

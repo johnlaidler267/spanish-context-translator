@@ -100,7 +100,6 @@ export function getAllPriceIds(): string[] {
 export interface TierLimits {
   textsPerMonth:      number | null
   textsPerDay:        number | null
-  charsPerUtcDay:     number | null
   chunksPerRequest:   number | null
   pagesPerSubmission: number | null
   savedTranslations:  number | null
@@ -111,7 +110,6 @@ export const TIER_LIMITS: Record<TierId, TierLimits> = {
   free: {
     textsPerMonth:      null,
     textsPerDay:        5,
-    charsPerUtcDay:     3000,
     chunksPerRequest:   80,
     pagesPerSubmission: null,
     savedTranslations:  0,
@@ -120,7 +118,6 @@ export const TIER_LIMITS: Record<TierId, TierLimits> = {
   pro: {
     textsPerMonth:      null,
     textsPerDay:        null,
-    charsPerUtcDay:     null,
     chunksPerRequest:   null,
     pagesPerSubmission: null,
     savedTranslations:  null,

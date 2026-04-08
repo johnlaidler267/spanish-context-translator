@@ -277,7 +277,6 @@ export function diffTiers(fromId: TierId, toId: TierId): TierDiff {
   const limitMeta: Array<{ key: keyof TierConfig["limits"]; suffix: string }> = [
     { key: "textsPerMonth",      suffix: "texts/month" },
     { key: "textsPerDay",        suffix: "submissions/day" },
-    { key: "charsPerUtcDay",     suffix: "chars/day (UTC)" },
     { key: "chunksPerRequest",   suffix: "chunks/request" },
     { key: "pagesPerSubmission", suffix: "pages/submission" },
     { key: "charsPerSubmission", suffix: "chars/submission" },

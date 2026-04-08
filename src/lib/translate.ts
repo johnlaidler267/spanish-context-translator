@@ -15,7 +15,7 @@ function translationProvider(): "groq" | "gemini" {
 const GROQ_TRANSLATE_MODEL = "openai/gpt-oss-120b"
 const GROQ_LEARN_MODEL = "llama-3.1-8b-instant" as const
 /** Must match a model id from the Generative Language API (see ListModels / Gemini docs). `gemini-3.0-flash` is not valid — use e.g. `gemini-2.0-flash` or `gemini-3-flash` if your project lists it. */
-const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash-lite"
+const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash"
 const GEMINI_LEARN_MODEL_DEFAULT = "gemini-2.5-flash-lite"
 
 function translateModel(): string {
@@ -59,7 +59,7 @@ const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
  * and always tripped TPM — unrelated to how short the user’s Spanish is.
  * 4k further reduces “requested” TPM vs 5k; if you still see 429s, wait or upgrade Groq.
  */
-const TRANSLATE_MAX_COMPLETION_TOKENS = 8000
+const TRANSLATE_MAX_COMPLETION_TOKENS = 6000
 
 /**
  * Spanish character budget for a single `translatePageText` completion.
@@ -444,117 +444,29 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
 }
 
-const PROMPT = (input: string) => `You are a Spanish to english tutor. Break the input into chunks based on the following groups.
+const PROMPT = (input: string) => `You are a Spanish chunking expert. Break Spanish into learner chunks.
 
-Each chunk: {"c": Spanish, "m": English meaning in context, "l": closest English rendering of the word’s internal construction, even if unnatural, "n": grammar note — omit key entirely if obvious}
+RULE: ONE WORD = ONE CHUNK unless a phrase is a frozen unit (idiom, fixed connector, clitic pair, proper noun, lexicalized compound).
 
-Example of "l":
-{"c": "caseras", "m": homemade, "l": “of/from the house” → from casa (house) + -ero/a (related to)}
-{"c": "acercaba", "approached", "was bringing closer”}
+FORMAT: {"c": exact substring from source, "m": English meaning, "l": literal rendering, "n": grammar note — omit if obvious}
 
-CRITICAL — the "c" field (Spanish):
-- It must be copied verbatim from the source text below: exact same characters, accents, line-break joins (as single spaces), odd spellings, OCR noise, old orthography, and typos. The UI finds each chunk with a string search.
-- Never put a "corrected" or modernized spelling in "c". If you want to note what the word probably should be, say that only in "n" or "l", while "c" stays exactly what appears in the source.
+EXAMPLES:
 
-Default to one word per chunk. Never chunk punctuation.
+INPUT: "La famosa paradoja del gato de Schrödinger ilustra los principios cuánticos."
+OUTPUT: [{"c":"La","m":"the","l":"the"},{"c":"famosa","m":"famous","l":"famous"},{"c":"paradoja","m":"paradox","l":"paradox"},{"c":"del","m":"of the","l":"of the"},{"c":"gato","m":"cat","l":"cat"},{"c":"de","m":"of","l":"of"},{"c":"Schrödinger","m":"Schrödinger","l":"Schrödinger"},{"c":"ilustra","m":"illustrates","l":"illustrates"},{"c":"los","m":"the","l":"the"},{"c":"principios","m":"principles","l":"principles"},{"c":"cuánticos","m":"quantum","l":"quantum"}]
 
-Keep optional "n" (grammar notes) very short (about one line each). 
+INPUT: "Esperó hasta que llegó el tren pero de pronto se lo llevaron."
+OUTPUT: [{"c":"Esperó","m":"waited","l":"waited"},{"c":"hasta que","m":"until","l":"until that"},{"c":"llegó","m":"arrived","l":"arrived"},{"c":"el","m":"the","l":"the"},{"c":"tren","m":"train","l":"train"},{"c":"pero","m":"but","l":"but"},{"c":"de pronto","m":"suddenly","l":"of sudden"},{"c":"se lo","m":"it to him","l":"it to him","n":"clitic cluster"},{"c":"llevaron","m":"they took","l":"they carried"}]
 
-EXAMPLE GROUPING CATEGORIES (EXTRAPOLATE):
-{
-  "fixed_idioms": [
-    {"c":"dar su brazo a torcer","m":"to give in","l":"give his arm to twist","n":"Fixed idiom — to yield or back down."},
-    {"c":"visto bueno","m":"green light","l":"seen good","n":"Fixed idiom — approval or go-ahead."},
-    {"c":"de pronto","m":"suddenly","l":"of sudden","n":"Fixed idiom — all of a sudden."},
-    {"c":"en cambio","m":"on the other hand","l":"in change","n":"Fixed idiom — instead / by contrast."},
-    {"c":"del mismo modo","m":"in the same way","l":"of the same mode","n":"Fixed idiom — likewise."},
-    {"c":"de este modo","m":"in this way","l":"of this mode","n":"Fixed idiom — thus / this way."},
-    {"c":"se trata de","m":"it is about","l":"itself treats of","n":"Fixed idiom — impersonal reflexive, to be about."},
-  ],
+INPUT: "No se daba cuenta de que el medio ambiente estaba en peligro."
+OUTPUT: [{"c":"No","m":"not","l":"not"},{"c":"se daba cuenta de","m":"realized","l":"gave itself account of","n":"darse cuenta de — to realize"},{"c":"que","m":"that","l":"that"},{"c":"el","m":"the","l":"the"},{"c":"medio ambiente","m":"environment","l":"middle surroundings","n":"lexicalized compound"},{"c":"estaba","m":"was","l":"was"},{"c":"en","m":"in","l":"in"},{"c":"peligro","m":"danger","l":"danger"}]
 
-  "relative_subordinating_connectors": [
-    {"c":"en la que","m":"in which","l":"in the which"},
-    {"c":"en el que","m":"in which","l":"in the which"},
-    {"c":"los que","m":"those who","l":"the ones that"},
-    {"c":"las que","m":"those who","l":"the ones that"},
-    {"c":"antes que","m":"before","l":"before that"},
-    {"c":"mientras que","m":"while / whereas","l":"while that"},
-  ],
+INPUT: "A partir de entonces vivió de vez en cuando en Buenos Aires."
+OUTPUT: [{"c":"A partir de","m":"starting from","l":"at leaving from"},{"c":"entonces","m":"then","l":"then"},{"c":"vivió","m":"lived","l":"lived"},{"c":"de vez en cuando","m":"from time to time","l":"of time in when"},{"c":"en","m":"in","l":"in"},{"c":"Buenos Aires","m":"Buenos Aires","l":"Good Airs","n":"proper noun"}]
 
-  "compound_nouns": [
-    {"c":"redes sociales","m":"social media","l":"networks social"},
-    {"c":"estado natal","m":"home state","l":"state native"},
-    {"c":"aspecto físico","m":"physical appearance","l":"aspect physical"},
-    {"c":"medio ambiente","m":"environment","l":"middle surroundings"},
-    {"c":"libre albedrío","m":"free will","l":"free will"},
-    {"c":"corriente eléctrica","m":"electric current","l":"current electric"},
-  ],
+Return only a valid JSON array. No preamble. No markdown.
 
-  "lo_nominalizer": [
-    {"c":"lo maravilloso","m":"the remarkable thing","l":"the marvelous","n":"lo + adj — nominalizes adjective into abstract concept."},
-    {"c":"lo invisible","m":"the invisible","l":"the invisible","n":"lo + adj — makes adjective into a noun concept."},
-    {"c":"lo extraordinario","m":"the extraordinary thing","l":"the extraordinary","n":"lo + adj — nominalizer."},
-  ],
-
-  "prepositional_verb_phrases": [
-    {"c":"contar con","m":"to rely on / to have","l":"count with"},
-    {"c":"darse cuenta de","m":"to realize","l":"give oneself account of"},
-    {"c":"pensar en","m":"to think about","l":"think in","n":"Verb + preposition — pensar en, not pensar de."},
-    {"c":"tratar de","m":"to try to","l":"treat of"},
-]
-  "possessive pronouns": [
-    {"c":"el suyo","m":"his","l":"the his", "n":"Possessive pronoun — article + possessive fuse into one word meaning"},
-  ]
-
-  "proper_nouns": [
-    {"c":"Héctor Bonilla","m":"Héctor Bonilla","l":"Héctor Bonilla"},
-    {"c":"Fernanda Ríos","m":"Fernanda Ríos","l":"Fernanda Ríos"},
-    {"c":"Buenos Aires","m":"Buenos Aires","l":"Good Airs"},
-    {"c":"Premio Nobel","m":"Nobel Prize","l":"Prize Nobel"},
-    {"c":"Segunda Guerra Mundial","m":"World War II","l":"Second War World"},
-    {"c":"Año Nuevo","m":"New Year","l":"Year New"}
-  ],
-
-  "clitic_clusters": [
-    {"c":"se lo","m":"it to her/him","l":"it to him","n":"Clitic cluster — indirect se + direct lo."},
-    {"c":"se las","m":"them to her/him","l":"them to him","n":"Clitic cluster — indirect se + direct las."},
-    {"c":"se los","m":"them to her/him","l":"them to him","n":"Clitic cluster — indirect se + direct los."},
-    {"c":"me lo","m":"it to me","l":"it to me","n":"Clitic cluster — indirect me + direct lo."},
-    {"c":"te lo","m":"it to you","l":"it to you","n":"Clitic cluster — indirect te + direct lo."},
-    {"c":"nos lo","m":"it to us","l":"it to us","n":"Clitic cluster — indirect nos + direct lo."},
-    {"c":"me los","m":"them to me","l":"them to me","n":"Clitic cluster — indirect me + direct los."},
-    {"c":"te las","m":"them to you","l":"them to you","n":"Clitic cluster — indirect te + direct las."}
-  ],
-
-  "temporal_age_phrases": [
-    {"c":"a los cinco minutos","m":"after five minutes","l":"at the five minutes","n":"Fixed temporal phrase — a los + number + minutes."},
-    {"c":"a las tres de la tarde","m":"at three in the afternoon","l":"at the three of the afternoon"},
-    {"c":"a principios de","m":"at the beginning of","l":"at beginnings of"},
-    {"c":"a mediados de","m":"in the middle of","l":"at middles of" },
-    {"c":"a fines de","m":"at the end of","l":"at ends of"},
-    {"c":"al día siguiente","m":"the next day","l":"at the day following"},
-    {"c":"de vez en cuando","m":"from time to time","l":"of time in when"},
-    {"c":"a partir de","m":"starting from","l":"at leaving from"},
-    {"c":"en aquel entonces","m":"back then","l":"in that then"}
-  ]
-
-  "reciprocal/distributive pronoun phrase": [
-    {"c":"los unos y los otros","m":"each other / some and others","l":"the ones and the others"},
-    {"c":"unos a otros","m":"one another","l":"ones to others"},}
-  ]
-
-  "adverbial phrases": [
-    {"c":"por igual","m":"equally","l":"by equal"},
-    {"c":"por supuesto","m":"of course","l":"by supposed"},
-  ]
-
-  "colloquial fixed expressions": [
-    {"c":"pinta bien","m":"looks promising / looks good","l":"paints well"},
-  ]
-
-Return only a valid JSON array — no preamble, no markdown fences.
-
-Spanish source (chunk the Spanish below; line breaks in the original are normalized to single spaces — still match letters and punctuation exactly):
+Spanish source:
 ${input}`
 
 /** LLM JSON uses short keys (c,m,l,n); internal pipeline uses long names. */
@@ -1164,8 +1076,8 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     throw new Error("No text to translate.")
   }
 
-  const systemContent =
-    "You are an intuitive Spanish chunking expert. Every JSON \"c\" value must be an exact contiguous substring of the user's Spanish (after runs of whitespace are single spaces): same letters, accents, and apparent errors—never substitute cleaned-up or modernized spellings in \"c\"; use \"m\", \"l\", or \"n\" for glosses and commentary."
+ const systemContent =
+  "You are a Spanish chunking expert. Every JSON \"c\" value must be an exact contiguous substring of the source text (whitespace normalized to single spaces): same letters, accents, and apparent errors. Never substitute corrected or modernized spellings in \"c\"; notes belong in \"m\", \"l\", or \"n\" only."
   const userContent = PROMPT(canonical)
 
   const base = {

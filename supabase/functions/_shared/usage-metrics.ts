@@ -29,7 +29,6 @@ import type { TierLimits } from "./tiers.ts"
 export type UsageMetric =
   | "texts_submitted"       // user submits a text for translation (monthly counter)
   | "texts_submitted_today" // read-only: today's text-submission count (auto-reset daily)
-  | "chars_processed_today" // read-only: today's cumulative source chars (UTC; RPC from p_chars)
   | "chunks_returned"       // total chunks the LLM returned in one response
   | "pages_processed"       // source-text pages sent to the LLM
   | "chars_processed"       // source characters sent to the LLM
@@ -68,11 +67,6 @@ export const METRIC_CONFIG: Record<UsageMetric, MetricConfig> = {
     column:   "texts_today",
     limitKey: "textsPerDay",
     label:    "texts submitted today",
-  },
-  chars_processed_today: {
-    column:   "chars_today",
-    limitKey: "charsPerUtcDay",
-    label:    "characters processed today",
   },
   chunks_returned: {
     column:   "chunks_returned",
@@ -152,9 +146,6 @@ export function metricsToRpcParams(
         // Read-only: the RPC maintains this automatically from p_texts.
         // Skip to prevent double-counting.
         break
-      case "chars_today":
-        // Read-only: maintained from p_chars in increment_usage.
-        break
       default:
         // No dedicated column → extra_counters JSONB
         params.p_extras[metric] = (params.p_extras[metric] ?? 0) + amount
@@ -211,13 +202,6 @@ export function readCounter(
     if (!stored) return 0
     const todayUtc = utcCalendarTodayIso()
     return stored === todayUtc ? ((row["texts_today"] as number) ?? 0) : 0
-  }
-
-  if (cfg.column === "chars_today") {
-    const stored = isoDateOnly(row["chars_today_date"])
-    if (!stored) return 0
-    const todayUtc = utcCalendarTodayIso()
-    return stored === todayUtc ? Number((row["chars_today"] as bigint | number) ?? 0) : 0
   }
 
   if (cfg.column) {

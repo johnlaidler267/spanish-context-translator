@@ -5,13 +5,14 @@ import {
   useContext,
   useState,
   useEffect,
+  useLayoutEffect,
   useCallback,
   type ReactNode,
 } from "react"
 import { checkSubscriptionStatus, type SubscriptionStatus } from "@/lib/subscription"
 import { useAuth } from "@/contexts/auth-context"
 
-interface SubscriptionContextValue {
+export interface SubscriptionContextValue {
   status: SubscriptionStatus | null
   isLoading: boolean
   isLapsed: boolean
@@ -43,6 +44,13 @@ function writeLapsedModalAckSession(userId: string | undefined) {
  */
 let subscriptionBlockingCheckDone = false
 
+/** Same-module imperative handle so pages can refresh coarse status without `useContext` (avoids duplicate Vite chunks from mixed import specifiers). */
+let subscriptionRecheckImpl: ((opts?: { silent?: boolean }) => Promise<void>) | null = null
+
+export function invokeSubscriptionRecheck(opts?: { silent?: boolean }): Promise<void> {
+  return subscriptionRecheckImpl?.(opts) ?? Promise.resolve()
+}
+
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth()
   const [status, setStatus] = useState<SubscriptionStatus | null>(null)
@@ -72,6 +80,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       subscriptionBlockingCheckDone = true
     }
   }, [user?.id])
+
+  useLayoutEffect(() => {
+    subscriptionRecheckImpl = recheck
+    return () => {
+      subscriptionRecheckImpl = null
+    }
+  }, [recheck])
 
   // After auth finishes its initial session read, and when user id changes (sign in/out).
   // Avoids a second supabase.auth.onAuthStateChange subscription (each one takes the GoTrue lock).
@@ -110,6 +125,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       {children}
     </SubscriptionContext.Provider>
   )
+}
+
+export function useSubscriptionOptional(): SubscriptionContextValue | null {
+  return useContext(SubscriptionContext)
 }
 
 export function useSubscription() {
