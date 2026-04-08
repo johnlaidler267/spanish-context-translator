@@ -10,6 +10,7 @@
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { X, BookOpen, Loader2 } from "lucide-react"
+import { chunkTextForWordDisplay } from "@/lib/chunk-text"
 import { cn } from "@/lib/utils"
 import { type DetailState } from "@/hooks/use-chunk-details"
 
