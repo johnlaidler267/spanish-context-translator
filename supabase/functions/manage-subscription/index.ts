@@ -43,6 +43,7 @@
  *   not_canceling           — reactivate called when cancel_at_period_end is false
  *   stripe_error            — Stripe API failure
  *   db_error                — database failure
+ *   identity_required       — anonymous user must sign in before changing billing
  *
  * Environment variables:
  *   STRIPE_SECRET_KEY
@@ -104,6 +105,14 @@ Deno.serve(async (req: Request) => {
   })
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) return err("Invalid or expired token", "not_authenticated", 401)
+
+  if (user.is_anonymous === true) {
+    return err(
+      "Sign in with Google or email to change your plan.",
+      "identity_required",
+      403,
+    )
+  }
 
   // ── Parse body ─────────────────────────────────────────────────────────────
   let body: { action?: string; targetPriceId?: string; prorationBehavior?: string }

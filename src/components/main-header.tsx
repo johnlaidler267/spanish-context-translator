@@ -39,18 +39,21 @@ function daysLeftInTrial(trialEndIso: string | null): number {
   return Math.max(0, Math.ceil((new Date(trialEndIso).getTime() - Date.now()) / 86_400_000))
 }
 
-function planPillFromRow(row: {
-  plan_id: string
-  status: string
-  trial_end: string | null
-} | null): LinkPlanPill {
+function planPillFromRow(
+  row: {
+    plan_id: string
+    status: string
+    trial_end: string | null
+  } | null,
+  isAnonymous: boolean,
+): LinkPlanPill {
   const toSettingsBilling = "/settings?tab=billing"
   const toUpgrade = "/upgrade"
   /** Logged-in user with no subscription row yet — treat as free tier in UI. */
   const authenticatedFreePill: LinkPlanPill = {
     mode: "link",
     to: toUpgrade,
-    primary: "Free Plan",
+    primary: isAnonymous ? "Free · Guest" : "Free Plan",
     secondary: "Upgrade",
   }
 
@@ -126,13 +129,13 @@ function PlanBadgeContent() {
         .maybeSingle<{ plan_id: string; status: string; trial_end: string | null }>()
 
       if (cancelled) return
-      setPill(planPillFromRow(data ?? null))
+      setPill(planPillFromRow(data ?? null, user.is_anonymous === true))
     })()
 
     return () => {
       cancelled = true
     }
-  }, [user?.id, ctxStatus])
+  }, [user?.id, user?.is_anonymous, ctxStatus])
 
   if (authLoading) {
     return <PlanBadgeLoading />

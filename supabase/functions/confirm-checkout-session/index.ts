@@ -41,8 +41,8 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-function err(message: string, status = 400): Response {
-  return json({ error: message }, status)
+function err(message: string, status = 400, code?: string): Response {
+  return json(code ? { error: message, code } : { error: message }, status)
 }
 
 /** Expand can still leave `subscription` as an id string; retrieve in that case. */
@@ -88,6 +88,14 @@ Deno.serve(async (req: Request) => {
   })
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) return err("Invalid or expired token", 401)
+
+  if (user.is_anonymous === true) {
+    return err(
+      "Sign in with Google or email to complete your subscription.",
+      403,
+      "identity_required",
+    )
+  }
 
   let body: RequestBody
   try {

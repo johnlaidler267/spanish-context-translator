@@ -54,14 +54,22 @@ export interface ConfirmCheckoutResult {
   hasStripeSubscription: boolean
 }
 
+/** Edge functions return this when an anonymous user must sign in before billing. */
+export const CHECKOUT_IDENTITY_REQUIRED_CODE = "identity_required" as const
+
 export class CheckoutError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
+    public readonly code?: string,
   ) {
     super(message)
     this.name = "CheckoutError"
   }
+}
+
+export function isIdentityRequiredCheckoutError(e: unknown): boolean {
+  return e instanceof CheckoutError && e.code === CHECKOUT_IDENTITY_REQUIRED_CODE
 }
 
 // ─── Core ─────────────────────────────────────────────────────────────────────
@@ -94,12 +102,13 @@ async function checkoutErrorFromInvoke(fnError: unknown): Promise<CheckoutError>
       )
     }
     try {
-      const parsed = JSON.parse(raw) as { error?: string; message?: string }
+      const parsed = JSON.parse(raw) as { error?: string; message?: string; code?: string }
+      const code = typeof parsed.code === "string" ? parsed.code : undefined
       if (typeof parsed.error === "string" && parsed.error) {
-        return new CheckoutError(parsed.error, status)
+        return new CheckoutError(parsed.error, status, code)
       }
       if (typeof parsed.message === "string" && parsed.message) {
-        return new CheckoutError(parsed.message, status)
+        return new CheckoutError(parsed.message, status, code)
       }
     } catch {
       /* not JSON */
@@ -152,11 +161,12 @@ export async function startCheckout(options: CheckoutOptions): Promise<CheckoutR
 
   if (fnError) throw await checkoutErrorFromInvoke(fnError)
 
-  const payload = data as { url?: string; type?: string; error?: string }
+  const payload = data as { url?: string; type?: string; error?: string; code?: string }
   if (!payload?.url || payload.error) {
     throw new CheckoutError(
       payload.error ?? "Unexpected response from checkout",
       500,
+      typeof payload.code === "string" ? payload.code : undefined,
     )
   }
 
@@ -193,9 +203,13 @@ export async function openBillingPortal(returnUrl?: string): Promise<void> {
 
   if (fnError) throw await checkoutErrorFromInvoke(fnError)
 
-  const payload = data as { url?: string; error?: string }
+  const payload = data as { url?: string; error?: string; code?: string }
   if (!payload?.url) {
-    throw new CheckoutError(payload?.error ?? "Unexpected response from billing portal", 500)
+    throw new CheckoutError(
+      payload?.error ?? "Unexpected response from billing portal",
+      500,
+      typeof payload?.code === "string" ? payload.code : undefined,
+    )
   }
 
   window.location.href = payload.url
@@ -240,9 +254,13 @@ export async function confirmCheckoutSession(sessionId?: string): Promise<Confir
 
   if (fnError) throw await checkoutErrorFromInvoke(fnError)
 
-  const payload = data as Partial<ConfirmCheckoutResult> & { error?: string }
+  const payload = data as Partial<ConfirmCheckoutResult> & { error?: string; code?: string }
   if (!payload || payload.error || !payload.planId) {
-    throw new CheckoutError(payload?.error ?? "Unexpected response confirming checkout", 500)
+    throw new CheckoutError(
+      payload?.error ?? "Unexpected response confirming checkout",
+      500,
+      typeof payload.code === "string" ? payload.code : undefined,
+    )
   }
 
   return {

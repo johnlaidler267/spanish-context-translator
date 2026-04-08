@@ -15,7 +15,8 @@
  *                 to handle upgrades / downgrades / cancellations
  *
  * Response (4xx / 5xx):
- *   { error: string }
+ *   { error: string, code?: string }
+ *   code "identity_required" — anonymous user must sign in with Google or email before checkout
  *
  * Environment variables required (set in Supabase dashboard → Edge Functions → Secrets):
  *   STRIPE_SECRET_KEY          — sk_live_... or sk_test_...
@@ -69,8 +70,8 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-function err(message: string, status = 400): Response {
-  return json({ error: message }, status)
+function err(message: string, status = 400, code?: string): Response {
+  return json(code ? { error: message, code } : { error: message }, status)
 }
 
 /** Statuses that mean the user has an active Stripe subscription to manage. */
@@ -107,6 +108,14 @@ Deno.serve(async (req: Request) => {
   })
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) return err("Invalid or expired token", 401)
+
+  if (user.is_anonymous === true) {
+    return err(
+      "Sign in with Google or email to subscribe.",
+      403,
+      "identity_required",
+    )
+  }
 
   // Service-role client for privileged DB writes
   const adminClient = createClient(supabaseUrl, serviceKey)

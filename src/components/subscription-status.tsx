@@ -30,8 +30,13 @@ import {
   fetchCurrentUsage,
   USAGE_UPDATED_EVENT,
 } from "@/lib/usage"
-import { openBillingPortal, CheckoutError } from "@/lib/checkout"
-import { reactivateSubscription, SubscriptionError } from "@/lib/subscription"
+import { openBillingPortal, CheckoutError, isIdentityRequiredCheckoutError } from "@/lib/checkout"
+import {
+  reactivateSubscription,
+  SubscriptionError,
+  SUBSCRIPTION_IDENTITY_REQUIRED_CODE,
+} from "@/lib/subscription"
+import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { PaymentErrorBanner } from "@/components/payment-error-banner"
@@ -454,6 +459,7 @@ export function SubscriptionStatus({
   className,
   compact = false,
 }: SubscriptionStatusProps) {
+  const { openAuthModal } = useAuth()
   const { state, loading, error, reload } = useSubscriptionData(tracker)
   const [portalLoading,      setPortalLoading     ] = useState(false)
   const [portalError,        setPortalError        ] = useState<string | null>(null)
@@ -486,7 +492,8 @@ export function SubscriptionStatus({
     try {
       await openBillingPortal(window.location.href)
     } catch (e) {
-      setPortalError(e instanceof CheckoutError ? e.message : "Could not open billing portal")
+      if (isIdentityRequiredCheckoutError(e)) openAuthModal()
+      else setPortalError(e instanceof CheckoutError ? e.message : "Could not open billing portal")
       setPortalLoading(false)
     }
   }
@@ -499,7 +506,11 @@ export function SubscriptionStatus({
       // Reload to reflect the updated state from the server
       reload()
     } catch (e) {
-      setReactivateError(e instanceof SubscriptionError ? e.message : "Could not reactivate. Please try again.")
+      if (e instanceof SubscriptionError && e.code === SUBSCRIPTION_IDENTITY_REQUIRED_CODE) {
+        openAuthModal()
+      } else {
+        setReactivateError(e instanceof SubscriptionError ? e.message : "Could not reactivate. Please try again.")
+      }
       setReactivateLoading(false)
     }
   }

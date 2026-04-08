@@ -149,6 +149,23 @@ export default function SettingsPage() {
 
                   {user ? (
                     <div className="space-y-6">
+                      {user.is_anonymous === true && (
+                        <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                          <p className="font-medium text-foreground mb-1">Guest session</p>
+                          <p className="leading-relaxed">
+                            Sign in with Google or email to attach a real account and keep your plan if you switch devices.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="mt-3"
+                            onClick={() => openAuthModal()}
+                          >
+                            Sign in / Sign up
+                          </Button>
+                        </div>
+                      )}
                       {/* Email */}
                       <div className="flex items-start gap-3">
                         <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -159,7 +176,7 @@ export default function SettingsPage() {
                             Email
                           </p>
                           <p className="text-sm text-foreground font-sans break-all">
-                            {user.email}
+                            {user.email?.trim() ? user.email : "—"}
                           </p>
                         </div>
                       </div>

@@ -25,6 +25,7 @@
  *   no_stripe_customer — user has no Stripe customer record (free-tier, never subscribed).
  *                        Frontend should redirect to /upgrade instead of calling this.
  *   not_authenticated  — missing or invalid JWT.
+ *   identity_required  — anonymous user must sign in before opening the billing portal.
  *   stripe_error       — Stripe API failure.
  *
  * Environment variables (Supabase dashboard → Edge Functions → Secrets):
@@ -82,6 +83,14 @@ Deno.serve(async (req: Request) => {
   })
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) return err("Invalid or expired token", "not_authenticated", 401)
+
+  if (user.is_anonymous === true) {
+    return err(
+      "Sign in with Google or email to manage billing.",
+      "identity_required",
+      403,
+    )
+  }
 
   // ── Parse body ─────────────────────────────────────────────────────────────
   let returnUrl = `${appUrl}/settings`

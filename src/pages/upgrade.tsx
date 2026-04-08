@@ -39,6 +39,7 @@ import {
   clearCheckoutParam,
   confirmCheckoutSession,
   CheckoutError,
+  isIdentityRequiredCheckoutError,
 } from "@/lib/checkout"
 import {
   cancelSubscription,
@@ -46,11 +47,13 @@ import {
   downgradeSubscription,
   upgradeSubscription,
   SubscriptionError,
+  SUBSCRIPTION_IDENTITY_REQUIRED_CODE,
 } from "@/lib/subscription"
 import { PlanChangeDialog } from "@/components/plan-change-dialog"
 import { LegalDocLinks } from "@/components/legal-doc-links"
 import { supabase } from "@/lib/supabase"
 import { useSubscription } from "@/contexts/subscription-context"
+import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -562,6 +565,7 @@ interface PendingAction {
 
 export default function UpgradePage() {
   const { recheck } = useSubscription()
+  const { user, openAuthModal } = useAuth()
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [interval, setInterval] = useState<DbBillingInterval>("monthly")
   const [sub, setSub] = useState<SubSnapshot | null>(null)
@@ -663,13 +667,17 @@ export default function UpgradePage() {
             setInterval(confirmed.billingInterval)
           }
         } catch (e) {
-          const msg =
-            e instanceof CheckoutError || (e instanceof Error && e.name === "CheckoutError")
-              ? (e as Error).message
-              : e instanceof Error
-                ? e.message
-                : "Could not confirm your subscription yet."
-          setCheckoutError(msg)
+          if (isIdentityRequiredCheckoutError(e)) {
+            openAuthModal()
+          } else {
+            const msg =
+              e instanceof CheckoutError || (e instanceof Error && e.name === "CheckoutError")
+                ? (e as Error).message
+                : e instanceof Error
+                  ? e.message
+                  : "Could not confirm your subscription yet."
+            setCheckoutError(msg)
+          }
         }
 
         const updated = await pollForSyncedPaidPlan(user.id)
@@ -685,11 +693,15 @@ export default function UpgradePage() {
         setConfirmingActivation(false)
       }
     })
-  }, [loadSub, recheck])
+  }, [loadSub, recheck, openAuthModal])
 
   // ── Reactivation ───────────────────────────────────────────────────────────
   const handleReactivate = useCallback(async () => {
     setCheckoutError(null)
+    if (user?.is_anonymous === true) {
+      openAuthModal()
+      return
+    }
     setProcessingTier(sub?.planId ?? null)
     try {
       const result = await reactivateSubscription()
@@ -701,16 +713,25 @@ export default function UpgradePage() {
       } : prev)
       setSuccessBanner({ kind: "generic" })
     } catch (e) {
-      const msg = e instanceof SubscriptionError ? e.message : "Could not reactivate. Please try again."
-      setCheckoutError(msg)
+      if (e instanceof SubscriptionError && e.code === SUBSCRIPTION_IDENTITY_REQUIRED_CODE) {
+        openAuthModal()
+      } else {
+        const msg = e instanceof SubscriptionError ? e.message : "Could not reactivate. Please try again."
+        setCheckoutError(msg)
+      }
     } finally {
       setProcessingTier(null)
     }
-  }, [sub])
+  }, [sub, user?.is_anonymous, openAuthModal])
 
   // ── Dialog confirm ─────────────────────────────────────────────────────────
   const handleDialogConfirm = useCallback(async () => {
     if (!pendingAction) return
+    if (user?.is_anonymous === true) {
+      openAuthModal()
+      setPendingAction(null)
+      return
+    }
     setDialogLoading(true)
     setCheckoutError(null)
     try {
@@ -732,18 +753,30 @@ export default function UpgradePage() {
       setPendingAction(null)
       setSuccessBanner({ kind: "generic" })
     } catch (e) {
-      const msg = e instanceof SubscriptionError ? e.message : "Something went wrong. Please try again."
-      setCheckoutError(msg)
+      if (e instanceof SubscriptionError && e.code === SUBSCRIPTION_IDENTITY_REQUIRED_CODE) {
+        openAuthModal()
+      } else {
+        const msg = e instanceof SubscriptionError ? e.message : "Something went wrong. Please try again."
+        setCheckoutError(msg)
+      }
       setPendingAction(null)
     } finally {
       setDialogLoading(false)
     }
-  }, [pendingAction])
+  }, [pendingAction, user?.is_anonymous, openAuthModal])
 
   // ── Plan selection ─────────────────────────────────────────────────────────
   const handleSelectPlan = useCallback(
     async (tierId: TierId) => {
       setCheckoutError(null)
+
+      const requireBillingIdentity = (): boolean => {
+        if (user?.is_anonymous === true) {
+          openAuthModal()
+          return false
+        }
+        return true
+      }
 
       // Reactivation: same plan + same price (interval) while cancelAtPeriodEnd is true
       if (
@@ -752,6 +785,7 @@ export default function UpgradePage() {
         sub.cancelAtPeriodEnd &&
         isCurrentPlanCard(sub, tierId, interval)
       ) {
+        if (!requireBillingIdentity()) return
         handleReactivate()
         return
       }
@@ -764,12 +798,14 @@ export default function UpgradePage() {
         isCurrentPlanCard(sub, tierId, interval) &&
         !sub.cancelAtPeriodEnd
       ) {
+        if (!requireBillingIdentity()) return
         setProcessingTier(tierId)
         try {
           await openBillingPortal(window.location.href)
           // Success: browser navigates to Stripe — do not clear processingTier here
         } catch (e) {
-          setCheckoutError(e instanceof CheckoutError ? e.message : "Could not open billing portal")
+          if (isIdentityRequiredCheckoutError(e)) openAuthModal()
+          else setCheckoutError(e instanceof CheckoutError ? e.message : "Could not open billing portal")
           setProcessingTier(null)
         }
         return
@@ -790,6 +826,7 @@ export default function UpgradePage() {
         sub?.hasStripeSubscription &&
         pricingUiPlanId(sub) !== "free"
       ) {
+        if (!requireBillingIdentity()) return
         setPendingAction({ type: "cancel", targetId: "free", targetPriceId: null })
         return
       }
@@ -800,6 +837,7 @@ export default function UpgradePage() {
         pricingUiPlanId(sub) !== "free" &&
         targetRank < currentRank
       ) {
+        if (!requireBillingIdentity()) return
         setPendingAction({ type: "downgrade", targetId: tierId, targetPriceId: priceId })
         return
       }
@@ -813,6 +851,7 @@ export default function UpgradePage() {
         (targetRank > currentRank ||
           (tierId === pricingUiPlanId(sub) && !isCurrentPlanCard(sub, tierId, interval)))
       ) {
+        if (!requireBillingIdentity()) return
         setProcessingTier(tierId)
         try {
           const result = await upgradeSubscription(priceId)
@@ -834,9 +873,13 @@ export default function UpgradePage() {
           })
           await recheck()
         } catch (e) {
-          const msg =
-            e instanceof SubscriptionError ? e.message : "Could not change plan. Please try again."
-          setCheckoutError(msg)
+          if (e instanceof SubscriptionError && e.code === SUBSCRIPTION_IDENTITY_REQUIRED_CODE) {
+            openAuthModal()
+          } else {
+            const msg =
+              e instanceof SubscriptionError ? e.message : "Could not change plan. Please try again."
+            setCheckoutError(msg)
+          }
         } finally {
           setProcessingTier(null)
         }
@@ -844,6 +887,7 @@ export default function UpgradePage() {
       }
 
       // New subscriber (no active Stripe sub) → Stripe Checkout
+      if (!requireBillingIdentity()) return
       setProcessingTier(tierId)
       try {
         await startCheckout({
@@ -852,12 +896,16 @@ export default function UpgradePage() {
           cancelUrl:  window.location.href,
         })
       } catch (e) {
-        const msg = e instanceof CheckoutError ? e.message : "Something went wrong. Please try again."
-        setCheckoutError(msg)
+        if (isIdentityRequiredCheckoutError(e)) {
+          openAuthModal()
+        } else {
+          const msg = e instanceof CheckoutError ? e.message : "Something went wrong. Please try again."
+          setCheckoutError(msg)
+        }
         setProcessingTier(null)
       }
     },
-    [interval, sub, handleReactivate, recheck],
+    [interval, sub, handleReactivate, recheck, user?.is_anonymous, openAuthModal],
   )
 
   // ─── Render ────────────────────────────────────────────────────────────────
@@ -917,6 +965,11 @@ export default function UpgradePage() {
                   : "Flexible plans with no long-term commitment. Cancel anytime."
               })()}
             </p>
+            {user?.is_anonymous === true && (
+              <p className="mt-3 max-w-xl mx-auto rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground text-center leading-relaxed">
+                You&apos;re on a <span className="font-medium text-foreground">guest session</span>. Sign in with Google or email below before subscribing so your plan stays with your account.
+              </p>
+            )}
             {confirmingActivation && (
               <p className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground font-sans">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -933,13 +986,20 @@ export default function UpgradePage() {
               billingPortalLoading={billingPortalLoading}
               onManageBilling={async () => {
                 setCheckoutError(null)
+                if (user?.is_anonymous === true) {
+                  openAuthModal()
+                  return
+                }
                 setBillingPortalLoading(true)
                 try {
                   await openBillingPortal(window.location.href)
                 } catch (e) {
-                  setCheckoutError(
-                    e instanceof CheckoutError ? e.message : "Could not open billing portal",
-                  )
+                  if (isIdentityRequiredCheckoutError(e)) openAuthModal()
+                  else {
+                    setCheckoutError(
+                      e instanceof CheckoutError ? e.message : "Could not open billing portal",
+                    )
+                  }
                   setBillingPortalLoading(false)
                 }
               }}

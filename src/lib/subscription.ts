@@ -88,6 +88,9 @@ export async function checkSubscriptionStatus(): Promise<{ status: SubscriptionS
   }
 }
 
+/** Returned by manage-subscription when the user must sign in (non-anonymous) first. */
+export const SUBSCRIPTION_IDENTITY_REQUIRED_CODE = "identity_required" as const
+
 export class SubscriptionError extends Error {
   constructor(
     message: string,
