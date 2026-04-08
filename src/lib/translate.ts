@@ -406,37 +406,11 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
 }
 
-const PROMPT = (input: string) => `You are a Spanish chunking expert. Below is a JSON array that has been partially completed. Continue it — chunk the remaining Spanish, following the exact same pattern.
-
-FORMAT: {"c": exact substring from source, "m": English meaning, "l": literal rendering, "n": grammar note — omit if obvious}
-
-RULE: One word = one chunk unless the phrase is a frozen unit (idiom, fixed connector, clitic pair, proper noun, lexicalized compound).
-
-Already chunked:
-[
-{"c":"Aunque","m":"although","l":"although"},
-{"c":"de vez en cuando","m":"from time to time","l":"of time in when"},
-{"c":"se lo","m":"it to him","l":"it to him","n":"clitic cluster"},
-{"c":"mencionaba","m":"mentioned","l":"was mentioning"},
-{"c":"a","m":"to","l":"to"},
-{"c":"su","m":"his","l":"his"},
-{"c":"mejor","m":"best","l":"best"},
-{"c":"amigo","m":"friend","l":"friend"},
-{"c":"no","m":"not","l":"not"},
-{"c":"se daba cuenta de","m":"realized","l":"gave itself account of","n":"darse cuenta de — to realize"},
-{"c":"que","m":"that","l":"that"},
-{"c":"el","m":"the","l":"the"},
-{"c":"medio ambiente","m":"environment","l":"middle surroundings","n":"lexicalized compound"},
-{"c":"estaba","m":"was","l":"was"},
-{"c":"cambiando","m":"changing","l":"changing"},
-{"c":"hasta que","m":"until","l":"until that"},
-{"c":"de","m":"of","l":"of"},
-{"c":"pronto","m":"suddenly","l":"sudden"},
-{"c":"llegaron","m":"arrived","l":"arrived"},
-{"c":"las","m":"the","l":"the"},
-{"c":"noticias","m":"the news","l":"the news"}
-
-Remaining Spanish to chunk:
+const PROMPT = (input: string) => `You are a Spanish chunking expert. Output only a valid JSON array. No preamble. No markdown.
+Default is one word per chunk. Do not chunk punctuation.
+FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering, "n": grammar note — omit if obvious}
+One word = one chunk unless frozen unit (idiom, connector, clitic pair, proper noun, lexicalized compound).
+Source:
 ${input}`
 
 /** LLM JSON uses short keys (c,m,l,n); internal pipeline uses long names. */
@@ -1047,13 +1021,13 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   }
 
  const systemContent =
-  "You are a Spanish chunking expert. Every JSON \"c\" value must be an exact contiguous substring of the source text (whitespace normalized to single spaces): same letters, accents, and apparent errors. Never substitute corrected or modernized spellings in \"c\"; notes belong in \"m\", \"l\", or \"n\" only."
+` [{"c":"Aunque","m":"although","l":"although"},{"c":"de vez en cuando","m":"from time to time","l":"of time in when"},{"c":"se lo","m":"it to him","l":"it to him","n":"clitic cluster"},{"c":"mencionaba","m":"mentioned","l":"was mentioning"},{"c":"hasta que","m":"until","l":"until that"},{"c":"de pronto","m":"suddenly","l":"of sudden"},{"c":"se daba cuenta de","m":"realized","l":"gave itself account of","n":"darse cuenta de — to realize"},{"c":"que","m":"that","l":"that"},{"c":"el","m":"the","l":"the"},{"c":"medio ambiente","m":"environment","l":"middle surroundings","n":"lexicalized compound"},{"c":"no","m":"not","l":"not"},{"c":"era","m":"was","l":"was"},{"c":"un","m":"a","l":"a"},{"c":"problema","m":"problem","l":"problem"},{"c":"menor","m":"minor","l":"minor"}`
   const userContent = PROMPT(canonical)
 
   const base = {
     model: translateModel(),
     messages: [{ role: "system", content: systemContent }, { role: "user", content: userContent }],
-    temperature: 0.8,
+    temperature: 0,
     max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
   }
   const res = await fetchChatCompletion(
