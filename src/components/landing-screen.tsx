@@ -1,11 +1,23 @@
 "use client"
 
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, type Dispatch, type SetStateAction } from "react"
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  type Dispatch,
+  type SetStateAction,
+} from "react"
+import { Link } from "react-router-dom"
 import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout-fix"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { useAuth } from "@/contexts/auth-context"
 import { useSubscription } from "@/contexts/subscription-context"
 import { supabase } from "@/lib/supabase"
+import { getTier, type TierId } from "@/lib/tiers"
+import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscription-display"
 import { MainHeader } from "./main-header"
 import { LandingContentPills } from "./landing-content-pills"
 import {
@@ -24,6 +36,32 @@ interface LandingScreenProps {
   isLoading: boolean
   theme: ReadingTheme
   onThemeChange: (theme: ReadingTheme) => void
+}
+
+const LANDING_SUB_ROW_CACHE = "lexa.landingSubRow.v1"
+
+function readCachedSubscriptionRow(userId: string): SubscriptionRowLike | undefined {
+  if (typeof window === "undefined") return undefined
+  try {
+    const raw = sessionStorage.getItem(`${LANDING_SUB_ROW_CACHE}:${userId}`)
+    if (raw == null) return undefined
+    if (raw === "__null__") return null
+    return JSON.parse(raw) as SubscriptionRowLike
+  } catch {
+    return undefined
+  }
+}
+
+function writeCachedSubscriptionRow(userId: string, row: SubscriptionRowLike) {
+  if (typeof window === "undefined") return
+  try {
+    sessionStorage.setItem(
+      `${LANDING_SUB_ROW_CACHE}:${userId}`,
+      row == null ? "__null__" : JSON.stringify(row),
+    )
+  } catch {
+    /* quota / private mode */
+  }
 }
 
 const PLACEHOLDERS = [
@@ -47,29 +85,73 @@ export function LandingScreen({
 }: LandingScreenProps) {
   const { user } = useAuth()
   const { status: subscriptionStatus } = useSubscription()
-  /** When true, hide the header plan pill (active paid Pro — not trial / past_due). */
-  const [landingHidePlanBanner, setLandingHidePlanBanner] = useState(false)
+  const cachedSubscriptionRow = useMemo(
+    () => (user?.id ? readCachedSubscriptionRow(user.id) : undefined),
+    [user?.id],
+  )
+  /** `undefined` = fetch not finished this session; then fall back to cache or free. */
+  const [fetchedSubscriptionRow, setFetchedSubscriptionRow] = useState<
+    SubscriptionRowLike | null | undefined
+  >(undefined)
+
+  const subscriptionRowForPlan: SubscriptionRowLike | null =
+    user == null
+      ? null
+      : fetchedSubscriptionRow !== undefined
+        ? fetchedSubscriptionRow
+        : cachedSubscriptionRow !== undefined
+          ? cachedSubscriptionRow
+          : null
+
+  const landingHidePlanBanner =
+    subscriptionRowForPlan?.status === "active" &&
+    subscriptionRowForPlan?.plan_id === "pro"
+
+  const [charLimitTipOpen, setCharLimitTipOpen] = useState(false)
+  const charLimitTipWrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!user) {
-      setLandingHidePlanBanner(false)
+      setFetchedSubscriptionRow(undefined)
       return
     }
     let cancelled = false
     void (async () => {
       const { data } = await supabase
         .from("user_subscriptions")
-        .select("plan_id, status")
+        .select("plan_id, status, trial_end")
         .eq("user_id", user.id)
         .is("archived_at", null)
-        .maybeSingle<{ plan_id: string; status: string }>()
+        .maybeSingle<{
+          plan_id: string
+          status: string
+          trial_end: string | null
+        }>()
       if (cancelled) return
-      setLandingHidePlanBanner(data?.status === "active" && data?.plan_id === "pro")
+      setFetchedSubscriptionRow(data)
+      writeCachedSubscriptionRow(user.id, data)
     })()
     return () => {
       cancelled = true
     }
   }, [user?.id, subscriptionStatus])
+
+  const effectivePlanId: TierId = !user ? "free" : pricingUiPlanIdFromRow(subscriptionRowForPlan)
+  const charsPerSubmissionLimit = getTier(effectivePlanId).limits.charsPerSubmission
+  const showCharLimitCounter = charsPerSubmissionLimit != null
+  const submissionCharCount = text.trim().length
+  const charCountOverLimit =
+    showCharLimitCounter && submissionCharCount > charsPerSubmissionLimit
+
+  useEffect(() => {
+    if (!charLimitTipOpen) return
+    const onPointerDown = (e: PointerEvent) => {
+      const el = charLimitTipWrapRef.current
+      if (el && !el.contains(e.target as Node)) setCharLimitTipOpen(false)
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    return () => document.removeEventListener("pointerdown", onPointerDown)
+  }, [charLimitTipOpen])
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const landingColumnRef = useRef<HTMLDivElement>(null)
@@ -259,7 +341,7 @@ export function LandingScreen({
               learnPending={isLearning}
               disabled={isLoading}
             />
-            <div className="order-2 md:order-1 flex flex-col gap-2 w-full relative md:pb-1">
+            <div className="order-2 md:order-1 flex flex-col gap-2 w-full">
             <form
               ref={composerFormRef}
               className="contents"
@@ -291,7 +373,43 @@ export function LandingScreen({
                   </span>
                 )}
               </div>
-              <div className="textarea-toolbar max-md:justify-end md:justify-start" aria-label="Composer actions">
+              <div className="textarea-toolbar" aria-label="Composer actions">
+                {showCharLimitCounter && (
+                  <div className="textarea-toolbar-left" ref={charLimitTipWrapRef}>
+                    <button
+                      type="button"
+                      className={`char-limit-counter${charCountOverLimit ? " char-limit-counter--over" : ""}`}
+                      aria-expanded={charLimitTipOpen}
+                      aria-haspopup="dialog"
+                      aria-label="Submission character limit. Tap for details."
+                      onClick={() => setCharLimitTipOpen((o) => !o)}
+                    >
+                      <span className="char-limit-counter-value">
+                        {submissionCharCount.toLocaleString()}
+                      </span>
+                      <span className="char-limit-counter-sep" aria-hidden>
+                        /
+                      </span>
+                      <span className="char-limit-counter-max">
+                        {charsPerSubmissionLimit.toLocaleString()}
+                      </span>
+                    </button>
+                    {charLimitTipOpen && (
+                      <div className="char-limit-tip" role="dialog" aria-label="Upgrade for unlimited">
+                        <p className="char-limit-tip-text">
+                          Upgrade your plan for unlimited characters per submission.
+                        </p>
+                        <Link
+                          to="/upgrade"
+                          className="char-limit-tip-link"
+                          onClick={() => setCharLimitTipOpen(false)}
+                        >
+                          View plans
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="textarea-toolbar-right">
                   <button
                     ref={composerSubmitBtnRef}
@@ -311,13 +429,6 @@ export function LandingScreen({
                 </div>
               </div>
             </div>
-            <p
-              className="word-counter word-counter--anchored max-md:hidden md:flex select-none min-w-0"
-              aria-live="polite"
-            >
-              <span className="word-counter-label">words</span>
-              <span className="word-counter-value">{text.trim() ? text.trim().split(/\s+/).length.toString().padStart(2, "0") : "00"}</span>
-            </p>
             </form>
             </div>
           </div>

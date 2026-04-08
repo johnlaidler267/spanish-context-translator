@@ -422,8 +422,6 @@ article span {
 }
 
 /* ── outside the box: light cream on dark bg ── */
-.dark .word-counter-label,
-.dark .word-counter-value      { color: rgba(234,224,213,0.55); }
 .dark .sample-excerpt-label    { color: rgba(234,224,213,0.5); }
 .dark .sample-paragraph        { color: rgba(234,224,213,0.85); }
 .dark .sample-link             { color: rgba(234,224,213,0.75); }
@@ -567,7 +565,7 @@ article span {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   flex-shrink: 0;
   padding: 12px 14px;
@@ -584,6 +582,127 @@ article span {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  /* Stay right even before the char counter mounts (avoids left → right jump after subscription fetch). */
+  margin-inline-start: auto;
+}
+.textarea-toolbar-left {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 0;
+}
+/* Free plan — submission character budget (tap for upgrade hint) */
+.char-limit-counter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #8a5c4a;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.char-limit-counter:hover {
+  background: rgba(201, 122, 90, 0.1);
+  color: #6b4538;
+}
+.char-limit-counter:focus-visible {
+  outline: 2px solid rgba(201, 122, 90, 0.45);
+  outline-offset: 2px;
+}
+/* Over limit: red + heavier glyphs on the count only (not the popover / chrome) */
+.char-limit-counter--over:hover {
+  background: rgba(220, 38, 38, 0.12);
+}
+.char-limit-counter--over .char-limit-counter-value,
+.char-limit-counter--over .char-limit-counter-max,
+.char-limit-counter--over .char-limit-counter-sep {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: #dc2626;
+}
+.char-limit-counter--over .char-limit-counter-sep {
+  opacity: 0.92;
+}
+.char-limit-counter--over:hover .char-limit-counter-value,
+.char-limit-counter--over:hover .char-limit-counter-max,
+.char-limit-counter--over:hover .char-limit-counter-sep {
+  color: #b91c1c;
+}
+.dark .char-limit-counter {
+  color: rgba(234, 224, 213, 0.55);
+}
+.dark .char-limit-counter:hover {
+  background: rgba(201, 122, 90, 0.14);
+  color: rgba(234, 224, 213, 0.75);
+}
+.dark .char-limit-counter--over:hover {
+  background: rgba(248, 113, 113, 0.16);
+}
+.dark .char-limit-counter--over .char-limit-counter-value,
+.dark .char-limit-counter--over .char-limit-counter-max,
+.dark .char-limit-counter--over .char-limit-counter-sep {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: #f87171;
+}
+.dark .char-limit-counter--over .char-limit-counter-sep {
+  opacity: 0.92;
+}
+.dark .char-limit-counter--over:hover .char-limit-counter-value,
+.dark .char-limit-counter--over:hover .char-limit-counter-max,
+.dark .char-limit-counter--over:hover .char-limit-counter-sep {
+  color: #fca5a5;
+}
+.char-limit-counter-sep {
+  opacity: 0.45;
+}
+.char-limit-tip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  min-width: min(16rem, calc(100vw - 2.5rem));
+  max-width: min(18rem, calc(100vw - 2.5rem));
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+}
+.dark .char-limit-tip {
+  background: #1a1a1a;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+.char-limit-tip-text {
+  margin: 0 0 10px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  color: #3a332e;
+}
+.dark .char-limit-tip-text {
+  color: rgba(234, 224, 213, 0.88);
+}
+.char-limit-tip-link {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: #c97a5a;
+  text-decoration: none;
+}
+.char-limit-tip-link:hover {
+  text-decoration: underline;
 }
 
 .textarea-toolbar .dice-btn {
@@ -1151,47 +1270,6 @@ article span {
     0 5px 14px rgba(0, 0, 0, 0.128),
     inset 0 1px 0 rgba(255, 255, 255, 0.085);
 }
-
-/* Word counter — flush to input column, right-aligned to wrapper edge (8px grid) */
-.word-counter {
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 8px;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-.word-counter-label {
-  font-family: "Courier New", monospace;
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #8a5c4a;
-  opacity: 0.97; /* +10% */
-}
-.word-counter-value {
-  font-family: "Courier New", monospace;
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: #8a5c4a;
-  opacity: 1;
-}
-
-/* Desktop: tuck label just outside bottom-right of the composer card */
-@media (min-width: 768px) {
-  .word-counter--anchored {
-    position: absolute;
-    right: 0;
-    top: 100%;
-    margin-top: 6px;
-    width: auto;
-    justify-content: flex-end;
-    pointer-events: none;
-  }
-}
-
 
 /* Sample section — excerpt rail (editorial, not “demo”) */
 .sample-excerpt-label {
