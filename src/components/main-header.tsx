@@ -34,6 +34,9 @@ const GUEST_PLAN_PILL: PlanPill = {
   secondary: "",
 }
 
+const LEXA_LENS_WORD_GRADIENT =
+  "inline-block bg-gradient-to-br from-[#2f2926] via-[#4a3f38] to-[#c97a5a] bg-clip-text text-transparent dark:from-[#e8dfd4] dark:via-[#d4a896] dark:to-[#b06b56]"
+
 function daysLeftInTrial(trialEndIso: string | null): number {
   if (!trialEndIso) return 0
   return Math.max(0, Math.ceil((new Date(trialEndIso).getTime() - Date.now()) / 86_400_000))
@@ -221,16 +224,20 @@ export function MainHeader({
           <Link
             to="/"
             className="pointer-events-auto min-w-0 shrink select-none"
-            aria-label="LexaLens — home"
+            aria-label="Lexa Lens — home"
           >
             <span
               className={
                 "font-fraunces text-[1.2rem] font-bold leading-none tracking-[-0.03em] antialiased max-md:text-[1.15rem] md:text-[1.35rem] " +
-                "[font-feature-settings:'kern'_1,'liga'_1] inline-block bg-gradient-to-br from-[#2f2926] via-[#4a3f38] to-[#c97a5a] " +
-                "bg-clip-text text-transparent dark:from-[#e8dfd4] dark:via-[#d4a896] dark:to-[#b06b56]"
+                "[font-feature-settings:'kern'_1,'liga'_1] inline-flex items-center gap-px"
               }
             >
-              LexaLens
+              <span className={LEXA_LENS_WORD_GRADIENT}>Lexa</span>
+              <span
+                className="h-1 w-1 shrink-0 rounded-full bg-[#4a3f38] dark:bg-[#d4a896]"
+                aria-hidden
+              />
+              <span className={LEXA_LENS_WORD_GRADIENT}>Lens</span>
             </span>
           </Link>
           <div className="flex items-center gap-2 md:gap-3 pointer-events-auto shrink-0">

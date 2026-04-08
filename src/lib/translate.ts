@@ -15,7 +15,7 @@ function translationProvider(): "groq" | "gemini" {
 const GROQ_TRANSLATE_MODEL = "openai/gpt-oss-120b"
 const GROQ_LEARN_MODEL = "llama-3.1-8b-instant" as const
 /** Must match a model id from the Generative Language API (see ListModels / Gemini docs). `gemini-3.0-flash` is not valid — use e.g. `gemini-2.0-flash` or `gemini-3-flash` if your project lists it. */
-const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash-liteAAd"
+const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash-lite"
 const GEMINI_LEARN_MODEL_DEFAULT = "gemini-2.5-flash-lite"
 
 function translateModel(): string {
@@ -1045,7 +1045,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   const base = {
     model: translateModel(),
     messages: [{ role: "system", content: systemContent }, { role: "user", content: userContent }],
-    temperature: 0.2,
+    temperature: 0.8,
     max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
   }
   const res = await fetchChatCompletion(
