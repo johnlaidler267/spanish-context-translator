@@ -12,7 +12,7 @@ function translationProvider(): "groq" | "gemini" {
   return v === "gemini" ? "gemini" : "groq"
 }
 
-const GROQ_TRANSLATE_MODEL = "openai/gpt-oss-120b"
+const GROQ_TRANSLATE_MODEL = "llama-3.3-70b-versatile"
 const GROQ_LEARN_MODEL = "llama-3.1-8b-instant" as const
 /** Must match a model id from the Generative Language API (see ListModels / Gemini docs). `gemini-3.0-flash` is not valid — use e.g. `gemini-2.0-flash` or `gemini-3-flash` if your project lists it. */
 const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash-lite"
@@ -406,11 +406,30 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
 }
 
-const PROMPT = (input: string) => `You are a Spanish chunking expert. Output only a valid JSON array. No preamble. No markdown.
-Default is one word per chunk. Do not chunk punctuation.
+const PROMPT = (input: string) => `Group following text into single OR multi-word chunks.
+
+GROUP BASED ON THE FOLLOWING CATEGORIES:
+fixed_idioms: e.g. dar su brazo a torcer
+relative_subordinating_connectors: e.g. mientras que
+compound_nouns: e.g. medio ambiente
+lo_nominalizer: e.g. lo maravilloso
+prepositional_verb_phrases: e.g. darse cuenta de, contar con
+possessive_pronouns: e.g. el suyo
+proper_nouns: e.g. Buenos Aires
+clitic_clusters: e.g. se lo
+temporal_age_phrases: e.g. al día siguiente
+reciprocal/distributive_pronoun_phrase: e.g. unos a otros
+adverbial_phrases: e.g. por supuesto
+colloquial_fixed_expressions: e.g. pinta bien
+ETC.
+
+For EACH word in context, DOES this word have SINGULAR meaning?
+If SEPARATING two words LOSES the meaning of the individual words, they must group.
+Example: In "de repente," the word "repente" doesn't really exist as a useful noun on its own in modern Spanish. Together, they mean "suddenly." Therefore, they are a single chunk.
+
 FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering, "n": grammar note — omit if obvious}
-One word = one chunk unless frozen unit (idiom, connector, clitic pair, proper noun, lexicalized compound).
-Source:
+
+TEXT:
 ${input}`
 
 /** LLM JSON uses short keys (c,m,l,n); internal pipeline uses long names. */
@@ -1020,22 +1039,21 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     throw new Error("No text to translate.")
   }
 
- const systemContent =
-` [{"c":"Aunque","m":"although","l":"although"},{"c":"de vez en cuando","m":"from time to time","l":"of time in when"},{"c":"se lo","m":"it to him","l":"it to him","n":"clitic cluster"},{"c":"mencionaba","m":"mentioned","l":"was mentioning"},{"c":"hasta que","m":"until","l":"until that"},{"c":"de pronto","m":"suddenly","l":"of sudden"},{"c":"se daba cuenta de","m":"realized","l":"gave itself account of","n":"darse cuenta de — to realize"},{"c":"que","m":"that","l":"that"},{"c":"el","m":"the","l":"the"},{"c":"medio ambiente","m":"environment","l":"middle surroundings","n":"lexicalized compound"},{"c":"no","m":"not","l":"not"},{"c":"era","m":"was","l":"was"},{"c":"un","m":"a","l":"a"},{"c":"problema","m":"problem","l":"problem"},{"c":"menor","m":"minor","l":"minor"}`
+ const systemContent = ""
   const userContent = PROMPT(canonical)
 
   const base = {
     model: translateModel(),
     messages: [{ role: "system", content: systemContent }, { role: "user", content: userContent }],
-    temperature: 0,
+    temperature: 0.1,
     max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
   }
   const res = await fetchChatCompletion(
     translationProvider() === "groq"
       ? {
           ...base,
-          reasoning_effort: TRANSLATE_REASONING_EFFORT,
-          reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
+          // reasoning_effort: TRANSLATE_REASONING_EFFORT,
+          // reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
         }
       : base,
   )
