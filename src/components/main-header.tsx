@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Sun, Moon, Settings2, Loader2 } from "lucide-react"
+import { BsSunglasses } from "react-icons/bs"
 import { useSubscriptionOptional } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
 import { getTier } from "@/lib/tiers"
@@ -233,8 +234,8 @@ export function MainHeader({
               }
             >
               <span className={LEXA_LENS_WORD_GRADIENT}>Lexa</span>
-              <span
-                className="h-1 w-1 shrink-0 rounded-full bg-[#4a3f38] dark:bg-[#d4a896]"
+              <BsSunglasses
+                className="h-[0.68rem] w-[0.68rem] shrink-0 text-[#4a3f38] dark:text-[#d4a896]"
                 aria-hidden
               />
               <span className={LEXA_LENS_WORD_GRADIENT}>Lens</span>
