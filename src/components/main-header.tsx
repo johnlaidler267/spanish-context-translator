@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Sun, Moon, Settings2, Loader2 } from "lucide-react"
-import { BsSunglasses } from "react-icons/bs"
+import { RiTranslateAi } from "react-icons/ri"
 import { useSubscriptionOptional } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
 import { getTier } from "@/lib/tiers"
@@ -233,12 +233,18 @@ export function MainHeader({
                 "[font-feature-settings:'kern'_1,'liga'_1] inline-flex items-center gap-px"
               }
             >
-              <span className={LEXA_LENS_WORD_GRADIENT}>Lexa</span>
-              <BsSunglasses
-                className="h-[0.68rem] w-[0.68rem] shrink-0 text-[#4a3f38] dark:text-[#d4a896]"
+              <RiTranslateAi
+                className="h-[1.1rem] w-[1.1rem] shrink-0 text-[#4a3f38] dark:text-[#d4a896]"
                 aria-hidden
               />
-              <span className={LEXA_LENS_WORD_GRADIENT}>Lens</span>
+              <span className={`${LEXA_LENS_WORD_GRADIENT} inline-flex items-center gap-0.25`}>
+                <span>Lexa</span>
+                <span
+                  className="mx-0 mt-1 inline-block h-[3px] w-[4px] rounded-full bg-[#4a3f38] dark:bg-[#d4a896]"
+                  aria-hidden
+                />
+                <span>Lens</span>
+              </span>
             </span>
           </Link>
           <div className="flex items-center gap-2 md:gap-3 pointer-events-auto shrink-0">
