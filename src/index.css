@@ -391,11 +391,11 @@ article span {
   background: rgba(255, 255, 255, 0.06);
 }
 .dark .submit-arrow-btn {
-  background: rgba(255, 255, 255, 0.1);
+  background-image: linear-gradient(to bottom right, #e8dfd4, #d4a896, #b06b56);
   color: #ebe8e2;
 }
 .dark .submit-arrow-btn:hover {
-  background: rgba(201, 122, 90, 0.45);
+  background-image: linear-gradient(to bottom right, #ede4d9, #ddb5a4, #bf7a64);
   color: #1a1a1a;
 }
 .dark .voice-mic-btn {
@@ -762,7 +762,7 @@ article span {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #3a332e;
+  background-image: linear-gradient(to bottom right, #2f2926, #4a3f38, #c97a5a);
   color: #f7f3ee;
   border: none;
   border-radius: 8px;
@@ -771,7 +771,7 @@ article span {
   z-index: 2;
 }
 .submit-arrow-btn:hover {
-  background: #c97a5a;
+  background-image: linear-gradient(to bottom right, #3a332e, #5a4b42, #d18a6a);
 }
 .submit-arrow-btn:active {
   transform: scale(0.95);
