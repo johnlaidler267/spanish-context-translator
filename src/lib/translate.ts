@@ -406,26 +406,24 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
 }
 
-const PROMPT = (input: string) => `Group following text into single OR multi-word chunks.
+const PROMPT = (input: string) => `
+Sort following spanish text into logical chunks.
 
-GROUP BASED ON THE FOLLOWING CATEGORIES:
+Chunks should consist of a singular word or multiple words ONLY IF they  fall into any of the following categories.
+
 fixed_idioms: e.g. dar su brazo a torcer
 relative_subordinating_connectors: e.g. mientras que
-compound_nouns: e.g. medio ambiente
 lo_nominalizer: e.g. lo maravilloso
-prepositional_verb_phrases: e.g. darse cuenta de, contar con
+prepositional_verb_phrases: e.g. darse cuenta de que
 possessive_pronouns: e.g. el suyo
-proper_nouns: e.g. Buenos Aires
+proper_nouns: e.g. Buenos Aires, 
 clitic_clusters: e.g. se lo
-temporal_age_phrases: e.g. al día siguiente
 reciprocal/distributive_pronoun_phrase: e.g. unos a otros
 adverbial_phrases: e.g. por supuesto
 colloquial_fixed_expressions: e.g. pinta bien
 ETC.
 
-For EACH word in context, DOES this word have SINGULAR meaning?
-If SEPARATING two words LOSES the meaning of the individual words, they must group.
-Example: In "de repente," the word "repente" doesn't really exist as a useful noun on its own in modern Spanish. Together, they mean "suddenly." Therefore, they are a single chunk.
+For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUTELY NECESSARY to GROUP with its NEIGHBOR?
 
 FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering, "n": grammar note — omit if obvious}
 
@@ -600,6 +598,39 @@ function assertReconcileDidNotLeaveLongPlainTail(items: ReconciledItem[], source
   }
 }
 
+/**
+ * If the model matched the inner word of a markdown-style **…** span, extend the match to include
+ * those pairs. Does not absorb a lone * (e.g. multiplication or footnote markers between words).
+ */
+function snapBoldAsteriskWrappers(s: string, idx: number, len: number): { idx: number; len: number } {
+  let i = idx
+  let j = idx + len
+  while (i >= 2 && s.slice(i - 2, i) === "**") i -= 2
+  while (j + 2 <= s.length && s.slice(j, j + 2) === "**") j += 2
+  return { idx: i, len: j - i }
+}
+
+function findChunkSpanInSource(
+  original: string,
+  span: string,
+  searchStart: number,
+): { idx: number; len: number } | null {
+  const start = Math.max(0, searchStart - Math.max(0, span.length - 1))
+  const tryNeedle = (needle: string): { idx: number; len: number } | null => {
+    if (!needle) return null
+    let idx = original.indexOf(needle, searchStart)
+    if (idx === -1) idx = original.indexOf(needle, start)
+    if (idx === -1) return null
+    return snapBoldAsteriskWrappers(original, idx, needle.length)
+  }
+
+  const exact = tryNeedle(span)
+  if (exact) return exact
+  const stripped = span.replace(/^\*+/, "").replace(/\*+$/, "")
+  if (!stripped || stripped === span) return null
+  return tryNeedle(stripped)
+}
+
 function reconcileChunks(
   chunks: RawChunk[],
   originalText: string
@@ -617,16 +648,18 @@ function reconcileChunks(
     // later substring like the one starting "ella".
     const span = chunk.chunk
     const searchStart = Math.max(0, pos - span.length + 1)
-    const idx = originalText.indexOf(span, searchStart)
-    if (idx === -1) {
+    const found = findChunkSpanInSource(originalText, span, searchStart)
+    if (!found) {
       result.push({ type: "chunk", ...chunk })
       continue
     }
+    const { idx, len } = found
+    const sourceSlice = originalText.slice(idx, idx + len)
     if (idx > pos) {
       result.push({ type: "text", text: originalText.slice(pos, idx) })
     }
-    result.push({ type: "chunk", ...chunk })
-    pos = idx + chunk.chunk.length
+    result.push({ type: "chunk", ...chunk, chunk: sourceSlice })
+    pos = idx + len
   }
 
   if (pos < originalText.length) {
@@ -1045,7 +1078,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   const base = {
     model: translateModel(),
     messages: [{ role: "system", content: systemContent }, { role: "user", content: userContent }],
-    temperature: 0.1,
+    temperature: 0,
     max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
   }
   const res = await fetchChatCompletion(
@@ -1071,7 +1104,6 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     )
   }
   const raw = combineAssistantPayloadsForChunkParse(data)
-  console.log("[translatePageText] assistant text", raw)
   const parsed = extractChunkJsonArrayFromText(raw)
   const merged = postProcessChunks(parsed)
   const chunks: RawChunk[] = []

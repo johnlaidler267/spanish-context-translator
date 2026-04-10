@@ -337,7 +337,13 @@ export function ArticleContent({
                       if (pinnedChunkId !== id) scheduleExploringLeave()
                     }}
                     onPinToggle={() => setPinnedChunkId(prev => (prev === id ? null : id))}
-                    onRequestDetails={() => chunkDetails.fetchDetails(item.chunk, pageText)}
+                    onRequestDetails={() => {
+                      if (chunkDetails.activeChunk != null) {
+                        chunkDetails.close()
+                        return
+                      }
+                      chunkDetails.fetchDetails(item.chunk, pageText)
+                    }}
                   />
                 </span>
               )
