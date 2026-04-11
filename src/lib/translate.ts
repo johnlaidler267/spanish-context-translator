@@ -1154,7 +1154,7 @@ export type ReadSentence = {
  * chunks). Steps are split only at chunk boundaries; a single chunk longer than this stays one step.
  * (LLM page size comes from DOM-measured article column; this only splits display steps.)
  */
-export const READ_MODE_CHARS_PER_STEP_MOBILE = 220
+export const READ_MODE_CHARS_PER_STEP_MOBILE = 165
 
 /** Read-mode step size on desktop: max joined Spanish length per step (chunk boundaries only). */
 export const READ_MODE_CHARS_PER_STEP_DESKTOP = 100
