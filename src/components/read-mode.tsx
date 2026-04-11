@@ -51,7 +51,7 @@ interface ReadModeProps {
   enterAtLastStepNonce: number
   lastConsumedEnterNonce: number
   onConsumeEnterLastStep: (nonce: number) => void
-  /** One step per item; desktop = fixed character count per step (word-boundary splits). Mobile targets ~fixed joined character count per step at chunk boundaries only. */
+  /** One step per item; joined Spanish length is balanced across steps at chunk boundaries (max per step differs by layout). */
   sentences: Sentence[]
   articlePageIndex: number
   totalPages: number

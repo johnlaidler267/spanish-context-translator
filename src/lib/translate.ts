@@ -425,7 +425,7 @@ ETC.
 
 For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUTELY NECESSARY to GROUP with its NEIGHBOR?
 
-FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering, "n": grammar note — omit if obvious}
+FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering (even if unnatural), "n": grammar note — omit if obvious}
 
 TEXT:
 ${input}`
@@ -1156,7 +1156,7 @@ export type ReadSentence = {
  */
 export const READ_MODE_CHARS_PER_STEP_MOBILE = 220
 
-/** Read-mode step size on desktop: exact character count per page (including spaces between chunks). */
+/** Read-mode step size on desktop: max joined Spanish length per step (chunk boundaries only). */
 export const READ_MODE_CHARS_PER_STEP_DESKTOP = 100
 
 type ReadChunkRow = ReadSentence["chunks"][number]
@@ -1190,133 +1190,145 @@ function joinedReadDisplayLength(chunks: ReadChunkRow[]): number {
   return joinedReadLengthFromParts(chunks, parts)
 }
 
-function buildJoinedReadString(chunks: ReadChunkRow[], parts: ReadPart[]): string {
-  let s = ""
-  for (const p of parts) {
-    if (p.kind === "gap") s += " "
-    else s += chunks[p.idx]!.text
+/**
+ * Greedy contiguous groups capped at `maxChars` (chunk boundaries only). Used when a single chunk
+ * exceeds `maxChars`, so no partition can respect the cap.
+ */
+function greedyChunkReadPartition(chunks: ReadChunkRow[], maxChars: number): ReadChunkRow[][] {
+  const out: ReadChunkRow[][] = []
+  let run: ReadChunkRow[] = []
+  for (const c of chunks) {
+    const nextRun = [...run, c]
+    const nextLen = joinedReadDisplayLength(nextRun)
+    if (run.length > 0 && nextLen > maxChars) {
+      out.push(run)
+      run = [c]
+    } else {
+      run = nextRun
+    }
   }
-  return s
+  if (run.length > 0) out.push(run)
+  return out
 }
 
-/** Exclusive end `b` is a word boundary when the next char is whitespace or end of string. */
-function isValidWordBreakEnd(S: string, b: number): boolean {
-  return b === S.length || /\s/.test(S[b]!)
+/** Prefix sums of {@link joinedReadDisplayLength} for chunk prefixes (length n+1, pref[0]=0). */
+function readJoinedPrefixSums(chunks: ReadChunkRow[]): number[] {
+  const pref: number[] = [0]
+  for (let i = 0; i < chunks.length; i++) {
+    pref.push(joinedReadDisplayLength(chunks.slice(0, i + 1)))
+  }
+  return pref
 }
 
 /**
- * Prefer a break at or before `idealEnd`; if that would cut mid-word, back up to the last space
- * or extend to the next space / end of string (never splits a word).
+ * dp[j][i] = minimum possible largest segment sum splitting the first i chunks into j groups
+ * (contiguous, chunk boundaries only).
  */
-function findWordBoundaryEnd(S: string, sliceStart: number, idealEnd: number): number {
-  const len = S.length
-  const cap = Math.min(idealEnd, len)
-  for (let b = cap; b > sliceStart; b--) {
-    if (isValidWordBreakEnd(S, b)) return b
+function computeReadMinMaxDp(pref: number[], n: number): number[][] {
+  const dp: number[][] = Array.from({ length: n + 1 }, () => Array(n + 1).fill(Infinity))
+  for (let i = 1; i <= n; i++) {
+    dp[1]![i] = pref[i]!
   }
-  let b = Math.max(cap, sliceStart + 1)
-  while (b < len && !isValidWordBreakEnd(S, b)) b++
-  return b
+  for (let j = 2; j <= n; j++) {
+    for (let i = j; i <= n; i++) {
+      let best = Infinity
+      for (let t = j - 1; t < i; t++) {
+        const cand = Math.max(dp[j - 1]![t]!, pref[i]! - pref[t]!)
+        if (cand < best) best = cand
+      }
+      dp[j]![i] = best
+    }
+  }
+  return dp
+}
+
+function recoverReadPartitionBounds(
+  pref: number[],
+  dp: number[][],
+  j: number,
+  i: number,
+): number[] {
+  if (j === 1) return [0, i]
+  const target = dp[j]![i]!
+  for (let t = j - 1; t < i; t++) {
+    const cand = Math.max(dp[j - 1]![t]!, pref[i]! - pref[t]!)
+    if (cand === target) {
+      const inner = recoverReadPartitionBounds(pref, dp, j - 1, t)
+      return [...inner, i]
+    }
+  }
+  return [0, i]
+}
+
+/** Split one sentence's chunks into read steps: chunk boundaries only, sizes as equal as possible under `maxChars`. */
+function partitionReadSentenceChunks(chunks: ReadChunkRow[], maxChars: number): ReadChunkRow[][] {
+  const n = chunks.length
+  if (n === 0) return []
+  const pref = readJoinedPrefixSums(chunks)
+  const total = pref[n]!
+  if (total <= maxChars) return [[...chunks]]
+
+  let maxAtomic = 0
+  for (let i = 0; i < n; i++) {
+    const w = pref[i + 1]! - pref[i]!
+    if (w > maxAtomic) maxAtomic = w
+  }
+  if (maxAtomic > maxChars) {
+    return greedyChunkReadPartition(chunks, maxChars)
+  }
+
+  const dp = computeReadMinMaxDp(pref, n)
+  let bestK = n
+  for (let k = 1; k <= n; k++) {
+    if (dp[k]![n]! <= maxChars) {
+      bestK = k
+      break
+    }
+  }
+
+  const bounds = recoverReadPartitionBounds(pref, dp, bestK, n)
+  const groups: ReadChunkRow[][] = []
+  for (let b = 0; b < bounds.length - 1; b++) {
+    const lo = bounds[b]!
+    const hi = bounds[b + 1]!
+    groups.push(chunks.slice(lo, hi))
+  }
+  return groups
 }
 
 /**
- * Desktop Read mode: each step targets ~`charsPerStep` characters of the joined Spanish
- * (chunk texts + read-mode gaps), ending only at word boundaries (whitespace).
- * The last step for each LLM page may be shorter; a single word longer than the cap stays one step.
+ * Read mode: split each sentence into steps only at chunk boundaries. Uses the fewest steps such
+ * that no step exceeds `maxCharsPerStep` joined length, and among those partitions minimizes the
+ * largest step (so sizes stay as equal as possible). Single chunks longer than the cap use one step.
  */
+function subdivideReadStepsAtChunkBoundaries(
+  sentences: ReadSentence[],
+  maxCharsPerStep: number,
+): ReadSentence[] {
+  const out: ReadSentence[] = []
+  let nextId = 0
+  let chunkId = 0
+
+  for (const sent of sentences) {
+    const groups = partitionReadSentenceChunks(sent.chunks, maxCharsPerStep)
+    for (const group of groups) {
+      if (group.length === 0) continue
+      const merged = coalesceGlueablePunctuationChunks(group.map((c) => ({ ...c })))
+      out.push({
+        id: nextId++,
+        sourcePageIndex: sent.sourcePageIndex,
+        chunks: merged.map((c) => ({ ...c, id: chunkId++ })),
+      })
+    }
+  }
+  return out.map((s, idx) => ({ ...s, id: idx }))
+}
+
 export function subdivideReadStepsForDesktop(
   sentences: ReadSentence[],
   charsPerStep: number = READ_MODE_CHARS_PER_STEP_DESKTOP,
 ): ReadSentence[] {
-  const flat: Array<{ chunk: ReadChunkRow; sourcePageIndex: number }> = []
-  for (const sent of sentences) {
-    for (const c of sent.chunks) {
-      flat.push({ chunk: c, sourcePageIndex: sent.sourcePageIndex })
-    }
-  }
-  if (flat.length === 0) return []
-
-  const out: ReadSentence[] = []
-  let nextSentenceId = 0
-  let chunkId = 0
-
-  let i = 0
-  while (i < flat.length) {
-    const page = flat[i]!.sourcePageIndex
-    const group: ReadChunkRow[] = []
-    while (i < flat.length && flat[i]!.sourcePageIndex === page) {
-      group.push(flat[i]!.chunk)
-      i++
-    }
-
-    const parts = buildReadParts(group)
-    const totalLen = joinedReadLengthFromParts(group, parts)
-    if (totalLen === 0) continue
-
-    const S = buildJoinedReadString(group, parts)
-    let sliceStart = 0
-    while (sliceStart < totalLen) {
-      const idealEnd = sliceStart + charsPerStep
-      const b = findWordBoundaryEnd(S, sliceStart, idealEnd)
-      const a = sliceStart
-      if (b <= sliceStart) break
-
-      const stepChunks: ReadChunkRow[] = []
-      let pos = 0
-      for (const part of parts) {
-        const segment = part.kind === "gap" ? " " : group[part.idx]!.text
-        const segLen = segment.length
-        const partEnd = pos + segLen
-        if (partEnd <= a || pos >= b) {
-          pos = partEnd
-          continue
-        }
-        const lo = Math.max(0, a - pos)
-        const hi = Math.min(segLen, b - pos)
-        const frag = segment.slice(lo, hi)
-        if (!frag) {
-          pos = partEnd
-          continue
-        }
-        if (part.kind === "gap") {
-          stepChunks.push({
-            id: chunkId++,
-            text: frag,
-            meaning: " ",
-            literal: " ",
-          })
-        } else {
-          const ck = group[part.idx]!
-          stepChunks.push({
-            ...ck,
-            id: chunkId++,
-            text: frag,
-          })
-        }
-        pos = partEnd
-      }
-
-      const merged = coalesceGlueablePunctuationChunks(stepChunks.map((c) => ({ ...c })))
-      if (merged.length === 1 && shouldGlueAfterPriorChunkReadGlue(merged[0]!.text) && out.length > 0) {
-        const prevChunks = out[out.length - 1]!.chunks
-        if (prevChunks.length > 0) {
-          prevChunks[prevChunks.length - 1]!.text += merged[0]!.text
-          sliceStart = b
-          continue
-        }
-      }
-      if (merged.length > 0) {
-        out.push({
-          id: nextSentenceId++,
-          sourcePageIndex: page,
-          chunks: merged.map((c) => ({ ...c, id: chunkId++ })),
-        })
-      }
-      sliceStart = b
-    }
-  }
-
-  return out.map((s, idx) => ({ ...s, id: idx }))
+  return subdivideReadStepsAtChunkBoundaries(sentences, charsPerStep)
 }
 
 /** Concatenate translated pages into one Read-mode sentence list (stable chunk ids). */
@@ -1339,56 +1351,12 @@ export function mergeReconciledPagesToSentences(
   return out.map((s, i) => ({ ...s, id: i }))
 }
 
-/**
- * Split long read steps at chunk boundaries so each step targets ~`maxCharsPerStep` joined
- * characters (same span as desktop: chunk texts + read-mode gaps). Never splits inside a chunk.
- */
+/** @see subdivideReadStepsAtChunkBoundaries — same balancing as desktop with a larger step budget. */
 export function subdivideReadStepsForMobile(
   sentences: ReadSentence[],
   maxCharsPerStep: number,
 ): ReadSentence[] {
-  const out: ReadSentence[] = []
-  let nextId = 0
-  let chunkId = 0
-
-  for (const sent of sentences) {
-    const chunks = sent.chunks
-    if (chunks.length === 0) continue
-
-    const totalLen = joinedReadDisplayLength(chunks)
-    if (totalLen <= maxCharsPerStep) {
-      out.push({
-        id: nextId++,
-        sourcePageIndex: sent.sourcePageIndex,
-        chunks: chunks.map((c) => ({ ...c, id: chunkId++ })),
-      })
-      continue
-    }
-
-    let run: ReadSentence["chunks"] = []
-    for (const c of chunks) {
-      const nextRun = [...run, c]
-      const nextLen = joinedReadDisplayLength(nextRun)
-      if (run.length > 0 && nextLen > maxCharsPerStep) {
-        out.push({
-          id: nextId++,
-          sourcePageIndex: sent.sourcePageIndex,
-          chunks: run.map((x) => ({ ...x, id: chunkId++ })),
-        })
-        run = [c]
-      } else {
-        run = nextRun
-      }
-    }
-    if (run.length > 0) {
-      out.push({
-        id: nextId++,
-        sourcePageIndex: sent.sourcePageIndex,
-        chunks: run.map((x) => ({ ...x, id: chunkId++ })),
-      })
-    }
-  }
-  return out
+  return subdivideReadStepsAtChunkBoundaries(sentences, maxCharsPerStep)
 }
 
 /** Preload ranges in *display step* indices, after any mobile subdivision. */
