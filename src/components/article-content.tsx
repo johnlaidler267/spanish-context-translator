@@ -24,6 +24,7 @@ import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { AppErrorModal } from "./app-error-modal"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
+import { cancelHoverSpeech, speakHoverChunk } from "@/lib/hover-tts"
 
 export type ArticlePaginationState = {
   pageIndex: number
@@ -43,6 +44,8 @@ interface ArticleContentProps {
   onRetry?: () => void
   pagination?: ArticlePaginationState | null
   pageKey?: number
+  /** When true, speak the Spanish chunk under the pointer (Web Speech API). */
+  hoverTtsEnabled?: boolean
 }
 
 const CHUNK_HOVER_GAP_CLEAR_MS = 90
@@ -54,6 +57,7 @@ export function ArticleContent({
   onRetry,
   pagination = null,
   pageKey = 0,
+  hoverTtsEnabled = false,
 }: ArticleContentProps) {
   const [errorModalDismissed, setErrorModalDismissed] = useState(false)
   useEffect(() => {
@@ -213,6 +217,30 @@ export function ArticleContent({
           : detailsAnchoredChunkId,
     [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId],
   )
+
+  useEffect(() => {
+    if (!hoverTtsEnabled) {
+      cancelHoverSpeech()
+      return
+    }
+    if (exploringChunkId == null || !items) {
+      cancelHoverSpeech()
+      return
+    }
+    let cid = 0
+    let spanish: string | null = null
+    for (const it of items) {
+      if (it.type === "text") continue
+      const id = cid++
+      if (id === exploringChunkId) {
+        spanish = it.chunk
+        break
+      }
+    }
+    if (spanish) speakHoverChunk(spanish)
+    return () => cancelHoverSpeech()
+  }, [hoverTtsEnabled, exploringChunkId, items])
+
   const { pageEnterStyle } = useReadingPageEnterAnimation(pageKey)
 
   /** Replacing `key={pageKey}` remount — keep scroll at top per page without remounting (WebKit skips enter anim on fresh nodes). */

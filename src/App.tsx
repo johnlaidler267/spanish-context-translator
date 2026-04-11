@@ -66,6 +66,7 @@ export default function App() {
     setStoredLandingDraft(landingDraft)
   }, [landingDraft])
   const [viewMode, setViewMode] = useState<ViewMode>("article")
+  const [hoverTtsEnabled, setHoverTtsEnabled] = useState(false)
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const appTheme = readingTheme
 
@@ -458,6 +459,8 @@ export default function App() {
             onBack={handleBack}
             theme={readingTheme}
             onThemeChange={setReadingTheme}
+            hoverTtsEnabled={hoverTtsEnabled}
+            onHoverTtsChange={setHoverTtsEnabled}
           />
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden animate-fade-in-up max-md:overflow-hidden md:overflow-y-auto">
@@ -469,6 +472,7 @@ export default function App() {
                 errorMessage={articleErr ?? null}
                 onRetry={articleErr ? retryArticlePage : undefined}
                 pageKey={articlePageIndex}
+                hoverTtsEnabled={hoverTtsEnabled}
                 pagination={
                   totalPages > 1
                     ? {
@@ -501,6 +505,7 @@ export default function App() {
                 nextPageOpen={nextPageOpen}
                 nextPageError={readNextPageError}
                 onRetryNextPage={readNextPageError ? retryReadNextPage : undefined}
+                hoverTtsEnabled={hoverTtsEnabled}
               />
             </div>
           ) : totalPages > 0 ? (
@@ -511,6 +516,7 @@ export default function App() {
                 errorMessage={articleErr ?? null}
                 onRetry={articleErr ? retryArticlePage : undefined}
                 pageKey={articlePageIndex}
+                hoverTtsEnabled={hoverTtsEnabled}
                 pagination={null}
               />
             </div>

@@ -1,10 +1,11 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { ChevronLeft, Moon, Sun, Settings2 } from "lucide-react"
+import { ChevronLeft, Moon, Sun, Settings2, Volume2 } from "lucide-react"
 import { ModeToggle, type ViewMode } from "./mode-toggle"
 import { type ReadingTheme } from "./theme-toggle"
 import { READING_HEADER_BAND_REM } from "@/lib/reading-layout"
+import { cn } from "@/lib/utils"
 
 interface ReadingHeaderProps {
   mode: ViewMode
@@ -12,12 +13,23 @@ interface ReadingHeaderProps {
   onBack: () => void
   theme: ReadingTheme
   onThemeChange: (theme: ReadingTheme) => void
+  /** Read Spanish chunk text aloud when the pointer explores chunks (Web Speech API). */
+  hoverTtsEnabled: boolean
+  onHoverTtsChange: (enabled: boolean) => void
 }
 
 /** Mobile band height — inline minHeight on the mobile gradient/img so rem tweaks always apply (Tailwind var() on children was unreliable). */
 const HEADER_BAND_MOBILE = `calc(${READING_HEADER_BAND_REM}rem + env(safe-area-inset-top, 0px))`
 
-export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange }: ReadingHeaderProps) {
+export function ReadingHeader({
+  mode,
+  onModeChange,
+  onBack,
+  theme,
+  onThemeChange,
+  hoverTtsEnabled,
+  onHoverTtsChange,
+}: ReadingHeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
       {/* Mobile: gradient height = HEADER_BAND_MOBILE (inline). Desktop: short bar only. */}
@@ -40,6 +52,23 @@ export function ReadingHeader({ mode, onModeChange, onBack, theme, onThemeChange
         {/* Right side: Mode toggle + Theme + Settings */}
         <div className="pointer-events-auto flex items-center gap-2 md:gap-3">
           <ModeToggle mode={mode} onModeChange={onModeChange} />
+          <button
+            type="button"
+            onClick={() => onHoverTtsChange(!hoverTtsEnabled)}
+            className={cn(
+              "flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/50",
+              hoverTtsEnabled &&
+                "bg-[#c97a5a]/20 text-[#c97a5a] ring-1 ring-[#c97a5a]/40",
+            )}
+            aria-pressed={hoverTtsEnabled}
+            aria-label={
+              hoverTtsEnabled
+                ? "Turn off speak on hover"
+                : "Speak chunks aloud on hover"
+            }
+          >
+            <Volume2 className="h-4 w-4 max-md:h-5 max-md:w-5" aria-hidden />
+          </button>
           <button
             type="button"
             onClick={() => {

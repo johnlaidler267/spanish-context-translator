@@ -22,6 +22,7 @@ import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { AppErrorModal } from "./app-error-modal"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
+import { cancelHoverSpeech, speakHoverChunk } from "@/lib/hover-tts"
 
 interface ChunkData {
   id: number
@@ -60,6 +61,7 @@ interface ReadModeProps {
   nextPageOpen: boolean
   nextPageError?: string | null
   onRetryNextPage?: () => void
+  hoverTtsEnabled?: boolean
 }
 
 /** Brief delay before clearing hover over inter-chunk gaps (read + article pointer paths). */
@@ -81,6 +83,7 @@ export function ReadMode({
   nextPageOpen,
   nextPageError = null,
   onRetryNextPage,
+  hoverTtsEnabled = false,
 }: ReadModeProps) {
   const [nextPageErrorDismissed, setNextPageErrorDismissed] = useState(false)
   useEffect(() => {
@@ -236,6 +239,21 @@ export function ReadMode({
           : detailsAnchoredChunkId,
     [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId],
   )
+
+  useEffect(() => {
+    if (!hoverTtsEnabled) {
+      cancelHoverSpeech()
+      return
+    }
+    if (exploringChunkId == null) {
+      cancelHoverSpeech()
+      return
+    }
+    const ch = currentSentence.chunks.find((c) => c.id === exploringChunkId)
+    if (ch?.text) speakHoverChunk(ch.text)
+    return () => cancelHoverSpeech()
+  }, [hoverTtsEnabled, exploringChunkId, currentSentence.chunks])
+
   const totalSentences = sentences.length
   /** Linear read position — changes on every sentence (and article page) so enter anim can run per step */
   const readEnterAnimKey = readStepOffset + currentSentenceIndex
