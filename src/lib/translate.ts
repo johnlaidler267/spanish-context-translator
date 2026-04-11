@@ -1150,10 +1150,11 @@ export type ReadSentence = {
 }
 
 /**
- * Max words per Read-mode step on narrow viewports — same prev/next as desktop, smaller bites.
+ * Target joined Spanish length per Read-mode step on narrow viewports (chunk texts + gaps between
+ * chunks). Steps are split only at chunk boundaries; a single chunk longer than this stays one step.
  * (LLM page size comes from DOM-measured article column; this only splits display steps.)
  */
-export const READ_MODE_WORDS_PER_STEP_MOBILE = 18
+export const READ_MODE_CHARS_PER_STEP_MOBILE = 220
 
 /** Read-mode step size on desktop: exact character count per page (including spaces between chunks). */
 export const READ_MODE_CHARS_PER_STEP_DESKTOP = 100
@@ -1180,6 +1181,13 @@ function joinedReadLengthFromParts(chunks: ReadChunkRow[], parts: ReadPart[]): n
     n += p.kind === "gap" ? 1 : chunks[p.idx]!.text.length
   }
   return n
+}
+
+/** Joined display length for read mode (chunk texts + one space per non-glued gap). */
+function joinedReadDisplayLength(chunks: ReadChunkRow[]): number {
+  if (chunks.length === 0) return 0
+  const parts = buildReadParts(chunks)
+  return joinedReadLengthFromParts(chunks, parts)
 }
 
 function buildJoinedReadString(chunks: ReadChunkRow[], parts: ReadPart[]): string {
@@ -1311,10 +1319,6 @@ export function subdivideReadStepsForDesktop(
   return out.map((s, idx) => ({ ...s, id: idx }))
 }
 
-function countWordsInText(s: string): number {
-  return s.trim().split(/\s+/).filter((w) => /\p{L}/u.test(w)).length
-}
-
 /** Concatenate translated pages into one Read-mode sentence list (stable chunk ids). */
 export function mergeReconciledPagesToSentences(
   pages: ReconciledItem[][],
@@ -1336,12 +1340,12 @@ export function mergeReconciledPagesToSentences(
 }
 
 /**
- * Split long read steps at chunk boundaries so each step stays under `maxWords` (mobile).
- * Single chunks that alone exceed the budget stay as one step.
+ * Split long read steps at chunk boundaries so each step targets ~`maxCharsPerStep` joined
+ * characters (same span as desktop: chunk texts + read-mode gaps). Never splits inside a chunk.
  */
 export function subdivideReadStepsForMobile(
   sentences: ReadSentence[],
-  maxWordsPerStep: number,
+  maxCharsPerStep: number,
 ): ReadSentence[] {
   const out: ReadSentence[] = []
   let nextId = 0
@@ -1349,8 +1353,10 @@ export function subdivideReadStepsForMobile(
 
   for (const sent of sentences) {
     const chunks = sent.chunks
-    const totalWords = chunks.reduce((sum, c) => sum + countWordsInText(c.text), 0)
-    if (totalWords <= maxWordsPerStep || chunks.length === 0) {
+    if (chunks.length === 0) continue
+
+    const totalLen = joinedReadDisplayLength(chunks)
+    if (totalLen <= maxCharsPerStep) {
       out.push({
         id: nextId++,
         sourcePageIndex: sent.sourcePageIndex,
@@ -1360,20 +1366,19 @@ export function subdivideReadStepsForMobile(
     }
 
     let run: ReadSentence["chunks"] = []
-    let runWords = 0
     for (const c of chunks) {
-      const w = countWordsInText(c.text)
-      if (run.length > 0 && runWords + w > maxWordsPerStep) {
+      const nextRun = [...run, c]
+      const nextLen = joinedReadDisplayLength(nextRun)
+      if (run.length > 0 && nextLen > maxCharsPerStep) {
         out.push({
           id: nextId++,
           sourcePageIndex: sent.sourcePageIndex,
           chunks: run.map((x) => ({ ...x, id: chunkId++ })),
         })
-        run = []
-        runWords = 0
+        run = [c]
+      } else {
+        run = nextRun
       }
-      run.push(c)
-      runWords += w
     }
     if (run.length > 0) {
       out.push({

@@ -17,7 +17,7 @@ import {
   mergeArticlePagesIfWholeTextFitsLimits,
   mergeReconciledPagesToSentences,
   pageSourceText,
-  READ_MODE_WORDS_PER_STEP_MOBILE,
+  READ_MODE_CHARS_PER_STEP_MOBILE,
   splitSourceIntoSentences,
   subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
@@ -371,7 +371,7 @@ export default function App() {
       articleItems ? [articleItems] : [],
     )
     const readSentences = readLayoutMobile
-      ? subdivideReadStepsForMobile(readSentencesMerged, READ_MODE_WORDS_PER_STEP_MOBILE)
+      ? subdivideReadStepsForMobile(readSentencesMerged, READ_MODE_CHARS_PER_STEP_MOBILE)
       : subdivideReadStepsForDesktop(readSentencesMerged)
 
     let readStepOffset = 0
@@ -380,7 +380,7 @@ export default function App() {
       if (priorItems == null) continue
       const priorMerged = mergeReconciledPagesToSentences([priorItems])
       const priorSteps = readLayoutMobile
-        ? subdivideReadStepsForMobile(priorMerged, READ_MODE_WORDS_PER_STEP_MOBILE)
+        ? subdivideReadStepsForMobile(priorMerged, READ_MODE_CHARS_PER_STEP_MOBILE)
         : subdivideReadStepsForDesktop(priorMerged)
       readStepOffset += priorSteps.length
     }
