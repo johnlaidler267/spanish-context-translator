@@ -24,7 +24,10 @@ import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { AppErrorModal } from "./app-error-modal"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
-import { cancelHoverSpeech, speakHoverChunk } from "@/lib/hover-tts"
+import {
+  cancelHoverSpeech,
+  speakHoverChunk,
+} from "@/lib/hover-tts"
 
 export type ArticlePaginationState = {
   pageIndex: number
@@ -50,6 +53,19 @@ interface ArticleContentProps {
 
 const CHUNK_HOVER_GAP_CLEAR_MS = 90
 
+function articleChunkTextByNumericId(
+  items: ReconciledItem[],
+  id: number,
+): string | null {
+  let cid = 0
+  for (const it of items) {
+    if (it.type === "text") continue
+    if (cid === id) return it.chunk
+    cid++
+  }
+  return null
+}
+
 export function ArticleContent({
   items,
   loading = false,
@@ -73,6 +89,12 @@ export function ArticleContent({
   const pointerHoverRafRef = useRef<number | null>(null)
   const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
   const pointerLastIdRef = useRef<number | null>(null)
+  const hoverTtsEnabledRef = useRef(hoverTtsEnabled)
+  hoverTtsEnabledRef.current = hoverTtsEnabled
+  const itemsRef = useRef(items)
+  itemsRef.current = items
+  const hoverTtsLastSpokenIdRef = useRef<number | null>(null)
+  const speakExploreChunkIdForTouchRef = useRef<(id: number | null) => void>(() => {})
 
   const cancelExploringLeaveTimer = useCallback(() => {
     if (exploringLeaveTimerRef.current != null) {
@@ -99,6 +121,21 @@ export function ArticleContent({
 
   useEffect(() => () => cancelExploringLeaveTimer(), [cancelExploringLeaveTimer])
 
+  speakExploreChunkIdForTouchRef.current = (id: number | null) => {
+    if (!hoverTtsEnabledRef.current) return
+    if (id == null) {
+      hoverTtsLastSpokenIdRef.current = null
+      cancelHoverSpeech()
+      return
+    }
+    if (id === hoverTtsLastSpokenIdRef.current) return
+    hoverTtsLastSpokenIdRef.current = id
+    const data = itemsRef.current
+    if (!data) return
+    const text = articleChunkTextByNumericId(data, id)
+    if (text) speakHoverChunk(text)
+  }
+
   const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
     commitExploringChunkId,
     items,
@@ -108,12 +145,29 @@ export function ArticleContent({
         tooltipFollowRef.current = pt
         if (pt) followTooltipPlaceRef.current?.(pt.x, pt.y)
       },
+      onExploreChunkId: (id) => speakExploreChunkIdForTouchRef.current(id),
     },
   )
 
   useLayoutEffect(() => {
     const el = touchSurfaceRef.current
     if (!el) return
+
+    const syncHoverTtsFromPointer = (clientX: number, clientY: number) => {
+      if (!hoverTtsEnabledRef.current) return
+      const data = itemsRef.current
+      if (!data) return
+      const nid = getChunkIdFromPointerClientXY(clientX, clientY, el)
+      if (nid != null) {
+        if (nid === hoverTtsLastSpokenIdRef.current) return
+        hoverTtsLastSpokenIdRef.current = nid
+        const text = articleChunkTextByNumericId(data, nid)
+        if (text) speakHoverChunk(text)
+      } else {
+        hoverTtsLastSpokenIdRef.current = null
+        cancelHoverSpeech()
+      }
+    }
 
     const applyHit = (clientX: number, clientY: number) => {
       const id = getChunkIdFromPointerClientXY(clientX, clientY, el)
@@ -146,12 +200,14 @@ export function ArticleContent({
     const onMouseEnter = (e: MouseEvent) => {
       pointerPendingRef.current = { x: e.clientX, y: e.clientY }
       setTooltipPointer({ x: e.clientX, y: e.clientY })
+      syncHoverTtsFromPointer(e.clientX, e.clientY)
       applyHit(e.clientX, e.clientY)
     }
 
     const onMouseMove = (e: MouseEvent) => {
       pointerPendingRef.current = { x: e.clientX, y: e.clientY }
       setTooltipPointer({ x: e.clientX, y: e.clientY })
+      syncHoverTtsFromPointer(e.clientX, e.clientY)
       if (pointerHoverRafRef.current != null) return
       pointerHoverRafRef.current = requestAnimationFrame(flushHitTest)
     }
@@ -167,6 +223,8 @@ export function ArticleContent({
       cancelExploringLeaveTimer()
       pointerPendingRef.current = null
       pointerLastIdRef.current = null
+      hoverTtsLastSpokenIdRef.current = null
+      if (hoverTtsEnabledRef.current) cancelHoverSpeech()
       setTooltipPointer(null)
       if (pointerHoverRafRef.current != null) {
         cancelAnimationFrame(pointerHoverRafRef.current)
@@ -220,26 +278,10 @@ export function ArticleContent({
 
   useEffect(() => {
     if (!hoverTtsEnabled) {
+      hoverTtsLastSpokenIdRef.current = null
       cancelHoverSpeech()
-      return
     }
-    if (exploringChunkId == null || !items) {
-      cancelHoverSpeech()
-      return
-    }
-    let cid = 0
-    let spanish: string | null = null
-    for (const it of items) {
-      if (it.type === "text") continue
-      const id = cid++
-      if (id === exploringChunkId) {
-        spanish = it.chunk
-        break
-      }
-    }
-    if (spanish) speakHoverChunk(spanish)
-    return () => cancelHoverSpeech()
-  }, [hoverTtsEnabled, exploringChunkId, items])
+  }, [hoverTtsEnabled])
 
   const { pageEnterStyle } = useReadingPageEnterAnimation(pageKey)
 

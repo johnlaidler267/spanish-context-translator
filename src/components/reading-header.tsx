@@ -6,6 +6,7 @@ import { ModeToggle, type ViewMode } from "./mode-toggle"
 import { type ReadingTheme } from "./theme-toggle"
 import { READING_HEADER_BAND_REM } from "@/lib/reading-layout"
 import { cn } from "@/lib/utils"
+import { primeSpeechSynthesisFromUserGesture } from "@/lib/hover-tts"
 
 interface ReadingHeaderProps {
   mode: ViewMode
@@ -54,7 +55,11 @@ export function ReadingHeader({
           <ModeToggle mode={mode} onModeChange={onModeChange} />
           <button
             type="button"
-            onClick={() => onHoverTtsChange(!hoverTtsEnabled)}
+            onClick={() => {
+              const next = !hoverTtsEnabled
+              if (next) primeSpeechSynthesisFromUserGesture()
+              onHoverTtsChange(next)
+            }}
             className={cn(
               "flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/50",
               hoverTtsEnabled &&

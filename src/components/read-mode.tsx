@@ -67,6 +67,11 @@ interface ReadModeProps {
 /** Brief delay before clearing hover over inter-chunk gaps (read + article pointer paths). */
 const CHUNK_HOVER_GAP_CLEAR_MS = 90
 
+function readChunkTextById(sentence: Sentence | undefined, chunkId: number): string | null {
+  const t = sentence?.chunks.find((c) => c.id === chunkId)?.text
+  return t && t.trim() ? t : null
+}
+
 export function ReadMode({
   readingSessionKey = 0,
   readPageKey,
@@ -118,6 +123,30 @@ export function ReadMode({
     [cancelGapClearExplore],
   )
 
+  const hoverTtsEnabledRef = useRef(hoverTtsEnabled)
+  hoverTtsEnabledRef.current = hoverTtsEnabled
+  const sentencesRef = useRef(sentences)
+  sentencesRef.current = sentences
+  const currentSentenceIndexRef = useRef(currentSentenceIndex)
+  currentSentenceIndexRef.current = currentSentenceIndex
+  const hoverTtsLastSpokenIdRef = useRef<number | null>(null)
+  const speakExploreChunkIdForTouchRef = useRef<(id: number | null) => void>(() => {})
+
+  speakExploreChunkIdForTouchRef.current = (id: number | null) => {
+    if (!hoverTtsEnabledRef.current) return
+    if (id == null) {
+      hoverTtsLastSpokenIdRef.current = null
+      cancelHoverSpeech()
+      return
+    }
+    if (id === hoverTtsLastSpokenIdRef.current) return
+    hoverTtsLastSpokenIdRef.current = id
+    const sentence =
+      sentencesRef.current[currentSentenceIndexRef.current] ?? { id: 0, chunks: [] as ChunkData[] }
+    const text = readChunkTextById(sentence, id)
+    if (text) speakHoverChunk(text)
+  }
+
   const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
     commitExploringChunkId,
     currentSentenceIndex,
@@ -127,6 +156,7 @@ export function ReadMode({
         tooltipFollowRef.current = pt
         if (pt) followTooltipPlaceRef.current?.(pt.x, pt.y)
       },
+      onExploreChunkId: (id) => speakExploreChunkIdForTouchRef.current(id),
     },
   )
 
@@ -137,6 +167,23 @@ export function ReadMode({
   useLayoutEffect(() => {
     const el = touchSurfaceRef.current
     if (!el) return
+
+    const currentReadSentence = () =>
+      sentencesRef.current[currentSentenceIndexRef.current] ?? { id: 0, chunks: [] as ChunkData[] }
+
+    const syncHoverTtsFromPointer = (clientX: number, clientY: number) => {
+      if (!hoverTtsEnabledRef.current) return
+      const nid = getChunkIdFromPointerClientXY(clientX, clientY, el)
+      if (nid != null) {
+        if (nid === hoverTtsLastSpokenIdRef.current) return
+        hoverTtsLastSpokenIdRef.current = nid
+        const text = readChunkTextById(currentReadSentence(), nid)
+        if (text) speakHoverChunk(text)
+      } else {
+        hoverTtsLastSpokenIdRef.current = null
+        cancelHoverSpeech()
+      }
+    }
 
     const applyHit = (clientX: number, clientY: number) => {
       const id = getChunkIdFromPointerClientXY(clientX, clientY, el)
@@ -169,6 +216,7 @@ export function ReadMode({
     const onMouseEnter = (e: MouseEvent) => {
       pointerPendingRef.current = { x: e.clientX, y: e.clientY }
       setTooltipPointer({ x: e.clientX, y: e.clientY })
+      syncHoverTtsFromPointer(e.clientX, e.clientY)
       applyHit(e.clientX, e.clientY)
     }
 
@@ -176,6 +224,7 @@ export function ReadMode({
       pointerPendingRef.current = { x: e.clientX, y: e.clientY }
       // Update tooltip anchor every event; hit-test stays on rAF to avoid excess setState churn.
       setTooltipPointer({ x: e.clientX, y: e.clientY })
+      syncHoverTtsFromPointer(e.clientX, e.clientY)
       if (pointerHoverRafRef.current != null) return
       pointerHoverRafRef.current = requestAnimationFrame(flushHitTest)
     }
@@ -191,6 +240,8 @@ export function ReadMode({
       cancelGapClearExplore()
       pointerPendingRef.current = null
       pointerLastIdRef.current = null
+      hoverTtsLastSpokenIdRef.current = null
+      if (hoverTtsEnabledRef.current) cancelHoverSpeech()
       setTooltipPointer(null)
       if (pointerHoverRafRef.current != null) {
         cancelAnimationFrame(pointerHoverRafRef.current)
@@ -242,17 +293,10 @@ export function ReadMode({
 
   useEffect(() => {
     if (!hoverTtsEnabled) {
+      hoverTtsLastSpokenIdRef.current = null
       cancelHoverSpeech()
-      return
     }
-    if (exploringChunkId == null) {
-      cancelHoverSpeech()
-      return
-    }
-    const ch = currentSentence.chunks.find((c) => c.id === exploringChunkId)
-    if (ch?.text) speakHoverChunk(ch.text)
-    return () => cancelHoverSpeech()
-  }, [hoverTtsEnabled, exploringChunkId, currentSentence.chunks])
+  }, [hoverTtsEnabled])
 
   const totalSentences = sentences.length
   /** Linear read position — changes on every sentence (and article page) so enter anim can run per step */

@@ -186,6 +186,11 @@ export function useChunkTouchExploration(
   options?: {
     /** Viewport coords for tooltip arrow while dragging (same role as mouse on desktop). */
     onTouchPointerClient?: (pt: TouchPointerClient | null) => void
+    /**
+     * Fires synchronously from touch handlers when the explored chunk id changes (or touch ends with null).
+     * Use for WebKit TTS, which must run inside the user-gesture stack — not in a later React effect.
+     */
+    onExploreChunkId?: (id: number | null) => void
   },
 ) {
   const ref = useRef<HTMLDivElement>(null)
@@ -195,6 +200,8 @@ export function useChunkTouchExploration(
   const [touchExploring, setTouchExploring] = useState(false)
   const onTouchPointerRef = useRef(options?.onTouchPointerClient)
   onTouchPointerRef.current = options?.onTouchPointerClient
+  const onExploreChunkIdRef = useRef(options?.onExploreChunkId)
+  onExploreChunkIdRef.current = options?.onExploreChunkId
 
   useLayoutEffect(() => {
     const el = ref.current
@@ -207,6 +214,7 @@ export function useChunkTouchExploration(
       if (id === lastEmittedIdRef.current) return
       lastEmittedIdRef.current = id
       setActiveChunkId(id)
+      onExploreChunkIdRef.current?.(id)
     }
 
     const onTouchStart = (e: TouchEvent) => {
@@ -219,6 +227,7 @@ export function useChunkTouchExploration(
       const id = getChunkIdFromPointerClientXY(t.clientX, t.clientY, el)
       lastEmittedIdRef.current = id
       setActiveChunkId(id)
+      onExploreChunkIdRef.current?.(id)
     }
 
     const onTouchMove = (e: TouchEvent) => {
@@ -238,6 +247,7 @@ export function useChunkTouchExploration(
       onTouchPointerRef.current?.(null)
       lastEmittedIdRef.current = null
       setActiveChunkId(null)
+      onExploreChunkIdRef.current?.(null)
       pendingPointRef.current = null
     }
 
