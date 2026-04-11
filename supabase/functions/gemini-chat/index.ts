@@ -18,6 +18,21 @@ const ALLOWED_MODELS = new Set([
 
 const MAX_OUTPUT_TOKENS_CAP = 8192
 
+/** When set, enables Gemini controlled JSON generation (plain-text learn flows omit this). */
+const CHUNK_ROWS_RESPONSE_SCHEMA = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      c: { type: "string" },
+      m: { type: "string" },
+      l: { type: "string" },
+      n: { type: "string" },
+    },
+    required: ["c", "m"],
+  },
+} as const
+
 type OpenAiMsg = { role?: string; content?: unknown }
 
 function stringifyContent(content: unknown): string {
@@ -75,6 +90,8 @@ Deno.serve(async (req: Request) => {
     messages?: unknown
     temperature?: number
     max_tokens?: number
+    /** App sends this for translate chunking only; learn/random Spanish must not set it. */
+    gemini_response_schema?: "chunk_rows"
   }
   try {
     body = await req.json()
@@ -108,12 +125,18 @@ Deno.serve(async (req: Request) => {
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${body.model}:generateContent`
 
+  const generationConfig: Record<string, unknown> = {
+    maxOutputTokens: maxOut,
+    ...(typeof body.temperature === "number" ? { temperature: body.temperature } : {}),
+  }
+  if (body.gemini_response_schema === "chunk_rows") {
+    generationConfig.responseMimeType = "application/json"
+    generationConfig.responseSchema = CHUNK_ROWS_RESPONSE_SCHEMA
+  }
+
   const geminiBody: Record<string, unknown> = {
     contents,
-    generationConfig: {
-      maxOutputTokens: maxOut,
-      ...(typeof body.temperature === "number" ? { temperature: body.temperature } : {}),
-    },
+    generationConfig,
     safetySettings: [
       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
       { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },

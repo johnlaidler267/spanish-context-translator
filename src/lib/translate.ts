@@ -427,6 +427,8 @@ For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUT
 
 FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering (even if unnatural), "n": grammar note — omit if obvious}
 
+Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
+
 TEXT:
 ${input}`
 
@@ -1088,7 +1090,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
           // reasoning_effort: TRANSLATE_REASONING_EFFORT,
           // reasoning_format: GROQ_REASONING_FORMAT_HIDDEN,
         }
-      : base,
+      : { ...base, gemini_response_schema: "chunk_rows" },
   )
 
   if (!res.ok) {
