@@ -191,6 +191,13 @@ export function useChunkTouchExploration(
      * Use for WebKit TTS, which must run inside the user-gesture stack — not in a later React effect.
      */
     onExploreChunkId?: (id: number | null) => void
+    /** First line of touchstart — e.g. iOS speech unlock (`speak("")` in gesture). */
+    onTouchExplorationStart?: () => void
+    /**
+     * Right before the explored chunk id changes during touchmove/touchstart (same coords path).
+     * iOS WebKit often needs a fresh empty utterance in this tick so the following `speak` isn’t dropped.
+     */
+    onBeforeTouchChunkIdChange?: () => void
   },
 ) {
   const ref = useRef<HTMLDivElement>(null)
@@ -202,6 +209,10 @@ export function useChunkTouchExploration(
   onTouchPointerRef.current = options?.onTouchPointerClient
   const onExploreChunkIdRef = useRef(options?.onExploreChunkId)
   onExploreChunkIdRef.current = options?.onExploreChunkId
+  const onTouchExplorationStartRef = useRef(options?.onTouchExplorationStart)
+  onTouchExplorationStartRef.current = options?.onTouchExplorationStart
+  const onBeforeTouchChunkIdChangeRef = useRef(options?.onBeforeTouchChunkIdChange)
+  onBeforeTouchChunkIdChangeRef.current = options?.onBeforeTouchChunkIdChange
 
   useLayoutEffect(() => {
     const el = ref.current
@@ -212,6 +223,7 @@ export function useChunkTouchExploration(
       if (!p || !touchExploringRef.current) return
       const id = getChunkIdFromPointerClientXY(p.x, p.y, el)
       if (id === lastEmittedIdRef.current) return
+      onBeforeTouchChunkIdChangeRef.current?.()
       lastEmittedIdRef.current = id
       setActiveChunkId(id)
       onExploreChunkIdRef.current?.(id)
@@ -220,6 +232,7 @@ export function useChunkTouchExploration(
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) return
       const t = e.touches[0]
+      onTouchExplorationStartRef.current?.()
       touchExploringRef.current = true
       setTouchExploring(true)
       pendingPointRef.current = { x: t.clientX, y: t.clientY }

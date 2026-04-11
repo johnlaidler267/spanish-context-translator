@@ -22,7 +22,11 @@ import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { AppErrorModal } from "./app-error-modal"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
-import { cancelHoverSpeech, speakHoverChunk } from "@/lib/hover-tts"
+import {
+  cancelHoverSpeech,
+  speakHoverChunk,
+  speechUnlockForTouchGesture,
+} from "@/lib/hover-tts"
 
 interface ChunkData {
   id: number
@@ -157,6 +161,14 @@ export function ReadMode({
         if (pt) followTooltipPlaceRef.current?.(pt.x, pt.y)
       },
       onExploreChunkId: (id) => speakExploreChunkIdForTouchRef.current(id),
+      onTouchExplorationStart: () => {
+        if (!hoverTtsEnabledRef.current) return
+        speechUnlockForTouchGesture()
+      },
+      onBeforeTouchChunkIdChange: () => {
+        if (!hoverTtsEnabledRef.current) return
+        speechUnlockForTouchGesture()
+      },
     },
   )
 

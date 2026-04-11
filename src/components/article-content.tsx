@@ -27,6 +27,7 @@ import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
 import {
   cancelHoverSpeech,
   speakHoverChunk,
+  speechUnlockForTouchGesture,
 } from "@/lib/hover-tts"
 
 export type ArticlePaginationState = {
@@ -146,6 +147,14 @@ export function ArticleContent({
         if (pt) followTooltipPlaceRef.current?.(pt.x, pt.y)
       },
       onExploreChunkId: (id) => speakExploreChunkIdForTouchRef.current(id),
+      onTouchExplorationStart: () => {
+        if (!hoverTtsEnabledRef.current) return
+        speechUnlockForTouchGesture()
+      },
+      onBeforeTouchChunkIdChange: () => {
+        if (!hoverTtsEnabledRef.current) return
+        speechUnlockForTouchGesture()
+      },
     },
   )
 
