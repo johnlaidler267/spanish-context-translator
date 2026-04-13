@@ -14,6 +14,7 @@ import {
   buildSentencePages,
   clampPageLimitsForLlmBatching,
   dedupeConsecutiveDuplicateLines,
+  markTranslationSubmitStart,
   mergeArticlePagesIfWholeTextFitsLimits,
   mergeReconciledPagesToSentences,
   pageSourceText,
@@ -42,6 +43,8 @@ import {
   broadcastUsageUpdated,
   fetchCurrentUsage,
   trackUsage,
+  type UsageCounters,
+  type UsageLimits,
   UsageError,
 } from "./lib/usage"
 
@@ -51,6 +54,13 @@ type AppState = "landing" | "loading" | "reading"
 const IS_LOCAL_DEV = import.meta.env.DEV
 const ENFORCE_USAGE_LIMITS =
   !IS_LOCAL_DEV || import.meta.env.VITE_ENFORCE_USAGE_IN_DEV === "true"
+const USAGE_PREFLIGHT_TTL_MS = 60_000
+
+type UsagePreflightSnapshot = {
+  counters: UsageCounters
+  limits: UsageLimits
+  fetchedAt: number
+}
 
 export default function App() {
   const navigate = useNavigate()
@@ -111,10 +121,57 @@ export default function App() {
   const [readLayoutMobile, setReadLayoutMobile] = useState(false)
   const articlePageSplitLimits = useArticlePageSplitLimits()
   const [guestSignupOpen, setGuestSignupOpen] = useState(false)
+  const usagePreflightRef = useRef<UsagePreflightSnapshot | null>(null)
+  const usagePreflightInFlightRef = useRef<Promise<void> | null>(null)
 
   useEffect(() => {
     if (user) setGuestSignupOpen(false)
   }, [user])
+
+  useEffect(() => {
+    usagePreflightRef.current = null
+    usagePreflightInFlightRef.current = null
+  }, [user?.id])
+
+  const refreshUsagePreflight = useCallback(
+    async ({ force = false }: { force?: boolean } = {}) => {
+      if (!user || !ENFORCE_USAGE_LIMITS) return
+      const snap = usagePreflightRef.current
+      const isFresh =
+        snap != null && Date.now() - snap.fetchedAt < USAGE_PREFLIGHT_TTL_MS
+      if (!force && isFresh) return
+
+      const inFlight = usagePreflightInFlightRef.current
+      if (inFlight) return inFlight
+
+      const run = (async () => {
+        try {
+          const preflight = await fetchCurrentUsage()
+          usagePreflightRef.current = {
+            counters: preflight.counters,
+            limits: preflight.limits,
+            fetchedAt: Date.now(),
+          }
+        } finally {
+          usagePreflightInFlightRef.current = null
+        }
+      })()
+      usagePreflightInFlightRef.current = run
+      return run
+    },
+    [user],
+  )
+
+  useEffect(() => {
+    if (!user || !ENFORCE_USAGE_LIMITS) return
+    if (appState !== "landing" && appState !== "loading") return
+    void refreshUsagePreflight()
+    const onFocus = () => {
+      void refreshUsagePreflight({ force: true })
+    }
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [user, appState, refreshUsagePreflight])
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)")
@@ -144,6 +201,7 @@ export default function App() {
       rateLimitModalSuppressedRef.current = false
       setRateLimitMessage(null)
       setPlanLimitModal(null)
+      markTranslationSubmitStart()
       setAppState("loading")
 
       try {
@@ -166,7 +224,16 @@ export default function App() {
           try {
             if (ENFORCE_USAGE_LIMITS) {
               try {
-                const preflight = await fetchCurrentUsage()
+                let preflight = usagePreflightRef.current
+                if (preflight == null) {
+                  await refreshUsagePreflight({ force: true })
+                  preflight = usagePreflightRef.current
+                } else if (Date.now() - preflight.fetchedAt >= USAGE_PREFLIGHT_TTL_MS) {
+                  void refreshUsagePreflight({ force: true })
+                }
+                if (preflight == null) {
+                  throw new UsageError("Could not verify usage. Check your connection and try again.")
+                }
                 // Mirror server: each text submit bumps monthly texts and the daily counter.
                 // checkLimits only inspects keys present in the increments object — include daily explicitly.
                 const guard = checkLimits(preflight.counters, preflight.limits, {
@@ -202,6 +269,11 @@ export default function App() {
               setPlanLimitModal(formatPlanLimitModal(usage.exceeded))
               setAppState("landing")
               return
+            }
+            usagePreflightRef.current = {
+              counters: usage.counters,
+              limits: usage.limits,
+              fetchedAt: Date.now(),
             }
             broadcastUsageUpdated()
           } catch (e) {
@@ -248,7 +320,7 @@ export default function App() {
         setAppState("landing")
       }
     },
-    [user, bump, articlePageSplitLimits],
+    [user, bump, articlePageSplitLimits, refreshUsagePreflight],
   )
 
   const handleBack = useCallback(() => {
