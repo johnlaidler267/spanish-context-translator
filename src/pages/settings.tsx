@@ -9,12 +9,18 @@ import { SubscriptionStatus } from "@/components/subscription-status"
 import { Button } from "@/components/ui/button"
 import type { ReadingTheme } from "@/components/theme-toggle"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
+import {
+  getStoredDisplayName,
+  sanitizeDisplayName,
+  setStoredDisplayName,
+} from "@/lib/display-name-storage"
 import { useAuth } from "@/contexts/auth-context"
 import { LegalDocLinks } from "@/components/legal-doc-links"
 import { getTranslationLlmDisplayInfo } from "@/lib/translate"
 
 const TABS = ["General", "Account", "Billing"] as const
 type SettingsTab = (typeof TABS)[number]
+const IS_LOCAL_DEV = import.meta.env.DEV
 
 const TAB_FROM_PARAM: Record<string, SettingsTab> = {
   general: "General",
@@ -37,8 +43,13 @@ export default function SettingsPage() {
   }
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [signingOut, setSigningOut] = useState(false)
+  const [nameInput, setNameInput] = useState(() => getStoredDisplayName())
+  const [savedName, setSavedName] = useState(() => getStoredDisplayName())
+  const [nameSavedNotice, setNameSavedNotice] = useState(false)
   const { user, signOut, openAuthModal } = useAuth()
   const llmInfo = getTranslationLlmDisplayInfo()
+  const normalizedNameInput = sanitizeDisplayName(nameInput)
+  const nameDirty = normalizedNameInput !== savedName
 
   const handleSignOut = async () => {
     setSigningOut(true)
@@ -46,10 +57,21 @@ export default function SettingsPage() {
     setSigningOut(false)
   }
 
+  const handleSaveDisplayName = () => {
+    const nextName = setStoredDisplayName(nameInput)
+    setSavedName(nextName)
+    setNameInput(nextName)
+    setNameSavedNotice(true)
+  }
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark")
     setStoredReadingTheme(theme)
   }, [theme])
+
+  useEffect(() => {
+    if (nameSavedNotice && nameDirty) setNameSavedNotice(false)
+  }, [nameSavedNotice, nameDirty])
 
   // Mobile: same as /upgrade — global overflow:hidden traps scroll; stacked header + doc scroll fixes it.
   useEffect(() => {
@@ -107,37 +129,94 @@ export default function SettingsPage() {
                     General
                   </h2>
                   <div className="space-y-4">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                        Translation models
-                      </p>
-                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                        Which provider and models chunk your text and power Learn-topic paragraphs. Values come from
-                        this app&apos;s deployment config (not editable here).
-                      </p>
-                      <dl className="space-y-3 text-sm border border-border rounded-md p-4 bg-muted/20">
-                        <div>
-                          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-                            Provider
-                          </dt>
-                          <dd className="font-mono text-foreground break-all">
-                            {llmInfo.provider === "gemini" ? "Gemini" : "Groq"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-                            Main translation
-                          </dt>
-                          <dd className="font-mono text-foreground break-all">{llmInfo.translateModel}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-                            Learn / topic paragraph
-                          </dt>
-                          <dd className="font-mono text-foreground break-all">{llmInfo.learnModel}</dd>
-                        </div>
-                      </dl>
+                    <div className="pb-6 border-b border-border/40">
+                      <label
+                        htmlFor="display-name"
+                        className="block text-sm font-medium text-foreground mb-1.5"
+                      >
+                        What should we call you?
+                      </label>
+
+                      <div className="flex flex-col sm:flex-row gap-2 sm:items-stretch">
+                        <input
+                          id="display-name"
+                          type="text"
+                          value={nameInput}
+                          onChange={(e) => setNameInput(e.target.value)}
+                          maxLength={40}
+                          placeholder="Your name"
+                          autoComplete="name"
+                          className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/40"
+                        />
+                        {nameDirty && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleSaveDisplayName}
+                            className="h-10 shrink-0 sm:min-w-24 font-normal"
+                          >
+                            Save
+                          </Button>
+                        )}
+                      </div>
+
+                      <div
+                        className={[
+                          "mt-2 flex items-center gap-1.5 text-xs text-muted-foreground transition-opacity duration-300",
+                          nameSavedNotice ? "opacity-100" : "opacity-0 pointer-events-none select-none",
+                        ].join(" ")}
+                        aria-live="polite"
+                      >
+                        <svg
+                          className="w-3.5 h-3.5 text-green-500 shrink-0"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          aria-hidden
+                        >
+                          <path
+                            d="M3 8l3.5 3.5L13 5"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        Saved
+                      </div>
                     </div>
+                    {IS_LOCAL_DEV && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                          Translation models
+                        </p>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                          Which provider and models chunk your text and power Learn-topic paragraphs. Values come from
+                          this app&apos;s deployment config (not editable here).
+                        </p>
+                        <dl className="space-y-3 text-sm border border-border rounded-md p-4 bg-muted/20">
+                          <div>
+                            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                              Provider
+                            </dt>
+                            <dd className="font-mono text-foreground break-all">
+                              {llmInfo.provider === "gemini" ? "Gemini" : "Groq"}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                              Main translation
+                            </dt>
+                            <dd className="font-mono text-foreground break-all">{llmInfo.translateModel}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                              Learn / topic paragraph
+                            </dt>
+                            <dd className="font-mono text-foreground break-all">{llmInfo.learnModel}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                    )}
                   </div>
                 </section>
               )}

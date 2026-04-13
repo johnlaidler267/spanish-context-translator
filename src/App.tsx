@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
-import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom"
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import SettingsPage from "@/pages/settings"
 import { LandingScreen } from "./components/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "./components/loading-overlay"
@@ -28,6 +28,7 @@ import type { ViewMode } from "./components/mode-toggle"
 import type { ReadingTheme } from "./components/theme-toggle"
 import { getStoredLandingDraft, setStoredLandingDraft } from "./lib/landing-draft-storage"
 import { getStoredReadingTheme, setStoredReadingTheme } from "./lib/theme-storage"
+import { getStoredDisplayName } from "./lib/display-name-storage"
 import { Button } from "./components/ui/button"
 import { AppErrorModal } from "./components/app-error-modal"
 import { RateLimitModal } from "./components/rate-limit-modal"
@@ -64,6 +65,7 @@ type UsagePreflightSnapshot = {
 
 export default function App() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
   const { user, isLoading: authLoading } = useAuth()
 
@@ -78,12 +80,17 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("article")
   const [hoverTtsEnabled, setHoverTtsEnabled] = useState(false)
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
+  const [displayName, setDisplayName] = useState(() => getStoredDisplayName())
   const appTheme = readingTheme
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", appTheme === "dark")
     setStoredReadingTheme(appTheme)
   }, [appTheme])
+
+  useEffect(() => {
+    setDisplayName(getStoredDisplayName())
+  }, [location.pathname])
 
   /** Hide shell top-left letter art (main.jsx) during article / read — not on landing */
   useEffect(() => {
@@ -435,6 +442,7 @@ export default function App() {
         isLoading={appState === "loading"}
         theme={appTheme}
         onThemeChange={setReadingTheme}
+        displayName={displayName}
       />
       {error && (
         <AppErrorModal message={error} onDismiss={() => setError("")} />

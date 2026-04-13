@@ -36,6 +36,7 @@ interface LandingScreenProps {
   isLoading: boolean
   theme: ReadingTheme
   onThemeChange: (theme: ReadingTheme) => void
+  displayName: string
 }
 
 const LANDING_SUB_ROW_CACHE = "lexa.landingSubRow.v1"
@@ -99,6 +100,7 @@ export function LandingScreen({
   isLoading,
   theme,
   onThemeChange,
+  displayName,
 }: LandingScreenProps) {
   const { user } = useAuth()
   const { status: subscriptionStatus } = useSubscription()
@@ -343,7 +345,15 @@ export function LandingScreen({
             aria-hidden
           />
           <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl" style={{ lineHeight: "1.15" }}>
-            <em>Hola</em>, ready to read?
+            <em>Hola</em>
+            {displayName ? (
+              <>
+                {" "}
+                <em>{displayName}</em>, ready to read?
+              </>
+            ) : (
+              ", ready to read?"
+            )}
           </h1>
         </div>
 

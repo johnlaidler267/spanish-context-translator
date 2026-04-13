@@ -411,7 +411,7 @@ Sort following spanish text into logical chunks.
 
 Chunks should consist of a singular word or multiple words ONLY IF they  fall into any of the following categories.
 
-fixed_idioms: e.g. dar su brazo a torcer
+fixed_idioms: e.g. dar su brazo a torcer, a punto de
 relative_subordinating_connectors: e.g. mientras que
 lo_nominalizer: e.g. lo maravilloso
 prepositional_verb_phrases: e.g. darse cuenta de que
@@ -425,7 +425,7 @@ ETC.
 
 For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUTELY NECESSARY to GROUP with its NEIGHBOR?
 
-FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering (even if unnatural), "n": tricky grammar help: concise, omit if obvious}
+FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering (even if unnatural), "n": tricky grammar help: omit if obvious}
 
 Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
 
