@@ -33,6 +33,36 @@
   animation: levitate 4s ease-in-out infinite;
 }
 
+@keyframes translating-page-gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.translating-page-gradient {
+  background-image: linear-gradient(90deg, #4a3f38, #c97a5a, #4a3f38);
+  background-size: 200% auto;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: translating-page-gradient-shift 1.6s linear infinite;
+}
+
+.dark .translating-page-gradient {
+  background-image: linear-gradient(90deg, #e8dfd4, #d4a896, #e8dfd4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .translating-page-gradient {
+    animation: none;
+    background-position: 100% 50%;
+  }
+}
+
 /* Back navigation — arrow slides left with a slight overshoot (BackToHomeLink, reading header) */
 .back-nav-control svg {
   transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
