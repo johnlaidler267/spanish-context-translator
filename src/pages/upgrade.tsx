@@ -912,6 +912,16 @@ export default function UpgradePage() {
           pointerEvents: "none", zIndex: 0,
         }}
       />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 hidden h-[24rem] md:block"
+        style={{
+          background:
+            theme === "dark"
+              ? "linear-gradient(to bottom, rgba(12, 12, 11, 0.42), rgba(12, 12, 11, 0))"
+              : "linear-gradient(to bottom, rgba(250, 246, 240, 0.34), rgba(250, 246, 240, 0))",
+        }}
+      />
 
       <div className="shrink-0 relative z-[1]">
         <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
