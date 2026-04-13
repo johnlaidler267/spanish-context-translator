@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { ArrowLeft, LogOut, User, Mail } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button"
 import type { ReadingTheme } from "@/components/theme-toggle"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
 import {
-  getStoredDisplayName,
+  getEffectiveDisplayName,
   sanitizeDisplayName,
   setStoredDisplayName,
 } from "@/lib/display-name-storage"
+import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { LegalDocLinks } from "@/components/legal-doc-links"
 import { getTranslationLlmDisplayInfo } from "@/lib/translate"
@@ -43,9 +44,12 @@ export default function SettingsPage() {
   }
   const [theme, setTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [signingOut, setSigningOut] = useState(false)
-  const [nameInput, setNameInput] = useState(() => getStoredDisplayName())
-  const [savedName, setSavedName] = useState(() => getStoredDisplayName())
+  const [nameInput, setNameInput] = useState("")
+  const [savedName, setSavedName] = useState("")
   const [nameSavedNotice, setNameSavedNotice] = useState(false)
+  const [nameSaveError, setNameSaveError] = useState<string | null>(null)
+  const [nameSaving, setNameSaving] = useState(false)
+  const displayNameUserKeyRef = useRef<string | undefined>(undefined)
   const { user, signOut, openAuthModal } = useAuth()
   const llmInfo = getTranslationLlmDisplayInfo()
   const normalizedNameInput = sanitizeDisplayName(nameInput)
@@ -57,12 +61,42 @@ export default function SettingsPage() {
     setSigningOut(false)
   }
 
-  const handleSaveDisplayName = () => {
-    const nextName = setStoredDisplayName(nameInput)
+  const handleSaveDisplayName = async () => {
+    const sanitized = sanitizeDisplayName(nameInput)
+    setNameSaveError(null)
+    if (user) {
+      setNameSaving(true)
+      const { error } = await supabase.auth.updateUser({
+        data: { display_name: sanitized },
+      })
+      setNameSaving(false)
+      if (error) {
+        setNameSaveError(error.message)
+        return
+      }
+    }
+    const nextName = setStoredDisplayName(sanitized)
     setSavedName(nextName)
     setNameInput(nextName)
     setNameSavedNotice(true)
   }
+
+  useEffect(() => {
+    const key = user?.id ?? "__guest__"
+    if (displayNameUserKeyRef.current === undefined) {
+      displayNameUserKeyRef.current = key
+      const next = getEffectiveDisplayName(user)
+      setNameInput(next)
+      setSavedName(next)
+      return
+    }
+    if (displayNameUserKeyRef.current !== key) {
+      displayNameUserKeyRef.current = key
+      const next = getEffectiveDisplayName(user)
+      setNameInput(next)
+      setSavedName(next)
+    }
+  }, [user])
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark")
@@ -142,7 +176,10 @@ export default function SettingsPage() {
                           id="display-name"
                           type="text"
                           value={nameInput}
-                          onChange={(e) => setNameInput(e.target.value)}
+                          onChange={(e) => {
+                            setNameInput(e.target.value)
+                            setNameSaveError(null)
+                          }}
                           maxLength={40}
                           placeholder="Your name"
                           autoComplete="name"
@@ -152,13 +189,20 @@ export default function SettingsPage() {
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={handleSaveDisplayName}
+                            onClick={() => void handleSaveDisplayName()}
+                            disabled={nameSaving}
                             className="h-10 shrink-0 sm:min-w-24 font-normal"
                           >
-                            Save
+                            {nameSaving ? "Saving…" : "Save"}
                           </Button>
                         )}
                       </div>
+
+                      {nameSaveError && (
+                        <p className="mt-2 text-xs text-destructive" role="alert">
+                          {nameSaveError}
+                        </p>
+                      )}
 
                       <div
                         className={[

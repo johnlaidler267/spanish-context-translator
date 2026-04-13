@@ -28,7 +28,7 @@ import type { ViewMode } from "./components/mode-toggle"
 import type { ReadingTheme } from "./components/theme-toggle"
 import { getStoredLandingDraft, setStoredLandingDraft } from "./lib/landing-draft-storage"
 import { getStoredReadingTheme, setStoredReadingTheme } from "./lib/theme-storage"
-import { getStoredDisplayName } from "./lib/display-name-storage"
+import { getEffectiveDisplayName } from "./lib/display-name-storage"
 import { Button } from "./components/ui/button"
 import { AppErrorModal } from "./components/app-error-modal"
 import { RateLimitModal } from "./components/rate-limit-modal"
@@ -80,7 +80,9 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("article")
   const [hoverTtsEnabled, setHoverTtsEnabled] = useState(false)
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
-  const [displayName, setDisplayName] = useState(() => getStoredDisplayName())
+  const [displayName, setDisplayName] = useState(() =>
+    getEffectiveDisplayName(null),
+  )
   const appTheme = readingTheme
 
   useEffect(() => {
@@ -89,8 +91,8 @@ export default function App() {
   }, [appTheme])
 
   useEffect(() => {
-    setDisplayName(getStoredDisplayName())
-  }, [location.pathname])
+    setDisplayName(getEffectiveDisplayName(user))
+  }, [user, location.pathname])
 
   /** Hide shell top-left letter art (main.jsx) during article / read — not on landing */
   useEffect(() => {
