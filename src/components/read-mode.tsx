@@ -167,6 +167,7 @@ export function ReadMode({
         if (chunkDetails.activeChunk != null) {
           chunkDetails.close()
           setPinnedChunkId(null)
+          setMenuOnlyChunkId(null)
         }
         if (!hoverTtsEnabledRef.current) return
         speechUnlockForTouchGesture()
@@ -297,17 +298,16 @@ export function ReadMode({
     return null
   }, [chunkDetails.activeChunk, currentSentence.chunks])
 
-  const effectivePopupId = useMemo(
-    () =>
+  const effectivePopupId = useMemo(() => {
+    const base =
       exploringChunkId != null
         ? exploringChunkId
         : pinnedChunkId != null
           ? pinnedChunkId
-          : detailsAnchoredChunkId != null && detailsAnchoredChunkId !== menuOnlyChunkId
-            ? detailsAnchoredChunkId
-            : null,
-    [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId, menuOnlyChunkId],
-  )
+          : detailsAnchoredChunkId
+    if (menuOnlyChunkId != null && base === menuOnlyChunkId) return null
+    return base ?? null
+  }, [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId, menuOnlyChunkId])
 
   useEffect(() => {
     if (!hoverTtsEnabled) {
@@ -543,7 +543,9 @@ export function ReadMode({
                     setPinnedChunkId((prev) => (prev === chunk.id ? null : chunk.id))
                   }
                   onRequestDetails={() => {
-                    setMenuOnlyChunkId(null)
+                    commitExploringChunkId(null)
+                    setPinnedChunkId(null)
+                    setMenuOnlyChunkId(chunk.id)
                     chunkDetails.fetchDetails(chunk.text, currentSentenceText)
                   }}
                   onDoubleClickMenuOnly={() => {

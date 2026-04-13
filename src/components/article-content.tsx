@@ -153,6 +153,7 @@ export function ArticleContent({
         if (chunkDetails.activeChunk != null) {
           chunkDetails.close()
           setPinnedChunkId(null)
+          setMenuOnlyChunkId(null)
         }
         if (!hoverTtsEnabledRef.current) return
         speechUnlockForTouchGesture()
@@ -280,17 +281,16 @@ export function ArticleContent({
     return null
   }, [chunkDetails.activeChunk, items])
 
-  const effectivePopupId = useMemo(
-    () =>
+  const effectivePopupId = useMemo(() => {
+    const base =
       exploringChunkId != null
         ? exploringChunkId
         : pinnedChunkId != null
           ? pinnedChunkId
-          : detailsAnchoredChunkId != null && detailsAnchoredChunkId !== menuOnlyChunkId
-            ? detailsAnchoredChunkId
-            : null,
-    [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId, menuOnlyChunkId],
-  )
+          : detailsAnchoredChunkId
+    if (menuOnlyChunkId != null && base === menuOnlyChunkId) return null
+    return base ?? null
+  }, [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId, menuOnlyChunkId])
 
   useEffect(() => {
     if (!hoverTtsEnabled) {
@@ -425,11 +425,14 @@ export function ArticleContent({
                     }}
                     onPinToggle={() => setPinnedChunkId(prev => (prev === id ? null : id))}
                     onRequestDetails={() => {
-                      setMenuOnlyChunkId(null)
                       if (chunkDetails.activeChunk != null) {
                         chunkDetails.close()
+                        setMenuOnlyChunkId(null)
                         return
                       }
+                      commitExploringChunkId(null)
+                      setPinnedChunkId(null)
+                      setMenuOnlyChunkId(id)
                       chunkDetails.fetchDetails(item.chunk, pageText)
                     }}
                     onDoubleClickMenuOnly={() => {
