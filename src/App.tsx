@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom"
 import SettingsPage from "@/pages/settings"
 import { LandingScreen } from "./components/landing-screen"
-import { LoadingOverlay } from "./components/loading-overlay"
+import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "./components/loading-overlay"
 import { ReadingHeader } from "./components/reading-header"
 import { ArticleContent } from "./components/article-content"
 import { ReadMode } from "./components/read-mode"
@@ -14,7 +14,6 @@ import {
   buildSentencePages,
   clampPageLimitsForLlmBatching,
   dedupeConsecutiveDuplicateLines,
-  markTranslationSubmitStart,
   mergeArticlePagesIfWholeTextFitsLimits,
   mergeReconciledPagesToSentences,
   pageSourceText,
@@ -55,6 +54,7 @@ const IS_LOCAL_DEV = import.meta.env.DEV
 const ENFORCE_USAGE_LIMITS =
   !IS_LOCAL_DEV || import.meta.env.VITE_ENFORCE_USAGE_IN_DEV === "true"
 const USAGE_PREFLIGHT_TTL_MS = 60_000
+const LANDING_MIN_LOADING_MS = LOADING_OVERLAY_PROGRESS_MS
 
 type UsagePreflightSnapshot = {
   counters: UsageCounters
@@ -201,8 +201,8 @@ export default function App() {
       rateLimitModalSuppressedRef.current = false
       setRateLimitMessage(null)
       setPlanLimitModal(null)
-      markTranslationSubmitStart()
       setAppState("loading")
+      const submitStartedAtMs = Date.now()
 
       try {
         let sents = splitSourceIntoSentences(trimmed)
@@ -260,34 +260,36 @@ export default function App() {
               }
             }
 
-            const usage = await trackUsage({
+            const usageIncrements = {
               texts_submitted: 1,
               chars_processed: trimmed.length,
               pages_processed: pages.length,
-            })
-            if (!usage.allowed && ENFORCE_USAGE_LIMITS) {
-              setPlanLimitModal(formatPlanLimitModal(usage.exceeded))
-              setAppState("landing")
-              return
             }
-            usagePreflightRef.current = {
-              counters: usage.counters,
-              limits: usage.limits,
-              fetchedAt: Date.now(),
-            }
-            broadcastUsageUpdated()
+            void trackUsage(usageIncrements)
+              .then((usage) => {
+                usagePreflightRef.current = {
+                  counters: usage.counters,
+                  limits: usage.limits,
+                  fetchedAt: Date.now(),
+                }
+                if (!usage.allowed && ENFORCE_USAGE_LIMITS) {
+                  setPlanLimitModal(formatPlanLimitModal(usage.exceeded))
+                  setAppState("landing")
+                  return
+                }
+                broadcastUsageUpdated()
+              })
+              .catch((e) => {
+                console.warn("[usage] background trackUsage failed:", e)
+              })
           } catch (e) {
-            if (IS_LOCAL_DEV && !ENFORCE_USAGE_LIMITS) {
-              console.warn("[usage] trackUsage failed; continuing in dev:", e)
-            } else {
-              setError(
-                e instanceof UsageError
-                  ? e.message
-                  : "Could not verify usage. Check your connection and try again.",
-              )
-              setAppState("landing")
-              return
-            }
+            setError(
+              e instanceof UsageError
+                ? e.message
+                : "Could not verify usage. Check your connection and try again.",
+            )
+            setAppState("landing")
+            return
           }
         }
 
@@ -298,7 +300,6 @@ export default function App() {
         setReadEnterLastStepNonce(0)
         setReadLastConsumedEnterNonce(0)
 
-        setAppState("reading")
         void cacheRef.current
           .loadPage(0, pageSourceText(pages[0]!), translatePageText)
           .then(() => {
@@ -310,6 +311,11 @@ export default function App() {
             // Error details are stored in TranslationCache and surfaced by existing modal logic.
             bump()
           })
+        const remainingLoadingMs = Math.max(0, LANDING_MIN_LOADING_MS - (Date.now() - submitStartedAtMs))
+        if (remainingLoadingMs > 0) {
+          await new Promise((r) => setTimeout(r, remainingLoadingMs))
+        }
+        setAppState("reading")
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Something went wrong."
         if (isRateLimitApiMessage(msg)) {

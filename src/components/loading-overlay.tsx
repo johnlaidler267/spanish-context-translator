@@ -9,8 +9,8 @@ const MESSAGES = [
   "Almost there…",
 ]
 
-/** Matches former `progress-fill` keyframes + 14s duration in index.css. */
-const PROGRESS_DURATION_MS = 14_000
+/** Keep in sync with landing min loading delay for a full-fill handoff. */
+export const LOADING_OVERLAY_PROGRESS_MS = 1000
 
 /** Former `@keyframes progress-fill` width stops (keyframe time → bar width %). */
 const WIDTH_STOPS: [number, number][] = [
@@ -18,8 +18,8 @@ const WIDTH_STOPS: [number, number][] = [
   [0.2, 48],
   [0.45, 68],
   [0.7, 80],
-  [0.88, 88],
-  [1, 92],
+  [0.88, 92],
+  [1, 100],
 ]
 
 /** Former `animation-timing-function: cubic-bezier(0.25, 0.1, 0.1, 1)`. */
@@ -77,7 +77,7 @@ export function LoadingOverlay() {
     const start = performance.now()
     let frame = 0
     const tick = (now: number) => {
-      const linearT = Math.min(1, (now - start) / PROGRESS_DURATION_MS)
+      const linearT = Math.min(1, (now - start) / LOADING_OVERLAY_PROGRESS_MS)
       const kp = easedKeyframeProgress(linearT)
       setBarWidth(barWidthAtKeyframeProgress(kp))
       if (linearT < 1) frame = requestAnimationFrame(tick)
@@ -86,7 +86,7 @@ export function LoadingOverlay() {
     return () => cancelAnimationFrame(frame)
   }, [])
 
-  const percentLabel = Math.min(100, Math.round((barWidth / 92) * 100))
+  const percentLabel = Math.min(100, Math.round(barWidth))
 
   // Cycle through messages every ~3s
   useEffect(() => {

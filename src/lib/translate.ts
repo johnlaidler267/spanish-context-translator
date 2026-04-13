@@ -60,23 +60,6 @@ const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
  * 4k further reduces “requested” TPM vs 5k; if you still see 429s, wait or upgrade Groq.
  */
 const TRANSLATE_MAX_COMPLETION_TOKENS = 6000
-const IS_LOCAL_DEV = import.meta.env.DEV
-let translationSubmitStartedAtMs: number | null = null
-
-/** Dev-only: mark when user submits text so we can measure submit -> first LLM send latency. */
-export function markTranslationSubmitStart(): void {
-  if (!IS_LOCAL_DEV) return
-  translationSubmitStartedAtMs = Date.now()
-}
-
-/** Dev-only: alert elapsed submit -> first LLM request dispatch time. */
-function alertDevSubmitToLlmSendLatency(): void {
-  if (!IS_LOCAL_DEV) return
-  if (translationSubmitStartedAtMs == null) return
-  const elapsedSeconds = (Date.now() - translationSubmitStartedAtMs) / 1000
-  translationSubmitStartedAtMs = null
-  window.alert(`LLM request sent ${elapsedSeconds.toFixed(2)}s after submit.`)
-}
 
 /**
  * Spanish character budget for a single `translatePageText` completion.
@@ -442,7 +425,7 @@ ETC.
 
 For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUTELY NECESSARY to GROUP with its NEIGHBOR?
 
-FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering (even if unnatural), "n": tricky grammar help — omit if obvious}
+FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering (even if unnatural), "n": tricky grammar help: concise, omit if obvious}
 
 Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
 
@@ -1100,7 +1083,6 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     temperature: 0,
     max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
   }
-  alertDevSubmitToLlmSendLatency()
   const res = await fetchChatCompletion(
     translationProvider() === "groq"
       ? {
