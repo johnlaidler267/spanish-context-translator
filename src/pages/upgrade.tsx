@@ -501,47 +501,42 @@ function BillingToggle({
   onChange: (v: DbBillingInterval) => void
 }) {
   const pro = getTier("pro")
-  const monthlyLabel = formatPrice(pro.pricing.monthly.amountCents)
-  const annualPerMo = formatAnnualMonthlyEquivalent("pro")
-  const annualPriceNudge = `${monthlyLabel} → ${annualPerMo}/mo`
+  const annualSavingsPercent = pro.pricing.annual.savingsPercent
 
   return (
-    <div className="mb-10 flex flex-col items-center gap-2 font-sans text-sm">
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => onChange("monthly")}
-          aria-pressed={interval === "monthly"}
-          className={`px-3 py-1 rounded-full transition-colors ${
-            interval === "monthly"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Monthly
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange("annual")}
-          aria-pressed={interval === "annual"}
-          className={`flex items-center gap-1.5 rounded-full transition-colors ${
-            interval === "annual"
-              ? "bg-primary text-primary-foreground pl-3 pr-2 py-1"
-              : "text-muted-foreground hover:text-foreground px-3 py-1"
-          }`}
-        >
-          <span>Annual</span>
-          <span
+    <div className="mb-10 flex justify-center font-sans text-sm">
+      <div className="inline-flex items-center rounded-full border border-border bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={() => onChange("monthly")}
+            aria-pressed={interval === "monthly"}
             className={cn(
-              "tabular-nums rounded px-1.5 py-0.5 text-[11px] font-bold leading-none sm:text-xs",
-              interval === "annual"
-                ? "bg-primary-foreground/20 text-primary-foreground"
-                : "bg-primary/10 text-primary",
+              "rounded-full px-6 py-1.5 font-medium transition-colors",
+              interval === "monthly"
+                ? "bg-[#c97a5a] text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {annualPriceNudge}
-          </span>
-        </button>
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange("annual")}
+            aria-pressed={interval === "annual"}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full px-6 py-1.5 font-medium transition-colors",
+              interval === "annual"
+                ? "bg-[#c97a5a] text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <span>Annual</span>
+            {annualSavingsPercent > 0 && (
+              <span className="pointer-events-none rounded-full bg-[#f2c66d] px-2 py-0.5 text-xs font-semibold leading-none text-[#5d3a20] whitespace-nowrap">
+                Save {annualSavingsPercent}%
+              </span>
+            )}
+          </button>
       </div>
     </div>
   )
@@ -957,9 +952,21 @@ export default function UpgradePage() {
               })()}
             </p>
             {user?.is_anonymous === true && (
-              <p className="mt-3 max-w-xl mx-auto rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground text-center leading-relaxed">
-                You&apos;re on a <span className="font-medium text-foreground">guest session</span>. Sign in with Google or email below before subscribing so your plan stays with your account.
-              </p>
+              <div className="mt-4 mx-auto max-w-xl rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-left">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-300">
+                  You&apos;re on a guest session.
+                </p>
+                <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-200/90 leading-relaxed">
+                  Sign in before subscribing so your paid plan is linked to your account and won&apos;t be lost.
+                </p>
+                <Button
+                  type="button"
+                  onClick={() => openAuthModal()}
+                  className="mt-3 h-8 rounded-md border-2 border-foreground bg-background px-3 text-xs font-semibold text-foreground hover:bg-background/90 dark:border-[rgba(234,224,213,0.28)]"
+                >
+                  Sign in
+                </Button>
+              </div>
             )}
             {confirmingActivation && (
               <p className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground font-sans">
