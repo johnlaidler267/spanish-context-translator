@@ -37,6 +37,8 @@ interface TextChunkProps {
   onDeactivate: () => void
   /** Pin / unpin on double-tap (touch) or double-click (desktop) */
   onPinToggle?: () => void
+  /** Desktop double-click: keep details UI, hide translation tooltip for this chunk. */
+  onDoubleClickMenuOnly?: () => void
   /**
    * Called on single-click (desktop) or double-tap (mobile) to open the
    * bottom details box for this chunk.
@@ -196,6 +198,7 @@ export function TextChunk({
   onActivate,
   onDeactivate,
   onPinToggle,
+  onDoubleClickMenuOnly,
   onRequestDetails,
   variant = "read",
   delegatePointerHover = false,
@@ -599,6 +602,7 @@ export function TextChunk({
         onTouchEnd={handleTouchEnd}
         onDoubleClick={(e) => {
           e.preventDefault()
+          onDoubleClickMenuOnly?.()
           onPinToggle?.()
         }}
         className="inline cursor-pointer"

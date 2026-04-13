@@ -102,6 +102,8 @@ export function ReadMode({
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
+  const [menuOnlyChunkId, setMenuOnlyChunkId] = useState<number | null>(null)
+  const chunkDetails = useChunkDetails()
   /** Desktop hover: viewport position for tooltip arrow (read mode delegates pointer to parent) */
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
   /** Touch drag: updated without React state so the sentence doesn’t re-render every frame */
@@ -162,6 +164,10 @@ export function ReadMode({
       },
       onExploreChunkId: (id) => speakExploreChunkIdForTouchRef.current(id),
       onTouchExplorationStart: () => {
+        if (chunkDetails.activeChunk != null) {
+          chunkDetails.close()
+          setPinnedChunkId(null)
+        }
         if (!hoverTtsEnabledRef.current) return
         speechUnlockForTouchGesture()
       },
@@ -279,8 +285,6 @@ export function ReadMode({
     }
   }, [readStepOffset, currentSentenceIndex, cancelGapClearExplore])
 
-  const chunkDetails = useChunkDetails()
-
   const currentSentence = sentences[currentSentenceIndex] ?? { id: 0, chunks: [] as ChunkData[] }
 
   /** Keep tooltip + underline on the word that opened the grammar sheet. */
@@ -299,8 +303,10 @@ export function ReadMode({
         ? exploringChunkId
         : pinnedChunkId != null
           ? pinnedChunkId
-          : detailsAnchoredChunkId,
-    [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId],
+          : detailsAnchoredChunkId != null && detailsAnchoredChunkId !== menuOnlyChunkId
+            ? detailsAnchoredChunkId
+            : null,
+    [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId, menuOnlyChunkId],
   )
 
   useEffect(() => {
@@ -364,6 +370,7 @@ export function ReadMode({
     cancelGapClearExplore()
     setExploringChunkId(null)
     setPinnedChunkId(null)
+    setMenuOnlyChunkId(null)
     chunkDetails.close()
   }, [chunkDetails, cancelGapClearExplore])
 
@@ -535,7 +542,15 @@ export function ReadMode({
                   onPinToggle={() =>
                     setPinnedChunkId((prev) => (prev === chunk.id ? null : chunk.id))
                   }
-                  onRequestDetails={() => chunkDetails.fetchDetails(chunk.text, currentSentenceText)}
+                  onRequestDetails={() => {
+                    setMenuOnlyChunkId(null)
+                    chunkDetails.fetchDetails(chunk.text, currentSentenceText)
+                  }}
+                  onDoubleClickMenuOnly={() => {
+                    setExploringChunkId(null)
+                    setPinnedChunkId(null)
+                    setMenuOnlyChunkId(chunk.id)
+                  }}
                 />
                 {gapAfter}
               </span>

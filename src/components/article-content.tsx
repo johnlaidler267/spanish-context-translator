@@ -83,6 +83,8 @@ export function ArticleContent({
 
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
+  const [menuOnlyChunkId, setMenuOnlyChunkId] = useState<number | null>(null)
+  const chunkDetails = useChunkDetails()
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
   const tooltipFollowRef = useRef<{ x: number; y: number } | null>(null)
   const followTooltipPlaceRef = useRef<((x: number, y: number) => void) | null>(null)
@@ -148,6 +150,10 @@ export function ArticleContent({
       },
       onExploreChunkId: (id) => speakExploreChunkIdForTouchRef.current(id),
       onTouchExplorationStart: () => {
+        if (chunkDetails.activeChunk != null) {
+          chunkDetails.close()
+          setPinnedChunkId(null)
+        }
         if (!hoverTtsEnabledRef.current) return
         speechUnlockForTouchGesture()
       },
@@ -260,7 +266,6 @@ export function ArticleContent({
   }, [pageKey, cancelExploringLeaveTimer])
 
   // Details box state (used below for effectivePopupId — keep highlight + tooltip while sheet is open)
-  const chunkDetails = useChunkDetails()
 
   /** When the grammar sheet is open, keep the same chunk “active” even if hover exploration cleared. */
   const detailsAnchoredChunkId = useMemo(() => {
@@ -281,8 +286,10 @@ export function ArticleContent({
         ? exploringChunkId
         : pinnedChunkId != null
           ? pinnedChunkId
-          : detailsAnchoredChunkId,
-    [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId],
+          : detailsAnchoredChunkId != null && detailsAnchoredChunkId !== menuOnlyChunkId
+            ? detailsAnchoredChunkId
+            : null,
+    [exploringChunkId, pinnedChunkId, detailsAnchoredChunkId, menuOnlyChunkId],
   )
 
   useEffect(() => {
@@ -318,6 +325,7 @@ export function ArticleContent({
       setTooltipPointer(null)
       setExploringChunkId(null)
       setPinnedChunkId(null)
+      setMenuOnlyChunkId(null)
       chunkDetails.close()
     }
   }, [chunkDetails, cancelExploringLeaveTimer])
@@ -417,11 +425,17 @@ export function ArticleContent({
                     }}
                     onPinToggle={() => setPinnedChunkId(prev => (prev === id ? null : id))}
                     onRequestDetails={() => {
+                      setMenuOnlyChunkId(null)
                       if (chunkDetails.activeChunk != null) {
                         chunkDetails.close()
                         return
                       }
                       chunkDetails.fetchDetails(item.chunk, pageText)
+                    }}
+                    onDoubleClickMenuOnly={() => {
+                      setExploringChunkId(null)
+                      setPinnedChunkId(null)
+                      setMenuOnlyChunkId(id)
                     }}
                   />
                 </span>

@@ -505,16 +505,16 @@ function BillingToggle({
 
   return (
     <div className="mb-10 flex justify-center font-sans text-sm">
-      <div className="inline-flex items-center rounded-full border border-border bg-muted/40 p-1">
+      <div className="inline-flex items-center rounded-[18px] bg-[#ece9e3] p-1 dark:bg-[#2a2926]">
           <button
             type="button"
             onClick={() => onChange("monthly")}
             aria-pressed={interval === "monthly"}
             className={cn(
-              "rounded-full px-6 py-1.5 font-medium transition-colors",
+              "rounded-[14px] px-6 py-2 font-semibold transition-colors",
               interval === "monthly"
-                ? "bg-[#c97a5a] text-white shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-[#c97a5a] text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)]"
+                : "text-[#76736d] hover:text-[#4d4a45] dark:text-[#9b968c] dark:hover:text-[#c9c4ba]",
             )}
           >
             Monthly
@@ -524,10 +524,10 @@ function BillingToggle({
             onClick={() => onChange("annual")}
             aria-pressed={interval === "annual"}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full px-6 py-1.5 font-medium transition-colors",
+              "inline-flex items-center gap-2 rounded-[14px] px-6 py-2 font-semibold transition-colors",
               interval === "annual"
-                ? "bg-[#c97a5a] text-white shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-[#c97a5a] text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)]"
+                : "text-[#76736d] hover:text-[#4d4a45] dark:text-[#9b968c] dark:hover:text-[#c9c4ba]",
             )}
           >
             <span>Annual</span>
