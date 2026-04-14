@@ -1060,6 +1060,28 @@ article span {
   color: #a0b8f0;
 }
 
+/* Read/article header: speaker icon gets a quick “speak” wobble on hover/focus. */
+@keyframes hover-tts-speak {
+  0% { transform: rotate(0deg) scale(1); }
+  30% { transform: rotate(-9deg) scale(1.1); }
+  58% { transform: rotate(7deg) scale(1.07); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+.hover-tts-toggle-btn .hover-tts-toggle-icon {
+  transform-origin: 65% 55%;
+}
+.hover-tts-toggle-btn:hover .hover-tts-toggle-icon,
+.hover-tts-toggle-btn:focus-visible .hover-tts-toggle-icon {
+  animation: hover-tts-speak 0.42s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hover-tts-toggle-btn:hover .hover-tts-toggle-icon,
+  .hover-tts-toggle-btn:focus-visible .hover-tts-toggle-icon {
+    animation: none;
+  }
+}
+
 @keyframes profile-pop {
   0%   { transform: scale(1) translateY(0); }
   30%  { transform: scale(1.25) translateY(-3px); }
