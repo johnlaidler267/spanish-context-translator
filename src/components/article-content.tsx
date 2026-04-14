@@ -330,6 +330,11 @@ export function ArticleContent({
     }
   }, [chunkDetails, cancelExploringLeaveTimer])
 
+  const handleDetailsClose = useCallback(() => {
+    setMenuOnlyChunkId(null)
+    chunkDetails.close()
+  }, [chunkDetails])
+
   useEffect(() => {
     document.addEventListener("click", handleGlobalClick)
     return () => document.removeEventListener("click", handleGlobalClick)
@@ -511,7 +516,7 @@ export function ArticleContent({
         detail={chunkDetails.detail}
         loading={chunkDetails.loading}
         error={chunkDetails.error}
-        onClose={chunkDetails.close}
+        onClose={handleDetailsClose}
       />
     </div>
     {showTranslationErrorModal && (

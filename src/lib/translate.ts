@@ -411,8 +411,8 @@ Sort following spanish text into logical chunks.
 
 Chunks should consist of a singular word or multiple words ONLY IF they  fall into any of the following categories.
 
-fixed_idioms: e.g. dar su brazo a torcer, a punto de
-relative_subordinating_connectors: e.g. mientras que
+fixed_idioms: e.g. dar su brazo a torcer, a punto de, de nuevo
+relative_subordinating_connectors: e.g. mientras que, los que, en la que
 lo_nominalizer: e.g. lo maravilloso
 prepositional_verb_phrases: e.g. darse cuenta de que
 possessive_pronouns: e.g. el suyo
@@ -421,6 +421,7 @@ clitic_clusters: e.g. se lo
 reciprocal/distributive_pronoun_phrase: e.g. unos a otros
 adverbial_phrases: e.g. por supuesto
 colloquial_fixed_expressions: e.g. pinta bien
+reflexive_verbs: me di
 ETC.
 
 For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUTELY NECESSARY to GROUP with its NEIGHBOR?

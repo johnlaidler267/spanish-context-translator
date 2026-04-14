@@ -56,6 +56,8 @@ const ENFORCE_USAGE_LIMITS =
   !IS_LOCAL_DEV || import.meta.env.VITE_ENFORCE_USAGE_IN_DEV === "true"
 const USAGE_PREFLIGHT_TTL_MS = 60_000
 const LANDING_MIN_LOADING_MS = LOADING_OVERLAY_PROGRESS_MS
+/** Desktop article pagination: trim page size slightly so body text clears footer controls. */
+const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.80
 
 type UsagePreflightSnapshot = {
   counters: UsageCounters
@@ -219,7 +221,19 @@ export default function App() {
         const isMobile =
           typeof window !== "undefined" &&
           window.matchMedia("(max-width: 767px)").matches
-        const effectivePageLimits = clampPageLimitsForLlmBatching(articlePageSplitLimits)
+        const basePageLimits = clampPageLimitsForLlmBatching(articlePageSplitLimits)
+        const effectivePageLimits = isMobile
+          ? basePageLimits
+          : {
+              maxWords: Math.max(
+                80,
+                Math.floor(basePageLimits.maxWords * DESKTOP_ARTICLE_PAGE_LIMIT_SCALE),
+              ),
+              maxChars: Math.max(
+                400,
+                Math.floor(basePageLimits.maxChars * DESKTOP_ARTICLE_PAGE_LIMIT_SCALE),
+              ),
+            }
         let pages = buildSentencePages(sents, effectivePageLimits)
         if (pages.length === 0) pages = [[trimmed]]
         pages = mergeArticlePagesIfWholeTextFitsLimits(

@@ -374,6 +374,11 @@ export function ReadMode({
     chunkDetails.close()
   }, [chunkDetails, cancelGapClearExplore])
 
+  const handleDetailsClose = useCallback(() => {
+    setMenuOnlyChunkId(null)
+    chunkDetails.close()
+  }, [chunkDetails])
+
   const handleGlobalClick = useCallback(
     (e: MouseEvent) => {
       const target = e.target as HTMLElement
@@ -621,7 +626,7 @@ export function ReadMode({
         detail={chunkDetails.detail}
         loading={chunkDetails.loading}
         error={chunkDetails.error}
-        onClose={chunkDetails.close}
+        onClose={handleDetailsClose}
       />
     </div>
   )

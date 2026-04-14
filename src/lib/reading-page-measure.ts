@@ -11,6 +11,8 @@ import { resolvePageSplitLimits } from "@/lib/translate"
 
 /** Keep sentence batching conservative vs measured fill (wide glyphs, punctuation). */
 const CHAR_BUDGET_SAFETY = 0.84
+/** Desktop needs extra margin at larger reading sizes so text clears footer controls without scrolling. */
+const DESKTOP_CHAR_BUDGET_SAFETY = 0.70
 
 /** Desktop article outer padding top/bottom (matches ArticleContent md:pt-24 / md:pb-16). */
 const DESKTOP_ARTICLE_TOP_PX = 96
@@ -21,7 +23,7 @@ const DESKTOP_ARTICLE_TO_FOOTER_GAP_PX = 32
  * Desktop pagination footer reserve (buttons are 44px tall + border/padding).
  * Keep this slightly conservative so text never collides with footer controls.
  */
-const DESKTOP_PAGINATION_FOOTER_PX = 64
+const DESKTOP_PAGINATION_FOOTER_PX = 96
 
 /** Mobile horizontal padding — ArticleContent px-6. */
 const MOBILE_PAD_X_PX = 24 * 2
@@ -149,7 +151,8 @@ export function measureArticleBodyMaxChars(isMobile: boolean): number {
  */
 export function measureArticlePageSplitLimits(isMobile: boolean): PageSplitLimits {
   const raw = measureArticleBodyMaxChars(isMobile)
-  const maxChars = Math.max(400, Math.floor(raw * CHAR_BUDGET_SAFETY))
+  const safety = isMobile ? CHAR_BUDGET_SAFETY : DESKTOP_CHAR_BUDGET_SAFETY
+  const maxChars = Math.max(400, Math.floor(raw * safety))
   const maxWords = Math.max(2_000, Math.ceil(maxChars / 4))
   return { maxWords, maxChars }
 }
