@@ -96,18 +96,17 @@ function upgradeTierButtonClassName(
   if (variant === "default") {
     if (tierId === "pro") {
       return [
-        "rounded-md border-[3px] border-foreground font-bold",
-        UPGRADE_PILL_PRESS,
+        "h-14 rounded-[14px] border-0 px-4 text-lg font-bold",
+        "shadow-[0_8px_16px_rgba(201,122,90,0.28)] transition-colors",
         UPGRADE_TIER_BTN_FOCUS,
-        "bg-[#FDBB2D] text-foreground hover:bg-[#f5b01a]",
-        "dark:border-[rgba(234,224,213,0.22)] dark:bg-primary dark:text-primary-foreground dark:hover:bg-[#c97a5a]",
+        "bg-[#cf8778] text-white hover:bg-[#c27768]",
+        "dark:bg-primary dark:text-primary-foreground dark:hover:bg-[#c97a5a]",
       ].join(" ")
     }
     return [
-      "rounded-md border-[3px] border-foreground font-bold",
-      UPGRADE_PILL_PRESS,
+      "h-14 rounded-[14px] border-2 border-[#d89b8d] bg-transparent px-4 text-lg font-bold",
       UPGRADE_TIER_BTN_FOCUS,
-      "bg-primary text-primary-foreground",
+      "text-[#c07f71] hover:bg-[#f4ecdf]",
     ].join(" ")
   }
   if (
@@ -115,19 +114,15 @@ function upgradeTierButtonClassName(
     (variant === "outline" || variant === "secondary")
   ) {
     return [
-      "rounded-md border-2 border-border/90 bg-card text-foreground font-semibold text-sm",
-      UPGRADE_PILL_PRESS,
+      "h-14 rounded-[14px] border-2 border-[#d89b8d] bg-transparent px-4 text-lg font-bold",
       UPGRADE_TIER_BTN_FOCUS,
-      "hover:border-[#c97a5a]/35 hover:bg-[#faf8f5] dark:hover:border-[#c97a5a]/30 dark:hover:bg-[#22211e]",
-      "disabled:opacity-50",
+      "text-[#c07f71] hover:bg-[#f4ecdf] disabled:opacity-50",
     ].join(" ")
   }
   return [
-    "rounded-md border-[3px] border-foreground font-bold",
-    UPGRADE_PILL_PRESS,
+    "h-14 rounded-[14px] border-2 border-[#d89b8d] bg-transparent px-4 text-lg font-bold",
     UPGRADE_TIER_BTN_FOCUS,
-    "bg-card text-foreground hover:bg-muted/40",
-    "disabled:opacity-50",
+    "text-[#c07f71] hover:bg-[#f4ecdf] disabled:opacity-50",
   ].join(" ")
 }
 
@@ -897,32 +892,6 @@ export default function UpgradePage() {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-app bg-background relative">
-      {/* Background image — desktop only */}
-      <div
-        aria-hidden
-        className="hidden md:block"
-        style={{
-          position: "absolute", inset: 0,
-          backgroundImage: `url(${theme === "dark" ? "/upgrade-bg-dark.png" : "/upgrade-bg.png"})`,
-          backgroundSize: "100% auto",
-          backgroundPosition: "top center",
-          backgroundRepeat: "no-repeat",
-          opacity: theme === "dark" ? 0.28 : 0.15,
-          filter: theme === "dark" ? "blur(2.3px)" : "none",
-          pointerEvents: "none", zIndex: 0,
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-0 hidden h-[24rem] md:block"
-        style={{
-          background:
-            theme === "dark"
-              ? "linear-gradient(to bottom, rgba(12, 12, 11, 0.42), rgba(12, 12, 11, 0))"
-              : "linear-gradient(to bottom, rgba(250, 246, 240, 0.34), rgba(250, 246, 240, 0))",
-        }}
-      />
-
       <div className="shrink-0 relative z-[1]">
         <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
       </div>
@@ -1048,48 +1017,35 @@ export default function UpgradePage() {
                   <Card
                     key={id}
                     className={[
-                      "relative flex min-h-0 w-full min-w-0 flex-1 flex-col rounded-lg bg-card text-card-foreground",
+                      "relative flex min-h-0 w-full min-w-0 flex-1 flex-col rounded-[18px] text-card-foreground",
                       isPro ? "overflow-visible" : "overflow-hidden",
                       "transition-[transform,box-shadow] duration-200 ease-out",
                       isPro
                         ? [
-                            "border-[3px] border-primary z-[1]",
-                            "shadow-[6px_6px_0_0_var(--primary)]",
-                            "hover:-translate-x-px hover:-translate-y-px",
-                            "hover:shadow-[7px_7px_0_0_var(--primary)]",
-                            "dark:border-[#c97a5a]/55",
-                            "dark:shadow-[5px_5px_0_0_rgba(176,107,86,0.32)]",
-                            "dark:hover:border-[#c97a5a]/70",
-                            "dark:hover:shadow-[6px_6px_0_0_rgba(201,122,90,0.38)]",
+                            "z-[1] border-2 border-[#d49889] bg-[#f7f1e6]",
+                            "shadow-[0_12px_24px_rgba(201,122,90,0.22)]",
+                            "hover:-translate-y-[1px] hover:shadow-[0_14px_28px_rgba(201,122,90,0.26)]",
+                            "dark:border-[#c97a5a]/55 dark:bg-card",
                           ].join(" ")
                         : [
-                            "border-2 border-border/80",
-                            "shadow-[6px_6px_0_0_color-mix(in_oklab,var(--border)_85%,var(--foreground))]",
-                            "hover:-translate-x-px hover:-translate-y-px",
-                            "hover:border-border hover:shadow-[7px_7px_0_0_color-mix(in_oklab,var(--border)_85%,var(--foreground))]",
+                            "border border-[#e6dccc] bg-[#f7f1e6]",
+                            "shadow-[0_6px_14px_rgba(76,56,39,0.08)]",
+                            "hover:-translate-y-[1px] hover:shadow-[0_10px_20px_rgba(76,56,39,0.12)]",
+                            "dark:border-border/80 dark:bg-card",
                           ].join(" "),
                     ].join(" ")}
                   >
                     {isPro ? (
                       <div
-                        className="h-1.5 w-full rounded-t-lg bg-[#FDBB2D] border-b border-foreground/15 dark:bg-primary dark:border-b-white/10"
-                        aria-hidden
-                      />
-                    ) : null}
-
-                    {isPro && !isCurrent ? (
-                      <div
-                        className="pointer-events-none absolute right-2 top-2.5 z-[2] sm:right-3 sm:top-3"
+                        className="pointer-events-none absolute left-1/2 top-0 z-[2] -translate-x-1/2 -translate-y-1/2"
                         aria-hidden
                       >
                         <span
                           className={
-                            "inline-block max-w-[11rem] text-center rounded-md border-2 border-foreground/25 " +
-                            "bg-[#FDBB2D] px-2.5 py-1 text-[10px] font-extrabold font-sans uppercase " +
-                            "tracking-wide text-foreground shadow-[2px_2px_0_0_var(--foreground)] " +
-                            "dark:border-[rgba(234,224,213,0.28)] dark:bg-primary dark:text-primary-foreground " +
-                            "dark:shadow-[2px_2px_0_0_rgba(234,224,213,0.14)] " +
-                            "-rotate-2 sm:text-[11px]"
+                            "inline-flex items-center rounded-full border border-[#d38f80] " +
+                            "bg-[#cf8778] px-5 py-1.5 text-xs font-extrabold font-sans uppercase " +
+                            "tracking-[0.16em] text-[#fff2ec] shadow-[0_4px_10px_rgba(201,122,90,0.28)] " +
+                            "dark:border-[rgba(234,224,213,0.28)] dark:bg-primary dark:text-primary-foreground"
                           }
                         >
                           Most popular
@@ -1124,8 +1080,8 @@ export default function UpgradePage() {
 
                     <CardHeader
                       className={cn(
-                        "px-6 pb-4",
-                        isCurrent ? "pt-12" : isPro ? "pt-5" : "pt-6",
+                        "px-9 pb-4",
+                        isCurrent ? "pt-11" : isPro ? "pt-9" : "pt-8",
                       )}
                     >
                       {/*
@@ -1136,27 +1092,17 @@ export default function UpgradePage() {
                         className={cn(
                           "flex items-center gap-3 mb-3 flex-wrap",
                           isFree ? "text-muted-foreground" : "text-foreground",
-                          isPro && !isCurrent && "pr-[7.5rem] sm:pr-[8rem]",
                         )}
                       >
                         <span
                           className={
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-card " +
-                            (isPro
-                              ? "border-primary text-primary dark:border-[#c97a5a]/70 dark:text-[rgba(234,224,213,0.88)]"
-                              : "border-border text-muted-foreground")
-                          }
-                          aria-hidden
-                        >
-                          {TIER_ICONS[id]}
-                        </span>
-                        <span
-                          className={
                             "min-w-0 font-sans tracking-tight " +
-                            (isPro ? "text-lg md:text-xl font-extrabold" : "text-base font-semibold")
+                            (isPro
+                              ? "text-[2rem] md:text-[2.2rem] font-bold text-[#cb7d6e] dark:text-foreground"
+                              : "text-[2rem] md:text-[2.2rem] font-bold text-foreground")
                           }
                         >
-                          {isPro ? "Pro Plan" : tier.name}
+                          {isPro ? "Pro" : tier.name}
                         </span>
                       </div>
 
@@ -1164,23 +1110,23 @@ export default function UpgradePage() {
                       {id === "pro" ? (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-4xl font-black font-sans tracking-tight text-foreground">
+                            <span className="text-[4.2rem] leading-none font-black font-sans tracking-tight text-[#3a2b24] dark:text-foreground">
                               {formatPrice(
                                 interval === "annual"
                                   ? tier.pricing.annual.amountCents
                                   : tier.pricing.monthly.amountCents,
                               )}
                             </span>
-                            <span className="text-sm text-muted-foreground font-sans">
+                            <span className="text-xl font-semibold text-[#5a4b42] dark:text-muted-foreground">
                               {interval === "annual" ? "/year" : "/month"}
                             </span>
                           </CardTitle>
-                          {interval === "monthly" ? (
-                            <p className="text-sm text-muted-foreground font-sans mt-1">
-                              or {formatPrice(tier.pricing.annual.amountCents)}/yr — two months free
+                          {tier.trialDays > 0 && interval === "monthly" ? (
+                            <p className="mt-1 text-lg font-medium text-[#cf8778] dark:text-primary">
+                              {tier.trialDays}-day free trial included
                             </p>
                           ) : (
-                            <p className="text-xs text-muted-foreground font-sans mt-0.5 md:whitespace-nowrap">
+                            <p className="text-xs text-muted-foreground font-sans mt-1 md:whitespace-nowrap">
                               {formatAnnualMonthlyEquivalent("pro")}/mo · billed annually — two months free
                               {tier.pricing.annual.savingsPercent > 0 && (
                                 <span className="ml-1.5 text-primary font-medium">
@@ -1194,10 +1140,12 @@ export default function UpgradePage() {
                       ) : (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-3xl font-extrabold font-sans tracking-tight text-foreground/90">
+                            <span className="text-[4.2rem] leading-none font-black font-sans tracking-tight text-[#3a2b24] dark:text-foreground">
                               {nonProPrice}
                             </span>
-                            <span className="text-xs text-muted-foreground font-sans font-medium">/month</span>
+                            <span className="text-xl font-semibold text-[#5a4b42] dark:text-muted-foreground">
+                              /forever
+                            </span>
                           </CardTitle>
 
                           {interval === "annual" && pricing.amountCents > 0 && (
@@ -1215,13 +1163,13 @@ export default function UpgradePage() {
                       )}
 
                       {tier.tagline ? (
-                        <CardDescription className="text-muted-foreground font-sans">
+                        <CardDescription className="mt-1 text-base font-medium text-[#5f5450] dark:text-muted-foreground">
                           {tier.tagline}
                         </CardDescription>
                       ) : null}
                     </CardHeader>
 
-                    <CardContent className="flex min-h-0 flex-1 flex-col pt-0">
+                    <CardContent className="flex min-h-0 flex-1 flex-col px-9 pt-1">
                       {id === "free" && (
                         <p className="text-xs font-semibold font-sans text-muted-foreground uppercase tracking-wide mb-3">
                           Includes
@@ -1244,8 +1192,8 @@ export default function UpgradePage() {
                               <li key={row.feature} className="flex items-start gap-2.5 text-sm font-sans">
                                 <span
                                   className={cn(
-                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                                    "border-border text-muted-foreground",
+                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                                    "text-[#cf8778] dark:text-primary",
                                   )}
                                   aria-hidden
                                 >
@@ -1263,10 +1211,10 @@ export default function UpgradePage() {
                               <li key={bullet} className="flex items-start gap-2.5 text-sm font-sans">
                                 <span
                                   className={cn(
-                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
                                     isPro
-                                      ? "border-foreground text-foreground dark:border-[#c97a5a]/55 dark:text-[rgba(234,224,213,0.82)]"
-                                      : "border-border text-muted-foreground",
+                                      ? "text-[#cf8778] dark:text-primary"
+                                      : "text-[#cf8778] dark:text-primary",
                                   )}
                                   aria-hidden
                                 >
