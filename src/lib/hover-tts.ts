@@ -29,6 +29,14 @@ function normalizeLang(l: string): string {
   return l.replace(/_/g, "-").toLowerCase()
 }
 
+/**
+ * Spanish conjunction "y" (and) is written capital "Y" at sentence start; WebKit + es voices
+ * often read that as the letter name ("i griega") instead of /i/. Lowercasing isolated Y fixes it.
+ */
+function normalizeSpanishYConjunctionForTts(text: string): string {
+  return text.replace(/\bY\b/g, "y")
+}
+
 /** Mobile Safari often needs an explicit installed voice; `lang` alone can be silent. */
 function pickSpanishVoice(): SpeechSynthesisVoice | undefined {
   refreshSpeechVoices()
@@ -75,7 +83,7 @@ export function speechUnlockForTouchGesture(): void {
 
 export function speakHoverChunk(text: string, lang: string = HOVER_TTS_LANG): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return
-  const t = text.trim()
+  const t = normalizeSpanishYConjunctionForTts(text.trim())
   if (!t) return
   attachVoicesChangedOnce()
   refreshSpeechVoices()
