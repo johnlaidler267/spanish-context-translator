@@ -6,7 +6,6 @@ import { AuthProvider } from '@/contexts/auth-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { AuthModal } from '@/components/auth-modal'
 import App from '@/App'
-import DiscoverPage from '@/pages/discover'
 import UpgradePage from '@/pages/upgrade'
 import TermsPage from '@/pages/terms'
 import PrivacyPage from '@/pages/privacy'
@@ -35,7 +34,6 @@ createRoot(document.getElementById('root')).render(
             </div>
 
             <Routes>
-              <Route path="/discover" element={<DiscoverPage />} />
               <Route path="/upgrade" element={<UpgradePage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />

@@ -10,8 +10,8 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react"
-import { LandingSidebar, type LandingSidebarLayout } from "./landing-sidebar"
 import { Link } from "react-router-dom"
+import { useLandingShellNewChat } from "@/components/landing-shell-layout"
 import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout-fix"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { useAuth } from "@/contexts/auth-context"
@@ -19,7 +19,6 @@ import { useSubscription } from "@/contexts/subscription-context"
 import { supabase } from "@/lib/supabase"
 import { getTier, type TierId } from "@/lib/tiers"
 import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscription-display"
-import { MainHeader } from "./main-header"
 import { LandingContentPills } from "./landing-content-pills"
 import {
   appendTranscriptToField,
@@ -173,15 +172,15 @@ export function LandingScreen({
   const landingColumnRef = useRef<HTMLDivElement>(null)
   const composerFormRef = useRef<HTMLFormElement>(null)
   const composerSubmitBtnRef = useRef<HTMLButtonElement>(null)
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-  const [sidebarInsetPx, setSidebarInsetPx] = useState(0)
-  const onSidebarLayoutChange = useCallback((layout: LandingSidebarLayout) => {
-    setSidebarInsetPx(layout.desktopRailPx)
-  }, [])
+  const { registerNewChat } = useLandingShellNewChat()
   const handleNewChat = useCallback(() => {
     setText("")
     window.setTimeout(() => textareaRef.current?.focus(), 0)
   }, [setText])
+  useLayoutEffect(() => {
+    registerNewChat(handleNewChat)
+    return () => registerNewChat(null)
+  }, [registerNewChat, handleNewChat])
   useVirtualKeyboardLayoutFix(landingColumnRef)
   const [isRolling, setIsRolling] = useState(false)
   const [isLearning, setIsLearning] = useState(false)
@@ -310,24 +309,6 @@ export function LandingScreen({
 
   return (
     <>
-    <div className="landing-route-shell landing-route-enter relative z-10 flex min-h-0 min-w-0 w-full flex-1 flex-row max-md:min-h-0 max-md:flex-1">
-      <LandingSidebar
-        mobileOpen={mobileSidebarOpen}
-        onMobileOpenChange={setMobileSidebarOpen}
-        onLayoutChange={onSidebarLayoutChange}
-        onNewChat={handleNewChat}
-        disabled={isLoading}
-        displayName={displayName}
-      />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col max-md:min-h-0 max-md:flex-1">
-      <MainHeader
-        theme={theme}
-        onThemeChange={onThemeChange}
-        showPlanBanner={false}
-        showBrandWordmark={false}
-        onMenuClick={() => setMobileSidebarOpen(true)}
-        contentInsetLeftPx={sidebarInsetPx}
-      />
       <div
         className="landing-page flex flex-col items-stretch md:items-center md:justify-start md:pt-[clamp(3.5rem,10vh,6.5rem)] min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
         style={{ position: "relative" }}
@@ -500,10 +481,8 @@ export function LandingScreen({
             </span>
           </button>
         </div>
+        </div>
       </div>
-      </div>
-      </div>
-    </div>
       {learnError && (
         <AppErrorModal
           title="Couldn’t load text"

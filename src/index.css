@@ -318,12 +318,16 @@ html.lector-reading-session .global-corner-letter {
   }
 }
 
-/* Sidebar nav — selected: square frame with corner ticks (no full border) */
-.landing-sidebar-nav-active {
-  position: relative;
+/* Sidebar nav — sliding selection: square frame with corner ticks (no full border) */
+.landing-sidebar-nav-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
   border-radius: 0;
+  will-change: transform, height;
 }
-.landing-sidebar-nav-active::before {
+.landing-sidebar-nav-indicator::before {
   content: "";
   position: absolute;
   inset: 0;

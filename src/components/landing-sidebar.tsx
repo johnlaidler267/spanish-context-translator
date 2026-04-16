@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import {
   ChevronsLeft,
@@ -69,6 +69,46 @@ export function LandingSidebar({
   const discoverActive = pathname === "/discover"
   const libraryActive = pathname.startsWith("/settings")
 
+  const navActiveIndex = homeActive ? 0 : discoverActive ? 1 : libraryActive ? 2 : -1
+
+  const navWrapRef = useRef<HTMLDivElement>(null)
+  const navItemRefs = useRef<(HTMLAnchorElement | null)[]>([null, null, null])
+  const [navIndicator, setNavIndicator] = useState({ top: 0, height: 0, opacity: 0 })
+
+  const syncNavIndicator = useCallback(() => {
+    const wrap = navWrapRef.current
+    if (!wrap) return
+    if (navActiveIndex < 0) {
+      setNavIndicator((prev) => ({ ...prev, opacity: 0 }))
+      return
+    }
+    const el = navItemRefs.current[navActiveIndex]
+    if (!el) return
+    const w = wrap.getBoundingClientRect()
+    const r = el.getBoundingClientRect()
+    setNavIndicator({
+      top: r.top - w.top,
+      height: r.height,
+      opacity: 1,
+    })
+  }, [navActiveIndex])
+
+  useLayoutEffect(() => {
+    syncNavIndicator()
+  }, [syncNavIndicator])
+
+  useEffect(() => {
+    const wrap = navWrapRef.current
+    if (!wrap) return
+    const ro = new ResizeObserver(() => syncNavIndicator())
+    ro.observe(wrap)
+    window.addEventListener("resize", syncNavIndicator)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener("resize", syncNavIndicator)
+    }
+  }, [syncNavIndicator])
+
   useEffect(() => {
     if (!isMdUp) {
       onLayoutChange({ desktopRailPx: 0 })
@@ -104,12 +144,12 @@ export function LandingSidebar({
 
   const navItemClass = (active: boolean) =>
     cn(
-      "group flex items-center gap-3 px-3 py-2.5 text-sm font-normal tracking-[-0.015em] text-foreground/90",
+      "group relative z-10 flex items-center gap-3 px-3 py-2.5 text-sm font-normal tracking-[-0.015em] text-foreground/90",
       "transition-[color,background-color,box-shadow,transform] duration-200 ease-out",
       "motion-safe:hover:-translate-y-px motion-safe:active:translate-y-0 motion-safe:active:scale-[0.99]",
       "outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       active
-        ? "landing-sidebar-nav-active bg-secondary text-foreground motion-safe:hover:bg-secondary"
+        ? "text-foreground"
         : "rounded-lg hover:bg-muted/50 hover:text-foreground motion-safe:hover:shadow-sm",
       compactRail && "justify-center px-0 gap-0",
     )
@@ -179,54 +219,80 @@ export function LandingSidebar({
       </div>
 
       <nav
-        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain p-3"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-3"
         aria-label="Main"
       >
-        <Link
-          to="/"
-          className={navItemClass(homeActive)}
-          onClick={() => !isMdUp && onMobileOpenChange(false)}
-        >
-          <span
+        <div ref={navWrapRef} className="relative flex min-h-0 flex-col gap-0.5">
+          <div
+            aria-hidden
             className={cn(
-              "text-foreground/85 transition-transform duration-200 ease-out motion-safe:group-hover:scale-110",
-              compactRail && "shrink-0",
+              "landing-sidebar-nav-indicator pointer-events-none z-0 bg-secondary",
+              "motion-safe:transition-[transform,height,opacity] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
             )}
+            style={{
+              height: navIndicator.height || undefined,
+              opacity: navIndicator.opacity,
+              transform: `translateY(${navIndicator.top}px)`,
+            }}
+          />
+          <Link
+            ref={(el) => {
+              navItemRefs.current[0] = el
+            }}
+            to="/"
+            aria-current={homeActive ? "page" : undefined}
+            className={navItemClass(homeActive)}
+            onClick={() => !isMdUp && onMobileOpenChange(false)}
           >
-            <Home className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
-          </span>
-          {!compactRail ? <span className="truncate">Home</span> : null}
-        </Link>
-        <Link
-          to="/discover"
-          className={navItemClass(discoverActive)}
-          onClick={() => !isMdUp && onMobileOpenChange(false)}
-        >
-          <span
-            className={cn(
-              "text-foreground/85 transition-transform duration-200 ease-out motion-safe:group-hover:scale-110",
-              compactRail && "shrink-0",
-            )}
+            <span
+              className={cn(
+                "text-foreground/85 transition-transform duration-200 ease-out motion-safe:group-hover:scale-110",
+                compactRail && "shrink-0",
+              )}
+            >
+              <Home className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
+            </span>
+            {!compactRail ? <span className="truncate">Home</span> : null}
+          </Link>
+          <Link
+            ref={(el) => {
+              navItemRefs.current[1] = el
+            }}
+            to="/discover"
+            aria-current={discoverActive ? "page" : undefined}
+            className={navItemClass(discoverActive)}
+            onClick={() => !isMdUp && onMobileOpenChange(false)}
           >
-            <Compass className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
-          </span>
-          {!compactRail ? <span className="truncate">Discover</span> : null}
-        </Link>
-        <Link
-          to="/settings"
-          className={navItemClass(libraryActive)}
-          onClick={() => !isMdUp && onMobileOpenChange(false)}
-        >
-          <span
-            className={cn(
-              "text-foreground/85 transition-transform duration-200 ease-out motion-safe:group-hover:scale-110",
-              compactRail && "shrink-0",
-            )}
+            <span
+              className={cn(
+                "text-foreground/85 transition-transform duration-200 ease-out motion-safe:group-hover:scale-110",
+                compactRail && "shrink-0",
+              )}
+            >
+              <Compass className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
+            </span>
+            {!compactRail ? <span className="truncate">Discover</span> : null}
+          </Link>
+          <Link
+            ref={(el) => {
+              navItemRefs.current[2] = el
+            }}
+            to="/settings"
+            aria-current={libraryActive ? "page" : undefined}
+            className={navItemClass(libraryActive)}
+            onClick={() => !isMdUp && onMobileOpenChange(false)}
           >
-            <Library className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
-          </span>
-          {!compactRail ? <span className="truncate">My Library</span> : null}
-        </Link>
+            <span
+              className={cn(
+                "text-foreground/85 transition-transform duration-200 ease-out motion-safe:group-hover:scale-110",
+                compactRail && "shrink-0",
+              )}
+            >
+              <Library className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
+            </span>
+            {!compactRail ? <span className="truncate">My Library</span> : null}
+          </Link>
+        </div>
       </nav>
 
       <div

@@ -60,7 +60,7 @@ export function ContentPreviewModal({ content, open, onClose }: ContentPreviewMo
         if (!nextOpen) onClose()
       }}
     >
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden border-border/50 bg-card p-0">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden border-border/50 bg-card p-0 font-sans">
         <div className="relative h-48 overflow-hidden">
           <img
             src={content.coverImage}
@@ -95,8 +95,8 @@ export function ContentPreviewModal({ content, open, onClose }: ContentPreviewMo
 
         <div className="px-6 pb-6">
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-2xl font-bold text-foreground">{content.title}</DialogTitle>
-            <p className="text-muted-foreground">by {content.author}</p>
+            <DialogTitle className="font-serif text-2xl font-bold text-foreground">{content.title}</DialogTitle>
+            <p className="font-reading text-sm text-muted-foreground">by {content.author}</p>
           </DialogHeader>
 
           <div className="mb-4 flex flex-wrap gap-4 text-sm">
@@ -128,7 +128,7 @@ export function ContentPreviewModal({ content, open, onClose }: ContentPreviewMo
           <Separator className="my-4" />
 
           <div className="mb-4">
-            <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h4 className="mb-3 font-reading text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Preview
             </h4>
             <ScrollArea className="h-48 rounded-lg border border-border/50 bg-background/50 p-4">

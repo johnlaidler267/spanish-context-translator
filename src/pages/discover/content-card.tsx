@@ -62,10 +62,10 @@ export function ContentCard({ content, onClick }: ContentCardProps) {
       </div>
 
       <CardContent className="p-4">
-        <h3 className="mb-1 line-clamp-1 font-semibold text-foreground transition-colors group-hover:text-primary">
+        <h3 className="mb-1 line-clamp-1 font-serif font-bold text-foreground transition-colors group-hover:text-primary">
           {content.title}
         </h3>
-        <p className="mb-3 text-sm text-muted-foreground">{content.author}</p>
+        <p className="mb-3 font-reading text-sm text-muted-foreground">{content.author}</p>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="flex items-center gap-1">

@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import SettingsPage from "@/pages/settings"
+import DiscoverPage from "@/pages/discover"
+import { LandingShellLayout } from "./components/landing-shell-layout"
 import { LandingScreen } from "./components/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "./components/loading-overlay"
 import { ReadingHeader } from "./components/reading-header"
@@ -448,7 +450,7 @@ export default function App() {
     )
   }
 
-  const landingHome = (
+  const landingIndexElement = (
     <main className={`min-h-app bg-transparent ${viewportMain}`}>
       {appState === "loading" && <LoadingOverlay />}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -630,9 +632,6 @@ export default function App() {
     )
   }
 
-  const indexElement =
-    appState === "landing" || appState === "loading" ? landingHome : readingHome ?? landingHome
-
   return (
     <>
       {!IS_LOCAL_DEV && isLapsed && !popupDismissed && (
@@ -644,7 +643,23 @@ export default function App() {
       <GuestSignupModal open={guestSignupOpen} onClose={() => setGuestSignupOpen(false)} />
       <Routes>
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/" element={indexElement} />
+        {appState !== "reading" ? (
+          <Route
+            element={
+              <LandingShellLayout
+                theme={appTheme}
+                onThemeChange={setReadingTheme}
+                displayName={displayName}
+                sidebarDisabled={appState === "loading"}
+              />
+            }
+          >
+            <Route path="/" element={landingIndexElement} />
+            <Route path="/discover" element={<DiscoverPage />} />
+          </Route>
+        ) : (
+          <Route path="/" element={readingHome} />
+        )}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {(rateLimitMessage || planLimitModal) && (
