@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import SettingsPage from "@/pages/settings"
 import DiscoverPage from "@/pages/discover"
+import MyLibraryPage from "@/pages/my-library"
 import { LandingShellLayout } from "./components/landing-shell-layout"
 import { LandingScreen } from "./components/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "./components/loading-overlay"
@@ -669,6 +670,7 @@ export default function App() {
               path="/discover"
               element={<DiscoverPage onStartReading={handleDiscoverStartReading} />}
             />
+            <Route path="/my-library" element={<MyLibraryPage />} />
           </Route>
         ) : (
           <Route path="/" element={readingHome} />

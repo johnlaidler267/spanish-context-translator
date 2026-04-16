@@ -67,7 +67,7 @@ export function LandingSidebar({
   const pathname = location.pathname
   const homeActive = pathname === "/"
   const discoverActive = pathname === "/discover"
-  const libraryActive = pathname.startsWith("/settings")
+  const libraryActive = pathname.startsWith("/my-library")
 
   const navActiveIndex = homeActive ? 0 : discoverActive ? 1 : libraryActive ? 2 : -1
 
@@ -277,7 +277,7 @@ export function LandingSidebar({
             ref={(el) => {
               navItemRefs.current[2] = el
             }}
-            to="/settings"
+            to="/my-library"
             aria-current={libraryActive ? "page" : undefined}
             className={navItemClass(libraryActive)}
             onClick={() => !isMdUp && onMobileOpenChange(false)}
