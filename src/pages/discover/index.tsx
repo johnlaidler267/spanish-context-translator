@@ -14,29 +14,39 @@ import { FilterBar } from "@/components/discover/filter-bar"
 import { Button } from "@/components/ui/button"
 import { ContentCard } from "@/pages/discover/content-card"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
-import {
-  contentItems,
-  type ContentItem,
-  type ContentType,
-  type DifficultyLevel,
-} from "@/lib/content-data"
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
+import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover-map"
+import type { DiscoverItemInsert } from "@/lib/db.types"
+import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/content-data"
+
+const LIST_SELECT =
+  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at"
 
 type DiscoverPageProps = {
   onStartReading: (content: ContentItem) => Promise<void> | void
 }
 
 export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
-  const IS_LOCAL_DEV = import.meta.env.DEV
   const navigate = useNavigate()
   const { registerNewChat } = useLandingShellNewChat()
+  const { user } = useAuth()
 
-  const [discoverItems, setDiscoverItems] = useState<ContentItem[]>(() => contentItems)
+  const [discoverItems, setDiscoverItems] = useState<ContentItem[]>([])
+  const [listLoading, setListLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
+  const [isCurator, setIsCurator] = useState(false)
+  const [curatorResolved, setCuratorResolved] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTypes, setSelectedTypes] = useState<ContentType[]>([])
   const [selectedDifficulties, setSelectedDifficulties] = useState<DifficultyLevel[]>([])
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
+
+  const showCuratorUi = curatorResolved && isCurator
 
   useEffect(() => {
     beginRouteTransition(560)
@@ -48,6 +58,54 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     registerNewChat(goHome)
     return () => registerNewChat(null)
   }, [navigate, registerNewChat])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      setListLoading(true)
+      setListError(null)
+      const { data, error } = await supabase
+        .from("discover_items")
+        .select(LIST_SELECT)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+      if (cancelled) return
+      if (error) {
+        setListError(error.message)
+        setDiscoverItems([])
+      } else {
+        const rows = (data ?? []) as DiscoverListRow[]
+        setDiscoverItems(rows.map(discoverRowToContentItem))
+      }
+      setListLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!user?.id) {
+      setIsCurator(false)
+      setCuratorResolved(true)
+      return
+    }
+    setCuratorResolved(false)
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from("discover_curators")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle()
+      if (cancelled) return
+      setIsCurator(!!data)
+      setCuratorResolved(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
 
   useEffect(() => {
     if (!selectedContent) return
@@ -83,15 +141,22 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     setTimeout(() => setSelectedContent(null), 200)
   }
 
-  const handleDeleteContent = (contentId: string) => {
+  const handleDeleteContent = async (contentId: string) => {
+    const previous = discoverItems
     setDiscoverItems((currentItems) => currentItems.filter((item) => item.id !== contentId))
+    setActionError(null)
+    const { error } = await supabase.from("discover_items").delete().eq("id", contentId)
+    if (error) {
+      setDiscoverItems(previous)
+      setActionError(error.message)
+    }
   }
 
   const handleStartReading = (content: ContentItem) => {
     void onStartReading(content)
   }
 
-  const handlePublishResource = (resource: DevResourceUpload) => {
+  const handlePublishResource = async (resource: DevResourceUpload) => {
     const estimatedMinutes = Math.max(1, Math.ceil(resource.wordCount / 200))
     const estimatedTime =
       estimatedMinutes >= 60 ? `${Math.ceil(estimatedMinutes / 60)} hours` : `${estimatedMinutes} min`
@@ -101,22 +166,31 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     const normalizedTags = resource.tags.length > 0 ? resource.tags : [defaultTag]
     const preview = resource.text.slice(0, 800)
 
-    const newItem: ContentItem = {
-      id: `dev-${Date.now()}`,
+    const insert: DiscoverItemInsert = {
       title: resource.title,
       author: resource.author,
       type: resource.type,
       difficulty,
-      wordCount: resource.wordCount,
+      word_count: resource.wordCount,
       language: resource.language,
-      coverImage:
+      cover_image:
         resource.coverImage ??
         "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=600&fit=crop",
       tags: normalizedTags,
       preview,
-      estimatedTime,
+      estimated_time: estimatedTime,
+      body_text: resource.text,
     }
 
+    setActionError(null)
+    const { data, error } = await supabase.from("discover_items").insert(insert).select(LIST_SELECT).single()
+
+    if (error || !data) {
+      setActionError(error?.message ?? "Could not publish.")
+      return
+    }
+
+    const newItem = discoverRowToContentItem(data as DiscoverListRow)
     setDiscoverItems((currentItems) => [newItem, ...currentItems])
     setSelectedContent(newItem)
     setModalOpen(true)
@@ -137,7 +211,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                 Browse books, articles, songs, and poems matched to your level.
               </p>
             </div>
-            {IS_LOCAL_DEV && (
+            {showCuratorUi && (
               <Button
                 variant="outline"
                 className="shrink-0 rounded-none"
@@ -149,106 +223,123 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
             )}
           </div>
 
-          <section className="mb-12">
-            <div className="mb-6 flex items-center gap-2">
-              <Sparkles className="size-5 shrink-0 text-accent/80" />
-              <h2 className="font-serif text-base font-semibold tracking-wide text-black md:text-lg dark:text-muted-foreground">
-                Featured for You
-              </h2>
-            </div>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {featuredContent.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleContentClick(item)}
-                  className="group relative cursor-pointer overflow-hidden rounded-none"
-                >
-                  <div aria-hidden className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
-                    <span className="absolute left-0 top-0 h-10 w-10 border-l-[4px] border-t-[4px] border-[#C97A5A]" />
-                    <span className="absolute right-0 top-0 h-10 w-10 border-r-[4px] border-t-[4px] border-[#C97A5A]" />
-                  </div>
-                  <div className="aspect-[16/9] overflow-hidden">
-                    <img
-                      src={item.coverImage}
-                      alt={item.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-black/[0.07] via-[42%] to-transparent to-[78%] dark:from-black/45 dark:via-black/12"
+          {listError && (
+            <p className="mb-4 text-sm text-destructive" role="alert">
+              {listError}
+            </p>
+          )}
+          {actionError && (
+            <p className="mb-4 text-sm text-destructive" role="alert">
+              {actionError}
+            </p>
+          )}
+
+          {listLoading ? (
+            <p className="font-reading text-sm text-muted-foreground">Loading catalog…</p>
+          ) : (
+            <>
+              <section className="mb-12">
+                <div className="mb-6 flex items-center gap-2">
+                  <Sparkles className="size-5 shrink-0 text-accent/80" />
+                  <h2 className="font-serif text-base font-semibold tracking-wide text-black md:text-lg dark:text-muted-foreground">
+                    Featured for You
+                  </h2>
+                </div>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {featuredContent.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleContentClick(item)}
+                      className="group relative cursor-pointer overflow-hidden rounded-none"
+                    >
+                      <div aria-hidden className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
+                        <span className="absolute left-0 top-0 h-10 w-10 border-l-[4px] border-t-[4px] border-[#C97A5A]" />
+                        <span className="absolute right-0 top-0 h-10 w-10 border-r-[4px] border-t-[4px] border-[#C97A5A]" />
+                      </div>
+                      <div className="aspect-[16/9] overflow-hidden">
+                        <img
+                          src={item.coverImage}
+                          alt={item.title}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
+                      <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-black/[0.07] via-[42%] to-transparent to-[78%] dark:from-black/45 dark:via-black/12"
+                      />
+                      <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background from-0% via-background/55 via-[34%] to-transparent to-[92%] dark:via-background/50"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 px-6 pb-7 pt-12 sm:px-7 sm:pb-8 sm:pt-14">
+                        {showCuratorUi && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void handleDeleteContent(item.id)
+                            }}
+                            className="absolute right-6 top-4 rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive sm:right-7"
+                            aria-label={`Delete ${item.title}`}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                        <ContentTypeBadge type={item.type} size="sm" className="mb-3" />
+                        <h3 className="mb-1.5 font-serif text-lg font-bold leading-snug text-black dark:text-neutral-100">
+                          {item.title}
+                        </h3>
+                        <p className="font-serif text-xs font-normal italic text-black/90 dark:text-neutral-200">
+                          {item.author}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <div className="mb-6">
+                  <h2 className="mb-4 font-serif text-lg font-semibold tracking-wide text-black md:text-xl dark:text-muted-foreground">
+                    Browse All Content
+                  </h2>
+                  <FilterBar
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    selectedTypes={selectedTypes}
+                    onTypeChange={setSelectedTypes}
+                    selectedDifficulties={selectedDifficulties}
+                    onDifficultyChange={setSelectedDifficulties}
                   />
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background from-0% via-background/55 via-[34%] to-transparent to-[92%] dark:via-background/50"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 px-6 pb-7 pt-12 sm:px-7 sm:pb-8 sm:pt-14">
-                    {IS_LOCAL_DEV && (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          handleDeleteContent(item.id)
-                        }}
-                        className="absolute right-6 top-4 rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive sm:right-7"
-                        aria-label={`Delete ${item.title}`}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    )}
-                    <ContentTypeBadge type={item.type} size="sm" className="mb-3" />
-                    <h3 className="mb-1.5 font-serif text-lg font-bold leading-snug text-black dark:text-neutral-100">
-                      {item.title}
+                </div>
+
+                {filteredContent.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 py-16">
+                    <div className="mb-4 rounded-full bg-secondary p-4">
+                      <Compass className="size-8 text-black dark:text-muted-foreground" />
+                    </div>
+                    <h3 className="mb-2 font-serif text-lg font-semibold text-black dark:text-foreground">
+                      No content found
                     </h3>
-                    <p className="font-serif text-xs font-normal italic text-black/90 dark:text-neutral-200">
-                      {item.author}
+                    <p className="font-reading text-sm text-black dark:text-muted-foreground">
+                      Try adjusting your filters or search query
                     </p>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <div className="mb-6">
-              <h2 className="mb-4 font-serif text-lg font-semibold tracking-wide text-black md:text-xl dark:text-muted-foreground">
-                Browse All Content
-              </h2>
-              <FilterBar
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                selectedTypes={selectedTypes}
-                onTypeChange={setSelectedTypes}
-                selectedDifficulties={selectedDifficulties}
-                onDifficultyChange={setSelectedDifficulties}
-              />
-            </div>
-
-            {filteredContent.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 py-16">
-                <div className="mb-4 rounded-full bg-secondary p-4">
-                  <Compass className="size-8 text-black dark:text-muted-foreground" />
-                </div>
-                <h3 className="mb-2 font-serif text-lg font-semibold text-black dark:text-foreground">
-                  No content found
-                </h3>
-                <p className="font-reading text-sm text-black dark:text-muted-foreground">
-                  Try adjusting your filters or search query
-                </p>
-              </div>
-            ) : (
-              <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {filteredContent.map((item) => (
-                  <ContentCard
-                    key={item.id}
-                    content={item}
-                    onClick={() => handleContentClick(item)}
-                    onDelete={IS_LOCAL_DEV ? handleDeleteContent : undefined}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+                ) : (
+                  <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    {filteredContent.map((item) => (
+                      <ContentCard
+                        key={item.id}
+                        content={item}
+                        onClick={() => handleContentClick(item)}
+                        onDelete={showCuratorUi ? (id) => void handleDeleteContent(id) : undefined}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
         </main>
       </div>
 
@@ -258,11 +349,11 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
         onClose={handleCloseModal}
         onStartReading={handleStartReading}
       />
-      {IS_LOCAL_DEV && (
+      {showCuratorUi && (
         <DevUploadResourceModal
           open={uploadModalOpen}
           onClose={() => setUploadModalOpen(false)}
-          onPublish={handlePublishResource}
+          onPublish={(resource) => void handlePublishResource(resource)}
         />
       )}
     </>

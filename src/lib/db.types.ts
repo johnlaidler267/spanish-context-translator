@@ -1,6 +1,6 @@
 /**
  * TypeScript types mirroring the Supabase database schema.
- * Keep in sync with supabase/migrations/0001_subscription_management.sql.
+ * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql).
  *
  * Usage with the Supabase client:
  *   import { createClient } from '@supabase/supabase-js'
@@ -37,6 +37,12 @@ export type SubscriptionStatus =
 
 /** Mirrors the `invoice_status` SQL enum. */
 export type InvoiceStatus = "draft" | "open" | "paid" | "void" | "uncollectible"
+
+/** Mirrors `discover_content_type` (see supabase/migrations/0012_discover_catalog.sql). */
+export type DiscoverContentType = "book" | "article" | "song" | "poem"
+
+/** Mirrors `discover_difficulty`. */
+export type DiscoverDifficulty = "beginner" | "intermediate" | "advanced"
 
 // ─── Row types ────────────────────────────────────────────────────────────────
 
@@ -106,6 +112,29 @@ export interface BillingInvoiceRow {
   updated_at: string
 }
 
+/** Full database row from `public.discover_items`. */
+export interface DiscoverItemRow {
+  id: string
+  title: string
+  author: string
+  type: DiscoverContentType
+  difficulty: DiscoverDifficulty
+  word_count: number
+  language: string
+  cover_image: string
+  tags: string[]
+  preview: string
+  estimated_time: string
+  body_text: string
+  created_at: string
+  updated_at: string
+}
+
+/** Row from `public.discover_curators`. */
+export interface DiscoverCuratorRow {
+  user_id: string
+}
+
 // ─── Insert types (omit server-generated fields) ──────────────────────────────
 
 export type UserSubscriptionInsert = Omit<
@@ -123,11 +152,19 @@ export type BillingInvoiceInsert = Omit<
   "id" | "created_at" | "updated_at"
 >
 
+export type DiscoverItemInsert = Omit<
+  DiscoverItemRow,
+  "id" | "created_at" | "updated_at"
+> & { id?: string }
+
+export type DiscoverCuratorInsert = Pick<DiscoverCuratorRow, "user_id">
+
 // ─── Update types (all fields optional except id) ────────────────────────────
 
 export type UserSubscriptionUpdate = Partial<UserSubscriptionInsert>
 export type UsageRecordUpdate      = Partial<UsageRecordInsert>
 export type BillingInvoiceUpdate   = Partial<BillingInvoiceInsert>
+export type DiscoverItemUpdate     = Partial<Omit<DiscoverItemInsert, "id">>
 
 // ─── Supabase Database shape (pass to createClient<Database>) ────────────────
 
@@ -149,6 +186,16 @@ export interface Database {
         Insert: BillingInvoiceInsert
         Update: BillingInvoiceUpdate
       }
+      discover_items: {
+        Row:    DiscoverItemRow
+        Insert: DiscoverItemInsert
+        Update: DiscoverItemUpdate
+      }
+      discover_curators: {
+        Row:    DiscoverCuratorRow
+        Insert: DiscoverCuratorInsert
+        Update: Partial<DiscoverCuratorInsert>
+      }
     }
     Views: {
       active_subscriptions: {
@@ -156,10 +203,12 @@ export interface Database {
       }
     }
     Enums: {
-      plan_id:             TierId
-      billing_interval:    DbBillingInterval
-      subscription_status: SubscriptionStatus
-      invoice_status:      InvoiceStatus
+      plan_id:                 TierId
+      billing_interval:        DbBillingInterval
+      subscription_status:     SubscriptionStatus
+      invoice_status:          InvoiceStatus
+      discover_content_type:   DiscoverContentType
+      discover_difficulty:     DiscoverDifficulty
     }
   }
 }

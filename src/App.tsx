@@ -51,6 +51,7 @@ import {
   UsageError,
 } from "./lib/usage"
 import type { ContentItem } from "./lib/content-data"
+import { supabase } from "./lib/supabase"
 
 type AppState = "landing" | "loading" | "reading"
 
@@ -358,9 +359,19 @@ export default function App() {
 
   const handleDiscoverStartReading = useCallback(
     async (content: ContentItem) => {
-      const text = content.preview.trim()
-      if (!text) return
-      await handleTextSubmit(text)
+      const { data, error } = await supabase
+        .from("discover_items")
+        .select("body_text")
+        .eq("id", content.id)
+        .maybeSingle()
+      const body = data?.body_text?.trim() ?? ""
+      if (!error && body.length > 0) {
+        await handleTextSubmit(body)
+        return
+      }
+      const fallback = content.preview.trim()
+      if (!fallback) return
+      await handleTextSubmit(fallback)
     },
     [handleTextSubmit],
   )
