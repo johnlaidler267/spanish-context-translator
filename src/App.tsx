@@ -451,15 +451,17 @@ export default function App() {
   const landingHome = (
     <main className={`min-h-app bg-transparent ${viewportMain}`}>
       {appState === "loading" && <LoadingOverlay />}
-      <LandingScreen
-        draftText={typeof landingDraft === "string" ? landingDraft : ""}
-        onDraftChange={setLandingDraft}
-        onSubmit={handleTextSubmit}
-        isLoading={appState === "loading"}
-        theme={appTheme}
-        onThemeChange={setReadingTheme}
-        displayName={displayName}
-      />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <LandingScreen
+          draftText={typeof landingDraft === "string" ? landingDraft : ""}
+          onDraftChange={setLandingDraft}
+          onSubmit={handleTextSubmit}
+          isLoading={appState === "loading"}
+          theme={appTheme}
+          onThemeChange={setReadingTheme}
+          displayName={displayName}
+        />
+      </div>
       {error && (
         <AppErrorModal message={error} onDismiss={() => setError("")} />
       )}

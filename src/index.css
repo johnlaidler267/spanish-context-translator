@@ -318,6 +318,50 @@ html.lector-reading-session .global-corner-letter {
   }
 }
 
+/* Sidebar nav — selected: square frame with corner ticks (no full border) */
+.landing-sidebar-nav-active {
+  position: relative;
+  border-radius: 0;
+}
+.landing-sidebar-nav-active::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 0;
+  /* Do not use `background` shorthand — it can reset layer order vs Tailwind bg-card on the link. */
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--border), var(--border)),
+    linear-gradient(var(--border), var(--border)),
+    linear-gradient(var(--border), var(--border)),
+    linear-gradient(var(--border), var(--border)),
+    linear-gradient(var(--border), var(--border)),
+    linear-gradient(var(--border), var(--border)),
+    linear-gradient(var(--border), var(--border)),
+    linear-gradient(var(--border), var(--border));
+  background-size:
+    12px 1px,
+    1px 12px,
+    12px 1px,
+    1px 12px,
+    12px 1px,
+    1px 12px,
+    12px 1px,
+    1px 12px;
+  background-position:
+    0 0,
+    0 0,
+    100% 0,
+    100% 0,
+    0 100%,
+    0 100%,
+    100% 100%,
+    100% 100%;
+}
+
 /* Staggered page entry — same 200ms cap */
 .entry-1 { animation: fade-in-up 0.2s ease-out both; }
 .entry-2 { animation: fade-in-up 0.2s 0.04s ease-out both; }
