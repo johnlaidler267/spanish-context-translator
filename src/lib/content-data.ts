@@ -210,3 +210,25 @@ export const difficultyColors: Record<DifficultyLevel, string> = {
   intermediate: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   advanced: "bg-rose-500/20 text-rose-400 border-rose-500/30",
 }
+
+/** Short labels for type pills (featured grid, cards, preview). */
+export const contentTypeLabels: Record<ContentType, string> = {
+  book: "Book",
+  article: "Article",
+  song: "Song",
+  poem: "Poem",
+}
+
+/**
+ * Distinct but soft tints so types scan quickly on covers and in the modal.
+ */
+export const contentTypeBadgeClassNames: Record<ContentType, string> = {
+  book:
+    "border-amber-600/60 bg-amber-500/45 text-amber-950 shadow-sm dark:border-amber-400/60 dark:bg-amber-500/50 dark:text-amber-50",
+  article:
+    "border-sky-600/60 bg-sky-500/40 text-sky-950 shadow-sm dark:border-sky-400/60 dark:bg-sky-500/45 dark:text-sky-50",
+  song:
+    "border-violet-600/60 bg-violet-500/40 text-violet-950 shadow-sm dark:border-violet-400/60 dark:bg-violet-500/45 dark:text-violet-50",
+  poem:
+    "border-emerald-600/60 bg-emerald-500/40 text-emerald-950 shadow-sm dark:border-emerald-400/60 dark:bg-emerald-500/45 dark:text-emerald-50",
+}

@@ -104,6 +104,22 @@ html.lector-reading-session .global-corner-letter {
   display: none !important;
 }
 
+/* View Transitions API — route / UI snapshot cross-fades */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 0.25s;
+  animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms;
+  }
+}
+
 /* Article / read: page change enter (global so JIT/Tailwind cannot drop it) */
 @keyframes reading-page-enter {
   from {

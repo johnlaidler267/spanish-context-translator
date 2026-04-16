@@ -1,25 +1,11 @@
 "use client"
 
-import type { ReactNode } from "react"
-import { BookOpen, Clock, Feather, FileText, Music } from "lucide-react"
+import { Clock } from "lucide-react"
+import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/content-data"
+import type { ContentItem, DifficultyLevel } from "@/lib/content-data"
 import { difficultyColors } from "@/lib/content-data"
-
-const typeIcons: Record<ContentType, ReactNode> = {
-  book: <BookOpen className="size-4" />,
-  article: <FileText className="size-4" />,
-  song: <Music className="size-4" />,
-  poem: <Feather className="size-4" />,
-}
-
-const typeLabels: Record<ContentType, string> = {
-  book: "Book",
-  article: "Article",
-  song: "Song",
-  poem: "Poem",
-}
 
 const difficultyLabels: Record<DifficultyLevel, string> = {
   beginner: "Beginner",
@@ -35,7 +21,7 @@ interface ContentCardProps {
 export function ContentCard({ content, onClick }: ContentCardProps) {
   return (
     <Card
-      className="group cursor-pointer overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/50 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5"
+      className="group cursor-pointer overflow-hidden rounded-xl border border-border bg-card/70 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:bg-card hover:shadow-md hover:shadow-primary/5"
       onClick={onClick}
     >
       <div className="relative aspect-[3/4] overflow-hidden">
@@ -46,12 +32,9 @@ export function ContentCard({ content, onClick }: ContentCardProps) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
 
-        <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
-          {typeIcons[content.type]}
-          <span>{typeLabels[content.type]}</span>
-        </div>
+        <ContentTypeBadge type={content.type} size="sm" className="absolute left-4 top-4" />
 
-        <div className="absolute bottom-3 left-3 right-3">
+        <div className="absolute bottom-4 left-4 right-4">
           <Badge
             variant="outline"
             className={`${difficultyColors[content.difficulty]} border text-xs`}
@@ -61,25 +44,25 @@ export function ContentCard({ content, onClick }: ContentCardProps) {
         </div>
       </div>
 
-      <CardContent className="p-4">
-        <h3 className="mb-1 line-clamp-1 font-serif font-bold text-foreground transition-colors group-hover:text-primary">
+      <CardContent className="p-5 sm:p-6">
+        <h3 className="mb-1.5 line-clamp-1 font-serif font-bold text-black transition-colors group-hover:text-primary dark:text-foreground">
           {content.title}
         </h3>
-        <p className="mb-3 font-reading text-sm text-muted-foreground">{content.author}</p>
+        <p className="mb-4 font-reading text-sm text-black dark:text-muted-foreground">{content.author}</p>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Clock className="size-3" />
+        <div className="flex items-center justify-between gap-3 text-xs text-black dark:text-muted-foreground">
+          <span className="flex min-w-0 items-center gap-1">
+            <Clock className="size-3 shrink-0" />
             {content.estimatedTime}
           </span>
-          <span>{content.wordCount.toLocaleString()} words</span>
+          <span className="shrink-0 tabular-nums">{content.wordCount.toLocaleString()} words</span>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-wrap gap-1.5">
           {content.tags.slice(0, 2).map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+              className="rounded-full border border-border/70 bg-muted px-2 py-0.5 text-xs font-medium text-black dark:text-foreground"
             >
               {tag}
             </span>

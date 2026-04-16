@@ -1,16 +1,7 @@
 "use client"
 
-import type { ReactNode } from "react"
-import {
-  BookMarked,
-  BookOpen,
-  Clock,
-  Feather,
-  FileText,
-  Globe,
-  Music,
-  X,
-} from "lucide-react"
+import { BookMarked, Clock, Globe, X } from "lucide-react"
+import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,22 +12,8 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/content-data"
+import type { ContentItem, DifficultyLevel } from "@/lib/content-data"
 import { difficultyColors } from "@/lib/content-data"
-
-const typeIcons: Record<ContentType, ReactNode> = {
-  book: <BookOpen className="size-5" />,
-  article: <FileText className="size-5" />,
-  song: <Music className="size-5" />,
-  poem: <Feather className="size-5" />,
-}
-
-const typeLabels: Record<ContentType, string> = {
-  book: "Book",
-  article: "Article",
-  song: "Song Lyrics",
-  poem: "Poem",
-}
 
 const difficultyLabels: Record<DifficultyLevel, string> = {
   beginner: "Beginner",
@@ -79,10 +56,7 @@ export function ContentPreviewModal({ content, open, onClose }: ContentPreviewMo
 
           <div className="absolute bottom-4 left-6 right-6">
             <div className="mb-2 flex items-center gap-2">
-              <div className="flex items-center gap-1.5 rounded-full bg-primary/20 px-3 py-1 text-sm font-medium text-primary">
-                {typeIcons[content.type]}
-                <span>{typeLabels[content.type]}</span>
-              </div>
+              <ContentTypeBadge type={content.type} size="md" />
               <Badge
                 variant="outline"
                 className={`${difficultyColors[content.difficulty]} border`}
@@ -118,7 +92,7 @@ export function ContentPreviewModal({ content, open, onClose }: ContentPreviewMo
             {content.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground"
+                className="rounded-full border border-border/70 bg-muted px-3 py-1 text-sm font-medium text-foreground"
               >
                 {tag}
               </span>
