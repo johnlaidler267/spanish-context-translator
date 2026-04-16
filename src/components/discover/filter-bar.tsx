@@ -73,13 +73,13 @@ export function FilterBar({
           placeholder="Search content..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="rounded-none border border-border/70 bg-secondary/50 pl-10 text-black placeholder:text-black/50 shadow-sm transition-colors focus-visible:border-primary/70 dark:text-foreground dark:placeholder:text-muted-foreground"
+          className="rounded-none border border-border/70 bg-secondary/50 pl-10 text-black placeholder:text-black/50 shadow-sm transition-colors focus-visible:border-primary/70 dark:text-foreground dark:placeholder:text-zinc-500"
         />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <div
-          className="inline-flex h-10 flex-wrap items-center gap-1 rounded-none border border-[#d8d1ca] bg-[#e9e4de]/95 p-1 shadow-[0_1px_2px_rgba(44,34,28,0.08)] dark:border-border dark:bg-secondary/40 dark:shadow-sm"
+          className="inline-flex h-10 flex-wrap items-center gap-1 rounded-none border border-[#d8d1ca] bg-[#e9e4de]/95 p-1 shadow-[0_1px_2px_rgba(44,34,28,0.08)] dark:border-[#4c4640] dark:bg-[#2a2724] dark:shadow-sm"
           role="group"
           aria-label="Content type"
         >
@@ -96,8 +96,8 @@ export function FilterBar({
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   "active:scale-[0.98]",
                   selected
-                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20"
-                    : "border border-transparent bg-transparent text-[#6f625a] hover:bg-background/75 hover:text-[#3b2f2a] dark:text-muted-foreground dark:hover:text-foreground",
+                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20 dark:text-white"
+                    : "border border-transparent bg-transparent text-[#6f625a] hover:bg-background/75 hover:text-[#3b2f2a] dark:text-white dark:hover:bg-white/10 dark:hover:text-white",
                 )}
               >
                 {icon}
@@ -113,7 +113,7 @@ export function FilterBar({
               type="button"
               variant="outline"
               size="sm"
-              className="h-10 gap-2 rounded-none border-[#d8d1ca] px-3 bg-[#f0ece7] text-[#2f2520] shadow-[0_1px_2px_rgba(44,34,28,0.08)] hover:bg-[#f5f1ed] dark:border-border/50 dark:bg-background dark:text-foreground dark:hover:bg-background/90"
+              className="h-10 gap-2 rounded-none border-[#d8d1ca] bg-[#f0ece7] px-3 text-[#2f2520] shadow-[0_1px_2px_rgba(44,34,28,0.08)] hover:bg-[#f5f1ed] dark:border-[#4c4640] dark:bg-[#2a2724] dark:text-white dark:hover:bg-[#34312d] dark:hover:text-white"
             >
               <SlidersHorizontal className="size-4" />
               <span className="hidden sm:inline">Difficulty</span>
