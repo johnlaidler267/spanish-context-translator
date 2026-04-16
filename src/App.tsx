@@ -49,6 +49,7 @@ import {
   type UsageLimits,
   UsageError,
 } from "./lib/usage"
+import type { ContentItem } from "./lib/content-data"
 
 type AppState = "landing" | "loading" | "reading"
 
@@ -354,6 +355,15 @@ export default function App() {
     [user, bump, articlePageSplitLimits, refreshUsagePreflight],
   )
 
+  const handleDiscoverStartReading = useCallback(
+    async (content: ContentItem) => {
+      const text = content.preview.trim()
+      if (!text) return
+      await handleTextSubmit(text)
+    },
+    [handleTextSubmit],
+  )
+
   const handleBack = useCallback(() => {
     setAppState("landing")
     setSourcePages([])
@@ -452,7 +462,6 @@ export default function App() {
 
   const landingIndexElement = (
     <main className={`min-h-app bg-transparent ${viewportMain}`}>
-      {appState === "loading" && <LoadingOverlay />}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <LandingScreen
           draftText={typeof landingDraft === "string" ? landingDraft : ""}
@@ -634,6 +643,7 @@ export default function App() {
 
   return (
     <>
+      {appState === "loading" && <LoadingOverlay />}
       {!IS_LOCAL_DEV && isLapsed && !popupDismissed && (
         <SubscriptionLapsedModal
           onDismiss={dismissLapsedModalAndGoHome}
@@ -655,7 +665,10 @@ export default function App() {
             }
           >
             <Route path="/" element={landingIndexElement} />
-            <Route path="/discover" element={<DiscoverPage />} />
+            <Route
+              path="/discover"
+              element={<DiscoverPage onStartReading={handleDiscoverStartReading} />}
+            />
           </Route>
         ) : (
           <Route path="/" element={readingHome} />

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 
 const MESSAGES = [
   "Analyzing your text…",
@@ -68,10 +69,20 @@ function barWidthAtKeyframeProgress(p: number): number {
   return 92
 }
 
-export function LoadingOverlay() {
+type LoadingOverlayProps = {
+  withBackdrop?: boolean
+}
+
+export function LoadingOverlay({ withBackdrop = true }: LoadingOverlayProps) {
   const [msgIndex, setMsgIndex] = useState(0)
   const [visible, setVisible] = useState(true)
   const [barWidth, setBarWidth] = useState(0)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
 
   useEffect(() => {
     const start = performance.now()
@@ -100,8 +111,14 @@ export function LoadingOverlay() {
     return () => clearInterval(id)
   }, [])
 
-  return (
-    <div className="fixed inset-0 bg-background/85 backdrop-blur-sm z-50 flex items-center justify-center">
+  const wrapperClasses = withBackdrop
+    ? "fixed inset-0 z-[60] flex items-center justify-center bg-background/85 backdrop-blur-sm"
+    : "fixed inset-0 z-[60] pointer-events-none flex items-center justify-center"
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div className={wrapperClasses}>
       <div className="flex flex-col items-center gap-5 w-48">
 
         <p
@@ -132,6 +149,7 @@ export function LoadingOverlay() {
         </p>
 
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

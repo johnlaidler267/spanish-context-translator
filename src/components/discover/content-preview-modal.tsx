@@ -25,9 +25,15 @@ interface ContentPreviewModalProps {
   content: ContentItem | null
   open: boolean
   onClose: () => void
+  onStartReading: (content: ContentItem) => void
 }
 
-export function ContentPreviewModal({ content, open, onClose }: ContentPreviewModalProps) {
+export function ContentPreviewModal({
+  content,
+  open,
+  onClose,
+  onStartReading,
+}: ContentPreviewModalProps) {
   if (!content) return null
 
   return (
@@ -113,7 +119,7 @@ export function ContentPreviewModal({ content, open, onClose }: ContentPreviewMo
           </div>
 
           <div className="flex gap-3">
-            <Button className="flex-1" size="lg">
+            <Button className="flex-1" size="lg" onClick={() => onStartReading(content)}>
               Start Reading
             </Button>
             <Button variant="outline" size="lg">

@@ -16,7 +16,11 @@ import {
   type DifficultyLevel,
 } from "@/lib/content-data"
 
-export default function DiscoverPage() {
+type DiscoverPageProps = {
+  onStartReading: (content: ContentItem) => Promise<void> | void
+}
+
+export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const IS_LOCAL_DEV = import.meta.env.DEV
   const navigate = useNavigate()
   const { registerNewChat } = useLandingShellNewChat()
@@ -75,6 +79,10 @@ export default function DiscoverPage() {
 
   const handleDeleteContent = (contentId: string) => {
     setDiscoverItems((currentItems) => currentItems.filter((item) => item.id !== contentId))
+  }
+
+  const handleStartReading = (content: ContentItem) => {
+    void onStartReading(content)
   }
 
   const featuredContent = discoverItems.slice(0, 3)
@@ -195,6 +203,7 @@ export default function DiscoverPage() {
         content={selectedContent}
         open={modalOpen}
         onClose={handleCloseModal}
+        onStartReading={handleStartReading}
       />
     </>
   )
