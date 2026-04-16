@@ -426,7 +426,7 @@ ETC.
 
 For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUTELY NECESSARY to GROUP with its NEIGHBOR?
 
-FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering (even if unnatural), "n": tricky grammar help: omit if obvious}
+FORMAT: {"c": exact source substring, "m": English meaning, "l": dictionary translation of the chunk (even if unnatural)}
 
 Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
 
@@ -1107,6 +1107,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     )
   }
   const raw = combineAssistantPayloadsForChunkParse(data)
+  console.log("[translatePageText] final LLM reply:", raw)
   const parsed = extractChunkJsonArrayFromText(raw)
   const merged = postProcessChunks(parsed)
   const chunks: RawChunk[] = []
