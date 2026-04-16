@@ -22,7 +22,7 @@ interface ContentCardProps {
 export function ContentCard({ content, onClick, onDelete }: ContentCardProps) {
   return (
     <Card
-      className="group cursor-pointer overflow-hidden rounded-xl border-2 border-border/80 bg-card/70 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/55 hover:bg-card hover:shadow-md hover:shadow-primary/5"
+      className="group cursor-pointer overflow-hidden rounded-none border-2 border-border/80 bg-card/70 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/55 hover:bg-card hover:shadow-md hover:shadow-primary/5"
       onClick={onClick}
     >
       <div className="relative aspect-[3/4] overflow-hidden">

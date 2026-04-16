@@ -89,8 +89,8 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-background font-sans dark:bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(176,107,86,0.2)_0%,rgba(26,26,26,0)_56%),linear-gradient(to_bottom,rgba(34,34,32,0.58)_0%,rgba(26,26,26,1)_72%)]">
-        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(201,122,90,0.16)_0%,rgba(247,243,238,0)_56%),linear-gradient(to_bottom,rgba(240,235,228,0.72)_0%,rgba(247,243,238,1)_72%)] font-sans dark:bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(176,107,86,0.2)_0%,rgba(26,26,26,0)_56%),linear-gradient(to_bottom,rgba(34,34,32,0.58)_0%,rgba(26,26,26,1)_72%)]">
+        <main className="mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(5rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-8 lg:px-8">
           <div className="mb-10 md:mb-12">
             <h1 className="font-serif text-3xl font-bold tracking-tight text-black md:text-4xl dark:text-foreground">
               Discover
@@ -112,7 +112,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                 <div
                   key={item.id}
                   onClick={() => handleContentClick(item)}
-                  className="group relative cursor-pointer overflow-hidden rounded-2xl"
+                  className="group relative cursor-pointer overflow-hidden rounded-none"
                 >
                   <div className="aspect-[16/9] overflow-hidden">
                     <img

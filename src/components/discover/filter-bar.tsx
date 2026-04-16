@@ -79,7 +79,7 @@ export function FilterBar({
 
       <div className="flex flex-wrap items-center gap-2">
         <div
-          className="inline-flex flex-wrap gap-1 rounded-xl border border-border bg-secondary/40 p-1 shadow-sm"
+          className="inline-flex h-10 flex-wrap items-center gap-1 rounded-none border border-[#d8d1ca] bg-[#e9e4de]/95 p-1 shadow-[0_1px_2px_rgba(44,34,28,0.08)] dark:border-border dark:bg-secondary/40 dark:shadow-sm"
           role="group"
           aria-label="Content type"
         >
@@ -92,12 +92,12 @@ export function FilterBar({
                 aria-pressed={selected}
                 onClick={() => toggleType(type)}
                 className={cn(
-                  "inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium transition-all duration-150",
+                  "inline-flex h-full items-center gap-1.5 rounded-none px-2 py-1 text-sm font-medium transition-all duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   "active:scale-[0.98]",
                   selected
                     ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20"
-                    : "border border-border/60 bg-background/80 text-black shadow-sm hover:border-border hover:bg-background hover:text-black hover:shadow dark:text-muted-foreground dark:hover:text-foreground",
+                    : "border border-transparent bg-transparent text-[#6f625a] hover:bg-background/75 hover:text-[#3b2f2a] dark:text-muted-foreground dark:hover:text-foreground",
                 )}
               >
                 {icon}
@@ -113,7 +113,7 @@ export function FilterBar({
               type="button"
               variant="outline"
               size="sm"
-              className="gap-2 border-border/50 text-black dark:text-foreground"
+              className="h-10 gap-2 rounded-none border-[#d8d1ca] px-3 bg-[#f0ece7] text-[#2f2520] shadow-[0_1px_2px_rgba(44,34,28,0.08)] hover:bg-[#f5f1ed] dark:border-border/50 dark:bg-background dark:text-foreground dark:hover:bg-background/90"
             >
               <SlidersHorizontal className="size-4" />
               <span className="hidden sm:inline">Difficulty</span>
