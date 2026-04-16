@@ -2,11 +2,16 @@
 
 import { useEffect, useLayoutEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Compass, Sparkles, Trash2 } from "lucide-react"
+import { Compass, Plus, Sparkles, Trash2 } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing-shell-layout"
 import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { ContentPreviewModal } from "@/components/discover/content-preview-modal"
+import {
+  DevUploadResourceModal,
+  type DevResourceUpload,
+} from "@/components/discover/dev-upload-resource-modal"
 import { FilterBar } from "@/components/discover/filter-bar"
+import { Button } from "@/components/ui/button"
 import { ContentCard } from "@/pages/discover/content-card"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import {
@@ -31,6 +36,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const [selectedDifficulties, setSelectedDifficulties] = useState<DifficultyLevel[]>([])
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
 
   useEffect(() => {
     beginRouteTransition(560)
@@ -85,19 +91,62 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     void onStartReading(content)
   }
 
+  const handlePublishResource = (resource: DevResourceUpload) => {
+    const estimatedMinutes = Math.max(1, Math.ceil(resource.wordCount / 200))
+    const estimatedTime =
+      estimatedMinutes >= 60 ? `${Math.ceil(estimatedMinutes / 60)} hours` : `${estimatedMinutes} min`
+    const difficulty: DifficultyLevel =
+      resource.wordCount < 400 ? "beginner" : resource.wordCount < 1800 ? "intermediate" : "advanced"
+    const defaultTag = resource.type[0].toUpperCase() + resource.type.slice(1)
+    const normalizedTags = resource.tags.length > 0 ? resource.tags : [defaultTag]
+    const preview = resource.text.slice(0, 800)
+
+    const newItem: ContentItem = {
+      id: `dev-${Date.now()}`,
+      title: resource.title,
+      author: resource.author,
+      type: resource.type,
+      difficulty,
+      wordCount: resource.wordCount,
+      language: resource.language,
+      coverImage:
+        resource.coverImage ??
+        "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=600&fit=crop",
+      tags: normalizedTags,
+      preview,
+      estimatedTime,
+    }
+
+    setDiscoverItems((currentItems) => [newItem, ...currentItems])
+    setSelectedContent(newItem)
+    setModalOpen(true)
+  }
+
   const featuredContent = discoverItems.slice(0, 3)
 
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(201,122,90,0.16)_0%,rgba(247,243,238,0)_56%),linear-gradient(to_bottom,rgba(240,235,228,0.72)_0%,rgba(247,243,238,1)_72%)] font-sans dark:bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(176,107,86,0.2)_0%,rgba(26,26,26,0)_56%),linear-gradient(to_bottom,rgba(34,34,32,0.58)_0%,rgba(26,26,26,1)_72%)]">
         <main className="mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(5rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-8 lg:px-8">
-          <div className="mb-10 md:mb-12">
-            <h1 className="font-serif text-3xl font-bold tracking-tight text-black md:text-4xl dark:text-foreground">
-              Discover
-            </h1>
-            <p className="mt-2 font-sans text-base leading-relaxed text-black md:text-lg dark:text-muted-foreground">
-              Browse books, articles, songs, and poems matched to your level.
-            </p>
+          <div className="mb-10 flex items-start justify-between gap-4 md:mb-12">
+            <div>
+              <h1 className="font-serif text-3xl font-bold tracking-tight text-black md:text-4xl dark:text-foreground">
+                Discover
+              </h1>
+              <p className="mt-2 font-sans text-base leading-relaxed text-black md:text-lg dark:text-muted-foreground">
+                Browse books, articles, songs, and poems matched to your level.
+              </p>
+            </div>
+            {IS_LOCAL_DEV && (
+              <Button
+                variant="outline"
+                className="shrink-0 rounded-none"
+                onClick={() => setUploadModalOpen(true)}
+              >
+                <Plus className="mr-2 size-4" />
+                Upload Resource
+              </Button>
+            )}
           </div>
 
           <section className="mb-12">
@@ -209,6 +258,13 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
         onClose={handleCloseModal}
         onStartReading={handleStartReading}
       />
+      {IS_LOCAL_DEV && (
+        <DevUploadResourceModal
+          open={uploadModalOpen}
+          onClose={() => setUploadModalOpen(false)}
+          onPublish={handlePublishResource}
+        />
+      )}
     </>
   )
 }
