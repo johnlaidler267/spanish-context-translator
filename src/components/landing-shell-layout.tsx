@@ -48,7 +48,7 @@ export function LandingShellLayout({
   const outletContext: LandingShellOutletContext = { registerNewChat }
 
   return (
-    <div className="landing-route-shell landing-route-enter relative z-10 flex min-h-0 min-w-0 w-full flex-1 flex-row max-md:min-h-0 max-md:flex-1">
+    <div className="landing-route-shell landing-route-enter relative z-10 flex h-[100dvh] min-h-0 min-w-0 w-full flex-1 flex-row overflow-hidden max-md:min-h-0 max-md:flex-1">
       <LandingSidebar
         mobileOpen={mobileSidebarOpen}
         onMobileOpenChange={setMobileSidebarOpen}

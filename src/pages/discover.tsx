@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Compass, Sparkles } from "lucide-react"
+import { Compass, Sparkles, Trash2 } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing-shell-layout"
 import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { ContentPreviewModal } from "@/components/discover/content-preview-modal"
@@ -17,9 +17,11 @@ import {
 } from "@/lib/content-data"
 
 export default function DiscoverPage() {
+  const IS_LOCAL_DEV = import.meta.env.DEV
   const navigate = useNavigate()
   const { registerNewChat } = useLandingShellNewChat()
 
+  const [discoverItems, setDiscoverItems] = useState<ContentItem[]>(() => contentItems)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTypes, setSelectedTypes] = useState<ContentType[]>([])
   const [selectedDifficulties, setSelectedDifficulties] = useState<DifficultyLevel[]>([])
@@ -37,8 +39,16 @@ export default function DiscoverPage() {
     return () => registerNewChat(null)
   }, [navigate, registerNewChat])
 
+  useEffect(() => {
+    if (!selectedContent) return
+    const stillExists = discoverItems.some((item) => item.id === selectedContent.id)
+    if (stillExists) return
+    setModalOpen(false)
+    setSelectedContent(null)
+  }, [discoverItems, selectedContent])
+
   const filteredContent = useMemo(() => {
-    return contentItems.filter((item) => {
+    return discoverItems.filter((item) => {
       const matchesSearch =
         searchQuery === "" ||
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -51,7 +61,7 @@ export default function DiscoverPage() {
 
       return matchesSearch && matchesType && matchesDifficulty
     })
-  }, [searchQuery, selectedTypes, selectedDifficulties])
+  }, [discoverItems, searchQuery, selectedTypes, selectedDifficulties])
 
   const handleContentClick = (content: ContentItem) => {
     setSelectedContent(content)
@@ -63,7 +73,11 @@ export default function DiscoverPage() {
     setTimeout(() => setSelectedContent(null), 200)
   }
 
-  const featuredContent = contentItems.slice(0, 3)
+  const handleDeleteContent = (contentId: string) => {
+    setDiscoverItems((currentItems) => currentItems.filter((item) => item.id !== contentId))
+  }
+
+  const featuredContent = discoverItems.slice(0, 3)
 
   return (
     <>
@@ -110,6 +124,19 @@ export default function DiscoverPage() {
                     className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background from-0% via-background/55 via-[34%] to-transparent to-[92%] dark:via-background/50"
                   />
                   <div className="absolute bottom-0 left-0 right-0 px-6 pb-7 pt-12 sm:px-7 sm:pb-8 sm:pt-14">
+                    {IS_LOCAL_DEV && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleDeleteContent(item.id)
+                        }}
+                        className="absolute right-6 top-4 rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive sm:right-7"
+                        aria-label={`Delete ${item.title}`}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
                     <ContentTypeBadge type={item.type} size="sm" className="mb-2" />
                     <h3 className="mb-1 font-serif text-lg font-bold text-black dark:text-neutral-100">
                       {item.title}
@@ -155,6 +182,7 @@ export default function DiscoverPage() {
                     key={item.id}
                     content={item}
                     onClick={() => handleContentClick(item)}
+                    onDelete={IS_LOCAL_DEV ? handleDeleteContent : undefined}
                   />
                 ))}
               </div>
