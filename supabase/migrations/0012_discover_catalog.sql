@@ -16,6 +16,17 @@ create type public.discover_difficulty as enum (
   'advanced'
 );
 
+-- Same definition as 0001_subscription_management.sql (needed if 0012 runs alone).
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
 -- Curators: insert your auth.users id via SQL editor (see plan).
 create table public.discover_curators (
   user_id uuid primary key references auth.users (id) on delete cascade
