@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { ChevronsUpDown, Loader2 } from "lucide-react"
+import { ChevronsUpDown, Loader2, User } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useSubscriptionOptional } from "@/contexts/subscription-context"
 import { supabase } from "@/lib/supabase"
@@ -58,8 +58,9 @@ export function LandingSidebarProfile({
     }
   }, [user?.id, user?.is_anonymous, ctxStatus])
 
-  const initial =
-    (displayName.trim().charAt(0) || user?.email?.charAt(0) || "?").toUpperCase()
+  const letterInitial = user
+    ? (displayName.trim().charAt(0) || user.email?.charAt(0) || "?").toUpperCase()
+    : null
 
   const titleName = user
     ? displayName.trim() || (user.email?.split("@")[0] ?? "Account")
@@ -71,7 +72,7 @@ export function LandingSidebarProfile({
       return (
         <button
           type="button"
-          className="max-w-full truncate text-left text-[11px] leading-snug text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
+          className="max-w-full truncate text-left text-[11px] leading-tight text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
           onClick={() => {
             openAuthModal()
             onNavigate()
@@ -110,7 +111,9 @@ export function LandingSidebarProfile({
             aria-label="Settings"
             onClick={onNavigate}
           >
-            {initial}
+            {letterInitial ?? (
+              <User className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+            )}
           </Link>
         </div>
       </div>
@@ -126,11 +129,13 @@ export function LandingSidebarProfile({
           aria-label="Account and settings"
           onClick={onNavigate}
         >
-          {initial}
+          {letterInitial ?? (
+            <User className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+          )}
         </Link>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-tight text-foreground">{titleName}</p>
-          <div className="mt-0.5">{planLine}</div>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="truncate text-sm font-semibold leading-none text-foreground">{titleName}</p>
+          {planLine}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <Link

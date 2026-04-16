@@ -66,7 +66,7 @@ export function LandingSidebar({
 
   const pathname = location.pathname
   const homeActive = pathname === "/"
-  const discoverActive = pathname === "/upgrade"
+  const discoverActive = pathname === "/discover"
   const libraryActive = pathname.startsWith("/settings")
 
   useEffect(() => {
@@ -198,7 +198,7 @@ export function LandingSidebar({
           {!compactRail ? <span className="truncate">Home</span> : null}
         </Link>
         <Link
-          to="/upgrade"
+          to="/discover"
           className={navItemClass(discoverActive)}
           onClick={() => !isMdUp && onMobileOpenChange(false)}
         >
