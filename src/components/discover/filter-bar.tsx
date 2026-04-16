@@ -63,13 +63,17 @@ export function FilterBar({
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="relative max-w-md flex-1">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-black/70 dark:text-muted-foreground" />
+      <div className="relative max-w-md flex-1 overflow-visible">
+        <span className="corner corner-tl" aria-hidden />
+        <span className="corner corner-tr" aria-hidden />
+        <span className="corner corner-bl" aria-hidden />
+        <span className="corner corner-br" aria-hidden />
+        <Search className="pointer-events-none absolute left-3 top-1/2 z-20 size-4 -translate-y-1/2 text-black/70 dark:text-muted-foreground" />
         <Input
           placeholder="Search content..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="rounded-lg border border-border bg-secondary/50 pl-10 text-black placeholder:text-black/50 shadow-sm transition-colors focus-visible:border-primary/70 dark:text-foreground dark:placeholder:text-muted-foreground"
+          className="rounded-none border border-border/70 bg-secondary/50 pl-10 text-black placeholder:text-black/50 shadow-sm transition-colors focus-visible:border-primary/70 dark:text-foreground dark:placeholder:text-muted-foreground"
         />
       </div>
 

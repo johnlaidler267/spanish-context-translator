@@ -22,7 +22,7 @@ interface ContentCardProps {
 export function ContentCard({ content, onClick, onDelete }: ContentCardProps) {
   return (
     <Card
-      className="group cursor-pointer overflow-hidden rounded-xl border border-border bg-card/70 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:bg-card hover:shadow-md hover:shadow-primary/5"
+      className="group cursor-pointer overflow-hidden rounded-xl border-2 border-border/80 bg-card/70 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/55 hover:bg-card hover:shadow-md hover:shadow-primary/5"
       onClick={onClick}
     >
       <div className="relative aspect-[3/4] overflow-hidden">
@@ -59,10 +59,12 @@ export function ContentCard({ content, onClick, onDelete }: ContentCardProps) {
       </div>
 
       <CardContent className="p-5 sm:p-6">
-        <h3 className="mb-1.5 line-clamp-1 font-serif font-bold text-black transition-colors group-hover:text-primary dark:text-foreground">
+        <h3 className="mb-2 line-clamp-2 font-serif text-lg font-semibold leading-snug text-black transition-colors group-hover:text-primary dark:text-foreground">
           {content.title}
         </h3>
-        <p className="mb-4 font-reading text-sm text-black dark:text-muted-foreground">{content.author}</p>
+        <p className="mb-4 font-serif text-xs font-normal italic text-black/80 dark:text-muted-foreground">
+          {content.author}
+        </p>
 
         <div className="flex items-center justify-between gap-3 text-xs text-black dark:text-muted-foreground">
           <span className="flex min-w-0 items-center gap-1">

@@ -89,13 +89,13 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-background font-sans">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-background font-sans dark:bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(176,107,86,0.2)_0%,rgba(26,26,26,0)_56%),linear-gradient(to_bottom,rgba(34,34,32,0.58)_0%,rgba(26,26,26,1)_72%)]">
         <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-10 md:mb-12">
-            <h1 className="wordmark font-serif text-3xl font-semibold tracking-tight text-black md:text-4xl md:font-bold">
+            <h1 className="font-serif text-3xl font-bold tracking-tight text-black md:text-4xl dark:text-foreground">
               Discover
             </h1>
-            <p className="mt-2 font-reading text-base leading-relaxed text-black md:text-lg dark:text-muted-foreground">
+            <p className="mt-2 font-sans text-base leading-relaxed text-black md:text-lg dark:text-muted-foreground">
               Browse books, articles, songs, and poems matched to your level.
             </p>
           </div>
@@ -103,7 +103,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
           <section className="mb-12">
             <div className="mb-6 flex items-center gap-2">
               <Sparkles className="size-5 shrink-0 text-accent/80" />
-              <h2 className="font-reading text-base font-medium tracking-wide text-black md:text-lg dark:text-muted-foreground">
+              <h2 className="font-serif text-base font-semibold tracking-wide text-black md:text-lg dark:text-muted-foreground">
                 Featured for You
               </h2>
             </div>
@@ -145,11 +145,13 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                         <Trash2 className="size-3.5" />
                       </button>
                     )}
-                    <ContentTypeBadge type={item.type} size="sm" className="mb-2" />
-                    <h3 className="mb-1 font-serif text-lg font-bold text-black dark:text-neutral-100">
+                    <ContentTypeBadge type={item.type} size="sm" className="mb-3" />
+                    <h3 className="mb-1.5 font-serif text-lg font-bold leading-snug text-black dark:text-neutral-100">
                       {item.title}
                     </h3>
-                    <p className="font-reading text-sm text-black dark:text-neutral-200">{item.author}</p>
+                    <p className="font-serif text-xs font-normal italic text-black/90 dark:text-neutral-200">
+                      {item.author}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -158,7 +160,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
 
           <section>
             <div className="mb-6">
-              <h2 className="mb-4 font-reading text-lg font-semibold tracking-wide text-black md:text-xl dark:text-muted-foreground">
+              <h2 className="mb-4 font-serif text-lg font-semibold tracking-wide text-black md:text-xl dark:text-muted-foreground">
                 Browse All Content
               </h2>
               <FilterBar
@@ -176,7 +178,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                 <div className="mb-4 rounded-full bg-secondary p-4">
                   <Compass className="size-8 text-black dark:text-muted-foreground" />
                 </div>
-                <h3 className="mb-2 font-reading text-lg font-medium text-black dark:text-foreground">
+                <h3 className="mb-2 font-serif text-lg font-semibold text-black dark:text-foreground">
                   No content found
                 </h3>
                 <p className="font-reading text-sm text-black dark:text-muted-foreground">

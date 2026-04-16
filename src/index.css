@@ -474,8 +474,9 @@ article span {
   color: rgba(200, 196, 188, 0.42);
 }
 .dark .corner {
-  border-color: rgba(200, 195, 185, 0.38);
-  opacity: 0.65;
+  /* Keep corner ticks clearly visible over lighter dark-mode input surfaces. */
+  border-color: rgba(201, 122, 90, 0.9);
+  opacity: 0.95;
 }
 .dark .dice-btn {
   color: rgba(210, 206, 198, 0.55);
