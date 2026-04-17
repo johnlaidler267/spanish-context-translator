@@ -48,13 +48,12 @@ import { PaymentErrorBanner } from "@/components/payment-error-banner"
  * Only monthly-accumulating metrics make sense here — per-request limits
  * are shown separately as plan facts, not progress.
  */
-const MONTHLY_BAR_METRICS: UsageMetric[] = ["texts_submitted"]
+const MONTHLY_BAR_METRICS: UsageMetric[] = ["texts_submitted", "chars_processed_period"]
 
 /**
  * Daily-rate metrics shown as progress bars only when the tier has a cap.
- * Currently only the free tier has a daily text limit.
  */
-const DAILY_BAR_METRICS: UsageMetric[] = ["texts_submitted_today"]
+const DAILY_BAR_METRICS: UsageMetric[] = ["texts_submitted_today", "chars_processed_today"]
 
 /** Per-request limits shown as plain facts ("up to X per submission"). */
 const PER_REQUEST_FACTS: { metric: UsageMetric; label: string }[] = [

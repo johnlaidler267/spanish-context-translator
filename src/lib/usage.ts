@@ -27,6 +27,8 @@ export type UsageMetric =
   | "chunks_returned"
   | "pages_processed"
   | "chars_processed"
+  | "chars_processed_period" // billing-period total (same DB column as chars_processed)
+  | "chars_processed_today"  // UTC daily (DB chars_today)
   | "api_calls"
   | "voice_requests"
   // ↓ Add new metrics here (mirror in _shared/usage-metrics.ts)
@@ -45,6 +47,14 @@ export const METRIC_CONFIG: Record<UsageMetric, MetricConfig> = {
   chunks_returned:       { label: "Chunks returned",       limitKey: "chunksPerRequest"   },
   pages_processed:       { label: "Pages processed",       limitKey: "pagesPerSubmission" },
   chars_processed:       { label: "Characters processed",  limitKey: "charsPerSubmission" },
+  chars_processed_period: {
+    label:   "Characters this billing period",
+    limitKey: "charsPerMonth",
+  },
+  chars_processed_today: {
+    label:   "Characters today (UTC)",
+    limitKey: "charsPerDay",
+  },
   api_calls:             { label: "API calls",             limitKey: null                 },
   voice_requests:        { label: "Voice requests",        limitKey: null                 },
 }
@@ -74,6 +84,21 @@ export function formatPlanLimitModal(blocked: UsageMetric[]): { title: string; m
       message:
         `You've reached your plan limit for: ${period.map(metricLabel).join(", ")}. ` +
         `This submission also exceeds your plan's allowance for: ${perSub.map(metricLabel).join(", ")}.`,
+    }
+  }
+
+  if (period.length === 1 && period[0] === "chars_processed_period") {
+    return {
+      title: "Plan limit reached",
+      message:
+        "You've reached the fair-use character limit for this billing period. It resets when your subscription renews.",
+    }
+  }
+  if (period.length === 1 && period[0] === "chars_processed_today") {
+    return {
+      title: "Plan limit reached",
+      message:
+        "You've reached today's fair-use character limit (UTC). Try again tomorrow or contact support if this is unexpected.",
     }
   }
 
@@ -146,9 +171,48 @@ export function buildUsageLimitsFromTier(tierId: TierId): UsageLimits {
     chunks_returned:       L.chunksPerRequest,
     pages_processed:       L.pagesPerSubmission,
     chars_processed:       L.charsPerSubmission,
+    chars_processed_period: L.charsPerMonth,
+    chars_processed_today:  L.charsPerDay,
     api_calls:             null,
     voice_requests:        null,
   }
+}
+
+/** Mirror `chars_processed` into virtual metrics for limit checks (client + server). */
+export function withCharsFairUseMirrors(
+  increments: Partial<UsageCounters>,
+): Partial<UsageCounters> {
+  const ch = increments.chars_processed
+  if (ch == null || ch <= 0) return { ...increments }
+  return {
+    ...increments,
+    chars_processed_period: increments.chars_processed_period ?? ch,
+    chars_processed_today: increments.chars_processed_today ?? ch,
+  }
+}
+
+/** Remove virtual keys before POSTing to `track-usage` (RPC only accepts real counters). */
+export function stripVirtualUsageIncrements(
+  increments: Partial<UsageCounters>,
+): Partial<UsageCounters> {
+  const { chars_processed_period: _p, chars_processed_today: _d, ...rest } = increments
+  return rest
+}
+
+function incrementsDeltaForMetric(
+  metric: UsageMetric,
+  increments: Partial<UsageCounters>,
+): number {
+  const ch = increments.chars_processed
+  if (metric === "chars_processed_period" || metric === "chars_processed_today") {
+    return typeof ch === "number" && ch > 0 ? ch : 0
+  }
+  if (metric === "texts_submitted_today") {
+    const t = increments.texts_submitted
+    return typeof t === "number" && t > 0 ? t : 0
+  }
+  const raw = increments[metric]
+  return typeof raw === "number" && raw > 0 ? raw : 0
 }
 
 /** Mirror track-usage exceeded rules using client tier caps (avoids stale deployed TIER_LIMITS). */
@@ -157,12 +221,12 @@ export function computeExceededFromCounters(
   limits: UsageLimits,
   increments: Partial<UsageCounters>,
 ): UsageMetric[] {
+  const inc = withCharsFairUseMirrors(increments)
   return ALL_METRICS.filter((m) => {
     const cap = limits[m]
     if (cap === null) return false
     if (PER_SUBMISSION_LIMIT_METRICS.has(m)) {
-      const inc = increments[m] ?? 0
-      return inc > cap
+      return incrementsDeltaForMetric(m, inc) > cap
     }
     return (counters[m] ?? 0) > cap
   })
@@ -230,7 +294,7 @@ async function callTrackUsage(
       Authorization: `Bearer ${session.access_token}`,
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ increments, checkOnly }),
+    body: JSON.stringify({ increments: stripVirtualUsageIncrements(increments), checkOnly }),
   })
 
   let payload: Partial<TrackResult> & { error?: string }
@@ -249,7 +313,7 @@ async function callTrackUsage(
   }
 
   const limits = buildUsageLimitsFromTier(tierId)
-  const incForExceeded = checkOnly ? {} : increments
+  const incForExceeded = checkOnly ? {} : withCharsFairUseMirrors(increments)
   const exceeded = computeExceededFromCounters(base.counters, limits, incForExceeded)
 
   return {
@@ -330,13 +394,14 @@ export class UsageTracker {
    * (so counters reflect true usage), but the caller is told to block the action.
    */
   async track(increments: Partial<UsageCounters>): Promise<TrackResult> {
+    const merged = withCharsFairUseMirrors(increments)
     // 1. Optimistic increment
-    this._applyLocally(increments)
+    this._applyLocally(merged)
     this._notify()
 
     try {
       // 2. Server sync
-      const result = await callTrackUsage(increments)
+      const result = await callTrackUsage(merged)
 
       // 3. Replace with authoritative state
       this._counters = result.counters
@@ -347,7 +412,7 @@ export class UsageTracker {
       return result
     } catch (e) {
       // 4. Roll back optimistic increment on network/server failure
-      this._applyLocally(increments, /* negate */ true)
+      this._applyLocally(merged, /* negate */ true)
       this._notify()
       throw e
     }

@@ -430,7 +430,7 @@ export function LandingScreen({
                     {charLimitTipOpen && (
                       <div className="char-limit-tip" role="dialog" aria-label="Upgrade for unlimited">
                         <p className="char-limit-tip-text">
-                          Upgrade your plan for unlimited characters per submission.
+                          Upgrade to Pro for a much higher per-paste limit and generous monthly fair-use allowances.
                         </p>
                         <Link
                           to="/upgrade"

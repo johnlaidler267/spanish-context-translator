@@ -97,6 +97,10 @@ export function getAllPriceIds(): string[] {
 // ─── Tier limits (mirrors src/lib/tiers.ts TierLimits) ───────────────────────
 // null = unlimited (no cap). Keep in sync with the frontend config.
 
+/** Pro fair-use — keep in sync with `src/lib/tiers.ts`. */
+export const PRO_FAIR_USE_CHARS_PER_MONTH = 4_000_000
+export const PRO_FAIR_USE_CHARS_PER_DAY = 500_000
+
 export interface TierLimits {
   textsPerMonth:      number | null
   textsPerDay:        number | null
@@ -104,6 +108,8 @@ export interface TierLimits {
   pagesPerSubmission: number | null
   savedTranslations:  number | null
   charsPerSubmission: number | null
+  charsPerMonth:      number | null
+  charsPerDay:        number | null
 }
 
 export const TIER_LIMITS: Record<TierId, TierLimits> = {
@@ -114,6 +120,8 @@ export const TIER_LIMITS: Record<TierId, TierLimits> = {
     pagesPerSubmission: null,
     savedTranslations:  0,
     charsPerSubmission: 600,
+    charsPerMonth:      null,
+    charsPerDay:        null,
   },
   pro: {
     textsPerMonth:      null,
@@ -122,6 +130,8 @@ export const TIER_LIMITS: Record<TierId, TierLimits> = {
     pagesPerSubmission: null,
     savedTranslations:  null,
     charsPerSubmission: null,
+    charsPerMonth:      PRO_FAIR_USE_CHARS_PER_MONTH,
+    charsPerDay:        PRO_FAIR_USE_CHARS_PER_DAY,
   },
 }
 

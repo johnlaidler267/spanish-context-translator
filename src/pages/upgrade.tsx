@@ -23,6 +23,8 @@ import {
   formatPrice,
   formatAnnualMonthlyEquivalent,
   normalizeTierId,
+  PRO_FAIR_USE_CHARS_PER_DAY,
+  PRO_FAIR_USE_CHARS_PER_MONTH,
   type TierId,
   type TierConfig,
   type DbBillingInterval,
@@ -277,7 +279,8 @@ function getFreeTierIncludeRows(): { feature: string; limitHint: string }[] {
 
 const PRO_TIER_PLUS: string[] = [
   "Unlimited submissions",
-  "No character limit — paste full articles",
+  `Generous fair use: up to ${PRO_FAIR_USE_CHARS_PER_MONTH.toLocaleString()} characters per billing period and ${PRO_FAIR_USE_CHARS_PER_DAY.toLocaleString()} per UTC day`,
+  "No fixed cap per paste — paste full articles within fair use",
 ]
 
 function tierBullets(tier: TierConfig): string[] {

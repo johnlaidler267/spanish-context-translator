@@ -43,6 +43,7 @@ import {
   broadcastUsageUpdated,
   fetchCurrentUsage,
   trackUsage,
+  withCharsFairUseMirrors,
   type UsageCounters,
   type UsageLimits,
   UsageError,
@@ -259,12 +260,16 @@ export default function App() {
                 }
                 // Mirror server: each text submit bumps monthly texts and the daily counter.
                 // checkLimits only inspects keys present in the increments object — include daily explicitly.
-                const guard = checkLimits(preflight.counters, preflight.limits, {
-                  texts_submitted: 1,
-                  texts_submitted_today: 1,
-                  pages_processed: pages.length,
-                  chars_processed: trimmed.length,
-                })
+                const guard = checkLimits(
+                  preflight.counters,
+                  preflight.limits,
+                  withCharsFairUseMirrors({
+                    texts_submitted: 1,
+                    texts_submitted_today: 1,
+                    pages_processed: pages.length,
+                    chars_processed: trimmed.length,
+                  }),
+                )
                 if (!guard.allowed) {
                   setPlanLimitModal(
                     formatPlanLimitModal(guard.blocked.map((s) => s.metric)),

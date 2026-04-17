@@ -37,10 +37,12 @@ import {
 import { getTierLimits, type TierId } from "../_shared/tiers.ts"
 import {
   METRIC_CONFIG,
+  incrementsDeltaForMetric,
   metricsToRpcParams,
   normalizeUsageRpcRow,
   PER_SUBMISSION_LIMIT_METRICS,
   readCounter,
+  stripVirtualUsageIncrements,
   type UsageMetric,
 } from "../_shared/usage-metrics.ts"
 
@@ -121,7 +123,7 @@ Deno.serve(async (req: Request) => {
   let body: RequestBody = {}
   try { body = await req.json() } catch { /* empty body = check-only */ }
 
-  const increments = body.increments ?? {}
+  const increments = stripVirtualUsageIncrements(body.increments ?? {})
   const checkOnly  = body.checkOnly ?? false
 
   console.log("[track-usage] user:", user.id, "checkOnly:", checkOnly, "increments:", JSON.stringify(increments))
@@ -162,11 +164,9 @@ Deno.serve(async (req: Request) => {
 
   console.log("[track-usage] sub:", sub?.id ?? "NONE", "period_start:", period.start.toISOString(), "period_end:", period.end.toISOString())
 
-  // ── Pre-flight limit check (before incrementing) ──────────────────────────
-  // Read current counters so we can check whether the increment would breach a limit.
-  // We read the row first, then increment atomically — the RPC does both in one
-  // statement (INSERT … ON CONFLICT DO UPDATE … RETURNING), so the returned row
-  // already reflects the new values. We use the returned row for the response.
+  // ── Usage snapshot ─────────────────────────────────────────────────────────
+  // Increments: we pre-flight against `get_current_usage`, then call `increment_usage`
+  // so hard caps are never exceeded mid-request. Returned counters are post-increment.
   //
   // For check-only requests we skip the RPC entirely.
 
@@ -180,6 +180,54 @@ Deno.serve(async (req: Request) => {
         "Could not record usage: no subscription record for this account. Try signing out and back in.",
         500,
       )
+    }
+
+    // ── Pre-flight: block before RPC so we never exceed hard caps mid-request ─
+    const { data: preRead, error: preErr } = await db.rpc("get_current_usage", {
+      p_subscription_id: sub.id,
+      p_period_start:    period.start.toISOString(),
+    })
+    if (preErr) {
+      console.error("[track-usage] get_current_usage (pre-flight) error:", preErr)
+      return err("Failed to read usage", 500)
+    }
+    const preRow = normalizeUsageRpcRow(preRead)
+    const preLimitMap = Object.fromEntries(
+      (Object.keys(METRIC_CONFIG) as UsageMetric[]).map((m) => {
+        const key = METRIC_CONFIG[m].limitKey
+        const cap = key ? limits[key] : null
+        return [m, cap]
+      }),
+    ) as Record<UsageMetric, number | null>
+
+    const preExceeded = (Object.keys(METRIC_CONFIG) as UsageMetric[]).filter((m) => {
+      const cap = preLimitMap[m]
+      if (cap === null) return false
+      const cur = preRow ? readCounter(preRow, m) : 0
+      const delta = incrementsDeltaForMetric(m, increments)
+      if (PER_SUBMISSION_LIMIT_METRICS.has(m)) return delta > cap
+      return cur + delta > cap
+    })
+
+    if (preExceeded.length > 0) {
+      const preCounters = Object.fromEntries(
+        (Object.keys(METRIC_CONFIG) as UsageMetric[]).map((m) => [
+          m,
+          preRow ? readCounter(preRow, m) : 0,
+        ]),
+      ) as Record<UsageMetric, number>
+      console.log("[track-usage] pre-flight blocked:", user.id, preExceeded)
+      return json({
+        allowed:  false,
+        counters: preCounters,
+        limits:   preLimitMap,
+        exceeded: preExceeded,
+        tierId,
+        period: {
+          start: period.start.toISOString(),
+          end:   period.end.toISOString(),
+        },
+      })
     }
 
     const rpcParams = metricsToRpcParams(increments)
@@ -235,11 +283,11 @@ Deno.serve(async (req: Request) => {
   // Per-submission caps (pages/chunks/chars in one submit): compare THIS
   // request's increments only — cumulative pages_processed was blocking free
   // users on their first multi-page article (sum of LLM pages > pagesPerSubmission).
-  const exceeded: UsageMetric[] = allMetrics.filter(m => {
+  const exceeded: UsageMetric[] = allMetrics.filter((m) => {
     const cap = limitMap[m]
     if (cap === null) return false
     if (PER_SUBMISSION_LIMIT_METRICS.has(m)) {
-      const inc = increments[m] ?? 0
+      const inc = incrementsDeltaForMetric(m, increments)
       return inc > cap
     }
     return counters[m] > cap
