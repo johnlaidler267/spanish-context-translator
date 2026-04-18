@@ -1,6 +1,6 @@
 "use client"
 
-import { BookMarked, Clock, Globe, X } from "lucide-react"
+import { BookMarked, Clock, Globe, Trash2, X } from "lucide-react"
 import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,8 @@ interface ContentPreviewModalProps {
   onStartReading: (content: ContentItem) => void
   /** When set (e.g. Vite dev), shows a catalog edit entry point. */
   onDevEdit?: () => void
+  /** When set (curator / dev), removes this row from `discover_items` then closes. */
+  onDeleteCatalog?: () => void | Promise<void>
 }
 
 export function ContentPreviewModal({
@@ -37,6 +39,7 @@ export function ContentPreviewModal({
   onClose,
   onStartReading,
   onDevEdit,
+  onDeleteCatalog,
 }: ContentPreviewModalProps) {
   if (!content) return null
 
@@ -135,6 +138,17 @@ export function ContentPreviewModal({
             {onDevEdit && (
               <Button variant="secondary" size="lg" className="w-full sm:w-auto" onClick={onDevEdit}>
                 Edit catalog entry
+              </Button>
+            )}
+            {onDeleteCatalog && (
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 sm:w-auto"
+                onClick={() => void onDeleteCatalog()}
+              >
+                <Trash2 className="mr-2 size-4 shrink-0" aria-hidden />
+                Remove from catalog
               </Button>
             )}
           </div>

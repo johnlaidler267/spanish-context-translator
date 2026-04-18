@@ -146,15 +146,23 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     setTimeout(() => setSelectedContent(null), 200)
   }
 
-  const handleDeleteContent = async (contentId: string) => {
+  /** Deletes `discover_items` by primary key. Returns false if the DB removed zero rows (RLS, bad id). */
+  const handleDeleteContent = async (contentId: string): Promise<boolean> => {
     const previous = discoverItems
     setDiscoverItems((currentItems) => currentItems.filter((item) => item.id !== contentId))
     setActionError(null)
-    const { error } = await supabase.from("discover_items").delete().eq("id", contentId)
+    const { data, error } = await supabase.from("discover_items").delete().eq("id", contentId).select("id")
     if (error) {
       setDiscoverItems(previous)
       setActionError(error.message)
+      return false
     }
+    if (!data?.length) {
+      setDiscoverItems(previous)
+      setActionError("Nothing was deleted. Sign in as a catalog curator, or check that this item still exists.")
+      return false
+    }
+    return true
   }
 
   const handleStartReading = (content: ContentItem) => {
@@ -303,7 +311,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                                 <Pencil className="size-3.5" />
                               </button>
                             )}
-                            {showCuratorUi && (
+                            {(DISCOVER_DEV_EDIT || showCuratorUi) && (
                               <button
                                 type="button"
                                 onClick={(event) => {
@@ -365,7 +373,11 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                         key={item.id}
                         content={item}
                         onClick={() => handleContentClick(item)}
-                        onDelete={showCuratorUi ? (id) => void handleDeleteContent(id) : undefined}
+                        onDelete={
+                          DISCOVER_DEV_EDIT || showCuratorUi
+                            ? (id) => void handleDeleteContent(id)
+                            : undefined
+                        }
                         onEdit={DISCOVER_DEV_EDIT ? () => openDevEdit(item) : undefined}
                       />
                     ))}
@@ -383,6 +395,14 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
         onClose={handleCloseModal}
         onStartReading={handleStartReading}
         onDevEdit={DISCOVER_DEV_EDIT && selectedContent ? () => openDevEdit(selectedContent) : undefined}
+        onDeleteCatalog={
+          (DISCOVER_DEV_EDIT || showCuratorUi) && selectedContent
+            ? async () => {
+                const ok = await handleDeleteContent(selectedContent.id)
+                if (ok) handleCloseModal()
+              }
+            : undefined
+        }
       />
       {DISCOVER_DEV_EDIT && (
         <DevEditDiscoverItemModal
