@@ -1,6 +1,6 @@
 "use client"
 
-import { Clock, Trash2 } from "lucide-react"
+import { Clock, Pencil, Trash2 } from "lucide-react"
 import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,9 +17,10 @@ interface ContentCardProps {
   content: ContentItem
   onClick: () => void
   onDelete?: (id: string) => void
+  onEdit?: () => void
 }
 
-export function ContentCard({ content, onClick, onDelete }: ContentCardProps) {
+export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardProps) {
   return (
     <Card
       className="group cursor-pointer overflow-hidden rounded-none border-2 border-border/80 bg-card/70 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/55 hover:bg-card hover:shadow-md hover:shadow-primary/5"
@@ -34,18 +35,35 @@ export function ContentCard({ content, onClick, onDelete }: ContentCardProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
 
         <ContentTypeBadge type={content.type} size="sm" className="absolute left-4 top-4" />
-        {onDelete && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              onDelete(content.id)
-            }}
-            className="absolute right-4 top-4 rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive"
-            aria-label={`Delete ${content.title}`}
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+        {(onEdit || onDelete) && (
+          <div className="absolute right-4 top-4 flex gap-1">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onEdit()
+                }}
+                className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                aria-label={`Edit ${content.title}`}
+              >
+                <Pencil className="size-3.5" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onDelete(content.id)
+                }}
+                className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive"
+                aria-label={`Delete ${content.title}`}
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            )}
+          </div>
         )}
 
         <div className="absolute bottom-4 left-4 right-4">

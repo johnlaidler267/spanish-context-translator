@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import type { ContentItem, DifficultyLevel } from "@/lib/content-data"
 import { difficultyColors } from "@/lib/content-data"
+import { cn } from "@/lib/utils"
 
 const difficultyLabels: Record<DifficultyLevel, string> = {
   beginner: "Beginner",
@@ -26,6 +27,8 @@ interface ContentPreviewModalProps {
   open: boolean
   onClose: () => void
   onStartReading: (content: ContentItem) => void
+  /** When set (e.g. Vite dev), shows a catalog edit entry point. */
+  onDevEdit?: () => void
 }
 
 export function ContentPreviewModal({
@@ -33,6 +36,7 @@ export function ContentPreviewModal({
   open,
   onClose,
   onStartReading,
+  onDevEdit,
 }: ContentPreviewModalProps) {
   if (!content) return null
 
@@ -65,7 +69,10 @@ export function ContentPreviewModal({
               <ContentTypeBadge type={content.type} size="md" />
               <Badge
                 variant="outline"
-                className={`${difficultyColors[content.difficulty]} border`}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-sm font-medium",
+                  difficultyColors[content.difficulty],
+                )}
               >
                 {difficultyLabels[content.difficulty]}
               </Badge>
@@ -118,13 +125,18 @@ export function ContentPreviewModal({
             </ScrollArea>
           </div>
 
-          <div className="flex gap-3">
-            <Button className="flex-1" size="lg" onClick={() => onStartReading(content)}>
+          <div className="flex flex-wrap gap-3">
+            <Button className="min-w-0 flex-1" size="lg" onClick={() => onStartReading(content)}>
               Start Reading
             </Button>
-            <Button variant="outline" size="lg">
+            <Button variant="outline" size="lg" className="min-w-0 flex-1">
               Add to Library
             </Button>
+            {onDevEdit && (
+              <Button variant="secondary" size="lg" className="w-full sm:w-auto" onClick={onDevEdit}>
+                Edit catalog entry
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

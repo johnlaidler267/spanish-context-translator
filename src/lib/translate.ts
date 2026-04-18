@@ -421,7 +421,7 @@ clitic_clusters: e.g. se lo
 reciprocal/distributive_pronoun_phrase: e.g. unos a otros
 adverbial_phrases: e.g. por supuesto
 colloquial_fixed_expressions: e.g. pinta bien
-reflexive_verbs: me di
+reflexive_verbs: e.g. se extasía,  se alejaban 
 ETC.
 
 For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUTELY NECESSARY to GROUP with its NEIGHBOR?

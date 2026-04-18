@@ -2,10 +2,11 @@
 
 import { useEffect, useLayoutEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Compass, Plus, Sparkles, Trash2 } from "lucide-react"
+import { Compass, Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing-shell-layout"
 import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { ContentPreviewModal } from "@/components/discover/content-preview-modal"
+import { DevEditDiscoverItemModal } from "@/components/discover/dev-edit-discover-item-modal"
 import {
   DevUploadResourceModal,
   type DevResourceUpload,
@@ -27,6 +28,8 @@ type DiscoverPageProps = {
   onStartReading: (content: ContentItem) => Promise<void> | void
 }
 
+const DISCOVER_DEV_EDIT = import.meta.env.DEV
+
 export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const navigate = useNavigate()
   const { registerNewChat } = useLandingShellNewChat()
@@ -45,6 +48,8 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<ContentItem | null>(null)
 
   const showCuratorUi = curatorResolved && isCurator
 
@@ -156,12 +161,23 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     void onStartReading(content)
   }
 
+  const openDevEdit = (item: ContentItem) => {
+    setEditTarget(item)
+    setEditModalOpen(true)
+  }
+
+  const handleDiscoverItemSaved = (item: ContentItem) => {
+    setDiscoverItems((prev) => prev.map((x) => (x.id === item.id ? item : x)))
+    setSelectedContent((prev) => (prev?.id === item.id ? item : prev))
+    setEditModalOpen(false)
+    setEditTarget(null)
+  }
+
   const handlePublishResource = async (resource: DevResourceUpload) => {
     const estimatedMinutes = Math.max(1, Math.ceil(resource.wordCount / 200))
     const estimatedTime =
       estimatedMinutes >= 60 ? `${Math.ceil(estimatedMinutes / 60)} hours` : `${estimatedMinutes} min`
-    const difficulty: DifficultyLevel =
-      resource.wordCount < 400 ? "beginner" : resource.wordCount < 1800 ? "intermediate" : "advanced"
+    const difficulty = resource.difficulty
     const defaultTag = resource.type[0].toUpperCase() + resource.type.slice(1)
     const normalizedTags = resource.tags.length > 0 ? resource.tags : [defaultTag]
     const preview = resource.text.slice(0, 800)
@@ -272,18 +288,35 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                         className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background from-0% via-background/55 via-[34%] to-transparent to-[92%] dark:via-background/50"
                       />
                       <div className="absolute bottom-0 left-0 right-0 px-6 pb-7 pt-12 sm:px-7 sm:pb-8 sm:pt-14">
-                        {showCuratorUi && (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              void handleDeleteContent(item.id)
-                            }}
-                            className="absolute right-6 top-4 rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive sm:right-7"
-                            aria-label={`Delete ${item.title}`}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
+                        {(DISCOVER_DEV_EDIT || showCuratorUi) && (
+                          <div className="absolute right-6 top-4 flex gap-1 sm:right-7">
+                            {DISCOVER_DEV_EDIT && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  openDevEdit(item)
+                                }}
+                                className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                                aria-label={`Edit ${item.title}`}
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                            )}
+                            {showCuratorUi && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  void handleDeleteContent(item.id)
+                                }}
+                                className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive"
+                                aria-label={`Delete ${item.title}`}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            )}
+                          </div>
                         )}
                         <ContentTypeBadge type={item.type} size="sm" className="mb-3" />
                         <h3 className="mb-1.5 font-serif text-lg font-bold leading-snug text-black dark:text-neutral-100">
@@ -333,6 +366,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                         content={item}
                         onClick={() => handleContentClick(item)}
                         onDelete={showCuratorUi ? (id) => void handleDeleteContent(id) : undefined}
+                        onEdit={DISCOVER_DEV_EDIT ? () => openDevEdit(item) : undefined}
                       />
                     ))}
                   </div>
@@ -348,7 +382,20 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
         open={modalOpen}
         onClose={handleCloseModal}
         onStartReading={handleStartReading}
+        onDevEdit={DISCOVER_DEV_EDIT && selectedContent ? () => openDevEdit(selectedContent) : undefined}
       />
+      {DISCOVER_DEV_EDIT && (
+        <DevEditDiscoverItemModal
+          content={editTarget}
+          open={editModalOpen}
+          onClose={() => {
+            setEditModalOpen(false)
+            setEditTarget(null)
+          }}
+          onSaved={handleDiscoverItemSaved}
+          onError={(message) => setActionError(message)}
+        />
+      )}
       {showCuratorUi && (
         <DevUploadResourceModal
           open={uploadModalOpen}
