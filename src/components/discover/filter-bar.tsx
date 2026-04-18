@@ -73,7 +73,7 @@ export function FilterBar({
           placeholder="Search content..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="rounded-none border border-border/70 bg-secondary/50 pl-10 text-black placeholder:text-black/50 shadow-sm transition-colors focus-visible:border-primary/70 dark:text-foreground dark:placeholder:text-zinc-500"
+          className="rounded-none border border-border/70 bg-secondary/50 pl-10 text-black placeholder:text-black/50 shadow-sm transition-colors focus-visible:border-primary/70 focus-visible:ring-0 focus-visible:ring-offset-0 dark:text-foreground dark:placeholder:text-zinc-500"
         />
       </div>
 
