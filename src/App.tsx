@@ -61,8 +61,11 @@ const ENFORCE_USAGE_LIMITS =
   !IS_LOCAL_DEV || import.meta.env.VITE_ENFORCE_USAGE_IN_DEV === "true"
 const USAGE_PREFLIGHT_TTL_MS = 60_000
 const LANDING_MIN_LOADING_MS = LOADING_OVERLAY_PROGRESS_MS
-/** Desktop article pagination: trim page size slightly so body text clears footer controls. */
-const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.80
+/**
+ * Desktop: small trim on DOM-measured page limits. Measurement already reserves footer height;
+ * avoid stacking a large shrink here or article pages sit well under the viewport.
+ */
+const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.95
 
 type UsagePreflightSnapshot = {
   counters: UsageCounters

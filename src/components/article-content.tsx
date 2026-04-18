@@ -7,6 +7,10 @@ import {
   useCallback,
   useMemo,
   useRef,
+  lazy,
+  Suspense,
+  type ComponentType,
+  type LazyExoticComponent,
   type SetStateAction,
 } from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
@@ -22,6 +26,7 @@ import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { AppErrorModal } from "./app-error-modal"
+import { translationErrorForUserModal } from "@/lib/translation-error-ui"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
 import {
@@ -29,6 +34,13 @@ import {
   speakHoverChunk,
   speechUnlockForTouchGesture,
 } from "@/lib/hover-tts"
+
+let DevArticleMachineTranslate: LazyExoticComponent<
+  ComponentType<{ pageText: string; disabled?: boolean }>
+> | null = null
+if (import.meta.env.DEV) {
+  DevArticleMachineTranslate = lazy(() => import("./dev-article-machine-translate"))
+}
 
 export type ArticlePaginationState = {
   pageIndex: number
@@ -60,7 +72,7 @@ function articleChunkTextByNumericId(
 ): string | null {
   let cid = 0
   for (const it of items) {
-    if (it.type === "text") continue
+    if (it.type === "text" || it.type === "chapter") continue
     if (cid === id) return it.chunk
     cid++
   }
@@ -274,7 +286,7 @@ export function ArticleContent({
     if (!key || !items) return null
     let cid = 0
     for (const it of items) {
-      if (it.type !== "chunk") continue
+      if (it.type === "chapter" || it.type === "text") continue
       if (it.chunk === chunkDetails.activeChunk) return cid
       cid++
     }
@@ -310,7 +322,15 @@ export function ArticleContent({
   /** Reconstruct full page text for LLM sentence context */
   const pageText = useMemo(() => {
     if (!items) return ""
-    return items.map(item => item.type === "text" ? item.text : item.chunk).join("")
+    return items
+      .map((item) =>
+        item.type === "text"
+          ? item.text
+          : item.type === "chapter"
+            ? `${item.label}\n`
+            : item.chunk,
+      )
+      .join("")
   }, [items])
 
   const handleGlobalClick = useCallback((e: MouseEvent) => {
@@ -344,6 +364,11 @@ export function ArticleContent({
 
   const showTranslationErrorModal =
     Boolean(errorMessage && !loading && !errorModalDismissed)
+
+  const translationErrPresent = useMemo(
+    () => (errorMessage ? translationErrorForUserModal(errorMessage) : null),
+    [errorMessage],
+  )
 
   return (
     <>
@@ -382,9 +407,23 @@ export function ArticleContent({
               if (item.type === "text") {
                 return <span key={i}>{item.text}</span>
               }
+              if (item.type === "chapter") {
+                return (
+                  <div
+                    key={i}
+                    className="my-8 block w-full indent-0 text-center font-reading text-2xl font-medium tabular-nums tracking-[0.18em] text-muted-foreground md:text-3xl"
+                    role="separator"
+                    aria-label={`Chapter ${item.label}`}
+                  >
+                    {item.label}
+                  </div>
+                )
+              }
               const prev = i > 0 ? items[i - 1] : null
               const gap =
-                prev?.type === "chunk" ? gapBetweenReconciledChunks(prev, item) : ""
+                prev?.type === "chunk" && item.type === "chunk"
+                  ? gapBetweenReconciledChunks(prev, item)
+                  : ""
               const id = chunkId++
               const chunkData = {
                 id,
@@ -518,10 +557,11 @@ export function ArticleContent({
         onClose={handleDetailsClose}
       />
     </div>
-    {showTranslationErrorModal && (
+    {showTranslationErrorModal && translationErrPresent && (
       <AppErrorModal
         title="Translation failed"
-        message={errorMessage!}
+        message={translationErrPresent.userMessage}
+        devOnlyTechnicalDetail={translationErrPresent.devTechnical}
         onDismiss={() => setErrorModalDismissed(true)}
         onRetry={() => {
           setErrorModalDismissed(true)
@@ -530,6 +570,14 @@ export function ArticleContent({
         retryLabel="Retry translation"
       />
     )}
+    {import.meta.env.DEV &&
+      DevArticleMachineTranslate != null &&
+      items &&
+      pageText.trim() && (
+        <Suspense fallback={null}>
+          <DevArticleMachineTranslate pageText={pageText} disabled={loading} />
+        </Suspense>
+      )}
     </>
   )
 }

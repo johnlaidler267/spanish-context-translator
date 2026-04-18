@@ -20,6 +20,7 @@ import {
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { AppErrorModal } from "./app-error-modal"
+import { translationErrorForUserModal } from "@/lib/translation-error-ui"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
 import {
@@ -39,6 +40,8 @@ interface ChunkData {
 interface Sentence {
   id: number
   chunks: ChunkData[]
+  /** Roman numeral chapter line — rendered as its own centered step. */
+  chapterHeading?: string
 }
 
 interface ReadModeProps {
@@ -98,6 +101,11 @@ export function ReadMode({
   useEffect(() => {
     setNextPageErrorDismissed(false)
   }, [nextPageError])
+
+  const nextPageErrPresent = useMemo(
+    () => (nextPageError ? translationErrorForUserModal(nextPageError) : null),
+    [nextPageError],
+  )
 
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
@@ -323,7 +331,10 @@ export function ReadMode({
 
   /** Current sentence as plain text for LLM context */
   const currentSentenceText = useMemo(
-    () => currentSentence.chunks.map((c: ChunkData) => c.text).join(" "),
+    () =>
+      currentSentence.chapterHeading
+        ? currentSentence.chapterHeading
+        : currentSentence.chunks.map((c: ChunkData) => c.text).join(" "),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [currentSentenceIndex, sentences],
   )
@@ -508,61 +519,71 @@ export function ReadMode({
             touchExploring && "touch-none select-none",
           )}
         >
-          {currentSentence.chunks.map((chunk: ChunkData, index: number) => {
-            const next = currentSentence.chunks[index + 1]
-            const gapAfter =
-              next != null && !shouldGlueAfterPriorChunk(next.text) ? " " : ""
-            return (
-              <span key={chunk.id}>
-                <TextChunk
-                  chunk={chunk}
-                  popupChunkId={effectivePopupId}
-                  delegatePointerHover
-                  followPointerRef={
-                    touchExploring && effectivePopupId === chunk.id
-                      ? tooltipFollowRef
-                      : undefined
-                  }
-                  followPointerPlaceRef={
-                    touchExploring && effectivePopupId === chunk.id
-                      ? followTooltipPlaceRef
-                      : undefined
-                  }
-                  followPointerClient={
-                    !touchExploring &&
-                    effectivePopupId === chunk.id &&
-                    tooltipPointer != null
-                      ? tooltipPointer
-                      : null
-                  }
-                  isTouchHighlight={
-                    exploringChunkId === chunk.id ||
-                    (chunkDetails.activeChunk != null && chunkDetails.activeChunk === chunk.text)
-                  }
-                  isPinned={pinnedChunkId === chunk.id}
-                  onActivate={() => commitExploringChunkId(chunk.id)}
-                  onDeactivate={() => {
-                    if (pinnedChunkId !== chunk.id) commitExploringChunkId(null)
-                  }}
-                  onPinToggle={() =>
-                    setPinnedChunkId((prev) => (prev === chunk.id ? null : chunk.id))
-                  }
-                  onRequestDetails={() => {
-                    commitExploringChunkId(null)
-                    setPinnedChunkId(null)
-                    setMenuOnlyChunkId(chunk.id)
-                    chunkDetails.fetchDetails(chunk.text, currentSentenceText)
-                  }}
-                  onDoubleClickMenuOnly={() => {
-                    setExploringChunkId(null)
-                    setPinnedChunkId(null)
-                    setMenuOnlyChunkId(chunk.id)
-                  }}
-                />
-                {gapAfter}
-              </span>
-            )
-          })}
+          {currentSentence.chapterHeading ? (
+            <div
+              className="font-reading text-muted-foreground max-md:text-[1.85rem] md:text-[2.75rem] lg:text-[3.25rem] tracking-[0.2em] tabular-nums"
+              role="separator"
+              aria-label={`Chapter ${currentSentence.chapterHeading}`}
+            >
+              {currentSentence.chapterHeading}
+            </div>
+          ) : (
+            currentSentence.chunks.map((chunk: ChunkData, index: number) => {
+              const next = currentSentence.chunks[index + 1]
+              const gapAfter =
+                next != null && !shouldGlueAfterPriorChunk(next.text) ? " " : ""
+              return (
+                <span key={chunk.id}>
+                  <TextChunk
+                    chunk={chunk}
+                    popupChunkId={effectivePopupId}
+                    delegatePointerHover
+                    followPointerRef={
+                      touchExploring && effectivePopupId === chunk.id
+                        ? tooltipFollowRef
+                        : undefined
+                    }
+                    followPointerPlaceRef={
+                      touchExploring && effectivePopupId === chunk.id
+                        ? followTooltipPlaceRef
+                        : undefined
+                    }
+                    followPointerClient={
+                      !touchExploring &&
+                      effectivePopupId === chunk.id &&
+                      tooltipPointer != null
+                        ? tooltipPointer
+                        : null
+                    }
+                    isTouchHighlight={
+                      exploringChunkId === chunk.id ||
+                      (chunkDetails.activeChunk != null && chunkDetails.activeChunk === chunk.text)
+                    }
+                    isPinned={pinnedChunkId === chunk.id}
+                    onActivate={() => commitExploringChunkId(chunk.id)}
+                    onDeactivate={() => {
+                      if (pinnedChunkId !== chunk.id) commitExploringChunkId(null)
+                    }}
+                    onPinToggle={() =>
+                      setPinnedChunkId((prev) => (prev === chunk.id ? null : chunk.id))
+                    }
+                    onRequestDetails={() => {
+                      commitExploringChunkId(null)
+                      setPinnedChunkId(null)
+                      setMenuOnlyChunkId(chunk.id)
+                      chunkDetails.fetchDetails(chunk.text, currentSentenceText)
+                    }}
+                    onDoubleClickMenuOnly={() => {
+                      setExploringChunkId(null)
+                      setPinnedChunkId(null)
+                      setMenuOnlyChunkId(chunk.id)
+                    }}
+                  />
+                  {gapAfter}
+                </span>
+              )
+            })
+          )}
         </div>
       </div>
 
@@ -598,10 +619,11 @@ export function ReadMode({
         </Button>
       </div>
 
-      {nextPageError && onRetryNextPage && !nextPageErrorDismissed && (
+      {nextPageError && nextPageErrPresent && onRetryNextPage && !nextPageErrorDismissed && (
         <AppErrorModal
           title="Couldn’t load next section"
-          message={nextPageError}
+          message={nextPageErrPresent.userMessage}
+          devOnlyTechnicalDetail={nextPageErrPresent.devTechnical}
           onDismiss={() => setNextPageErrorDismissed(true)}
           onRetry={() => {
             setNextPageErrorDismissed(false)

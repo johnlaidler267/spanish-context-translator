@@ -1,4 +1,5 @@
 import { jsonrepair } from "jsonrepair"
+import { formatSubstringChunkRulesForPrompt } from "@/config/chunk-group-hints"
 import { postProcessChunks } from "@/lib/chunk-merges"
 import {
   fetchGeminiChatViaEdge,
@@ -15,7 +16,7 @@ function translationProvider(): "groq" | "gemini" {
 const GROQ_TRANSLATE_MODEL = "llama-3.3-70b-versatile"
 const GROQ_LEARN_MODEL = "llama-3.1-8b-instant" as const
 /** Must match a model id from the Generative Language API (see ListModels / Gemini docs). `gemini-3.0-flash` is not valid — use e.g. `gemini-2.0-flash` or `gemini-3-flash` if your project lists it. */
-const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash"
+const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash-lite"
 const GEMINI_LEARN_MODEL_DEFAULT = "gemini-2.5-flash-lite"
 
 function translateModel(): string {
@@ -55,11 +56,11 @@ const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
 
 /**
  * Groq on_demand counts roughly (prompt tokens + max_tokens) against a low TPM
- * ceiling (~8k). Our PROMPT() is long; 12k max_tokens was ~13k+ “requested”
+ * ceiling (~8k). Our chunking user prompt is long; 12k max_tokens was ~13k+ “requested”
  * and always tripped TPM — unrelated to how short the user’s Spanish is.
  * 4k further reduces “requested” TPM vs 5k; if you still see 429s, wait or upgrade Groq.
  */
-const TRANSLATE_MAX_COMPLETION_TOKENS = 6000
+const TRANSLATE_MAX_COMPLETION_TOKENS = 8000
 
 /**
  * Spanish character budget for a single `translatePageText` completion.
@@ -406,32 +407,28 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
 }
 
-const PROMPT = (input: string) => `
-Sort following spanish text into logical chunks.
+function buildChunkingUserPrompt(canonical: string): string {
+  const hintsBlock = formatSubstringChunkRulesForPrompt(canonical)
+  const hintsSection = hintsBlock ? `${hintsBlock}\n\n` : ""
+  return `Process the Spanish text left to right and segment it into the smallest meaningful units that match how a dictionary would define them.
+For each sequence of words, decide:
 
-Chunks should consist of a singular word or multiple words ONLY IF they  fall into any of the following categories.
 
-fixed_idioms: e.g. dar su brazo a torcer, a punto de, de nuevo
-relative_subordinating_connectors: e.g. mientras que, los que, en la que
-lo_nominalizer: e.g. lo maravilloso
-prepositional_verb_phrases: e.g. darse cuenta de que
-possessive_pronouns: e.g. el suyo
-proper_nouns: e.g. Buenos Aires, 
-clitic_clusters: e.g. se lo
-reciprocal/distributive_pronoun_phrase: e.g. unos a otros
-adverbial_phrases: e.g. por supuesto
-colloquial_fixed_expressions: e.g. pinta bien
-reflexive_verbs: e.g. se extasía,  se alejaban 
-ETC.
+If each word stands alone with its own meaning → keep separate.
 
-For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUTELY NECESSARY to GROUP with its NEIGHBOR?
 
-FORMAT: {"c": exact source substring of chunk, "m": English meaning, "l": literal [direct] translation of chunk (even if unnatural)}
+If meaning only exists as a combined unit → group them.
 
-Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
 
-TEXT:
-${input}`
+Group whenever the words function together as a single semantic unit, including:
+fixed expressions, idioms, verb phrases with prepositions, reflexive verbs, clitic combinations, “lo + adjective” nominal forms, possessives, proper names, multi-word connectors, and common set phrases.
+Do not break apart any unit whose meaning would be lost or altered if separated.
+Output strictly as a JSON array.
+Each element must be:
+{"c": exact substring from source, "m": natural English meaning, "l": direct literal translation}
+${hintsSection}TEXT:
+${canonical}`
+}
 
 
 
@@ -456,7 +453,110 @@ export type ReconciledText = {
   text: string
 }
 
-export type ReconciledItem = ReconciledChunk | ReconciledText
+/** Standalone Roman numeral line (e.g. chapter) — stripped from chunk stream, shown as its own block. */
+export type ReconciledChapter = {
+  type: "chapter"
+  label: string
+}
+
+export type ReconciledItem = ReconciledChunk | ReconciledText | ReconciledChapter
+
+/** True when a whole line is only a Roman numeral (chapter heading). */
+const STANDALONE_ROMAN_LINE_RE = /^(?=.)[IVXLCDM]+$/i
+
+export type RomanChapterMarker = { insertAfterCanonIndex: number; label: string }
+
+/**
+ * Remove lines that consist only of a Roman numeral (e.g. `I` on its own line). Returns the body
+ * text for chunking and marker positions in {@link squashWsForReconcileCompare} space of `stripped`.
+ */
+export function stripStandaloneRomanChapterLines(input: string): {
+  stripped: string
+  markers: RomanChapterMarker[]
+} {
+  const rawLines = input.split(/\r?\n/)
+  const markers: RomanChapterMarker[] = []
+  const kept: string[] = []
+
+  for (const line of rawLines) {
+    const t = line.trim()
+    if (t.length > 0 && STANDALONE_ROMAN_LINE_RE.test(t)) {
+      const bodySoFar = kept.join("\n")
+      markers.push({
+        insertAfterCanonIndex: squashWsForReconcileCompare(bodySoFar).length,
+        label: t.toUpperCase(),
+      })
+      continue
+    }
+    kept.push(line)
+  }
+  return { stripped: kept.join("\n"), markers }
+}
+
+/**
+ * Splice {@link ReconciledChapter} items into a reconciled stream at canonical character offsets.
+ */
+function insertChapterMarkers(
+  items: ReconciledItem[],
+  markers: RomanChapterMarker[],
+): ReconciledItem[] {
+  if (markers.length === 0) return items
+  const sorted = [...markers].sort((a, b) => a.insertAfterCanonIndex - b.insertAfterCanonIndex)
+  let mi = 0
+  let pos = 0
+  const out: ReconciledItem[] = []
+
+  const pushText = (t: string) => {
+    if (t.length === 0) return
+    out.push({ type: "text", text: t })
+  }
+
+  const pushChunkSlice = (item: ReconciledChunk, start: number, end: number) => {
+    if (start >= end) return
+    out.push({
+      type: "chunk",
+      chunk: item.chunk.slice(start, end),
+      meaning: item.meaning,
+      literal: item.literal,
+      note: item.note,
+    })
+  }
+
+  for (const item of items) {
+    if (item.type === "chapter") {
+      out.push(item)
+      continue
+    }
+    const s = item.type === "text" ? item.text : item.chunk
+    let lo = 0
+    while (lo < s.length) {
+      while (mi < sorted.length && sorted[mi]!.insertAfterCanonIndex === pos) {
+        out.push({ type: "chapter", label: sorted[mi]!.label })
+        mi++
+      }
+      const nextMark = sorted[mi]?.insertAfterCanonIndex ?? Infinity
+      if (nextMark < pos) {
+        mi++
+        continue
+      }
+      const takeLen =
+        nextMark === Infinity ? s.length - lo : Math.min(s.length - lo, nextMark - pos)
+      if (takeLen <= 0) break
+      if (item.type === "text") {
+        pushText(s.slice(lo, lo + takeLen))
+      } else {
+        pushChunkSlice(item, lo, lo + takeLen)
+      }
+      lo += takeLen
+      pos += takeLen
+    }
+  }
+  while (mi < sorted.length && sorted[mi]!.insertAfterCanonIndex === pos) {
+    out.push({ type: "chapter", label: sorted[mi]!.label })
+    mi++
+  }
+  return out
+}
 
 /**
  * If reconcile ever yields two chunks in a row with no `type: "text"` between them,
@@ -575,7 +675,11 @@ function tryUnwrapEmbeddedReconciledJson(
 
     if (!items.some((i) => i.type === "chunk")) return null
 
-    const rebuilt = items.map((i) => (i.type === "text" ? i.text : i.chunk)).join("")
+    const rebuilt = items
+      .map((i) =>
+        i.type === "text" ? i.text : i.type === "chapter" ? i.label : i.chunk,
+      )
+      .join("")
     if (squashWsForReconcileCompare(rebuilt) !== squashWsForReconcileCompare(sourcePageText)) {
       return null
     }
@@ -735,6 +839,11 @@ export function coalesceGlueablePunctuationReconciledItems(
   }
 
   for (const item of items) {
+    if (item.type === "chapter") {
+      flushPendingText()
+      out.push(item)
+      continue
+    }
     if (item.type === "text") {
       pendingText += item.text ?? ""
       continue
@@ -773,13 +882,31 @@ export function coalesceGlueablePunctuationReconciledItems(
 }
 
 export function splitIntoSentences(items: ReconciledItem[]) {
-  const sentences: { id: number; chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> }[] = []
+  const sentences: {
+    id: number
+    chunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }>
+    chapterHeading?: string
+  }[] = []
   let currentChunks: Array<{ id: number; text: string; meaning: string; literal?: string; grammar?: string }> = []
   let chunkId = 0
   /** Spaces / punctuation between chunks live in `type: "text"` items — must merge into chunk text or read mode glues words together */
   let pendingBetween = ""
 
   for (const item of items) {
+    if (item.type === "chapter") {
+      if (pendingBetween && currentChunks.length > 0) {
+        currentChunks[currentChunks.length - 1]!.text += pendingBetween
+        pendingBetween = ""
+      } else if (pendingBetween && currentChunks.length === 0) {
+        pendingBetween = ""
+      }
+      if (currentChunks.length > 0) {
+        sentences.push({ id: sentences.length, chunks: currentChunks })
+        currentChunks = []
+      }
+      sentences.push({ id: sentences.length, chunks: [], chapterHeading: item.label })
+      continue
+    }
     if (item.type === "text") {
       pendingBetween += item.text ?? ""
       continue
@@ -1034,51 +1161,38 @@ export function pageSourceText(pageSentences: string[]): string {
 }
 
 /**
- * After `buildSentencePages`, optionally merge into a single `translatePageText` batch on desktop.
+ * Normalize {@link buildSentencePages} output (drop empty pages; if everything was empty, one page of trimmed text).
  *
- * Merge only when the full paste fits **both** (a) the incoming `limits.maxChars` (already clamped for LLM
- * via {@link clampPageLimitsForLlmBatching} at the call site) and (b) {@link LLM_CHUNK_INPUT_CHAR_CAP}
- * defensively here so callers never collapse more Spanish into one completion than the model can chunk.
- *
- * Static mobile fallback uses a low word cap (~68) *and* a char cap; the word check can split into two
- * pages even when the whole text still fits under `maxChars`, leaving a tiny second page. DOM-measured
- * limits rarely hit that because `maxWords` is huge and only `maxChars` binds.
- *
- * On mobile, merging to a single page is skipped when multiple batches already exist: one tall page clips
- * under `overflow-y` layout and would hide the pagination footer.
+ * We no longer collapse multiple pages into one batch on desktop: the old check (`fullText.length` vs
+ * `min(maxChars, LLM_CHUNK_INPUT_CHAR_CAP)`) only matched the **character** budget, but pages can split on
+ * **maxWords** (fallback limits or conservative caps). Merging then produced one article “page” taller
+ * than the measured reader column, so users had to scroll the whole paste.
  */
 export function mergeArticlePagesIfWholeTextFitsLimits(
   pages: string[][],
-  limits: PageSplitLimits,
+  _limits: PageSplitLimits,
   fullText: string,
-  isMobileViewport = false,
+  _isMobileViewport = false,
 ): string[][] {
   const t = fullText.replace(/\s+/g, " ").trim()
   const nonEmpty = pages
     .map((p) => p.filter((s) => s.trim().length > 0))
     .filter((p) => p.length > 0)
   if (nonEmpty.length <= 1) return nonEmpty.length > 0 ? nonEmpty : [[t]]
-
-  if (isMobileViewport) {
-    return nonEmpty
-  }
-
-  const mergeBudget = Math.min(limits.maxChars, LLM_CHUNK_INPUT_CHAR_CAP)
-  if (t.length > 0 && t.length <= mergeBudget) {
-    return [[t]]
-  }
   return nonEmpty
 }
 
 /** Single LLM call: chunk JSON → reconciled items for one page of source text. */
 export async function translatePageText(input: string): Promise<ReconciledItem[]> {
-  const canonical = squashWsForReconcileCompare(input)
+  const { stripped, markers: romanChapterMarkers } = stripStandaloneRomanChapterLines(input)
+  const canonical = squashWsForReconcileCompare(stripped)
   if (!canonical) {
     throw new Error("No text to translate.")
   }
 
   const systemContent = ""
-  const userContent = PROMPT(canonical)
+  const userContent = buildChunkingUserPrompt(canonical)
+  console.log("[translatePageText] LLM user prompt:", userContent)
 
   const base = {
     model: translateModel(),
@@ -1126,7 +1240,10 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
           "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
         )
       }
-      return coalesceGlueablePunctuationReconciledItems(unwrapped)
+      return insertChapterMarkers(
+        coalesceGlueablePunctuationReconciledItems(unwrapped),
+        romanChapterMarkers,
+      )
     }
   }
 
@@ -1137,7 +1254,10 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     )
   }
   assertReconcileDidNotLeaveLongPlainTail(reconciled, canonical.length)
-  return coalesceGlueablePunctuationReconciledItems(reconciled)
+  return insertChapterMarkers(
+    coalesceGlueablePunctuationReconciledItems(reconciled),
+    romanChapterMarkers,
+  )
 }
 
 export type PageSentenceRange = { pageIndex: number; start: number; end: number }
@@ -1153,6 +1273,8 @@ export type ReadSentence = {
     literal?: string
     grammar?: string
   }>
+  /** Roman chapter line — own read step with no word chunks. */
+  chapterHeading?: string
 }
 
 /**
@@ -1316,6 +1438,15 @@ function subdivideReadStepsAtChunkBoundaries(
   let chunkId = 0
 
   for (const sent of sentences) {
+    if (sent.chapterHeading) {
+      out.push({
+        id: nextId++,
+        sourcePageIndex: sent.sourcePageIndex,
+        chunks: [],
+        chapterHeading: sent.chapterHeading,
+      })
+      continue
+    }
     const groups = partitionReadSentenceChunks(sent.chunks, maxCharsPerStep)
     for (const group of groups) {
       if (group.length === 0) continue
@@ -1351,6 +1482,7 @@ export function mergeReconciledPagesToSentences(
         id: out.length,
         sourcePageIndex: pageIndex,
         chunks: s.chunks.map((c) => ({ ...c, id: chunkId++ })),
+        ...(s.chapterHeading != null ? { chapterHeading: s.chapterHeading } : {}),
       })
     }
   }

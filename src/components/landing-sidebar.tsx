@@ -66,6 +66,8 @@ export function LandingSidebar({
 
   const pathname = location.pathname
   const homeActive = pathname === "/"
+  /** Home composer puts submit bottom-right; same corner as this FAB — hide FAB there only. */
+  const showMobileNewChatFab = !isMdUp && pathname !== "/"
   const discoverActive = pathname === "/discover"
   const libraryActive = pathname.startsWith("/my-library")
 
@@ -362,7 +364,7 @@ export function LandingSidebar({
         {sidebarInner}
       </aside>
 
-      {!isMdUp ? (
+      {showMobileNewChatFab ? (
         <button
           type="button"
           className={cn(

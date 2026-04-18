@@ -11,8 +11,12 @@ import { resolvePageSplitLimits } from "@/lib/translate"
 
 /** Keep sentence batching conservative vs measured fill (wide glyphs, punctuation). */
 const CHAR_BUDGET_SAFETY = 0.84
-/** Desktop needs extra margin at larger reading sizes so text clears footer controls without scrolling. */
-const DESKTOP_CHAR_BUDGET_SAFETY = 0.70
+/**
+ * Desktop: slack below binary-search fill so wide glyphs / punctuation don’t clip.
+ * Footer + chrome are already subtracted in {@link articleBodyHeightPx}; keep this moderate so
+ * pages aren’t capped at ~half a screen when {@link DESKTOP_ARTICLE_PAGE_LIMIT_SCALE} in App also applies.
+ */
+const DESKTOP_CHAR_BUDGET_SAFETY = 0.82
 
 /** Desktop article outer padding top/bottom (matches ArticleContent md:pt-24 / md:pb-16). */
 const DESKTOP_ARTICLE_TOP_PX = 96
