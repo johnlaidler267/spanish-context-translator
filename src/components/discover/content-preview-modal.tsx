@@ -50,8 +50,8 @@ export function ContentPreviewModal({
         if (!nextOpen) onClose()
       }}
     >
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden border-border/50 bg-card p-0 font-sans">
-        <div className="relative h-48 overflow-hidden">
+      <DialogContent className="flex max-h-[92dvh] w-[calc(100vw-1rem)] max-w-2xl flex-col gap-0 overflow-hidden border-border/50 bg-card p-0 font-sans sm:w-full">
+        <div className="relative h-36 shrink-0 overflow-hidden sm:h-48">
           <img
             src={content.coverImage}
             alt={content.title}
@@ -83,7 +83,7 @@ export function ContentPreviewModal({
           </div>
         </div>
 
-        <div className="px-6 pb-6">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-6 pb-6 pt-0 [padding-bottom:max(1.5rem,env(safe-area-inset-bottom))]">
           <DialogHeader className="mb-4">
             <DialogTitle className="font-serif text-2xl font-bold text-foreground">{content.title}</DialogTitle>
             <p className="font-reading text-sm text-muted-foreground">by {content.author}</p>
@@ -121,7 +121,7 @@ export function ContentPreviewModal({
             <h4 className="mb-3 font-reading text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Preview
             </h4>
-            <ScrollArea className="h-48 rounded-lg border border-border/50 bg-background/50 p-4">
+            <ScrollArea className="h-36 max-h-[40vh] rounded-lg border border-border/50 bg-background/50 p-4 sm:h-48 sm:max-h-none">
               <p className="whitespace-pre-line leading-relaxed text-foreground/90">
                 {content.preview}
               </p>
