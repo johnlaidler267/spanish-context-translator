@@ -498,10 +498,18 @@ export function ReadMode({
   const edgeSwipeEnabled =
     totalSentences > 1 || articlePageIndex > 0 || articlePageIndex < totalPages - 1
 
+  const showReadingBounds =
+    import.meta.env.DEV || import.meta.env.VITE_SHOW_READING_BOUNDS === "1"
+
   return (
     <div className="flex w-full flex-col max-md:h-full max-md:min-h-0 max-md:flex-1 md:min-h-[calc(100dvh-5rem)] px-6 md:px-8">
       {/* flex-1 + justify-center: sentence sits mid viewport; nav stays at bottom (shrink-0) */}
-      <div className="relative mx-auto flex w-full min-h-0 max-w-[700px] flex-1 flex-col items-center justify-center max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] md:pt-16">
+      <div
+        className={cn(
+          "relative mx-auto flex w-full min-h-0 max-w-[700px] flex-1 flex-col items-center justify-center max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] md:pt-16",
+          showReadingBounds && "reading-column-bounds-debug",
+        )}
+      >
         {showNextPageLoading && (
           <div
             className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-[2px]"
@@ -515,7 +523,7 @@ export function ReadMode({
           ref={touchSurfaceRef}
           style={pageEnterStyle}
           className={cn(
-            "block w-full font-reading text-[2.34375rem] md:text-[3.45rem] lg:text-[4.3125rem] max-md:leading-[1.52] md:leading-snug text-center text-foreground text-balance selection:bg-primary/20",
+            "whitespace-pre-line block w-full font-reading text-[2.34375rem] md:text-[3.45rem] lg:text-[4.3125rem] max-md:leading-[1.52] md:leading-snug text-center text-foreground text-balance selection:bg-primary/20",
             touchExploring && "touch-none select-none",
           )}
         >

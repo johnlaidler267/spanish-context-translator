@@ -370,6 +370,9 @@ export function ArticleContent({
     [errorMessage],
   )
 
+  const showReadingBounds =
+    import.meta.env.DEV || import.meta.env.VITE_SHOW_READING_BOUNDS === "1"
+
   return (
     <>
     <div
@@ -381,6 +384,7 @@ export function ArticleContent({
         "max-md:pt-[calc(env(safe-area-inset-top,0px)+5.75rem)]",
         "flex w-full flex-1 flex-col min-h-0 max-md:overflow-hidden",
         "md:min-h-[calc(100dvh-7.25rem)]",
+        showReadingBounds && "reading-column-bounds-debug",
       )}
       style={{
         maxWidth: "700px",
@@ -391,7 +395,7 @@ export function ArticleContent({
         ref={touchSurfaceRef}
         style={pageEnterStyle}
         className={cn(
-          "font-reading text-[1.5625rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20 indent-5 md:indent-7",
+          "whitespace-pre-line font-reading text-[1.5625rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20 indent-5 md:indent-7",
           "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
         )}

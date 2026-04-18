@@ -1,7 +1,7 @@
 /**
  * Substring-driven chunk hints for the translation LLM.
  *
- * Flow: page text is normalized to single spaces (same as the TEXT block in the prompt).
+ * Flow: page text matches the TEXT block in the prompt (horizontal whitespace collapsed; line breaks kept).
  * For each entry, we check `normalizedText.includes(substring)`. Only strings that match
  * are listed in the prompt appendix as a JSON array.
  */

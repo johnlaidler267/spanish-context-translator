@@ -8,7 +8,7 @@ import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-/** Keep in sync with `GROQ_TRANSLATE_MODEL` / `GROQ_LEARN_MODEL` in `src/lib/translate.ts`. */
+/** Keep in sync with `GROQ_TRANSLATE_MODEL` / `GROQ_LEARN_MODEL` in `src/lib/translate/llm-settings.ts`. */
 const ALLOWED_MODELS = new Set([
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
