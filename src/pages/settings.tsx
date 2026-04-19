@@ -18,6 +18,20 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { LegalDocLinks } from "@/components/legal-doc-links"
 import { getTranslationLlmDisplayInfo } from "@/lib/translate"
+import {
+  getStoredLanguageLearningPreferences,
+  languageOptionFlagEmoji,
+  LEARNING_LANGUAGE_LABEL,
+  NATIVE_LANGUAGE_LABEL,
+  nativeOptionsForLearning,
+  normalizeLanguageLearningPreferences,
+  setStoredLanguageLearningPreferences,
+  type LearningLanguage,
+  type LanguageLearningPreferences,
+  type NativeLanguage,
+} from "@/lib/language-learning-preferences"
+
+const LEARNING_ORDER: LearningLanguage[] = ["spanish", "french", "english"]
 
 const TABS = ["General", "Account", "Billing"] as const
 type SettingsTab = (typeof TABS)[number]
@@ -49,11 +63,31 @@ export default function SettingsPage() {
   const [nameSavedNotice, setNameSavedNotice] = useState(false)
   const [nameSaveError, setNameSaveError] = useState<string | null>(null)
   const [nameSaving, setNameSaving] = useState(false)
+  const [languagePrefs, setLanguagePrefs] = useState<LanguageLearningPreferences>(() =>
+    getStoredLanguageLearningPreferences(),
+  )
   const displayNameUserKeyRef = useRef<string | undefined>(undefined)
   const { user, signOut, openAuthModal } = useAuth()
   const llmInfo = getTranslationLlmDisplayInfo()
   const normalizedNameInput = sanitizeDisplayName(nameInput)
   const nameDirty = normalizedNameInput !== savedName
+
+  const persistLanguagePrefs = (next: LanguageLearningPreferences) => {
+    const saved = setStoredLanguageLearningPreferences(next)
+    setLanguagePrefs(saved)
+  }
+
+  const setLearningLanguage = (learning: LearningLanguage) => {
+    persistLanguagePrefs(
+      normalizeLanguageLearningPreferences({ ...languagePrefs, learning }),
+    )
+  }
+
+  const setNativeLanguage = (native: NativeLanguage) => {
+    persistLanguagePrefs(
+      normalizeLanguageLearningPreferences({ ...languagePrefs, native }),
+    )
+  }
 
   const handleSignOut = async () => {
     setSigningOut(true)
@@ -159,11 +193,11 @@ export default function SettingsPage() {
             <div className="settings-panel flex-1 min-w-0 border border-border rounded-md bg-card/40 p-6 md:p-8">
               {activeTab === "General" && (
                 <section aria-labelledby="settings-general-heading">
-                  <h2 id="settings-general-heading" className="text-lg font-medium text-foreground mb-4">
+                  <h2 id="settings-general-heading" className="text-lg font-medium text-foreground mb-3">
                     General
                   </h2>
-                  <div className="space-y-4">
-                    <div className="pb-6 border-b border-border/40">
+                  <div className="divide-y divide-border/40">
+                    <div className="pb-4">
                       <label
                         htmlFor="display-name"
                         className="block text-sm font-medium text-foreground mb-1.5"
@@ -204,32 +238,92 @@ export default function SettingsPage() {
                         </p>
                       )}
 
-                      <div
-                        className={[
-                          "mt-2 flex items-center gap-1.5 text-xs text-muted-foreground transition-opacity duration-300",
-                          nameSavedNotice ? "opacity-100" : "opacity-0 pointer-events-none select-none",
-                        ].join(" ")}
-                        aria-live="polite"
-                      >
-                        <svg
-                          className="w-3.5 h-3.5 text-green-500 shrink-0"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                          aria-hidden
+                      {nameSavedNotice && (
+                        <div
+                          className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"
+                          aria-live="polite"
                         >
-                          <path
-                            d="M3 8l3.5 3.5L13 5"
-                            stroke="currentColor"
-                            strokeWidth="1.75"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        Saved
+                          <svg
+                            className="w-3.5 h-3.5 text-green-500 shrink-0"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            aria-hidden
+                          >
+                            <path
+                              d="M3 8l3.5 3.5L13 5"
+                              stroke="currentColor"
+                              strokeWidth="1.75"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          Saved
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="py-4 space-y-5">
+                      <div role="group" aria-labelledby="settings-learning-lang-label">
+                        <p
+                          id="settings-learning-lang-label"
+                          className="text-sm font-medium text-foreground mb-1.5"
+                        >
+                          I&apos;m learning
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 p-0.5 rounded-md border border-border bg-muted/20 w-fit max-w-full">
+                          {LEARNING_ORDER.map((id) => (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => setLearningLanguage(id)}
+                              className={[
+                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200 ease-in-out shrink-0",
+                                languagePrefs.learning === id
+                                  ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-background/60",
+                              ].join(" ")}
+                            >
+                              <span className="text-[1.05rem] leading-none" aria-hidden>
+                                {languageOptionFlagEmoji(id)}
+                              </span>
+                              {LEARNING_LANGUAGE_LABEL[id]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div role="group" aria-labelledby="settings-native-lang-label">
+                        <p
+                          id="settings-native-lang-label"
+                          className="text-sm font-medium text-foreground mb-1.5"
+                        >
+                          My native language is
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 p-0.5 rounded-md border border-border bg-muted/20 w-fit max-w-full">
+                          {nativeOptionsForLearning(languagePrefs.learning).map((id) => (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => setNativeLanguage(id)}
+                              className={[
+                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200 ease-in-out shrink-0",
+                                languagePrefs.native === id
+                                  ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-background/60",
+                              ].join(" ")}
+                            >
+                              <span className="text-[1.05rem] leading-none" aria-hidden>
+                                {languageOptionFlagEmoji(id)}
+                              </span>
+                              {NATIVE_LANGUAGE_LABEL[id]}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
+
                     {IS_LOCAL_DEV && (
-                      <div>
+                      <div className="py-4">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                           Translation models
                         </p>
