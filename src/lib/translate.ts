@@ -5,6 +5,11 @@ import {
   fetchGroqChatViaEdge,
   transcribeAudioViaEdge,
 } from "@/lib/groq-edge"
+import {
+  getStoredLanguageLearningPreferences,
+  LEARNING_LANGUAGE_LABEL,
+  type LearningLanguage,
+} from "@/lib/language-learning-preferences"
 
 /** `groq` (default) or `gemini` — set `VITE_TRANSLATION_LLM_PROVIDER` in `.env`. */
 function translationProvider(): "groq" | "gemini" {
@@ -55,7 +60,7 @@ const GROQ_REASONING_FORMAT_HIDDEN = "hidden" as const
 
 /**
  * Groq on_demand counts roughly (prompt tokens + max_tokens) against a low TPM
- * ceiling (~8k). Our PROMPT() is long; 12k max_tokens was ~13k+ “requested”
+ * ceiling (~8k). Our chunk-sort user prompt is long; 12k max_tokens was ~13k+ “requested”
  * and always tripped TPM — unrelated to how short the user’s Spanish is.
  * 4k further reduces “requested” TPM vs 5k; if you still see 429s, wait or upgrade Groq.
  */
@@ -406,13 +411,13 @@ function extractChunkJsonArrayFromText(raw: string): unknown[] {
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
 }
 
-const PROMPT = (input: string) => `
+const CHUNK_SORT_PROMPT_SPANISH = (input: string) => `
 Sort following spanish text into logical chunks.
 
 Chunks should consist of a singular word or multiple words ONLY IF they  fall into any of the following categories.
 
-fixed_idioms: e.g. dar su brazo a torcer, a punto de, de nuevo
-relative_subordinating_connectors: e.g. mientras que, los que, en la que
+fixed_idioms: e.g. dar su brazo a torcer, a punto de
+relative_subordinating_connectors: e.g. mientras que
 lo_nominalizer: e.g. lo maravilloso
 prepositional_verb_phrases: e.g. darse cuenta de que
 possessive_pronouns: e.g. el suyo
@@ -421,17 +426,84 @@ clitic_clusters: e.g. se lo
 reciprocal/distributive_pronoun_phrase: e.g. unos a otros
 adverbial_phrases: e.g. por supuesto
 colloquial_fixed_expressions: e.g. pinta bien
-reflexive_verbs: me di
 ETC.
 
 For EACH word in context, ask, can this word be SINGULAR (Best) Or IS IT ABSOLUTELY NECESSARY to GROUP with its NEIGHBOR?
 
-FORMAT: {"c": exact source substring, "m": English meaning, "l": english literal translation (even if unnatural)}
+FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering (even if unnatural), "n": tricky grammar help: omit if obvious}
 
 Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
 
 TEXT:
 ${input}`
+
+const CHUNK_SORT_PROMPT_FRENCH = (input: string) => `
+Sort the following French text into logical chunks.
+
+Chunks should consist of a singular word or multiple words ONLY IF they fall into any of the following categories.
+
+fixed_idioms: e.g. avoir du mal à, à point nommé
+relative_subordinating_connectors: e.g. tandis que, dont
+le_nominalizer: e.g. le beau, ce qui est important
+prepositional_verb_phrases: e.g. se rendre compte de, tenir à
+possessive_pronouns: e.g. le sien, la leur
+proper_nouns: e.g. Paris, Prix Nobel
+clitic_clusters: e.g. me le, lui en, le lui
+reciprocal/distributive_pronoun_phrase: e.g. les uns les autres
+adverbial_phrases: e.g. bien sûr, tout à coup
+contracted_prepositions: e.g. du, au, auxquels
+colloquial_fixed_expressions: e.g. ça marche, c'est parti
+ETC.
+
+For EACH word in context, ask: can this word stand SINGULAR (Best) — or is it ABSOLUTELY NECESSARY to GROUP it with its NEIGHBOR?
+
+FORMAT: {"c": exact source substring, "m": English meaning, "l": literal rendering (even if unnatural), "n": tricky grammar help — omit if obvious}
+
+Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
+
+TEXT:
+${input}`
+
+/** English source text; glosses in French (French- or Spanish-native learners of English). */
+const CHUNK_SORT_PROMPT_ENGLISH_FOR_FRENCH_NATIVE = (input: string) => `
+Sort the following English text into logical chunks.
+
+Chunks should consist of a singular word or multiple words ONLY IF they fall into any of the following categories.
+
+fixed_idioms: e.g. to give up, to look forward to, by and large
+phrasal_verbs: e.g. put up with, give in, carry on
+relative_subordinating_connectors: e.g. as long as, so that, even though
+prepositional_verb_phrases: e.g. to rely on, to deal with, to insist on
+possessive_pronouns: e.g. his own, the latter's
+proper_nouns: e.g. New York, Nobel Prize
+modal_verb_clusters: e.g. might have been, should have done, could have gone
+auxiliary_clusters: e.g. has been, will have, is being
+reciprocal/distributive_pronoun_phrase: e.g. each other, one another
+adverbial_phrases: e.g. all of a sudden, on the other hand, for good
+colloquial_fixed_expressions: e.g. no wonder, fair enough, that said
+compound_nouns: e.g. air conditioning, self-esteem, birth rate
+
+ETC.
+
+For EACH word in context, ask: can this word stand SINGULAR (Best) — or is it ABSOLUTELY NECESSARY to GROUP it with its NEIGHBOR?
+
+FORMAT: {"c": exact source substring, "m": French meaning, "l": literal rendering in French (even if unnatural), "n": tricky grammar help — omit if obvious}
+
+Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
+
+TEXT:
+${input}`
+
+function chunkSortUserPrompt(input: string): string {
+  const { learning } = getStoredLanguageLearningPreferences()
+  if (learning === "english") {
+    return CHUNK_SORT_PROMPT_ENGLISH_FOR_FRENCH_NATIVE(input)
+  }
+  if (learning === "french") {
+    return CHUNK_SORT_PROMPT_FRENCH(input)
+  }
+  return CHUNK_SORT_PROMPT_SPANISH(input)
+}
 
 /** LLM JSON uses short keys (c,m,l,n); internal pipeline uses long names. */
 export type RawChunk = {
@@ -1076,7 +1148,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   }
 
   const systemContent = ""
-  const userContent = PROMPT(canonical)
+  const userContent = chunkSortUserPrompt(canonical)
 
   const base = {
     model: translateModel(),
@@ -1121,7 +1193,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     if (unwrapped) {
       if (!unwrapped.some((item) => item.type === "chunk")) {
         throw new Error(
-          "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
+          "Model returned no usable chunk rows: each object needs source \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
         )
       }
       return coalesceGlueablePunctuationReconciledItems(unwrapped)
@@ -1131,7 +1203,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   const reconciled = reconcileChunks(chunks, canonical)
   if (!reconciled.some((item) => item.type === "chunk")) {
     throw new Error(
-      "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
+      "Model returned no usable chunk rows: each object needs source \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
     )
   }
   assertReconcileDidNotLeaveLongPlainTail(reconciled, canonical.length)
@@ -1417,25 +1489,29 @@ export async function translate(
   return { reconciled, sentences }
 }
 
-export async function generateRandomSpanish(): Promise<string> {
-  /**
-   * Use {@link learnModel} (not {@link translateModel}): the translate model on Groq is a
-   * reasoning model whose hidden reasoning shares the completion budget — with a low
-   * `max_tokens` the visible paragraph was often truncated mid-sentence. The learn stack
-   * is already used for similar short Spanish generation (Learn pill) without that issue.
-   */
-  const res = await fetchChatCompletion({
-    model: learnModel(),
-    messages: [
-      {
-        role: "user",
-        content: `Write one short paragraph in natural Spanish (about 3–5 sentences).
+function learnLanguageName(learning: LearningLanguage): string {
+  return LEARNING_LANGUAGE_LABEL[learning]
+}
+
+function randomShortParagraphUserPrompt(learning: LearningLanguage): string {
+  const lang = learnLanguageName(learning)
+  return `Write one short paragraph in natural ${lang} (about 3–5 sentences).
 
 You choose the topic, setting, tone, and register freely — fiction, opinion, dialogue, description, anything. Be creative and make each response feel different when asked again.
 
-Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`,
-      },
-    ],
+Use idiomatic ${lang}. Return only the ${lang} paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`
+}
+
+/**
+ * Random ~3–5-sentence paragraph in the language from General settings (“I’m learning”).
+ * Uses {@link learnModel} (not {@link translateModel}): the translate model on Groq can
+ * truncate mid-sentence when `max_tokens` is tight.
+ */
+export async function generateRandomLearningParagraph(): Promise<string> {
+  const learning = getStoredLanguageLearningPreferences().learning
+  const res = await fetchChatCompletion({
+    model: learnModel(),
+    messages: [{ role: "user", content: randomShortParagraphUserPrompt(learning) }],
     temperature: 1.5,
     max_tokens: 800,
   })
@@ -1452,7 +1528,9 @@ Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translati
   return out
 }
 
-const LEARN_PARAGRAPH_PROMPT = `Pick a random subject from this list, then pick a specific topic within that subject entirely on your own. Write a single paragraph of 75–100 words about it.
+function learnParagraphUserPrompt(learning: LearningLanguage): string {
+  const lang = learnLanguageName(learning)
+  return `Pick a random subject from this list, then pick a specific topic within that subject entirely on your own. Write a single paragraph of 75–100 words about it.
 
 Subjects:
 - Physics
@@ -1472,9 +1550,10 @@ Do not always pick the same subject or the same kinds of topics. Vary widely acr
 
 Write in plain, engaging prose. No bullet points in the paragraph. Assume the reader is intelligent but not an expert. End on something that makes them want to know more.
 
-Write the entire paragraph in Spanish.
+Write the entire paragraph in ${lang}.
 
-Return only the Spanish paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`
+Return only the ${lang} paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`
+}
 
 const LEARN_RANDOM_MAX_WORDS = 100
 
@@ -1487,13 +1566,14 @@ function truncateLearnParagraphToWordLimit(text: string, maxWords: number): stri
 }
 
 /**
- * Learn pill: topic paragraph via the configured learn model (Spanish, ~75–100 words).
- * Replaces the former Spanish Wikipedia featured-article fetch.
+ * Learn pill: topic paragraph via the configured learn model (~75–100 words) in your
+ * settings “I’m learning” language. Replaces the former Wikipedia featured-article fetch.
  */
 export async function fetchLearnRandomParagraph(): Promise<string> {
+  const learning = getStoredLanguageLearningPreferences().learning
   const res = await fetchChatCompletion({
     model: learnModel(),
-    messages: [{ role: "user", content: LEARN_PARAGRAPH_PROMPT }],
+    messages: [{ role: "user", content: learnParagraphUserPrompt(learning) }],
     temperature: 1.5,
     max_tokens: 500,
   })
@@ -1510,7 +1590,7 @@ export async function fetchLearnRandomParagraph(): Promise<string> {
   if (!raw?.trim()) throw new Error("Empty response from language model.")
   const intro = truncateLearnParagraphToWordLimit(raw, LEARN_RANDOM_MAX_WORDS)
   if (intro.length < 40) {
-    throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
+    throw new Error("Could not generate a paragraph. Please try again.")
   }
   return intro
 }

@@ -23,7 +23,7 @@ import { LandingContentPills } from "./landing-content-pills"
 import {
   appendTranscriptToField,
   fetchLearnRandomParagraph,
-  generateRandomSpanish,
+  generateRandomLearningParagraph,
 } from "@/lib/translate"
 import {
   getStoredLanguageLearningPreferences,
@@ -236,7 +236,7 @@ export function LandingScreen({
     setIsRolling(true)
     try {
       const paragraph = await fetchLandingSnippetWithRetries<string>(() =>
-        generateRandomSpanish(),
+        generateRandomLearningParagraph(),
       )
       setText(paragraph)
     } catch (e) {
