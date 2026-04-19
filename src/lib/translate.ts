@@ -464,7 +464,7 @@ Reply with only a JSON array of those objects (no markdown fences, no explanatio
 TEXT:
 ${input}`
 
-/** English source text; glosses in French (French- or Spanish-native learners of English). */
+/** English source text; `m` / `l` glosses in French for native French speakers learning English. */
 const CHUNK_SORT_PROMPT_ENGLISH_FOR_FRENCH_NATIVE = (input: string) => `
 Sort the following English text into logical chunks.
 
@@ -494,10 +494,42 @@ Reply with only a JSON array of those objects (no markdown fences, no explanatio
 TEXT:
 ${input}`
 
+/** Same English chunking rules as {@link CHUNK_SORT_PROMPT_ENGLISH_FOR_FRENCH_NATIVE}; glosses in Spanish. */
+const CHUNK_SORT_PROMPT_ENGLISH_FOR_SPANISH_NATIVE = (input: string) => `
+Sort the following English text into logical chunks.
+
+Chunks should consist of a singular word or multiple words ONLY IF they fall into any of the following categories.
+
+fixed_idioms: e.g. to give up, to look forward to, by and large
+phrasal_verbs: e.g. put up with, give in, carry on
+relative_subordinating_connectors: e.g. as long as, so that, even though
+prepositional_verb_phrases: e.g. to rely on, to deal with, to insist on
+possessive_pronouns: e.g. his own, the latter's
+proper_nouns: e.g. New York, Nobel Prize
+modal_verb_clusters: e.g. might have been, should have done, could have gone
+auxiliary_clusters: e.g. has been, will have, is being
+reciprocal/distributive_pronoun_phrase: e.g. each other, one another
+adverbial_phrases: e.g. all of a sudden, on the other hand, for good
+colloquial_fixed_expressions: e.g. no wonder, fair enough, that said
+compound_nouns: e.g. air conditioning, self-esteem, birth rate
+
+ETC.
+
+For EACH word in context, ask: can this word stand SINGULAR (Best) — or is it ABSOLUTELY NECESSARY to GROUP it with its NEIGHBOR?
+
+FORMAT: {"c": exact source substring, "m": Spanish meaning, "l": literal rendering in Spanish (even if unnatural), "n": tricky grammar help — omit if obvious}
+
+Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
+
+TEXT:
+${input}`
+
 function chunkSortUserPrompt(input: string): string {
-  const { learning } = getStoredLanguageLearningPreferences()
+  const { learning, native } = getStoredLanguageLearningPreferences()
   if (learning === "english") {
-    return CHUNK_SORT_PROMPT_ENGLISH_FOR_FRENCH_NATIVE(input)
+    return native === "french"
+      ? CHUNK_SORT_PROMPT_ENGLISH_FOR_FRENCH_NATIVE(input)
+      : CHUNK_SORT_PROMPT_ENGLISH_FOR_SPANISH_NATIVE(input)
   }
   if (learning === "french") {
     return CHUNK_SORT_PROMPT_FRENCH(input)
