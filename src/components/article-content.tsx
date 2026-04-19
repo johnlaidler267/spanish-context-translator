@@ -366,7 +366,7 @@ export function ArticleContent({
         ref={touchSurfaceRef}
         style={pageEnterStyle}
         className={cn(
-          "font-reading text-[1.5625rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20 indent-5 md:indent-7",
+          "font-reading text-[1.6875rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20 indent-5 md:indent-7",
           "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
         )}

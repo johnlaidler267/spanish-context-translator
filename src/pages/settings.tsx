@@ -270,7 +270,7 @@ export default function SettingsPage() {
                         >
                           I&apos;m learning
                         </p>
-                        <div className="flex flex-wrap gap-1.5 p-0.5 rounded-md border border-border bg-muted/20 w-fit max-w-full">
+                        <div className="flex flex-wrap gap-1.5 p-0.5 rounded-md border border-border bg-muted/20 w-full min-w-0">
                           {LEARNING_ORDER.map((id) => (
                             <button
                               key={id}
@@ -299,7 +299,7 @@ export default function SettingsPage() {
                         >
                           My native language is
                         </p>
-                        <div className="flex flex-wrap gap-1.5 p-0.5 rounded-md border border-border bg-muted/20 w-fit max-w-full">
+                        <div className="flex flex-wrap gap-1.5 p-0.5 rounded-md border border-border bg-muted/20 w-full min-w-0">
                           {nativeOptionsForLearning(languagePrefs.learning).map((id) => (
                             <button
                               key={id}
