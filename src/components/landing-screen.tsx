@@ -25,6 +25,13 @@ import {
   fetchLearnRandomParagraph,
   generateRandomSpanish,
 } from "@/lib/translate"
+import {
+  getStoredLanguageLearningPreferences,
+  landingGreetingWord,
+  LANGUAGE_LEARNING_PREFS_UPDATED_EVENT,
+  LANGUAGE_LEARNING_PREFERENCES_KEY,
+  type LanguageLearningPreferences,
+} from "@/lib/language-learning-preferences"
 import { VoiceInputButton } from "./voice-input-button"
 import { AppErrorModal } from "./app-error-modal"
 import type { ReadingTheme } from "./theme-toggle"
@@ -128,6 +135,23 @@ export function LandingScreen({
 
   const [charLimitTipOpen, setCharLimitTipOpen] = useState(false)
   const charLimitTipWrapRef = useRef<HTMLDivElement>(null)
+
+  const [langPrefs, setLangPrefs] = useState<LanguageLearningPreferences>(() =>
+    getStoredLanguageLearningPreferences(),
+  )
+
+  useEffect(() => {
+    const sync = () => setLangPrefs(getStoredLanguageLearningPreferences())
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LANGUAGE_LEARNING_PREFERENCES_KEY) sync()
+    }
+    window.addEventListener(LANGUAGE_LEARNING_PREFS_UPDATED_EVENT, sync)
+    window.addEventListener("storage", onStorage)
+    return () => {
+      window.removeEventListener(LANGUAGE_LEARNING_PREFS_UPDATED_EVENT, sync)
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [])
 
   useEffect(() => {
     if (!user) {
@@ -302,6 +326,14 @@ export function LandingScreen({
     })
   }, [])
 
+  const heroGreeting = landingGreetingWord(langPrefs.learning)
+  const heroTailQuestion =
+    langPrefs.learning === "english" && langPrefs.native === "spanish"
+      ? ", listo para leer?"
+      : langPrefs.learning === "english" && langPrefs.native === "french"
+        ? ", prêt à lire ?"
+        : ", ready to read?"
+
   return (
     <>
     <div className="landing-route-shell landing-route-enter relative z-10 flex w-full flex-col min-h-app max-md:min-h-0 max-md:flex-1">
@@ -345,14 +377,15 @@ export function LandingScreen({
             aria-hidden
           />
           <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl" style={{ lineHeight: "1.15" }}>
-            <em>Hola</em>
+            <em>{heroGreeting}</em>
             {displayName ? (
               <>
                 {" "}
-                <em>{displayName}</em>, ready to read?
+                <em>{displayName}</em>
+                {heroTailQuestion}
               </>
             ) : (
-              ", ready to read?"
+              heroTailQuestion
             )}
           </h1>
         </div>

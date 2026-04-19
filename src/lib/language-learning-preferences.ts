@@ -2,6 +2,9 @@
 
 export const LANGUAGE_LEARNING_PREFERENCES_KEY = "lector-language-learning-preferences"
 
+/** Same-tab listeners (e.g. landing hero) refresh when prefs are saved. */
+export const LANGUAGE_LEARNING_PREFS_UPDATED_EVENT = "lector-language-learning-prefs-updated"
+
 export type LearningLanguage = "spanish" | "french" | "english"
 
 export type NativeLanguage = "english" | "spanish" | "french"
@@ -72,7 +75,21 @@ export function setStoredLanguageLearningPreferences(
   } catch {
     /* ignore */
   }
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new CustomEvent(LANGUAGE_LEARNING_PREFS_UPDATED_EVENT))
+    } catch {
+      /* ignore */
+    }
+  }
   return normalized
+}
+
+/** Short greeting on the landing hero for the chosen “I’m learning” language. */
+export function landingGreetingWord(learning: LearningLanguage): string {
+  if (learning === "french") return "Bonjour"
+  if (learning === "english") return "Hello"
+  return "Hola"
 }
 
 export const LEARNING_LANGUAGE_LABEL: Record<LearningLanguage, string> = {
