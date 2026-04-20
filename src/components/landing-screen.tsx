@@ -327,12 +327,12 @@ export function LandingScreen({
   }, [])
 
   const heroGreeting = landingGreetingWord(langPrefs.learning)
-  const heroTailQuestion =
+  const heroTailPhrase =
     langPrefs.learning === "english" && langPrefs.native === "spanish"
-      ? ", listo para leer?"
+      ? "listo para leer?"
       : langPrefs.learning === "english" && langPrefs.native === "french"
-        ? ", prêt à lire ?"
-        : ", ready to read?"
+        ? "prêt à lire ?"
+        : "ready to read?"
 
   return (
     <>
@@ -382,11 +382,10 @@ export function LandingScreen({
               <>
                 {" "}
                 <em>{displayName}</em>
-                {heroTailQuestion}
               </>
-            ) : (
-              heroTailQuestion
-            )}
+            ) : null}
+            ,{" "}
+            <span className="wordmark-ink">{heroTailPhrase}</span>
           </h1>
         </div>
 
