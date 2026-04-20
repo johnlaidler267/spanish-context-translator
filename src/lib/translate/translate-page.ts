@@ -6,7 +6,8 @@ import {
   parseChatJsonErrorBody,
   throwChatHttpError,
 } from "@/lib/translate/chat-completion"
-import { buildChunkingUserPrompt, extractChunkJsonArrayFromText } from "@/lib/translate/chunk-json"
+import { buildChunkSortUserPrompt } from "@/lib/translate/chunk-sort-prompt"
+import { extractChunkJsonArrayFromText } from "@/lib/translate/chunk-json"
 import {
   assertReconcileDidNotLeaveLongPlainTail,
   coerceLlmChunkRow,
@@ -29,7 +30,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   }
 
   const systemContent = ""
-  const userContent = buildChunkingUserPrompt(canonical)
+  const userContent = buildChunkSortUserPrompt(canonical)
   console.log("[translatePageText] LLM user prompt:", userContent)
 
   const base = {
@@ -75,7 +76,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     if (unwrapped) {
       if (!unwrapped.some((item) => item.type === "chunk")) {
         throw new Error(
-          "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
+          "Model returned no usable chunk rows: each object needs source \"c\" and gloss \"m\". Without them the UI would show plain text only (one big type:text span).",
         )
       }
       return insertChapterMarkers(
@@ -88,7 +89,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   const reconciled = reconcileChunks(chunks, canonical)
   if (!reconciled.some((item) => item.type === "chunk")) {
     throw new Error(
-      "Model returned no usable chunk rows: each object needs Spanish \"c\" and English \"m\". Without them the UI would show plain text only (one big type:text span).",
+      "Model returned no usable chunk rows: each object needs source \"c\" and gloss \"m\". Without them the UI would show plain text only (one big type:text span).",
     )
   }
   assertReconcileDidNotLeaveLongPlainTail(reconciled, canonical.length)

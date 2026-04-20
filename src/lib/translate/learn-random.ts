@@ -1,30 +1,23 @@
+import { getStoredLanguageLearningPreferences } from "@/lib/language-learning-preferences"
 import {
   fetchChatCompletion,
   parseChatJsonErrorBody,
   stringifyMessageContent,
   throwChatHttpError,
 } from "@/lib/translate/chat-completion"
+import { learnParagraphUserPrompt, randomShortParagraphUserPrompt } from "@/lib/translate/chunk-sort-prompt"
 import { learnModel } from "@/lib/translate/llm-settings"
 
-export async function generateRandomSpanish(): Promise<string> {
-  /**
-   * Use `learnModel()` (not the main translate model): the translate model on Groq is a
-   * reasoning model whose hidden reasoning shares the completion budget — with a low
-   * `max_tokens` the visible paragraph was often truncated mid-sentence. The learn stack
-   * is already used for similar short Spanish generation (Learn pill) without that issue.
-   */
+/**
+ * Random ~3–5-sentence paragraph in the language from General settings (“I’m learning”).
+ * Uses {@link learnModel} (not the main translate model): the translate model on Groq can
+ * truncate mid-sentence when `max_tokens` is tight.
+ */
+export async function generateRandomLearningParagraph(): Promise<string> {
+  const learning = getStoredLanguageLearningPreferences().learning
   const res = await fetchChatCompletion({
     model: learnModel(),
-    messages: [
-      {
-        role: "user",
-        content: `Write one short paragraph in natural Spanish (about 3–5 sentences).
-
-You choose the topic, setting, tone, and register freely — fiction, opinion, dialogue, description, anything. Be creative and make each response feel different when asked again.
-
-Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`,
-      },
-    ],
+    messages: [{ role: "user", content: randomShortParagraphUserPrompt(learning) }],
     temperature: 1.5,
     max_tokens: 800,
   })
@@ -41,30 +34,6 @@ Use idiomatic Spanish. Return only the Spanish paragraph: no title, no translati
   return out
 }
 
-const LEARN_PARAGRAPH_PROMPT = `Pick a random subject from this list, then pick a specific topic within that subject entirely on your own. Write a single paragraph of 75–100 words about it.
-
-Subjects:
-- Physics
-- Mathematics
-- Philosophy
-- Psychology
-- History
-- Linguistics
-- Biology
-- Neuroscience
-- Economics
-- Astronomy
-- Anthropology
-- Logic
-
-Do not always pick the same subject or the same kinds of topics. Vary widely across runs.
-
-Write in plain, engaging prose. No bullet points in the paragraph. Assume the reader is intelligent but not an expert. End on something that makes them want to know more.
-
-Write the entire paragraph in Spanish.
-
-Return only the Spanish paragraph: no title, no translation, no explanation, no quotation marks around the whole text.`
-
 const LEARN_RANDOM_MAX_WORDS = 100
 
 function truncateLearnParagraphToWordLimit(text: string, maxWords: number): string {
@@ -76,13 +45,14 @@ function truncateLearnParagraphToWordLimit(text: string, maxWords: number): stri
 }
 
 /**
- * Learn pill: topic paragraph via the configured learn model (Spanish, ~75–100 words).
- * Replaces the former Spanish Wikipedia featured-article fetch.
+ * Learn pill: topic paragraph via the configured learn model (~75–100 words) in your
+ * settings “I’m learning” language. Replaces the former Wikipedia featured-article fetch.
  */
 export async function fetchLearnRandomParagraph(): Promise<string> {
+  const learning = getStoredLanguageLearningPreferences().learning
   const res = await fetchChatCompletion({
     model: learnModel(),
-    messages: [{ role: "user", content: LEARN_PARAGRAPH_PROMPT }],
+    messages: [{ role: "user", content: learnParagraphUserPrompt(learning) }],
     temperature: 1.5,
     max_tokens: 500,
   })
@@ -99,7 +69,7 @@ export async function fetchLearnRandomParagraph(): Promise<string> {
   if (!raw?.trim()) throw new Error("Empty response from language model.")
   const intro = truncateLearnParagraphToWordLimit(raw, LEARN_RANDOM_MAX_WORDS)
   if (intro.length < 40) {
-    throw new Error("No se pudo generar un párrafo. Inténtalo de nuevo.")
+    throw new Error("Could not generate a paragraph. Please try again.")
   }
   return intro
 }

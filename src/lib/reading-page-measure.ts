@@ -113,7 +113,7 @@ export function measureArticleBodyMaxChars(isMobile: boolean): number {
   const probe = document.createElement("div")
   probe.setAttribute("aria-hidden", "true")
   probe.className = isMobile
-    ? "font-reading text-[1.5625rem] leading-[1.75] text-foreground"
+    ? "font-reading text-[1.6875rem] leading-[1.75] text-foreground"
     : "font-reading text-[1.725rem] leading-[1.85] text-foreground"
   Object.assign(probe.style, {
     position: "fixed",

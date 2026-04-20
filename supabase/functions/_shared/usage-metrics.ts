@@ -32,6 +32,10 @@ export type UsageMetric =
   | "chunks_returned"       // total chunks the LLM returned in one response
   | "pages_processed"       // source-text pages sent to the LLM
   | "chars_processed"       // source characters sent to the LLM
+  /** Same counter as `chars_processed` column — billing-period total (fair-use on Pro). */
+  | "chars_processed_period"
+  /** Same as DB `chars_today` — UTC daily source chars (fair-use burst cap on Pro). */
+  | "chars_processed_today"
   | "api_calls"             // raw LLM API round-trips
   | "voice_requests"        // voice-input transcription requests
   // ↓ Add new metrics here — set column: null if no dedicated DB column yet
@@ -82,6 +86,16 @@ export const METRIC_CONFIG: Record<UsageMetric, MetricConfig> = {
     column:   "chars_processed",
     limitKey: "charsPerSubmission",
     label:    "characters processed",
+  },
+  chars_processed_period: {
+    column:   null,
+    limitKey: "charsPerMonth",
+    label:    "characters this billing period",
+  },
+  chars_processed_today: {
+    column:   null,
+    limitKey: "charsPerDay",
+    label:    "characters today (UTC)",
   },
   api_calls: {
     column:   "api_calls",
@@ -146,6 +160,11 @@ export function metricsToRpcParams(
         // Read-only: the RPC maintains this automatically from p_texts.
         // Skip to prevent double-counting.
         break
+      case null:
+        // Virtual char caps — `increment_usage` updates from `p_chars` only.
+        if (metric === "chars_processed_period" || metric === "chars_processed_today") break
+        params.p_extras[metric] = (params.p_extras[metric] ?? 0) + amount
+        break
       default:
         // No dedicated column → extra_counters JSONB
         params.p_extras[metric] = (params.p_extras[metric] ?? 0) + amount
@@ -195,6 +214,17 @@ export function readCounter(
   row: Record<string, unknown>,
   metric: UsageMetric,
 ): number {
+  if (metric === "chars_processed_period") {
+    return (row["chars_processed"] as number) ?? 0
+  }
+
+  if (metric === "chars_processed_today") {
+    const stored = isoDateOnly(row["chars_today_date"])
+    if (!stored) return 0
+    const todayUtc = utcCalendarTodayIso()
+    return stored === todayUtc ? ((row["chars_today"] as number) ?? 0) : 0
+  }
+
   const cfg = METRIC_CONFIG[metric]
 
   if (cfg.column === "texts_today") {
@@ -210,4 +240,32 @@ export function readCounter(
 
   const extras = (row["extra_counters"] as Record<string, number> | null) ?? {}
   return extras[metric] ?? 0
+}
+
+/**
+ * How much this request's `increments` adds to the counter that backs `metric`.
+ * Virtual char caps follow `chars_processed`; daily texts follow `texts_submitted`.
+ */
+export function incrementsDeltaForMetric(
+  metric: UsageMetric,
+  increments: Partial<Record<UsageMetric, number>>,
+): number {
+  const ch = increments.chars_processed
+  if (metric === "chars_processed_period" || metric === "chars_processed_today") {
+    return typeof ch === "number" && ch > 0 ? ch : 0
+  }
+  if (metric === "texts_submitted_today") {
+    const t = increments.texts_submitted
+    return typeof t === "number" && t > 0 ? t : 0
+  }
+  const raw = increments[metric]
+  return typeof raw === "number" && raw > 0 ? raw : 0
+}
+
+/** Drop client-only mirror keys before RPC / billing. */
+export function stripVirtualUsageIncrements(
+  increments: Partial<Record<UsageMetric, number>>,
+): Partial<Record<UsageMetric, number>> {
+  const { chars_processed_period: _p, chars_processed_today: _d, ...rest } = increments
+  return rest
 }

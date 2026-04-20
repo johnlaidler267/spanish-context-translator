@@ -11,7 +11,11 @@
  * features; major when restructuring the shape itself.
  */
 
-export const TIERS_CONFIG_VERSION = "2.0.3"
+export const TIERS_CONFIG_VERSION = "2.0.4"
+
+/** Pro fair-use caps (mirrors `supabase/functions/_shared/tiers.ts`). */
+export const PRO_FAIR_USE_CHARS_PER_MONTH = 4_000_000
+export const PRO_FAIR_USE_CHARS_PER_DAY = 500_000
 
 function normalizeStripePriceId(raw: string): string {
   let v = raw.trim()
@@ -105,6 +109,16 @@ export interface TierLimits {
   savedTranslations: number | null
   /** Max characters accepted per submission. */
   charsPerSubmission: number | null
+  /**
+   * Max source characters processed per billing period (rolling with subscription period).
+   * null = no monthly character cap.
+   */
+  charsPerMonth: number | null
+  /**
+   * Max source characters processed per UTC calendar day (burst guardrail).
+   * null = no daily character cap.
+   */
+  charsPerDay: number | null
 }
 
 /**
@@ -176,6 +190,8 @@ export const TIERS: Record<TierId, TierConfig> = {
       pagesPerSubmission: null,
       savedTranslations:  0,
       charsPerSubmission: 600,
+      charsPerMonth:      null,
+      charsPerDay:        null,
     },
     features: {
       articleMode:        true,
@@ -194,7 +210,8 @@ export const TIERS: Record<TierId, TierConfig> = {
     id: "pro",
     name: "Pro",
     tagline: "",
-    description: "Unlimited submissions, no character cap — monthly or annual billing.",
+    description:
+      "Unlimited submissions with generous fair-use character limits — monthly or annual billing.",
     suggestedUseCase: "Anyone reading Spanish regularly: learners, translators, and power users.",
     pricing: {
       monthly: { amountCents: 700,  stripePriceId: STRIPE_PRICE.proMonthly },
@@ -207,6 +224,8 @@ export const TIERS: Record<TierId, TierConfig> = {
       pagesPerSubmission: null,
       savedTranslations:  null,
       charsPerSubmission: null,
+      charsPerMonth:      PRO_FAIR_USE_CHARS_PER_MONTH,
+      charsPerDay:        PRO_FAIR_USE_CHARS_PER_DAY,
     },
     features: {
       articleMode:        true,

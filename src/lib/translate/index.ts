@@ -55,4 +55,4 @@ export { translate } from "@/lib/translate/translate-entry"
 
 export { appendTranscriptToField, transcribeAudioWithGroq } from "@/lib/translate/transcription"
 
-export { fetchLearnRandomParagraph, generateRandomSpanish } from "@/lib/translate/learn-random"
+export { fetchLearnRandomParagraph, generateRandomLearningParagraph } from "@/lib/translate/learn-random"

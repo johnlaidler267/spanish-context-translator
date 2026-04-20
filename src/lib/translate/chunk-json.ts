@@ -1,5 +1,4 @@
 import { jsonrepair } from "jsonrepair"
-import { formatSubstringChunkRulesForPrompt } from "@/config/chunk-group-hints"
 
 /**
  * Balanced `[`…`]` span starting at `start` (must be `[`); ignores `]` inside double-quoted JSON strings.
@@ -194,28 +193,4 @@ export function extractChunkJsonArrayFromText(raw: string): unknown[] {
 
   const preview = cleaned.length > 400 ? `${cleaned.slice(0, 400)}…` : cleaned
   throw new Error(`No JSON array found in response. Preview: ${preview}`)
-}
-
-export function buildChunkingUserPrompt(canonical: string): string {
-  const hintsBlock = formatSubstringChunkRulesForPrompt(canonical)
-  const hintsSection = hintsBlock ? `${hintsBlock}\n\n` : ""
-  return `Process the Spanish text left to right and segment it into the smallest meaningful units that match how a dictionary would define them.
-For each sequence of words, decide:
-
-
-If each word stands alone with its own meaning → keep separate.
-
-
-If meaning only exists as a combined unit → group them.
-
-
-Group whenever the words function together as a single semantic unit, including:
-fixed expressions, idioms, verb phrases with prepositions, reflexive verbs, clitic combinations, “lo + adjective” nominal forms, possessives, proper names, multi-word connectors, and common set phrases.
-Do not break apart any unit whose meaning would be lost or altered if separated.
-Each "c" must be copied exactly from TEXT, including line breaks where they appear — do not join lines into a single paragraph.
-Output strictly as a JSON array.
-Each element must be:
-{"c": exact substring from source, "m": natural English meaning, "l": direct literal translation}
-${hintsSection}TEXT:
-${canonical}`
 }

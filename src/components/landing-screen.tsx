@@ -23,8 +23,15 @@ import { LandingContentPills } from "./landing-content-pills"
 import {
   appendTranscriptToField,
   fetchLearnRandomParagraph,
-  generateRandomSpanish,
+  generateRandomLearningParagraph,
 } from "@/lib/translate"
+import {
+  getStoredLanguageLearningPreferences,
+  landingGreetingWord,
+  LANGUAGE_LEARNING_PREFS_UPDATED_EVENT,
+  LANGUAGE_LEARNING_PREFERENCES_KEY,
+  type LanguageLearningPreferences,
+} from "@/lib/language-learning-preferences"
 import { VoiceInputButton } from "./voice-input-button"
 import { AppErrorModal } from "./app-error-modal"
 import type { ReadingTheme } from "./theme-toggle"
@@ -125,6 +132,23 @@ export function LandingScreen({
   const [charLimitTipOpen, setCharLimitTipOpen] = useState(false)
   const charLimitTipWrapRef = useRef<HTMLDivElement>(null)
 
+  const [langPrefs, setLangPrefs] = useState<LanguageLearningPreferences>(() =>
+    getStoredLanguageLearningPreferences(),
+  )
+
+  useEffect(() => {
+    const sync = () => setLangPrefs(getStoredLanguageLearningPreferences())
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LANGUAGE_LEARNING_PREFERENCES_KEY) sync()
+    }
+    window.addEventListener(LANGUAGE_LEARNING_PREFS_UPDATED_EVENT, sync)
+    window.addEventListener("storage", onStorage)
+    return () => {
+      window.removeEventListener(LANGUAGE_LEARNING_PREFS_UPDATED_EVENT, sync)
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [])
+
   useEffect(() => {
     if (!user) {
       setFetchedSubscriptionRow(undefined)
@@ -217,7 +241,7 @@ export function LandingScreen({
     setIsRolling(true)
     try {
       const paragraph = await fetchLandingSnippetWithRetries<string>(() =>
-        generateRandomSpanish(),
+        generateRandomLearningParagraph(),
       )
       setText(paragraph)
     } catch (e) {
@@ -307,6 +331,14 @@ export function LandingScreen({
     })
   }, [])
 
+  const heroGreeting = landingGreetingWord(langPrefs.learning)
+  const heroTailPhrase =
+    langPrefs.learning === "english" && langPrefs.native === "spanish"
+      ? "listo para leer?"
+      : langPrefs.learning === "english" && langPrefs.native === "french"
+        ? "prêt à lire ?"
+        : "ready to read?"
+
   return (
     <>
       <div
@@ -348,15 +380,15 @@ export function LandingScreen({
             aria-hidden
           />
           <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl" style={{ lineHeight: "1.15" }}>
-            <em>Hola</em>
+            <em>{heroGreeting}</em>
             {displayName ? (
               <>
                 {" "}
-                <em>{displayName}</em>, ready to read?
+                <em>{displayName}</em>
               </>
-            ) : (
-              ", ready to read?"
-            )}
+            ) : null}
+            ,{" "}
+            <span className="wordmark-ink">{heroTailPhrase}</span>
           </h1>
         </div>
 
@@ -433,7 +465,7 @@ export function LandingScreen({
                     {charLimitTipOpen && (
                       <div className="char-limit-tip" role="dialog" aria-label="Upgrade for unlimited">
                         <p className="char-limit-tip-text">
-                          Upgrade your plan for unlimited characters per submission.
+                          Upgrade to Pro for a much higher per-paste limit and generous monthly fair-use allowances.
                         </p>
                         <Link
                           to="/upgrade"

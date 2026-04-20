@@ -442,7 +442,7 @@ article span {
 
 /* Landing dark mode overrides */
 .dark .wordmark { color: var(--foreground); }
-.dark .wordmark::after {
+.dark .wordmark-ink::after {
   background: linear-gradient(
     90deg,
     rgba(201,122,90,0)    0%,
@@ -575,8 +575,13 @@ article span {
   z-index: 0;
 }
 
-/* Ink swipe — sits just below the baseline, word-width */
-.wordmark::after {
+/* Ink swipe under the tail phrase only (e.g. “ready to read?”), not the full hero line */
+.wordmark-ink {
+  position: relative;
+  display: inline-block;
+}
+
+.wordmark-ink::after {
   content: "";
   position: absolute;
   left: 1%;
