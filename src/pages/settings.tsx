@@ -16,7 +16,7 @@ import {
 } from "@/lib/display-name-storage"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
-import { LegalDocLinks } from "@/components/legal-doc-links"
+import { SiteFooter } from "@/components/site-footer"
 import { getTranslationLlmDisplayInfo } from "@/lib/translate"
 import {
   getStoredLanguageLearningPreferences,
@@ -153,7 +153,7 @@ export default function SettingsPage() {
         <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
       </div>
 
-      <main className="relative z-[1] pb-16 px-4 md:px-8 overflow-x-hidden">
+      <main className="relative z-[1] px-4 md:px-8 overflow-x-hidden">
         <div className="max-w-5xl mx-auto">
           <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -462,11 +462,9 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
-
-          <p className="mt-12 text-center text-xs text-muted-foreground">
-            <LegalDocLinks />
-          </p>
         </div>
+
+        <SiteFooter className="mt-12" />
       </main>
     </div>
   )

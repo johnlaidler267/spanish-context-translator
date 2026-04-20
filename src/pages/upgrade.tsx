@@ -52,7 +52,7 @@ import {
   SUBSCRIPTION_IDENTITY_REQUIRED_CODE,
 } from "@/lib/subscription"
 import { PlanChangeDialog } from "@/components/plan-change-dialog"
-import { LegalDocLinks } from "@/components/legal-doc-links"
+import { SiteFooter } from "@/components/site-footer"
 import { supabase } from "@/lib/supabase"
 import { invokeSubscriptionRecheck } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
@@ -899,7 +899,7 @@ export default function UpgradePage() {
         <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
       </div>
 
-      <main className="relative z-[1] pb-16 px-4 md:px-6">
+      <main className="relative z-[1] px-4 md:px-6">
         <div className="max-w-4xl mx-auto">
 
           <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8">
@@ -1268,12 +1268,14 @@ export default function UpgradePage() {
           {/* Footer note */}
           <p className="mt-10 text-center text-xs text-muted-foreground font-sans">
             Payments processed securely by Stripe. You can cancel or change plans at any time.
-            <span className="block mt-2">
-              <LegalDocLinks className="text-muted-foreground" />
-            </span>
           </p>
-
         </div>
+
+        <SiteFooter
+          className="mt-6 font-sans"
+          bleedPadClassName="-mx-4 md:-mx-6 px-4 md:px-6"
+          contentMaxClassName="max-w-4xl mx-auto"
+        />
       </main>
 
       {/* Downgrade / cancellation confirmation dialog */}
