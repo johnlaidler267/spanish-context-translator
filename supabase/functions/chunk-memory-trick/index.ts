@@ -6,7 +6,7 @@
  *
  * Only the Spanish word/phrase is sent to the model (no article or grammar context).
  * Uses Gemini Flash (controlled JSON). Requires a valid Supabase JWT.
- * Set GEMINI_API_KEY in Supabase secrets. Optional: GEMINI_MEMORY_TRICK_MODEL (default gemini-2.0-flash-001).
+ * Set GEMINI_API_KEY in Supabase secrets. Optional: GEMINI_MEMORY_TRICK_MODEL (default gemini-2.5-flash-lite).
  */
 
 import { requireAuthUser, jsonError } from "../_shared/auth-user.ts"
@@ -15,8 +15,8 @@ import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
 const GEMINI_GENERATE =
   "https://generativelanguage.googleapis.com/v1beta/models"
 
-/** Default Flash model; override with GEMINI_MEMORY_TRICK_MODEL if your project quota lists another id. */
-const DEFAULT_MODEL = "gemini-2.0-flash-001"
+/** Default — aligned with `gemini-chat` / app translate defaults. Override via GEMINI_MEMORY_TRICK_MODEL if needed. */
+const DEFAULT_MODEL = "gemini-2.5-flash-lite"
 const MAX_OUTPUT_TOKENS = 512
 
 const TRICK_RESPONSE_SCHEMA = {
