@@ -145,6 +145,32 @@ export function ReadMode({
   currentSentenceIndexRef.current = currentSentenceIndex
   const hoverTtsLastSpokenIdRef = useRef<number | null>(null)
   const speakExploreChunkIdForTouchRef = useRef<(id: number | null) => void>(() => {})
+  const exploreLiftCountByChunkRef = useRef<Map<number, number>>(new Map())
+  const suppressDoubleTapAfterExplorationLiftRef = useRef<number | null>(null)
+
+  const onExplorationLiftChunk = useCallback((chunkId: number | null) => {
+    if (chunkId == null) {
+      suppressDoubleTapAfterExplorationLiftRef.current = null
+      return
+    }
+    const m = exploreLiftCountByChunkRef.current
+    const next = (m.get(chunkId) ?? 0) + 1
+    m.set(chunkId, next)
+    if (next === 1) {
+      suppressDoubleTapAfterExplorationLiftRef.current = chunkId
+      window.setTimeout(() => {
+        if (suppressDoubleTapAfterExplorationLiftRef.current === chunkId) {
+          suppressDoubleTapAfterExplorationLiftRef.current = null
+        }
+      }, 120)
+    } else {
+      suppressDoubleTapAfterExplorationLiftRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    exploreLiftCountByChunkRef.current.clear()
+  }, [currentSentenceIndex, readingSessionKey, readPageKey])
 
   speakExploreChunkIdForTouchRef.current = (id: number | null) => {
     if (!hoverTtsEnabledRef.current) return
@@ -184,6 +210,7 @@ export function ReadMode({
         if (!hoverTtsEnabledRef.current) return
         speechUnlockForTouchGesture()
       },
+      onExplorationLiftChunk,
     },
   )
 
@@ -546,6 +573,7 @@ export function ReadMode({
                     chunk={chunk}
                     popupChunkId={effectivePopupId}
                     delegatePointerHover
+                    suppressDoubleTapAfterExplorationLiftRef={suppressDoubleTapAfterExplorationLiftRef}
                     followPointerRef={
                       touchExploring && effectivePopupId === chunk.id
                         ? tooltipFollowRef

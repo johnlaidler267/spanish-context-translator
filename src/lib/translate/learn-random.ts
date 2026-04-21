@@ -18,7 +18,7 @@ export async function generateRandomLearningParagraph(): Promise<string> {
   const res = await fetchChatCompletion({
     model: learnModel(),
     messages: [{ role: "user", content: randomShortParagraphUserPrompt(learning) }],
-    temperature: 1.5,
+    temperature: 2,
     max_tokens: 800,
   })
 

@@ -25,7 +25,7 @@ import {
   subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
   translatePageText,
-} from "./lib/translate"
+} from "@/lib/translate"
 import { TranslationCache } from "./lib/translation-cache"
 import type { ViewMode } from "./components/mode-toggle"
 import type { ReadingTheme } from "./components/theme-toggle"

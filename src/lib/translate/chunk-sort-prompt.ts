@@ -76,7 +76,7 @@ ETC.
 
 For EACH word in context, ask: can this word stand SINGULAR (Best) — or is it ABSOLUTELY NECESSARY to GROUP it with its NEIGHBOR?
 
-FORMAT: {"c": exact source substring, "m": French meaning, "l": literal rendering in French (even if unnatural), "n": tricky grammar help — omit if obvious}
+FORMAT: {"c": exact source substring, "m": French meaning, "l": literal rendering in French (even if unnatural), "n": tricky grammar help (in french) — omit if obvious}
 
 Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
 
@@ -104,7 +104,7 @@ ETC.
 
 For EACH word in context, ask: can this word stand SINGULAR (Best) — or is it ABSOLUTELY NECESSARY to GROUP it with its NEIGHBOR?
 
-FORMAT: {"c": exact source substring, "m": Spanish meaning, "l": literal rendering in Spanish (even if unnatural), "n": tricky grammar help — omit if obvious}
+FORMAT: {"c": exact source substring, "m": Spanish meaning, "l": literal rendering in Spanish (even if unnatural), "n": tricky grammar help (in spanish) — omit if obvious}
 
 Reply with only a JSON array of those objects (no markdown fences, no explanation). First character must be "[".
 

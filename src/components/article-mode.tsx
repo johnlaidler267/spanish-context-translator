@@ -67,6 +67,33 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
 
   useEffect(() => () => cancelExploringLeaveTimer(), [cancelExploringLeaveTimer])
 
+  const exploreLiftCountByChunkRef = useRef<Map<number, number>>(new Map())
+  const suppressDoubleTapAfterExplorationLiftRef = useRef<number | null>(null)
+
+  const onExplorationLiftChunk = useCallback((chunkId: number | null) => {
+    if (chunkId == null) {
+      suppressDoubleTapAfterExplorationLiftRef.current = null
+      return
+    }
+    const m = exploreLiftCountByChunkRef.current
+    const next = (m.get(chunkId) ?? 0) + 1
+    m.set(chunkId, next)
+    if (next === 1) {
+      suppressDoubleTapAfterExplorationLiftRef.current = chunkId
+      window.setTimeout(() => {
+        if (suppressDoubleTapAfterExplorationLiftRef.current === chunkId) {
+          suppressDoubleTapAfterExplorationLiftRef.current = null
+        }
+      }, 120)
+    } else {
+      suppressDoubleTapAfterExplorationLiftRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    exploreLiftCountByChunkRef.current.clear()
+  }, [chunks])
+
   const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
     commitExploringChunkId,
     chunks,
@@ -76,6 +103,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
         tooltipFollowRef.current = pt
         if (pt) followTooltipPlaceRef.current?.(pt.x, pt.y)
       },
+      onExplorationLiftChunk,
     },
   )
 
@@ -202,6 +230,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
               chunk={chunk}
               popupChunkId={effectivePopupId}
               delegatePointerHover
+              suppressDoubleTapAfterExplorationLiftRef={suppressDoubleTapAfterExplorationLiftRef}
               followPointerRef={
                 touchExploring && effectivePopupId === chunk.id
                   ? tooltipFollowRef

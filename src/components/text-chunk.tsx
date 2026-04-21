@@ -68,6 +68,11 @@ interface TextChunkProps {
    * (desktop uses state → useLayoutEffect; rAF-only follow felt a frame late on phones).
    */
   followPointerPlaceRef?: MutableRefObject<((x: number, y: number) => void) | null>
+  /**
+   * Mobile: first press-and-explore lift per chunk must not seed `touchend` double-tap counting.
+   * Parent sets this ref to `chunk.id` in capture before this span’s `touchend`; the span clears it when consumed.
+   */
+  suppressDoubleTapAfterExplorationLiftRef?: MutableRefObject<number | null>
 }
 
 interface PopupCoords {
@@ -205,6 +210,7 @@ export function TextChunk({
   followPointerClient = null,
   followPointerRef,
   followPointerPlaceRef,
+  suppressDoubleTapAfterExplorationLiftRef,
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text.trim()}</span>
@@ -223,6 +229,7 @@ export function TextChunk({
   isPopupOpenRef.current = isPopupOpen
   const lastTapRef = useRef<{ t: number } | null>(null)
   const tapResetTimerRef = useRef<number | null>(null)
+  const suppressClickAfterDoubleTapUntilRef = useRef(0)
   /** Last viewport pointer while this chunk’s tooltip is open — reflow scroll/resize */
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const pointerRafRef = useRef<number | null>(null)
@@ -436,9 +443,20 @@ export function TextChunk({
   const handleTouchEnd = useCallback(
     (e: TouchEvent) => {
       e.preventDefault()
+      const sid = chunk.id
+      const suppressLift = suppressDoubleTapAfterExplorationLiftRef
+      if (
+        suppressLift &&
+        sid != null &&
+        suppressLift.current === sid
+      ) {
+        suppressLift.current = null
+        return
+      }
       const now = Date.now()
       if (lastTapRef.current && now - lastTapRef.current.t < 420) {
         // Double-tap: pin the popup AND open the details box
+        suppressClickAfterDoubleTapUntilRef.current = now + 500
         onPinToggle?.()
         onRequestDetails?.()
         lastTapRef.current = null
@@ -455,7 +473,7 @@ export function TextChunk({
         }, 450)
       }
     },
-    [onPinToggle, onRequestDetails],
+    [chunk.id, onPinToggle, onRequestDetails, suppressDoubleTapAfterExplorationLiftRef],
   )
 
   const gap = GAP_FROM_WORD[variant]
@@ -593,6 +611,7 @@ export function TextChunk({
         data-chunk
         data-chunk-id={chunk.id}
         onClick={() => {
+          if (Date.now() < suppressClickAfterDoubleTapUntilRef.current) return
           onActivate()
           onRequestDetails?.()
         }}
@@ -614,9 +633,12 @@ export function TextChunk({
             "rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[3px]",
             "transition-[text-decoration-color,background-color] duration-700 ease-out md:duration-500",
             isPinned
-              ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
+              ? cn(
+                  "bg-primary/10 text-foreground decoration-[#c97a5a]/75",
+                  isTouchHighlight && "font-medium",
+                )
               : isTouchHighlight
-                ? "text-foreground decoration-[#c97a5a]/60 bg-transparent"
+                ? "font-medium text-foreground decoration-[#c97a5a]/60 bg-transparent"
                 : "text-foreground decoration-transparent",
           )}
         >
