@@ -107,14 +107,14 @@ export function DetailsBox({
 
             <div
               className={cn(
-                "px-5 min-h-[3.5rem]",
+                "px-5",
                 detail && !loading && !error
-                  ? "pb-4"
+                  ? "pb-3"
                   : "pb-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]",
               )}
             >
               {loading && (
-                <div className="flex items-center gap-2 text-muted-foreground text-sm font-sans">
+                <div className="flex min-h-[3.5rem] items-center gap-2 text-muted-foreground text-sm font-sans">
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
                   <span>Looking up…</span>
                 </div>
