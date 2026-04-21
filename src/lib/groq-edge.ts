@@ -112,3 +112,21 @@ export async function fetchChunkDetailsViaEdge(
     body: JSON.stringify({ chunk, sentence }),
   })
 }
+
+export type MemoryTrickRequestBody = {
+  word: string
+}
+
+/** One creative memory tip (Supabase `chunk-memory-trick` → Gemini Flash, server-side). */
+export async function fetchMemoryTrickViaEdge(
+  body: MemoryTrickRequestBody,
+): Promise<Response> {
+  await ensureSessionForGroq()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error("No session")
+  return fetch(`${supabaseUrl}/functions/v1/chunk-memory-trick`, {
+    method: "POST",
+    headers: jsonHeaders(session),
+    body: JSON.stringify(body),
+  })
+}

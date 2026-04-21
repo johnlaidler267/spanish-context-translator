@@ -7,11 +7,14 @@
  * ancestor. Dismiss: X button or tap/click outside (`[data-details-box]` in parents).
  */
 
+import { useCallback, useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { GiBrain } from "react-icons/gi"
 import { X, BookOpen, Loader2 } from "lucide-react"
 import { chunkTextForWordDisplay } from "@/lib/chunk-text"
 import { cn } from "@/lib/utils"
+import { fetchMemoryTrickViaEdge } from "@/lib/groq-edge"
 import { type DetailState } from "@/hooks/use-chunk-details"
 
 /** Deceleration — quick start, soft settle (supplementary UI, not a drawer). */
@@ -102,7 +105,14 @@ export function DetailsBox({
               </button>
             </div>
 
-            <div className="px-5 pb-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] min-h-[3.5rem]">
+            <div
+              className={cn(
+                "px-5 min-h-[3.5rem]",
+                detail && !loading && !error
+                  ? "pb-4"
+                  : "pb-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]",
+              )}
+            >
               {loading && (
                 <div className="flex items-center gap-2 text-muted-foreground text-sm font-sans">
                   <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
@@ -118,6 +128,10 @@ export function DetailsBox({
                 <DetailContent detail={detail} />
               )}
             </div>
+
+            {detail && !loading && !error && (
+              <DetailsFooter headerWord={headerWord} />
+            )}
           </div>
         </motion.div>
       )}
@@ -165,5 +179,112 @@ function DetailContent({ detail }: { detail: DetailState }) {
     <p className="text-sm font-sans text-foreground/85 leading-relaxed">
       {detail.text}
     </p>
+  )
+}
+
+function DetailsFooter({ headerWord }: { headerWord: string }) {
+  const [memoryOpen, setMemoryOpen] = useState(false)
+  const [trickLoading, setTrickLoading] = useState(false)
+  const [trickText, setTrickText] = useState<string | null>(null)
+  const [trickErr, setTrickErr] = useState<string | null>(null)
+  const [trickSuccessOnce, setTrickSuccessOnce] = useState(false)
+
+  useEffect(() => {
+    setMemoryOpen(false)
+    setTrickLoading(false)
+    setTrickText(null)
+    setTrickErr(null)
+    setTrickSuccessOnce(false)
+  }, [headerWord])
+
+  const handleRemember = useCallback(async () => {
+    setMemoryOpen(true)
+    setTrickLoading(true)
+    setTrickErr(null)
+    setTrickText(null)
+    try {
+      const res = await fetchMemoryTrickViaEdge({
+        word: headerWord.trim(),
+      })
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`
+        try {
+          const j = (await res.json()) as { error?: string }
+          if (typeof j?.error === "string") msg = j.error
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg)
+      }
+      const data = (await res.json()) as { trick?: string }
+      const trick = (data.trick ?? "").trim()
+      if (!trick) throw new Error("Empty trick")
+      setTrickText(trick)
+      setTrickSuccessOnce(true)
+    } catch (e) {
+      console.error("[DetailsFooter] memory trick", e)
+      setTrickErr("Couldn’t fetch a memory tip.")
+    } finally {
+      setTrickLoading(false)
+    }
+  }, [headerWord])
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-[rgba(201,122,90,0.12)] dark:border-[rgba(201,122,90,0.1)] px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+      {memoryOpen && (
+        <div className="details-memory-bubble-in">
+          <div
+            className={cn(
+              "rounded-r-lg border border-l-[2.5px] py-3 px-4",
+              "border-[#E3D9CC] border-l-[#C0392B] bg-[#FFF9F5]",
+              "dark:border-[rgba(201,122,90,0.2)] dark:border-l-[#c0392b] dark:bg-[#262320]",
+            )}
+          >
+            <div
+              className={cn(
+                "mb-1.5 font-sans text-[10px] font-medium uppercase tracking-[0.1em] text-[#C0392B]",
+                "dark:text-[#e07060]",
+              )}
+            >
+              memory trick
+            </div>
+            <div className="font-serif text-sm leading-[1.72] text-[#3D3830] dark:text-foreground/90">
+              {trickLoading && (
+                <span className="inline-flex items-center gap-1" aria-live="polite">
+                  <span className="details-memory-dot inline-block" />
+                  <span className="details-memory-dot inline-block" />
+                  <span className="details-memory-dot inline-block" />
+                </span>
+              )}
+              {!trickLoading && trickErr && (
+                <p className="font-sans text-sm text-muted-foreground">{trickErr}</p>
+              )}
+              {!trickLoading && trickText && (
+                <p className="whitespace-pre-wrap">{trickText}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleRemember}
+        disabled={trickLoading}
+        className={cn(
+          "group inline-flex items-center gap-[7px] border-0 bg-transparent p-0 text-left font-sans text-[12.5px] font-medium tracking-wide text-[#7A6E62] transition-colors",
+          "hover:text-[#C0392B] dark:text-[#a89b8c] dark:hover:text-[#e07060]",
+          trickLoading && "pointer-events-none opacity-40",
+        )}
+      >
+        <GiBrain
+          className="h-[14px] w-[14px] shrink-0 opacity-65 transition-opacity group-hover:opacity-100"
+          aria-hidden
+        />
+        <span className={trickSuccessOnce ? undefined : "italic"}>
+          {trickSuccessOnce ? "Try another" : "How do I remember this?"}
+        </span>
+      </button>
+    </div>
   )
 }

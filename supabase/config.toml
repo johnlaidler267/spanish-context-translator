@@ -28,6 +28,9 @@ verify_jwt = false
 [functions.chunk-details]
 verify_jwt = false
 
+[functions.chunk-memory-trick]
+verify_jwt = false
+
 [functions.groq-chat]
 verify_jwt = false
 

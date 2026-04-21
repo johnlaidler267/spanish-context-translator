@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "supabase:deploy-checkout": "npx --yes supabase@latest functions deploy create-checkout-session",
     "supabase:deploy-track-usage": "npx --yes supabase@latest functions deploy track-usage",
-    "supabase:deploy-groq": "npx --yes supabase@latest functions deploy groq-chat groq-transcribe chunk-details gemini-chat"
+    "supabase:deploy-groq": "npx --yes supabase@latest functions deploy groq-chat groq-transcribe chunk-details chunk-memory-trick gemini-chat"
   },
   "dependencies": {
     "20": "^3.1.9",
