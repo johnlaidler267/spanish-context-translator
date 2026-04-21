@@ -31,16 +31,16 @@ interface TextChunkProps {
   popupChunkId: number | null
   /** Active chunk (tap/hover) — underline */
   isTouchHighlight: boolean
-  /** Double-tap / double-click pin — terracotta highlight + tooltip stays after lift */
+  /** Triple-tap (touch) / double-click pin — terracotta highlight + tooltip stays after lift */
   isPinned: boolean
   onActivate: () => void
   onDeactivate: () => void
-  /** Pin / unpin on double-tap (touch) or double-click (desktop) */
+  /** Pin / unpin on triple-tap (touch) or double-click (desktop) */
   onPinToggle?: () => void
   /** Desktop double-click: keep details UI, hide translation tooltip for this chunk. */
   onDoubleClickMenuOnly?: () => void
   /**
-   * Called on single-click (desktop) or double-tap (mobile) to open the
+   * Called on single-click (desktop) or triple-tap (mobile) to open the
    * bottom details box for this chunk.
    */
   onRequestDetails?: () => void
@@ -69,7 +69,7 @@ interface TextChunkProps {
    */
   followPointerPlaceRef?: MutableRefObject<((x: number, y: number) => void) | null>
   /**
-   * Mobile delegated hover: first explore lift per chunk must not seed double-tap; parent sets
+   * Mobile delegated hover: first explore lift per chunk must not seed the tap chain; parent sets
    * this in capture before `touchend` reaches the span.
    */
   suppressDoubleTapAfterExplorationLiftRef?: MutableRefObject<number | null>
@@ -102,6 +102,9 @@ const VIEWPORT_EDGE_PADDING = 8
 const GAP_FROM_WORD: Record<"article" | "read", number> = { read: 10, article: 36 }
 /** Diamond “arrow” size (px); article uses a larger tip + gap so the callout clears the finger */
 const ARROW_BOX: Record<"article" | "read", number> = { read: 10, article: 15 }
+/** Mobile: taps in a chain must fall within this gap (ms) to count toward opening details. */
+const TAP_CHAIN_GAP_MS = 550
+const TAPS_TO_OPEN_DETAILS_MOBILE = 3
 
 function estimateTooltipHeight(chunk: ChunkData): number {
   // Rough estimate for placement only; tooltip content remains auto-sized by the browser.
@@ -227,9 +230,10 @@ export function TextChunk({
   /** transitionend must not clear coords if user re-hovered before fade finished */
   const isPopupOpenRef = useRef(isPopupOpen)
   isPopupOpenRef.current = isPopupOpen
-  const lastTapRef = useRef<{ t: number } | null>(null)
+  /** Consecutive tap count + time of last tap (mobile triple-tap → details). */
+  const tapChainRef = useRef<{ n: number; t: number }>({ n: 0, t: 0 })
   const tapResetTimerRef = useRef<number | null>(null)
-  const suppressClickAfterDoubleTapUntilRef = useRef(0)
+  const suppressClickAfterTouchGestureUntilRef = useRef(0)
   /** Last viewport pointer while this chunk’s tooltip is open — reflow scroll/resize */
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const pointerRafRef = useRef<number | null>(null)
@@ -450,28 +454,32 @@ export function TextChunk({
         return
       }
       const now = Date.now()
-      if (lastTapRef.current && now - lastTapRef.current.t < 420) {
-        suppressClickAfterDoubleTapUntilRef.current = now + 500
+      const prev = tapChainRef.current
+      const n =
+        prev.n === 0 || now - prev.t > TAP_CHAIN_GAP_MS ? 1 : prev.n + 1
+      tapChainRef.current = { n, t: now }
+
+      if (n >= TAPS_TO_OPEN_DETAILS_MOBILE) {
+        suppressClickAfterTouchGestureUntilRef.current = now + 650
         onPinToggle?.()
         onRequestDetails?.()
-        lastTapRef.current = null
+        tapChainRef.current = { n: 0, t: 0 }
         if (tapResetTimerRef.current != null) {
           window.clearTimeout(tapResetTimerRef.current)
           tapResetTimerRef.current = null
         }
       } else {
-        lastTapRef.current = { t: now }
         if (tapResetTimerRef.current != null) window.clearTimeout(tapResetTimerRef.current)
         tapResetTimerRef.current = window.setTimeout(() => {
-          lastTapRef.current = null
+          tapChainRef.current = { n: 0, t: 0 }
           tapResetTimerRef.current = null
-        }, 450)
+        }, TAP_CHAIN_GAP_MS + 80)
       }
     },
     [chunk.id, onPinToggle, onRequestDetails, suppressDoubleTapAfterExplorationLiftRef],
   )
 
-  /** Non-passive `touchend` so `preventDefault` suppresses the synthetic click after double-tap. */
+  /** Non-passive `touchend` so `preventDefault` suppresses the synthetic click after triple-tap. */
   useLayoutEffect(() => {
     if (!delegatePointerHover || !chunkRef.current) return
     const el = chunkRef.current
@@ -616,7 +624,7 @@ export function TextChunk({
         data-chunk
         data-chunk-id={chunk.id}
         onClick={() => {
-          if (Date.now() < suppressClickAfterDoubleTapUntilRef.current) return
+          if (Date.now() < suppressClickAfterTouchGestureUntilRef.current) return
           onActivate()
           onRequestDetails?.()
         }}

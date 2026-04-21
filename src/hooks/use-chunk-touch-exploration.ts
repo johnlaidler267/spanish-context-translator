@@ -201,7 +201,7 @@ export function useChunkTouchExploration(
     /**
      * Capture-phase `touchend` / `touchcancel` on the surface, before chunk handlers: chunk id
      * under the finger when the explore gesture ends, or `null` if none. Used so the first
-     * explore lift does not count toward double-tap on mobile.
+     * explore lift does not count toward the triple-tap chain on mobile.
      */
     onExplorationLiftChunk?: (chunkId: number | null) => void
   },

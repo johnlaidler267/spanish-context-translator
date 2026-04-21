@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, type MutableRefObject } from "react"
 
 /**
  * Mobile press-and-explore: the first finger lift on a chunk must not seed TextChunk’s
- * double-tap counter. Tracks per-chunk lift ordinals and arms a ref consumed by TextChunk.
+ * triple-tap chain. Tracks per-chunk lift ordinals and arms a ref consumed by TextChunk.
  */
 export function useExplorationDoubleTapLiftSuppress(
   ...resetDeps: unknown[]
