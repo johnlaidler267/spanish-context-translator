@@ -68,6 +68,11 @@ interface TextChunkProps {
    * (desktop uses state → useLayoutEffect; rAF-only follow felt a frame late on phones).
    */
   followPointerPlaceRef?: MutableRefObject<((x: number, y: number) => void) | null>
+  /**
+   * Mobile delegated hover: first explore lift per chunk must not seed double-tap; parent sets
+   * this in capture before `touchend` reaches the span.
+   */
+  suppressDoubleTapAfterExplorationLiftRef?: MutableRefObject<number | null>
 }
 
 interface PopupCoords {
@@ -205,6 +210,7 @@ export function TextChunk({
   followPointerClient = null,
   followPointerRef,
   followPointerPlaceRef,
+  suppressDoubleTapAfterExplorationLiftRef,
 }: TextChunkProps) {
   if (isPunctuationOnly(chunk.text)) {
     return <span>{chunk.text.trim()}</span>
@@ -223,6 +229,7 @@ export function TextChunk({
   isPopupOpenRef.current = isPopupOpen
   const lastTapRef = useRef<{ t: number } | null>(null)
   const tapResetTimerRef = useRef<number | null>(null)
+  const suppressClickAfterDoubleTapUntilRef = useRef(0)
   /** Last viewport pointer while this chunk’s tooltip is open — reflow scroll/resize */
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const pointerRafRef = useRef<number | null>(null)
@@ -436,9 +443,15 @@ export function TextChunk({
   const handleTouchEnd = useCallback(
     (e: TouchEvent) => {
       e.preventDefault()
+      const sid = chunk.id
+      const suppressLift = suppressDoubleTapAfterExplorationLiftRef
+      if (suppressLift && sid != null && suppressLift.current === sid) {
+        suppressLift.current = null
+        return
+      }
       const now = Date.now()
       if (lastTapRef.current && now - lastTapRef.current.t < 420) {
-        // Double-tap: pin the popup AND open the details box
+        suppressClickAfterDoubleTapUntilRef.current = now + 500
         onPinToggle?.()
         onRequestDetails?.()
         lastTapRef.current = null
@@ -455,8 +468,18 @@ export function TextChunk({
         }, 450)
       }
     },
-    [onPinToggle, onRequestDetails],
+    [chunk.id, onPinToggle, onRequestDetails, suppressDoubleTapAfterExplorationLiftRef],
   )
+
+  /** Non-passive `touchend` so `preventDefault` suppresses the synthetic click after double-tap. */
+  useLayoutEffect(() => {
+    if (!delegatePointerHover || !chunkRef.current) return
+    const el = chunkRef.current
+    el.addEventListener("touchend", handleTouchEnd, { passive: false })
+    return () => {
+      el.removeEventListener("touchend", handleTouchEnd)
+    }
+  }, [delegatePointerHover, handleTouchEnd])
 
   const gap = GAP_FROM_WORD[variant]
   const arrowSize = ARROW_BOX[variant]
@@ -593,13 +616,14 @@ export function TextChunk({
         data-chunk
         data-chunk-id={chunk.id}
         onClick={() => {
+          if (Date.now() < suppressClickAfterDoubleTapUntilRef.current) return
           onActivate()
           onRequestDetails?.()
         }}
         onMouseEnter={delegatePointerHover ? undefined : onActivate}
         onMouseLeave={delegatePointerHover ? undefined : onDeactivate}
         onMouseMove={delegatePointerHover ? undefined : handleChunkMouseMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchEnd={delegatePointerHover ? undefined : handleTouchEnd}
         onDoubleClick={(e) => {
           e.preventDefault()
           onDoubleClickMenuOnly?.()

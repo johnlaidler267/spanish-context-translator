@@ -16,6 +16,7 @@ import {
   getChunkIdFromPointerClientXY,
   useChunkTouchExploration,
 } from "@/hooks/use-chunk-touch-exploration"
+import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
@@ -98,6 +99,8 @@ export function ArticleContent({
   itemsRef.current = items
   const hoverTtsLastSpokenIdRef = useRef<number | null>(null)
   const speakExploreChunkIdForTouchRef = useRef<(id: number | null) => void>(() => {})
+  const { suppressDoubleTapAfterExplorationLiftRef, onExplorationLiftChunk } =
+    useExplorationDoubleTapLiftSuppress(pageKey)
 
   const cancelExploringLeaveTimer = useCallback(() => {
     if (exploringLeaveTimerRef.current != null) {
@@ -162,6 +165,7 @@ export function ArticleContent({
         if (!hoverTtsEnabledRef.current) return
         speechUnlockForTouchGesture()
       },
+      onExplorationLiftChunk,
     },
   )
 
@@ -402,6 +406,7 @@ export function ArticleContent({
                     chunk={chunkData}
                     popupChunkId={effectivePopupId}
                     delegatePointerHover
+                    suppressDoubleTapAfterExplorationLiftRef={suppressDoubleTapAfterExplorationLiftRef}
                     followPointerRef={
                       touchExploring && effectivePopupId === id
                         ? tooltipFollowRef

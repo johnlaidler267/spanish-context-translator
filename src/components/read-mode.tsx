@@ -17,6 +17,7 @@ import {
   getChunkIdFromPointerClientXY,
   useChunkTouchExploration,
 } from "@/hooks/use-chunk-touch-exploration"
+import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { AppErrorModal } from "./app-error-modal"
@@ -137,6 +138,8 @@ export function ReadMode({
   currentSentenceIndexRef.current = currentSentenceIndex
   const hoverTtsLastSpokenIdRef = useRef<number | null>(null)
   const speakExploreChunkIdForTouchRef = useRef<(id: number | null) => void>(() => {})
+  const { suppressDoubleTapAfterExplorationLiftRef, onExplorationLiftChunk } =
+    useExplorationDoubleTapLiftSuppress(readingSessionKey, readPageKey, currentSentenceIndex)
 
   speakExploreChunkIdForTouchRef.current = (id: number | null) => {
     if (!hoverTtsEnabledRef.current) return
@@ -176,6 +179,7 @@ export function ReadMode({
         if (!hoverTtsEnabledRef.current) return
         speechUnlockForTouchGesture()
       },
+      onExplorationLiftChunk,
     },
   )
 
@@ -514,11 +518,12 @@ export function ReadMode({
               next != null && !shouldGlueAfterPriorChunk(next.text) ? " " : ""
             return (
               <span key={chunk.id}>
-                <TextChunk
-                  chunk={chunk}
-                  popupChunkId={effectivePopupId}
-                  delegatePointerHover
-                  followPointerRef={
+                  <TextChunk
+                    chunk={chunk}
+                    popupChunkId={effectivePopupId}
+                    delegatePointerHover
+                    suppressDoubleTapAfterExplorationLiftRef={suppressDoubleTapAfterExplorationLiftRef}
+                    followPointerRef={
                     touchExploring && effectivePopupId === chunk.id
                       ? tooltipFollowRef
                       : undefined

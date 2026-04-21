@@ -14,6 +14,7 @@ import {
   getChunkIdFromPointerClientXY,
   useChunkTouchExploration,
 } from "@/hooks/use-chunk-touch-exploration"
+import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 
@@ -67,6 +68,13 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
 
   useEffect(() => () => cancelExploringLeaveTimer(), [cancelExploringLeaveTimer])
 
+  const explorationLayoutKey = useMemo(
+    () => chunks.map((c) => c.id).join(","),
+    [chunks],
+  )
+  const { suppressDoubleTapAfterExplorationLiftRef, onExplorationLiftChunk } =
+    useExplorationDoubleTapLiftSuppress(explorationLayoutKey)
+
   const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
     commitExploringChunkId,
     chunks,
@@ -76,6 +84,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
         tooltipFollowRef.current = pt
         if (pt) followTooltipPlaceRef.current?.(pt.x, pt.y)
       },
+      onExplorationLiftChunk,
     },
   )
 
@@ -202,6 +211,7 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
               chunk={chunk}
               popupChunkId={effectivePopupId}
               delegatePointerHover
+              suppressDoubleTapAfterExplorationLiftRef={suppressDoubleTapAfterExplorationLiftRef}
               followPointerRef={
                 touchExploring && effectivePopupId === chunk.id
                   ? tooltipFollowRef

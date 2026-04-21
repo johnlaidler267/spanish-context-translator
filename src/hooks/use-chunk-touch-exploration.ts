@@ -198,6 +198,12 @@ export function useChunkTouchExploration(
      * iOS WebKit often needs a fresh empty utterance in this tick so the following `speak` isn’t dropped.
      */
     onBeforeTouchChunkIdChange?: () => void
+    /**
+     * Capture-phase `touchend` / `touchcancel` on the surface, before chunk handlers: chunk id
+     * under the finger when the explore gesture ends, or `null` if none. Used so the first
+     * explore lift does not count toward double-tap on mobile.
+     */
+    onExplorationLiftChunk?: (chunkId: number | null) => void
   },
 ) {
   const ref = useRef<HTMLDivElement>(null)
@@ -213,6 +219,8 @@ export function useChunkTouchExploration(
   onTouchExplorationStartRef.current = options?.onTouchExplorationStart
   const onBeforeTouchChunkIdChangeRef = useRef(options?.onBeforeTouchChunkIdChange)
   onBeforeTouchChunkIdChangeRef.current = options?.onBeforeTouchChunkIdChange
+  const onExplorationLiftChunkRef = useRef(options?.onExplorationLiftChunk)
+  onExplorationLiftChunkRef.current = options?.onExplorationLiftChunk
 
   useLayoutEffect(() => {
     const el = ref.current
@@ -264,16 +272,23 @@ export function useChunkTouchExploration(
       pendingPointRef.current = null
     }
 
+    const onTouchEndCapture = () => {
+      if (!touchExploringRef.current) return
+      const liftChunkId = lastEmittedIdRef.current
+      onExplorationLiftChunkRef.current?.(liftChunkId)
+      endTouchExploration()
+    }
+
     el.addEventListener("touchstart", onTouchStart, { passive: true })
     el.addEventListener("touchmove", onTouchMove, { passive: false })
-    el.addEventListener("touchend", endTouchExploration)
-    el.addEventListener("touchcancel", endTouchExploration)
+    el.addEventListener("touchend", onTouchEndCapture, { capture: true })
+    el.addEventListener("touchcancel", onTouchEndCapture, { capture: true })
 
     return () => {
       el.removeEventListener("touchstart", onTouchStart)
       el.removeEventListener("touchmove", onTouchMove)
-      el.removeEventListener("touchend", endTouchExploration)
-      el.removeEventListener("touchcancel", endTouchExploration)
+      el.removeEventListener("touchend", onTouchEndCapture, { capture: true })
+      el.removeEventListener("touchcancel", onTouchEndCapture, { capture: true })
       touchExploringRef.current = false
       onTouchPointerRef.current?.(null)
       setTouchExploring(false)
