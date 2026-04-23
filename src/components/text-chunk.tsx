@@ -87,8 +87,9 @@ interface PopupCoords {
   placement: "above" | "below"
 }
 
-const POPUP_WIDTH = 250
-const POPUP_MIN_HEIGHT = 120
+const POPUP_MIN_WIDTH = 124
+const POPUP_MAX_WIDTH = 240
+const POPUP_MIN_HEIGHT = 88
 const POPUP_MAX_HEIGHT = 360
 /** Hover meaning card — quick fade out (ms) */
 const TOOLTIP_FADE_OUT_MS = 0
@@ -97,11 +98,13 @@ const TOOLTIP_FOLLOW_POSITION_MS = 45
 /** Keep arrow diamond inside tooltip; min distance from edge to arrow center (px) */
 const ARROW_EDGE_INSET = 12
 const VIEWPORT_EDGE_PADDING = 8
+const TOOLTIP_FONT_STACK =
+  "\"Manrope\", \"Source Sans 3\", sans-serif"
 
 /** Vertical gap from word to tooltip (article: farther so finger doesn’t cover the card) */
 const GAP_FROM_WORD: Record<"article" | "read", number> = { read: 10, article: 36 }
-/** Diamond “arrow” size (px); article uses a larger tip + gap so the callout clears the finger */
-const ARROW_BOX: Record<"article" | "read", number> = { read: 10, article: 15 }
+/** Tooltip pointer size (px); article uses a larger tip + gap so the callout clears the finger */
+const ARROW_BOX: Record<"article" | "read", number> = { read: 8, article: 11 }
 /** Mobile: taps in a chain must fall within this gap (ms) to count toward opening details. */
 const TAP_CHAIN_GAP_MS = 550
 const TAPS_TO_OPEN_DETAILS_MOBILE = 3
@@ -111,6 +114,14 @@ function estimateTooltipHeight(chunk: ChunkData): number {
   const chars = `${chunk.meaning ?? ""} ${chunk.literal ?? ""} ${chunk.grammar ?? ""}`.trim().length
   const est = POPUP_MIN_HEIGHT + Math.ceil(chars / 36) * 14
   return Math.max(POPUP_MIN_HEIGHT, Math.min(POPUP_MAX_HEIGHT, est))
+}
+
+function estimateTooltipWidth(chunk: ChunkData): number {
+  const meaning = chunk.meaning?.trim() ?? ""
+  const detail = `${chunk.literal ?? ""} ${chunk.grammar ?? ""}`.trim()
+  const longest = Math.max(meaning.length, detail.length * 0.8)
+  const est = 76 + longest * 7.4
+  return Math.max(POPUP_MIN_WIDTH, Math.min(POPUP_MAX_WIDTH, Math.ceil(est)))
 }
 
 /**
@@ -238,7 +249,7 @@ export function TextChunk({
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const pointerRafRef = useRef<number | null>(null)
   const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
-  const measuredTooltipHeightRef = useRef<number | null>(null)
+  const measuredTooltipSizeRef = useRef<{ width: number; height: number } | null>(null)
 
   const placeTooltip = useCallback(
     (pointerX?: number | null, pointerY?: number | null) => {
@@ -256,9 +267,10 @@ export function TextChunk({
       const padding = 16
       const vw = window.innerWidth
       const vh = window.innerHeight
-      const tooltipWidth = POPUP_WIDTH
+      const tooltipWidth =
+        measuredTooltipSizeRef.current?.width ?? estimateTooltipWidth(chunk)
       const tooltipHeightEst =
-        measuredTooltipHeightRef.current ?? estimateTooltipHeight(chunk)
+        measuredTooltipSizeRef.current?.height ?? estimateTooltipHeight(chunk)
       const gap = GAP_FROM_WORD[variant]
       const gapForAbove = variant === "read" ? Math.max(4, gap - 2) : gap
       const edgeClearance = 16 + gap
@@ -367,10 +379,19 @@ export function TextChunk({
 
   useLayoutEffect(() => {
     if (!isPopupOpen || !tooltipRef.current) return
-    const h = Math.ceil(tooltipRef.current.getBoundingClientRect().height)
-    if (!Number.isFinite(h) || h <= 0) return
-    if (measuredTooltipHeightRef.current === h) return
-    measuredTooltipHeightRef.current = h
+    const rect = tooltipRef.current.getBoundingClientRect()
+    const next = {
+      width: Math.ceil(rect.width),
+      height: Math.ceil(rect.height),
+    }
+    if (!Number.isFinite(next.width) || !Number.isFinite(next.height) || next.width <= 0 || next.height <= 0) return
+    if (
+      measuredTooltipSizeRef.current?.width === next.width &&
+      measuredTooltipSizeRef.current?.height === next.height
+    ) {
+      return
+    }
+    measuredTooltipSizeRef.current = next
     if (delegatePointerHover && followPointerClient) {
       placeTooltip(followPointerClient.x, followPointerClient.y)
       return
@@ -498,14 +519,10 @@ export function TextChunk({
   const normalizedLiteral = chunk.literal?.trim().toLocaleLowerCase() ?? ""
   const showLiteral = normalizedLiteral.length > 0 && normalizedLiteral !== normalizedMeaning
 
-  /**
-   * Inner padding so the title/body never sit under the rotated diamond (half sits inside the card).
-   * Finger clearance vs the word uses `gap` only — no separate stem (stem + % positioning broke on “below”).
-   */
-  // Reserve only a small inset for the arrow so top whitespace stays tight.
-  const tailInset = Math.round(arrowSize * 0.45) + 2
-  const pad = 9
-  const padX = 11
+  /** Triangle pointer sits outside the card, so no extra content inset is needed. */
+  const tailInset = 0
+  const pad = 12
+  const padX = 16
 
   const showTooltip = coords !== null
   /** Same motion for mouse + touch: no CSS interpolation while a live pointer drives placement. */
@@ -531,7 +548,9 @@ export function TextChunk({
         position: "fixed",
         top: coords.tooltipTop,
         left: coords.tooltipLeft,
-        width: POPUP_WIDTH,
+        width: "max-content",
+        minWidth: POPUP_MIN_WIDTH,
+        maxWidth: `min(${POPUP_MAX_WIDTH}px, calc(100vw - 32px))`,
         boxSizing: "border-box",
         transform: "none",
         zIndex: 9999,
@@ -541,10 +560,11 @@ export function TextChunk({
         transition: isPopupOpen
           ? `left ${followMotionMs}ms linear, top ${followMotionMs}ms linear, opacity 0ms`
           : `opacity ${TOOLTIP_FADE_OUT_MS}ms ease-out`,
-        backgroundColor: "#f4efe9",
-        border: "1px solid rgba(201, 122, 90, 0.28)",
-        borderRadius: "4px",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.08)",
+        background: "linear-gradient(180deg, #fffefd 0%, #fcf7f1 100%)",
+        border: "1px solid rgba(70, 56, 45, 0.22)",
+        borderRadius: "11px",
+        boxShadow:
+          "0 14px 34px rgba(39, 31, 24, 0.12), 0 2px 8px rgba(39, 31, 24, 0.08), inset 0 1px 0 rgba(255,255,255,0.85)",
         padding:
           coords.placement === "below"
             ? `${pad + tailInset}px ${padX}px ${pad}px ${padX}px`
@@ -552,37 +572,30 @@ export function TextChunk({
         overflow: "visible",
       }}
     >
-      {/* Single diamond straddling the card edge — center on border so it meets the gap to the word cleanly */}
+      {/* Slim triangle pointer to avoid the speech-bubble diamond look. */}
       <div
         aria-hidden
         style={{
           position: "absolute",
-          width: arrowSize,
+          width: arrowSize * 2,
           height: arrowSize,
           left: coords.arrowCenterX,
           transition: isPopupOpen ? `left ${followMotionMs}ms linear` : undefined,
           zIndex: 2,
-          backgroundColor: "#f4efe9",
-          borderLeft: "1px solid rgba(201,122,90,0.28)",
-          borderTop: "1px solid rgba(201,122,90,0.28)",
+          backgroundColor: "#fcf7f1",
+          clipPath: "polygon(50% 100%, 0 0, 100% 0)",
           transform:
             coords.placement === "above"
-              ? "translateX(-50%) translateY(50%) rotate(45deg)"
-              : "translateX(-50%) translateY(-50%) rotate(45deg)",
+              ? "translateX(-50%) translateY(100%)"
+              : "translateX(-50%) translateY(-100%) rotate(180deg)",
           ...(coords.placement === "above"
             ? {
                 bottom: 0,
-                borderLeft: "none",
-                borderTop: "none",
-                borderRight: "1px solid rgba(201,122,90,0.28)",
-                borderBottom: "1px solid rgba(201,122,90,0.28)",
+                filter: "drop-shadow(0 1px 0 rgba(70,56,45,0.22))",
               }
             : {
                 top: 0,
-                borderRight: "none",
-                borderBottom: "none",
-                borderLeft: "1px solid rgba(201,122,90,0.28)",
-                borderTop: "1px solid rgba(201,122,90,0.28)",
+                filter: "drop-shadow(0 -1px 0 rgba(70,56,45,0.22))",
               }),
         }}
       />
@@ -590,24 +603,25 @@ export function TextChunk({
       <div
         className="chunk-tooltip-body"
         key={chunk.id != null ? `c${chunk.id}-${chunk.meaning}` : `${chunk.text}-${chunk.meaning}`}
+        style={{ maxWidth: POPUP_MAX_WIDTH - padX * 2 }}
       >
-        <p style={{ fontSize: "1.14rem", fontFamily: "var(--font-reading)", fontWeight: 600, color: "#3a332e", lineHeight: 1.28, margin: 0 }}>
+        <p style={{ fontSize: "1.02rem", fontFamily: TOOLTIP_FONT_STACK, fontWeight: 650, color: "#211b17", lineHeight: 1.16, letterSpacing: "-0.008em", margin: 0 }}>
           {chunk.meaning}
         </p>
 
         {(showLiteral || chunk.grammar) && (
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(201,122,90,0.16)" }}>
+          <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(124, 102, 84, 0.14)" }}>
             {showLiteral && (
-              <p style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "#454039" }}>
-                <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Literal</span>
-                <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
+              <p style={{ margin: "0 0 4px", fontSize: "0.76rem", lineHeight: 1.34, color: "#4e443c" }}>
+                <span style={{ fontFamily: TOOLTIP_FONT_STACK, fontSize: "0.54rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "#8c7c6d" }}>Literal</span>
+                <span style={{ margin: "0 6px", color: "#b47a5a", opacity: 0.8 }}>·</span>
                 {chunk.literal}
               </p>
             )}
             {chunk.grammar && (
-              <p style={{ margin: 0, fontSize: "0.8rem", fontStyle: "italic", color: "#454039" }}>
-                <span style={{ fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Note</span>
-                <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
+              <p style={{ margin: 0, fontSize: "0.76rem", lineHeight: 1.34, color: "#4e443c" }}>
+                <span style={{ fontFamily: TOOLTIP_FONT_STACK, fontStyle: "normal", fontSize: "0.54rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "#8c7c6d" }}>Note</span>
+                <span style={{ margin: "0 6px", color: "#b47a5a", opacity: 0.8 }}>·</span>
                 {chunk.grammar}
               </p>
             )}
