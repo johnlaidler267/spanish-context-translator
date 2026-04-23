@@ -465,29 +465,51 @@ export function ArticleContent({
           "mt-auto shrink-0 border-t border-border/60 pt-1",
           // Mobile: fixed to screen bottom, always visible
           "max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:z-30",
-          "max-md:mt-0 max-md:border-t max-md:border-border/40 max-md:bg-background",
-          "max-md:px-8 max-md:pt-3 max-md:pb-[max(1.25rem,env(safe-area-inset-bottom,0px)+0.5rem)]",
+          "max-md:mt-0 max-md:border-t max-md:border-[rgba(201,122,90,0.18)]",
+          "max-md:bg-[linear-gradient(180deg,rgba(248,242,234,0.98),rgba(242,234,225,0.96))]",
+          "max-md:shadow-[0_-10px_30px_rgba(86,64,47,0.08),inset_0_1px_0_rgba(255,255,255,0.72)]",
+          "dark:max-md:border-[rgba(201,122,90,0.12)]",
+          "dark:max-md:bg-[linear-gradient(180deg,rgba(30,26,23,0.98),rgba(24,21,19,0.96))]",
+          "dark:max-md:shadow-[0_-12px_30px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.04)]",
+          "max-md:px-6 max-md:pt-3.5 max-md:pb-[max(1.1rem,env(safe-area-inset-bottom,0px)+0.45rem)]",
         )}>
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-11 w-11 shrink-0 rounded-full"
+            className={cn(
+              "h-11 w-11 shrink-0 rounded-full",
+              "max-md:h-10 max-md:w-10 max-md:rounded-[0.8rem] max-md:border max-md:border-[rgba(201,122,90,0.16)]",
+              "max-md:bg-[rgba(255,250,245,0.72)] max-md:text-[#6a584b]",
+              "max-md:hover:bg-[rgba(201,122,90,0.08)] max-md:hover:text-[#4d4035]",
+              "dark:max-md:border-[rgba(201,122,90,0.14)] dark:max-md:bg-[rgba(255,255,255,0.04)] dark:max-md:text-[#cbbdaf]",
+              "dark:max-md:hover:bg-[rgba(201,122,90,0.10)] dark:max-md:hover:text-[#f0e3d6]",
+            )}
             disabled={pagination.pageIndex <= 0}
             onClick={pagination.onPrevious}
             aria-label="Previous page"
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
-          <span className="text-sm font-sans text-muted-foreground tabular-nums">
-            Page {pagination.pageIndex + 1} of {pagination.pageCount}
+          <span className="text-sm font-sans text-muted-foreground tabular-nums max-md:font-serif max-md:text-[1.05rem] max-md:tracking-[0.02em] max-md:text-[#6f6258] dark:max-md:text-[#c9b8a8]">
+            <span className="max-md:text-[#8f796a] max-md:italic dark:max-md:text-[#b89f8c]">Page</span>{" "}
+            {pagination.pageIndex + 1}{" "}
+            <span className="max-md:text-[#b59a86] dark:max-md:text-[#8f7968]">of</span>{" "}
+            {pagination.pageCount}
           </span>
           <div className="relative shrink-0">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-11 w-11 rounded-full"
+              className={cn(
+                "h-11 w-11 rounded-full",
+                "max-md:h-10 max-md:w-10 max-md:rounded-[0.8rem] max-md:border max-md:border-[rgba(201,122,90,0.16)]",
+                "max-md:bg-[rgba(255,250,245,0.72)] max-md:text-[#6a584b]",
+                "max-md:hover:bg-[rgba(201,122,90,0.08)] max-md:hover:text-[#4d4035]",
+                "dark:max-md:border-[rgba(201,122,90,0.14)] dark:max-md:bg-[rgba(255,255,255,0.04)] dark:max-md:text-[#cbbdaf]",
+                "dark:max-md:hover:bg-[rgba(201,122,90,0.10)] dark:max-md:hover:text-[#f0e3d6]",
+              )}
               disabled={
                 pagination.pageIndex >= pagination.pageCount - 1 || !pagination.nextPageOpen
               }
