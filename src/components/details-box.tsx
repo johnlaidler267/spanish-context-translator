@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { GiBrain } from "react-icons/gi"
-import { X, BookOpen, Loader2 } from "lucide-react"
+import { X, BookOpen, Loader2, ChevronRight } from "lucide-react"
 import { chunkTextForWordDisplay } from "@/lib/chunk-text"
 import { cn } from "@/lib/utils"
 import { fetchMemoryTrickViaEdge } from "@/lib/groq-edge"
@@ -271,19 +271,40 @@ function DetailsFooter({ headerWord }: { headerWord: string }) {
         type="button"
         onClick={handleRemember}
         disabled={trickLoading}
+        aria-expanded={memoryOpen}
         className={cn(
-          "group inline-flex items-center gap-[7px] border-0 bg-transparent p-0 text-left font-sans text-[12.5px] font-medium tracking-wide text-[#7A6E62] transition-colors",
-          "hover:text-[#C0392B] dark:text-[#a89b8c] dark:hover:text-[#e07060]",
-          trickLoading && "pointer-events-none opacity-40",
+          "group w-full inline-flex items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
+          "border-[rgba(201,122,90,0.22)] bg-[#fffaf6] text-[#3a332e] shadow-[0_1px_0_rgba(0,0,0,0.03)]",
+          "hover:border-[rgba(201,122,90,0.35)] hover:bg-[#fff5ec]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35",
+          "dark:border-[rgba(201,122,90,0.18)] dark:bg-[#23201d] dark:text-[#eae0d5] dark:hover:bg-[#282420]",
+          trickLoading && "pointer-events-none opacity-50",
         )}
       >
-        <GiBrain
-          className="h-[14px] w-[14px] shrink-0 opacity-65 transition-opacity group-hover:opacity-100"
+        <span className="flex min-w-0 items-center gap-3">
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
+              "bg-[#c97a5a]/10 text-[#c97a5a]",
+              "dark:bg-[#c97a5a]/15 dark:text-[#d4a896]",
+            )}
+            aria-hidden
+          >
+            <GiBrain className="h-[18px] w-[18px]" />
+          </span>
+          <span className="min-w-0">
+            <span className="block font-sans text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Memory tip
+            </span>
+            <span className="block font-serif text-sm leading-snug truncate">
+              {trickSuccessOnce ? "Try another" : "How do I remember this?"}
+            </span>
+          </span>
+        </span>
+        <ChevronRight
+          className="h-4 w-4 shrink-0 opacity-60 transition-transform duration-200 group-hover:translate-x-[1px] group-hover:opacity-80"
           aria-hidden
         />
-        <span className={trickSuccessOnce ? undefined : "italic"}>
-          {trickSuccessOnce ? "Try another" : "How do I remember this?"}
-        </span>
       </button>
     </div>
   )

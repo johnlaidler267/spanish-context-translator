@@ -193,7 +193,7 @@ export default function SettingsPage() {
             <div className="settings-panel flex-1 min-w-0 border border-border rounded-md bg-card/40 p-6 md:p-8">
               {activeTab === "General" && (
                 <section aria-labelledby="settings-general-heading">
-                  <h2 id="settings-general-heading" className="text-lg font-medium text-foreground mb-3">
+                  <h2 id="settings-general-heading" className="font-serif text-xl font-medium text-foreground mb-3">
                     General
                   </h2>
                   <div className="divide-y divide-border/40">
@@ -360,7 +360,7 @@ export default function SettingsPage() {
               )}
               {activeTab === "Account" && (
                 <section aria-labelledby="settings-account-heading">
-                  <h2 id="settings-account-heading" className="text-lg font-medium text-foreground mb-6">
+                  <h2 id="settings-account-heading" className="font-serif text-xl font-medium text-foreground mb-6">
                     Account
                   </h2>
 
@@ -445,7 +445,7 @@ export default function SettingsPage() {
                   aria-labelledby="settings-billing-heading"
                   hidden={activeTab !== "Billing"}
                 >
-                  <h2 id="settings-billing-heading" className="text-lg font-medium text-foreground mb-6">
+                  <h2 id="settings-billing-heading" className="font-serif text-xl font-medium text-foreground mb-6">
                     Billing
                   </h2>
                   <SubscriptionStatus />
@@ -453,7 +453,7 @@ export default function SettingsPage() {
               ) : (
                 activeTab === "Billing" && (
                   <section aria-labelledby="settings-billing-heading">
-                    <h2 id="settings-billing-heading" className="text-lg font-medium text-foreground mb-6">
+                    <h2 id="settings-billing-heading" className="font-serif text-xl font-medium text-foreground mb-6">
                       Billing
                     </h2>
                     <SubscriptionStatus />

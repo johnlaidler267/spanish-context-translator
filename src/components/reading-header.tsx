@@ -50,9 +50,16 @@ export function ReadingHeader({
           <ChevronLeft className="h-5 w-5 max-md:h-[1.35rem] max-md:w-[1.35rem]" strokeWidth={2.25} aria-hidden />
         </Link>
 
-        {/* Right side: Mode toggle + Theme + Settings */}
-        <div className="pointer-events-auto flex items-center gap-2 md:gap-3">
+        {/* Right side: one quiet control rail so mode + reader actions feel like a single toolset. */}
+        <div
+          className={cn(
+            "pointer-events-auto flex items-center gap-1 rounded-[1.15rem] border px-1.5 py-1",
+            "border-border/70 bg-background/82 shadow-[0_6px_22px_rgba(58,51,46,0.08)] backdrop-blur-md",
+            "dark:border-white/10 dark:bg-[rgba(26,26,26,0.82)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.24)]",
+          )}
+        >
           <ModeToggle mode={mode} onModeChange={onModeChange} />
+          <div className="mx-0.5 h-7 w-px bg-border/70 dark:bg-white/10" aria-hidden />
           <button
             type="button"
             onClick={() => {
@@ -61,9 +68,9 @@ export function ReadingHeader({
               onHoverTtsChange(next)
             }}
             className={cn(
-              "hover-tts-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/50",
+              "hover-tts-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-xl text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/55",
               hoverTtsEnabled &&
-                "bg-[#c97a5a]/20 text-[#c97a5a] ring-1 ring-[#c97a5a]/40",
+                "bg-[#c97a5a]/16 text-[#c97a5a] ring-1 ring-[#c97a5a]/28",
             )}
             aria-pressed={hoverTtsEnabled}
             aria-label={
@@ -79,7 +86,7 @@ export function ReadingHeader({
             onClick={() => {
               onThemeChange(theme === "light" ? "dark" : "light")
             }}
-            className="theme-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="theme-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-xl text-foreground hover:bg-muted/55 transition-colors duration-200 ease-in-out"
             aria-label="Cycle reading theme"
           >
             {theme === "light"
@@ -88,7 +95,7 @@ export function ReadingHeader({
           </button>
           <Link
             to="/settings"
-            className="profile-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="profile-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-xl text-foreground hover:bg-muted/55 transition-colors duration-200 ease-in-out"
             aria-label="Settings"
           >
             <Settings2 className="h-4 w-4 max-md:h-5 max-md:w-5" />
