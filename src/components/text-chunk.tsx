@@ -98,8 +98,6 @@ const TOOLTIP_FOLLOW_POSITION_MS = 45
 /** Keep arrow diamond inside tooltip; min distance from edge to arrow center (px) */
 const ARROW_EDGE_INSET = 12
 const VIEWPORT_EDGE_PADDING = 8
-const TOOLTIP_FONT_STACK =
-  "\"Manrope\", \"Source Sans 3\", sans-serif"
 
 /** Vertical gap from word to tooltip (article: farther so finger doesn’t cover the card) */
 const GAP_FROM_WORD: Record<"article" | "read", number> = { read: 10, article: 36 }
@@ -605,7 +603,7 @@ export function TextChunk({
         key={chunk.id != null ? `c${chunk.id}-${chunk.meaning}` : `${chunk.text}-${chunk.meaning}`}
         style={{ maxWidth: POPUP_MAX_WIDTH - padX * 2 }}
       >
-        <p style={{ fontSize: "1.02rem", fontFamily: TOOLTIP_FONT_STACK, fontWeight: 650, color: "#211b17", lineHeight: 1.16, letterSpacing: "-0.008em", margin: 0 }}>
+        <p style={{ fontSize: "1.16rem", fontFamily: "var(--font-reading)", fontWeight: 650, color: "#211b17", lineHeight: 1.16, letterSpacing: "-0.008em", margin: 0 }}>
           {chunk.meaning}
         </p>
 
@@ -613,14 +611,14 @@ export function TextChunk({
           <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(124, 102, 84, 0.14)" }}>
             {showLiteral && (
               <p style={{ margin: "0 0 4px", fontSize: "0.76rem", lineHeight: 1.34, color: "#4e443c" }}>
-                <span style={{ fontFamily: TOOLTIP_FONT_STACK, fontSize: "0.54rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "#8c7c6d" }}>Literal</span>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.54rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "#8c7c6d" }}>Literal</span>
                 <span style={{ margin: "0 6px", color: "#b47a5a", opacity: 0.8 }}>·</span>
                 {chunk.literal}
               </p>
             )}
             {chunk.grammar && (
               <p style={{ margin: 0, fontSize: "0.76rem", lineHeight: 1.34, color: "#4e443c" }}>
-                <span style={{ fontFamily: TOOLTIP_FONT_STACK, fontStyle: "normal", fontSize: "0.54rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "#8c7c6d" }}>Note</span>
+                <span style={{ fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "0.54rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "#8c7c6d" }}>Note</span>
                 <span style={{ margin: "0 6px", color: "#b47a5a", opacity: 0.8 }}>·</span>
                 {chunk.grammar}
               </p>
