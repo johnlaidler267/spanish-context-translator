@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { Compass, Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing-shell-layout"
 import { ContentTypeBadge } from "@/components/discover/content-type-badge"
+import { DiscoverLoadingState } from "@/components/discover/discover-loading-state"
 import { ContentPreviewModal } from "@/components/discover/content-preview-modal"
 import { DevEditDiscoverItemModal } from "@/components/discover/dev-edit-discover-item-modal"
 import {
@@ -259,7 +260,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
           )}
 
           {listLoading ? (
-            <p className="font-reading text-sm text-muted-foreground">Loading catalog…</p>
+            <DiscoverLoadingState />
           ) : (
             <>
               <section className="mb-12">
