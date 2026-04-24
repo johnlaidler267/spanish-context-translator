@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0 <21 || >=22.12.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,7 +13,7 @@
     "preview": "vite preview",
     "supabase:deploy-checkout": "npx --yes supabase@latest functions deploy create-checkout-session",
     "supabase:deploy-track-usage": "npx --yes supabase@latest functions deploy track-usage",
-    "supabase:deploy-groq": "npx --yes supabase@latest functions deploy groq-chat groq-transcribe chunk-details gemini-chat"
+    "supabase:deploy-groq": "npx --yes supabase@latest functions deploy groq-chat groq-transcribe chunk-details chunk-memory-trick gemini-chat"
   },
   "dependencies": {
     "20": "^3.1.9",

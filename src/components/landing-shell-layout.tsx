@@ -62,6 +62,7 @@ export function LandingShellLayout({
           theme={theme}
           onThemeChange={onThemeChange}
           showPlanBanner={false}
+          showMobilePlanBanner
           showBrandWordmark={false}
           onMenuClick={() => setMobileSidebarOpen(true)}
           contentInsetLeftPx={sidebarInsetPx}

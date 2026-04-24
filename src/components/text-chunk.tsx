@@ -31,16 +31,16 @@ interface TextChunkProps {
   popupChunkId: number | null
   /** Active chunk (tap/hover) — underline */
   isTouchHighlight: boolean
-  /** Double-tap / double-click pin — terracotta highlight + tooltip stays after lift */
+  /** Triple-tap (touch) / double-click pin — terracotta highlight + tooltip stays after lift */
   isPinned: boolean
   onActivate: () => void
   onDeactivate: () => void
-  /** Pin / unpin on double-tap (touch) or double-click (desktop) */
+  /** Pin / unpin on triple-tap (touch) or double-click (desktop) */
   onPinToggle?: () => void
   /** Desktop double-click: keep details UI, hide translation tooltip for this chunk. */
   onDoubleClickMenuOnly?: () => void
   /**
-   * Called on single-click (desktop) or double-tap (mobile) to open the
+   * Called on single-click (desktop) or triple-tap (mobile) to open the
    * bottom details box for this chunk.
    */
   onRequestDetails?: () => void
@@ -69,8 +69,8 @@ interface TextChunkProps {
    */
   followPointerPlaceRef?: MutableRefObject<((x: number, y: number) => void) | null>
   /**
-   * Mobile: first press-and-explore lift per chunk must not seed `touchend` double-tap counting.
-   * Parent sets this ref to `chunk.id` in capture before this span’s `touchend`; the span clears it when consumed.
+   * Mobile delegated hover: first explore lift per chunk must not seed the tap chain; parent sets
+   * this in capture before `touchend` reaches the span.
    */
   suppressDoubleTapAfterExplorationLiftRef?: MutableRefObject<number | null>
 }
@@ -87,7 +87,8 @@ interface PopupCoords {
   placement: "above" | "below"
 }
 
-const POPUP_WIDTH = 250
+const POPUP_MIN_WIDTH = 112
+const POPUP_MAX_WIDTH = 220
 const POPUP_MIN_HEIGHT = 120
 const POPUP_MAX_HEIGHT = 360
 /** Hover meaning card — quick fade out (ms) */
@@ -102,12 +103,23 @@ const VIEWPORT_EDGE_PADDING = 8
 const GAP_FROM_WORD: Record<"article" | "read", number> = { read: 10, article: 36 }
 /** Diamond “arrow” size (px); article uses a larger tip + gap so the callout clears the finger */
 const ARROW_BOX: Record<"article" | "read", number> = { read: 10, article: 15 }
+/** Mobile: taps in a chain must fall within this gap (ms) to count toward opening details. */
+const TAP_CHAIN_GAP_MS = 550
+const TAPS_TO_OPEN_DETAILS_MOBILE = 3
 
 function estimateTooltipHeight(chunk: ChunkData): number {
   // Rough estimate for placement only; tooltip content remains auto-sized by the browser.
   const chars = `${chunk.meaning ?? ""} ${chunk.literal ?? ""} ${chunk.grammar ?? ""}`.trim().length
   const est = POPUP_MIN_HEIGHT + Math.ceil(chars / 36) * 14
   return Math.max(POPUP_MIN_HEIGHT, Math.min(POPUP_MAX_HEIGHT, est))
+}
+
+function estimateTooltipWidth(chunk: ChunkData): number {
+  const meaning = chunk.meaning?.trim() ?? ""
+  const detail = `${chunk.literal ?? ""} ${chunk.grammar ?? ""}`.trim()
+  const longest = Math.max(meaning.length, detail.length * 0.8)
+  const est = 76 + longest * 7.4
+  return Math.max(POPUP_MIN_WIDTH, Math.min(POPUP_MAX_WIDTH, Math.ceil(est)))
 }
 
 /**
@@ -227,14 +239,15 @@ export function TextChunk({
   /** transitionend must not clear coords if user re-hovered before fade finished */
   const isPopupOpenRef = useRef(isPopupOpen)
   isPopupOpenRef.current = isPopupOpen
-  const lastTapRef = useRef<{ t: number } | null>(null)
+  /** Consecutive tap count + time of last tap (mobile triple-tap → details). */
+  const tapChainRef = useRef<{ n: number; t: number }>({ n: 0, t: 0 })
   const tapResetTimerRef = useRef<number | null>(null)
-  const suppressClickAfterDoubleTapUntilRef = useRef(0)
+  const suppressClickAfterTouchGestureUntilRef = useRef(0)
   /** Last viewport pointer while this chunk’s tooltip is open — reflow scroll/resize */
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const pointerRafRef = useRef<number | null>(null)
   const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
-  const measuredTooltipHeightRef = useRef<number | null>(null)
+  const measuredTooltipSizeRef = useRef<{ width: number; height: number } | null>(null)
 
   const placeTooltip = useCallback(
     (pointerX?: number | null, pointerY?: number | null) => {
@@ -252,9 +265,10 @@ export function TextChunk({
       const padding = 16
       const vw = window.innerWidth
       const vh = window.innerHeight
-      const tooltipWidth = POPUP_WIDTH
+      const tooltipWidth =
+        measuredTooltipSizeRef.current?.width ?? estimateTooltipWidth(chunk)
       const tooltipHeightEst =
-        measuredTooltipHeightRef.current ?? estimateTooltipHeight(chunk)
+        measuredTooltipSizeRef.current?.height ?? estimateTooltipHeight(chunk)
       const gap = GAP_FROM_WORD[variant]
       const gapForAbove = variant === "read" ? Math.max(4, gap - 2) : gap
       const edgeClearance = 16 + gap
@@ -363,10 +377,19 @@ export function TextChunk({
 
   useLayoutEffect(() => {
     if (!isPopupOpen || !tooltipRef.current) return
-    const h = Math.ceil(tooltipRef.current.getBoundingClientRect().height)
-    if (!Number.isFinite(h) || h <= 0) return
-    if (measuredTooltipHeightRef.current === h) return
-    measuredTooltipHeightRef.current = h
+    const rect = tooltipRef.current.getBoundingClientRect()
+    const next = {
+      width: Math.ceil(rect.width),
+      height: Math.ceil(rect.height),
+    }
+    if (!Number.isFinite(next.width) || !Number.isFinite(next.height) || next.width <= 0 || next.height <= 0) return
+    if (
+      measuredTooltipSizeRef.current?.width === next.width &&
+      measuredTooltipSizeRef.current?.height === next.height
+    ) {
+      return
+    }
+    measuredTooltipSizeRef.current = next
     if (delegatePointerHover && followPointerClient) {
       placeTooltip(followPointerClient.x, followPointerClient.y)
       return
@@ -445,36 +468,45 @@ export function TextChunk({
       e.preventDefault()
       const sid = chunk.id
       const suppressLift = suppressDoubleTapAfterExplorationLiftRef
-      if (
-        suppressLift &&
-        sid != null &&
-        suppressLift.current === sid
-      ) {
+      if (suppressLift && sid != null && suppressLift.current === sid) {
         suppressLift.current = null
         return
       }
       const now = Date.now()
-      if (lastTapRef.current && now - lastTapRef.current.t < 420) {
-        // Double-tap: pin the popup AND open the details box
-        suppressClickAfterDoubleTapUntilRef.current = now + 500
+      const prev = tapChainRef.current
+      const n =
+        prev.n === 0 || now - prev.t > TAP_CHAIN_GAP_MS ? 1 : prev.n + 1
+      tapChainRef.current = { n, t: now }
+
+      if (n >= TAPS_TO_OPEN_DETAILS_MOBILE) {
+        suppressClickAfterTouchGestureUntilRef.current = now + 650
         onPinToggle?.()
         onRequestDetails?.()
-        lastTapRef.current = null
+        tapChainRef.current = { n: 0, t: 0 }
         if (tapResetTimerRef.current != null) {
           window.clearTimeout(tapResetTimerRef.current)
           tapResetTimerRef.current = null
         }
       } else {
-        lastTapRef.current = { t: now }
         if (tapResetTimerRef.current != null) window.clearTimeout(tapResetTimerRef.current)
         tapResetTimerRef.current = window.setTimeout(() => {
-          lastTapRef.current = null
+          tapChainRef.current = { n: 0, t: 0 }
           tapResetTimerRef.current = null
-        }, 450)
+        }, TAP_CHAIN_GAP_MS + 80)
       }
     },
     [chunk.id, onPinToggle, onRequestDetails, suppressDoubleTapAfterExplorationLiftRef],
   )
+
+  /** Non-passive `touchend` so `preventDefault` suppresses the synthetic click after triple-tap. */
+  useLayoutEffect(() => {
+    if (!delegatePointerHover || !chunkRef.current) return
+    const el = chunkRef.current
+    el.addEventListener("touchend", handleTouchEnd, { passive: false })
+    return () => {
+      el.removeEventListener("touchend", handleTouchEnd)
+    }
+  }, [delegatePointerHover, handleTouchEnd])
 
   const gap = GAP_FROM_WORD[variant]
   const arrowSize = ARROW_BOX[variant]
@@ -518,7 +550,9 @@ export function TextChunk({
         position: "fixed",
         top: coords.tooltipTop,
         left: coords.tooltipLeft,
-        width: POPUP_WIDTH,
+        width: "max-content",
+        minWidth: POPUP_MIN_WIDTH,
+        maxWidth: `min(${POPUP_MAX_WIDTH}px, calc(100vw - 32px))`,
         boxSizing: "border-box",
         transform: "none",
         zIndex: 9999,
@@ -577,6 +611,11 @@ export function TextChunk({
       <div
         className="chunk-tooltip-body"
         key={chunk.id != null ? `c${chunk.id}-${chunk.meaning}` : `${chunk.text}-${chunk.meaning}`}
+        style={{
+          maxWidth: POPUP_MAX_WIDTH - padX * 2,
+          overflowWrap: "anywhere",
+          wordBreak: "break-word",
+        }}
       >
         <p style={{ fontSize: "1.14rem", fontFamily: "var(--font-reading)", fontWeight: 600, color: "#3a332e", lineHeight: 1.28, margin: 0 }}>
           {chunk.meaning}
@@ -611,14 +650,14 @@ export function TextChunk({
         data-chunk
         data-chunk-id={chunk.id}
         onClick={() => {
-          if (Date.now() < suppressClickAfterDoubleTapUntilRef.current) return
+          if (Date.now() < suppressClickAfterTouchGestureUntilRef.current) return
           onActivate()
           onRequestDetails?.()
         }}
         onMouseEnter={delegatePointerHover ? undefined : onActivate}
         onMouseLeave={delegatePointerHover ? undefined : onDeactivate}
         onMouseMove={delegatePointerHover ? undefined : handleChunkMouseMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchEnd={delegatePointerHover ? undefined : handleTouchEnd}
         onDoubleClick={(e) => {
           e.preventDefault()
           onDoubleClickMenuOnly?.()
@@ -633,12 +672,9 @@ export function TextChunk({
             "rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[3px]",
             "transition-[text-decoration-color,background-color] duration-700 ease-out md:duration-500",
             isPinned
-              ? cn(
-                  "bg-primary/10 text-foreground decoration-[#c97a5a]/75",
-                  isTouchHighlight && "font-medium",
-                )
+              ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
               : isTouchHighlight
-                ? "font-medium text-foreground decoration-[#c97a5a]/60 bg-transparent"
+                ? "text-foreground decoration-[#c97a5a]/60 bg-transparent"
                 : "text-foreground decoration-transparent",
           )}
         >

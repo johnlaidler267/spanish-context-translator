@@ -44,15 +44,22 @@ export function ReadingHeader({
         <Link
           to="/"
           onClick={onBack}
-          className="pointer-events-auto flex h-9 w-9 max-md:h-11 max-md:w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/50"
+          className="back-nav-control pointer-events-auto flex h-9 w-9 max-md:h-11 max-md:w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/35"
           aria-label="Back to home"
         >
           <ChevronLeft className="h-5 w-5 max-md:h-[1.35rem] max-md:w-[1.35rem]" strokeWidth={2.25} aria-hidden />
         </Link>
 
-        {/* Right side: Mode toggle + Theme + Settings */}
-        <div className="pointer-events-auto flex items-center gap-2 md:gap-3">
+        {/* Right side: one quiet control rail so mode + reader actions feel like a single toolset. */}
+        <div
+          className={cn(
+            "pointer-events-auto flex items-center gap-0.5 rounded-[0.85rem] border px-1 py-0.5",
+            "border-border/45 bg-background/62 shadow-[0_4px_16px_rgba(58,51,46,0.05)] backdrop-blur-sm",
+            "dark:border-white/8 dark:bg-[rgba(26,26,26,0.58)] dark:shadow-[0_6px_18px_rgba(0,0,0,0.16)]",
+          )}
+        >
           <ModeToggle mode={mode} onModeChange={onModeChange} />
+          <div className="mx-0.5 h-6 w-px bg-border/45 dark:bg-white/8" aria-hidden />
           <button
             type="button"
             onClick={() => {
@@ -61,9 +68,9 @@ export function ReadingHeader({
               onHoverTtsChange(next)
             }}
             className={cn(
-              "hover-tts-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/50",
+              "hover-tts-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-10.5 max-md:h-10.5 rounded-[0.7rem] text-foreground/82 transition-colors duration-200 ease-in-out hover:bg-muted/35 hover:text-foreground",
               hoverTtsEnabled &&
-                "bg-[#c97a5a]/20 text-[#c97a5a] ring-1 ring-[#c97a5a]/40",
+                "bg-[#c97a5a]/10 text-[#b86c4f] ring-1 ring-[#c97a5a]/18",
             )}
             aria-pressed={hoverTtsEnabled}
             aria-label={
@@ -79,7 +86,7 @@ export function ReadingHeader({
             onClick={() => {
               onThemeChange(theme === "light" ? "dark" : "light")
             }}
-            className="theme-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="theme-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-10.5 max-md:h-10.5 rounded-[0.7rem] text-foreground/82 hover:bg-muted/35 hover:text-foreground transition-colors duration-200 ease-in-out"
             aria-label="Cycle reading theme"
           >
             {theme === "light"
@@ -88,7 +95,7 @@ export function ReadingHeader({
           </button>
           <Link
             to="/settings"
-            className="profile-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full text-foreground hover:bg-muted/50 transition-colors duration-200 ease-in-out"
+            className="profile-btn flex items-center justify-center w-9 h-9 max-md:w-10.5 max-md:h-10.5 rounded-[0.7rem] text-foreground/82 hover:bg-muted/35 hover:text-foreground transition-colors duration-200 ease-in-out"
             aria-label="Settings"
           >
             <Settings2 className="h-4 w-4 max-md:h-5 max-md:w-5" />

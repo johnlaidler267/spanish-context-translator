@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { Sun, Moon, Settings2, Loader2, Menu } from "lucide-react"
 import { useSubscriptionOptional } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
@@ -16,6 +16,8 @@ interface MainHeaderProps {
   onThemeChange: (theme: ReadingTheme) => void
   /** Free plan pill + mobile strip — landing only */
   showPlanBanner?: boolean
+  /** Mobile-only upgrade reminder on the homepage. */
+  showMobilePlanBanner?: boolean
   /** When false, the LexaLens wordmark is omitted (e.g. shown in landing sidebar). Default true. */
   showBrandWordmark?: boolean
   /** Mobile: open landing sidebar (shown when `showBrandWordmark` is false). */
@@ -45,7 +47,7 @@ function PlanBadgeLoading() {
 }
 
 /** Landing plan pill — subscription copy from DB; context status invalidates when coarse status changes. */
-function PlanBadgeContent() {
+function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "upgrade" }) {
   const ctxStatus = useSubscriptionOptional()?.status ?? null
   const { user, isLoading: authLoading, openAuthModal } = useAuth()
   const [pill, setPill] = useState<LinkPlanPill | null>(null)
@@ -76,11 +78,14 @@ function PlanBadgeContent() {
   }, [user?.id, user?.is_anonymous, ctxStatus])
 
   if (authLoading) {
-    return <PlanBadgeLoading />
+    return guestMode === "upgrade" ? null : <PlanBadgeLoading />
   }
 
   if (!user) {
-    const guest = GUEST_PLAN_PILL
+    const guest =
+      guestMode === "upgrade"
+        ? { mode: "link" as const, to: "/upgrade", primary: "Free plan", secondary: "Upgrade" }
+        : GUEST_PLAN_PILL
     const inner = (
       <>
         <span className="plan-badge-lead">
@@ -94,6 +99,13 @@ function PlanBadgeContent() {
         {guest.secondary ? <span className="plan-badge-upgrade">{guest.secondary}</span> : null}
       </>
     )
+    if (guestMode === "upgrade") {
+      return (
+        <Link to="/upgrade" className="contents">
+          {inner}
+        </Link>
+      )
+    }
     return (
       <button
         type="button"
@@ -107,7 +119,11 @@ function PlanBadgeContent() {
   }
 
   if (pill === null) {
-    return <PlanBadgeLoading />
+    return guestMode === "upgrade" ? null : <PlanBadgeLoading />
+  }
+
+  if (guestMode === "upgrade" && pill.to !== "/upgrade") {
+    return null
   }
 
   const inner = (
@@ -135,6 +151,7 @@ export function MainHeader({
   theme,
   onThemeChange,
   showPlanBanner = false,
+  showMobilePlanBanner = false,
   showBrandWordmark = true,
   onMenuClick,
   contentInsetLeftPx = 0,
@@ -142,6 +159,8 @@ export function MainHeader({
 }: MainHeaderProps) {
   const stacked = variant === "stacked"
   const isMdUp = useMediaQuery("(min-width: 768px)")
+  const location = useLocation()
+  const showHomeMobilePlanBanner = showMobilePlanBanner && !isMdUp && location.pathname === "/"
   const fixedInset =
     !stacked && isMdUp && contentInsetLeftPx > 0
       ? { left: contentInsetLeftPx, right: 0, width: "auto" as const }
@@ -211,10 +230,10 @@ export function MainHeader({
             ) : null}
           </div>
         </div>
-        {showBrandWordmark && showPlanBanner && (
-          <div className="pointer-events-auto md:hidden w-full px-2.5 pb-2 pt-0.5">
-            <div className="plan-badge plan-badge--header plan-badge--mobile-chip w-full">
-              <PlanBadgeContent />
+        {showHomeMobilePlanBanner && (
+          <div className="pointer-events-auto md:hidden flex w-full justify-center px-2.5 pb-2 pt-0.5">
+            <div className="plan-badge plan-badge--header plan-badge--mobile-chip">
+              <PlanBadgeContent guestMode="upgrade" />
             </div>
           </div>
         )}

@@ -7,10 +7,6 @@ import {
   useCallback,
   useMemo,
   useRef,
-  lazy,
-  Suspense,
-  type ComponentType,
-  type LazyExoticComponent,
   type SetStateAction,
 } from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
@@ -20,13 +16,13 @@ import {
   getChunkIdFromPointerClientXY,
   useChunkTouchExploration,
 } from "@/hooks/use-chunk-touch-exploration"
+import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { AppErrorModal } from "./app-error-modal"
-import { translationErrorForUserModal } from "@/lib/translation-error-ui"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
 import {
@@ -34,13 +30,6 @@ import {
   speakHoverChunk,
   speechUnlockForTouchGesture,
 } from "@/lib/hover-tts"
-
-let DevArticleMachineTranslate: LazyExoticComponent<
-  ComponentType<{ pageText: string; disabled?: boolean }>
-> | null = null
-if (import.meta.env.DEV) {
-  DevArticleMachineTranslate = lazy(() => import("./dev-article-machine-translate"))
-}
 
 export type ArticlePaginationState = {
   pageIndex: number
@@ -72,7 +61,7 @@ function articleChunkTextByNumericId(
 ): string | null {
   let cid = 0
   for (const it of items) {
-    if (it.type === "text" || it.type === "chapter") continue
+    if (it.type === "text") continue
     if (cid === id) return it.chunk
     cid++
   }
@@ -110,32 +99,8 @@ export function ArticleContent({
   itemsRef.current = items
   const hoverTtsLastSpokenIdRef = useRef<number | null>(null)
   const speakExploreChunkIdForTouchRef = useRef<(id: number | null) => void>(() => {})
-  const exploreLiftCountByChunkRef = useRef<Map<number, number>>(new Map())
-  const suppressDoubleTapAfterExplorationLiftRef = useRef<number | null>(null)
-
-  const onExplorationLiftChunk = useCallback((chunkId: number | null) => {
-    if (chunkId == null) {
-      suppressDoubleTapAfterExplorationLiftRef.current = null
-      return
-    }
-    const m = exploreLiftCountByChunkRef.current
-    const next = (m.get(chunkId) ?? 0) + 1
-    m.set(chunkId, next)
-    if (next === 1) {
-      suppressDoubleTapAfterExplorationLiftRef.current = chunkId
-      window.setTimeout(() => {
-        if (suppressDoubleTapAfterExplorationLiftRef.current === chunkId) {
-          suppressDoubleTapAfterExplorationLiftRef.current = null
-        }
-      }, 120)
-    } else {
-      suppressDoubleTapAfterExplorationLiftRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    exploreLiftCountByChunkRef.current.clear()
-  }, [pageKey])
+  const { suppressDoubleTapAfterExplorationLiftRef, onExplorationLiftChunk } =
+    useExplorationDoubleTapLiftSuppress(pageKey)
 
   const cancelExploringLeaveTimer = useCallback(() => {
     if (exploringLeaveTimerRef.current != null) {
@@ -313,7 +278,7 @@ export function ArticleContent({
     if (!key || !items) return null
     let cid = 0
     for (const it of items) {
-      if (it.type === "chapter" || it.type === "text") continue
+      if (it.type !== "chunk") continue
       if (it.chunk === chunkDetails.activeChunk) return cid
       cid++
     }
@@ -349,15 +314,7 @@ export function ArticleContent({
   /** Reconstruct full page text for LLM sentence context */
   const pageText = useMemo(() => {
     if (!items) return ""
-    return items
-      .map((item) =>
-        item.type === "text"
-          ? item.text
-          : item.type === "chapter"
-            ? `${item.label}\n`
-            : item.chunk,
-      )
-      .join("")
+    return items.map(item => item.type === "text" ? item.text : item.chunk).join("")
   }, [items])
 
   const handleGlobalClick = useCallback((e: MouseEvent) => {
@@ -392,14 +349,6 @@ export function ArticleContent({
   const showTranslationErrorModal =
     Boolean(errorMessage && !loading && !errorModalDismissed)
 
-  const translationErrPresent = useMemo(
-    () => (errorMessage ? translationErrorForUserModal(errorMessage) : null),
-    [errorMessage],
-  )
-
-  const showReadingBounds =
-    import.meta.env.DEV || import.meta.env.VITE_SHOW_READING_BOUNDS === "1"
-
   return (
     <>
     <div
@@ -411,7 +360,6 @@ export function ArticleContent({
         "max-md:pt-[calc(env(safe-area-inset-top,0px)+5.75rem)]",
         "flex w-full flex-1 flex-col min-h-0 max-md:overflow-hidden",
         "md:min-h-[calc(100dvh-7.25rem)]",
-        showReadingBounds && "reading-column-bounds-debug",
       )}
       style={{
         maxWidth: "700px",
@@ -422,13 +370,14 @@ export function ArticleContent({
         ref={touchSurfaceRef}
         style={pageEnterStyle}
         className={cn(
-          "whitespace-pre-line font-reading text-[1.6875rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20 indent-5 md:indent-7",
+          "font-reading text-[1.6875rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20 indent-5 md:indent-7",
           "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
         )}
       >
         {loading && (
-          <div className="text-muted-foreground">
+          <div className="flex items-center gap-2 text-muted-foreground font-sans text-base py-8">
+            <Loader2 className="h-5 w-5 animate-spin shrink-0" aria-hidden />
             <span className="translating-page-gradient">Translating this page…</span>
           </div>
         )}
@@ -438,23 +387,9 @@ export function ArticleContent({
               if (item.type === "text") {
                 return <span key={i}>{item.text}</span>
               }
-              if (item.type === "chapter") {
-                return (
-                  <div
-                    key={i}
-                    className="my-8 block w-full indent-0 text-center font-reading text-2xl font-medium tabular-nums tracking-[0.18em] text-muted-foreground md:text-3xl"
-                    role="separator"
-                    aria-label={`Chapter ${item.label}`}
-                  >
-                    {item.label}
-                  </div>
-                )
-              }
               const prev = i > 0 ? items[i - 1] : null
               const gap =
-                prev?.type === "chunk" && item.type === "chunk"
-                  ? gapBetweenReconciledChunks(prev, item)
-                  : ""
+                prev?.type === "chunk" ? gapBetweenReconciledChunks(prev, item) : ""
               const id = chunkId++
               const chunkData = {
                 id,
@@ -530,29 +465,51 @@ export function ArticleContent({
           "mt-auto shrink-0 border-t border-border/60 pt-1",
           // Mobile: fixed to screen bottom, always visible
           "max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:z-30",
-          "max-md:mt-0 max-md:border-t max-md:border-border/40 max-md:bg-background",
-          "max-md:px-8 max-md:pt-3 max-md:pb-[max(1.25rem,env(safe-area-inset-bottom,0px)+0.5rem)]",
+          "max-md:mt-0 max-md:border-t max-md:border-[rgba(201,122,90,0.18)]",
+          "max-md:bg-[linear-gradient(180deg,rgba(248,242,234,0.98),rgba(242,234,225,0.96))]",
+          "max-md:shadow-[0_-10px_30px_rgba(86,64,47,0.08),inset_0_1px_0_rgba(255,255,255,0.72)]",
+          "dark:max-md:border-[rgba(201,122,90,0.12)]",
+          "dark:max-md:bg-[linear-gradient(180deg,rgba(30,26,23,0.98),rgba(24,21,19,0.96))]",
+          "dark:max-md:shadow-[0_-12px_30px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.04)]",
+          "max-md:px-6 max-md:pt-3.5 max-md:pb-[max(1.1rem,env(safe-area-inset-bottom,0px)+0.45rem)]",
         )}>
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-11 w-11 shrink-0 rounded-full"
+            className={cn(
+              "h-11 w-11 shrink-0 rounded-full",
+              "max-md:h-10 max-md:w-10 max-md:rounded-[0.8rem] max-md:border max-md:border-[rgba(201,122,90,0.16)]",
+              "max-md:bg-[rgba(255,250,245,0.72)] max-md:text-[#6a584b]",
+              "max-md:hover:bg-[rgba(201,122,90,0.08)] max-md:hover:text-[#4d4035]",
+              "dark:max-md:border-[rgba(201,122,90,0.14)] dark:max-md:bg-[rgba(255,255,255,0.04)] dark:max-md:text-[#cbbdaf]",
+              "dark:max-md:hover:bg-[rgba(201,122,90,0.10)] dark:max-md:hover:text-[#f0e3d6]",
+            )}
             disabled={pagination.pageIndex <= 0}
             onClick={pagination.onPrevious}
             aria-label="Previous page"
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
-          <span className="text-sm font-sans text-muted-foreground tabular-nums">
-            Page {pagination.pageIndex + 1} of {pagination.pageCount}
+          <span className="text-sm font-sans text-muted-foreground tabular-nums max-md:font-serif max-md:text-[1.05rem] max-md:tracking-[0.02em] max-md:text-[#6f6258] dark:max-md:text-[#c9b8a8]">
+            <span className="max-md:text-[#8f796a] max-md:italic dark:max-md:text-[#b89f8c]">Page</span>{" "}
+            {pagination.pageIndex + 1}{" "}
+            <span className="max-md:text-[#b59a86] dark:max-md:text-[#8f7968]">of</span>{" "}
+            {pagination.pageCount}
           </span>
           <div className="relative shrink-0">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-11 w-11 rounded-full"
+              className={cn(
+                "h-11 w-11 rounded-full",
+                "max-md:h-10 max-md:w-10 max-md:rounded-[0.8rem] max-md:border max-md:border-[rgba(201,122,90,0.16)]",
+                "max-md:bg-[rgba(255,250,245,0.72)] max-md:text-[#6a584b]",
+                "max-md:hover:bg-[rgba(201,122,90,0.08)] max-md:hover:text-[#4d4035]",
+                "dark:max-md:border-[rgba(201,122,90,0.14)] dark:max-md:bg-[rgba(255,255,255,0.04)] dark:max-md:text-[#cbbdaf]",
+                "dark:max-md:hover:bg-[rgba(201,122,90,0.10)] dark:max-md:hover:text-[#f0e3d6]",
+              )}
               disabled={
                 pagination.pageIndex >= pagination.pageCount - 1 || !pagination.nextPageOpen
               }
@@ -589,11 +546,10 @@ export function ArticleContent({
         onClose={handleDetailsClose}
       />
     </div>
-    {showTranslationErrorModal && translationErrPresent && (
+    {showTranslationErrorModal && (
       <AppErrorModal
         title="Translation failed"
-        message={translationErrPresent.userMessage}
-        devOnlyTechnicalDetail={translationErrPresent.devTechnical}
+        message={errorMessage!}
         onDismiss={() => setErrorModalDismissed(true)}
         onRetry={() => {
           setErrorModalDismissed(true)
@@ -602,14 +558,6 @@ export function ArticleContent({
         retryLabel="Retry translation"
       />
     )}
-    {import.meta.env.DEV &&
-      DevArticleMachineTranslate != null &&
-      items &&
-      pageText.trim() && (
-        <Suspense fallback={null}>
-          <DevArticleMachineTranslate pageText={pageText} disabled={loading} />
-        </Suspense>
-      )}
     </>
   )
 }

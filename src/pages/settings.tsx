@@ -153,31 +153,34 @@ export default function SettingsPage() {
         <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
       </div>
 
-      <main className="relative z-[1] px-4 md:px-8 overflow-x-hidden">
+      <main className="relative z-[1] px-3 sm:px-4 md:px-8 overflow-x-hidden">
         <div className="max-w-5xl mx-auto">
-          <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-8">
+          <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-6 md:mb-8">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to reading
           </BackToHomeLink>
 
-          <div className="mb-8 md:mb-10">
-            <h1 className="font-serif text-3xl md:text-4xl font-medium text-foreground">
+          <div className="mb-6 md:mb-10">
+            <h1 className="font-serif text-[2rem] sm:text-3xl md:text-4xl font-medium text-foreground">
               Settings
             </h1>
-            <p className="mt-2 text-muted-foreground">
+            <p className="mt-1.5 md:mt-2 text-sm sm:text-base text-muted-foreground">
               Manage your account and preferences
             </p>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-8 md:gap-12 lg:gap-16">
-            <nav className="settings-nav shrink-0 md:w-52" aria-label="Settings sections">
-              <ul className="flex flex-col gap-1">
+          <div className="flex flex-col md:flex-row gap-5 md:gap-12 lg:gap-16">
+            <nav
+              className="settings-nav shrink-0 md:w-52 max-md:-mx-1 max-md:rounded-2xl"
+              aria-label="Settings sections"
+            >
+              <ul className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 pr-1 md:pr-0 snap-x snap-mandatory">
                 {TABS.map((tab) => (
-                  <li key={tab} className="w-full">
+                  <li key={tab} className="flex-none md:w-auto snap-start">
                     <button
                       type="button"
                       onClick={() => goTab(tab)}
-                      className={`settings-nav-item w-full text-left px-4 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 ease-in-out ${
+                      className={`settings-nav-item w-auto md:w-full text-left px-3.5 sm:px-4 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 ease-in-out whitespace-nowrap ${
                         activeTab === tab
                           ? "settings-nav-item--active text-foreground"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -190,10 +193,10 @@ export default function SettingsPage() {
               </ul>
             </nav>
 
-            <div className="settings-panel flex-1 min-w-0 border border-border rounded-md bg-card/40 p-6 md:p-8">
+            <div className="settings-panel flex-1 min-w-0 border border-border rounded-2xl md:rounded-md bg-card/55 md:bg-card/40 p-4 sm:p-5 md:p-8 shadow-[0_1px_0_rgba(0,0,0,0.02)] dark:shadow-none">
               {activeTab === "General" && (
                 <section aria-labelledby="settings-general-heading">
-                  <h2 id="settings-general-heading" className="text-lg font-medium text-foreground mb-3">
+                  <h2 id="settings-general-heading" className="font-serif text-lg sm:text-xl font-medium text-foreground mb-3">
                     General
                   </h2>
                   <div className="divide-y divide-border/40">
@@ -360,7 +363,7 @@ export default function SettingsPage() {
               )}
               {activeTab === "Account" && (
                 <section aria-labelledby="settings-account-heading">
-                  <h2 id="settings-account-heading" className="text-lg font-medium text-foreground mb-6">
+                  <h2 id="settings-account-heading" className="font-serif text-lg sm:text-xl font-medium text-foreground mb-5 sm:mb-6">
                     Account
                   </h2>
 
@@ -445,7 +448,7 @@ export default function SettingsPage() {
                   aria-labelledby="settings-billing-heading"
                   hidden={activeTab !== "Billing"}
                 >
-                  <h2 id="settings-billing-heading" className="text-lg font-medium text-foreground mb-6">
+                  <h2 id="settings-billing-heading" className="font-serif text-xl font-medium text-foreground mb-6">
                     Billing
                   </h2>
                   <SubscriptionStatus />
@@ -453,7 +456,7 @@ export default function SettingsPage() {
               ) : (
                 activeTab === "Billing" && (
                   <section aria-labelledby="settings-billing-heading">
-                    <h2 id="settings-billing-heading" className="text-lg font-medium text-foreground mb-6">
+                    <h2 id="settings-billing-heading" className="font-serif text-lg sm:text-xl font-medium text-foreground mb-5 sm:mb-6">
                       Billing
                     </h2>
                     <SubscriptionStatus />

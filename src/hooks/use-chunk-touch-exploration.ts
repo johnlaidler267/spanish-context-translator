@@ -199,9 +199,9 @@ export function useChunkTouchExploration(
      */
     onBeforeTouchChunkIdChange?: () => void
     /**
-     * Capture-phase `touchend` / `touchcancel` before chunk handlers: chunk under finger when the
-     * explore gesture ends, or `null` if none. Parents use this to ignore the first lift per chunk
-     * for mobile double-tap counting.
+     * Capture-phase `touchend` / `touchcancel` on the surface, before chunk handlers: chunk id
+     * under the finger when the explore gesture ends, or `null` if none. Used so the first
+     * explore lift does not count toward the triple-tap chain on mobile.
      */
     onExplorationLiftChunk?: (chunkId: number | null) => void
   },

@@ -8,7 +8,7 @@ const MOBILE_MAX_PX = 767
 /** Horizontal fraction from each screen edge that counts as “left / right”. */
 const EDGE_X_FRAC = 0.28
 
-/** Same window as TextChunk double-tap so gestures feel consistent. */
+/** Same feel as quick successive taps near the chunk triple-tap window. */
 const DOUBLE_TAP_MS = 420
 
 const RESET_MS = 450

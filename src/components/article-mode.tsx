@@ -14,6 +14,7 @@ import {
   getChunkIdFromPointerClientXY,
   useChunkTouchExploration,
 } from "@/hooks/use-chunk-touch-exploration"
+import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 
@@ -67,32 +68,12 @@ export function ArticleMode({ chunks }: ArticleModeProps) {
 
   useEffect(() => () => cancelExploringLeaveTimer(), [cancelExploringLeaveTimer])
 
-  const exploreLiftCountByChunkRef = useRef<Map<number, number>>(new Map())
-  const suppressDoubleTapAfterExplorationLiftRef = useRef<number | null>(null)
-
-  const onExplorationLiftChunk = useCallback((chunkId: number | null) => {
-    if (chunkId == null) {
-      suppressDoubleTapAfterExplorationLiftRef.current = null
-      return
-    }
-    const m = exploreLiftCountByChunkRef.current
-    const next = (m.get(chunkId) ?? 0) + 1
-    m.set(chunkId, next)
-    if (next === 1) {
-      suppressDoubleTapAfterExplorationLiftRef.current = chunkId
-      window.setTimeout(() => {
-        if (suppressDoubleTapAfterExplorationLiftRef.current === chunkId) {
-          suppressDoubleTapAfterExplorationLiftRef.current = null
-        }
-      }, 120)
-    } else {
-      suppressDoubleTapAfterExplorationLiftRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    exploreLiftCountByChunkRef.current.clear()
-  }, [chunks])
+  const explorationLayoutKey = useMemo(
+    () => chunks.map((c) => c.id).join(","),
+    [chunks],
+  )
+  const { suppressDoubleTapAfterExplorationLiftRef, onExplorationLiftChunk } =
+    useExplorationDoubleTapLiftSuppress(explorationLayoutKey)
 
   const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
     commitExploringChunkId,
