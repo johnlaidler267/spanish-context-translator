@@ -1,7 +1,7 @@
 "use client"
 
 import { Clock, Pencil, Trash2 } from "lucide-react"
-import { ContentTypeBadge } from "@/components/discover/content-type-badge"
+import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import type { ContentItem, DifficultyLevel } from "@/lib/content-data"
@@ -27,14 +27,7 @@ export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardP
       onClick={onClick}
     >
       <div className="relative aspect-[3/4] overflow-hidden">
-        <img
-          src={content.coverImage}
-          alt={content.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
-
-        <ContentTypeBadge type={content.type} size="sm" className="absolute left-4 top-4" />
+        <DiscoverCoverArt content={content} variant="card" className="h-full w-full" />
         {(onEdit || onDelete) && (
           <div className="absolute right-4 top-4 flex gap-1">
             {onEdit && (
@@ -77,11 +70,8 @@ export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardP
       </div>
 
       <CardContent className="p-5 sm:p-6">
-        <h3 className="mb-2 line-clamp-2 font-serif text-lg font-semibold leading-snug text-black transition-colors group-hover:text-primary dark:text-foreground">
-          {content.title}
-        </h3>
-        <p className="mb-4 font-serif text-xs font-normal italic text-black/80 dark:text-muted-foreground">
-          {content.author}
+        <p className="mb-4 line-clamp-3 font-sans text-sm leading-6 text-black/75 dark:text-muted-foreground">
+          {content.preview}
         </p>
 
         <div className="flex items-center justify-between gap-3 text-xs text-black dark:text-muted-foreground">

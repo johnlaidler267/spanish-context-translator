@@ -1,17 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
-import { ChevronsUpDown, Loader2, User } from "lucide-react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Loader2, Settings2, User } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useSubscriptionOptional } from "@/contexts/subscription-context"
 import { supabase } from "@/lib/supabase"
 import {
   formatPlanSubtitle,
-  GUEST_PLAN_PILL,
   planPillFromRow,
   type LinkPlanPill,
 } from "@/lib/plan-pill"
+import { beginRouteTransition } from "@/lib/route-transition-shell"
 import { cn } from "@/lib/utils"
 function PlanLineLoading() {
   return (
@@ -34,8 +34,11 @@ export function LandingSidebarProfile({
   onNavigate,
 }: LandingSidebarProfileProps) {
   const ctxStatus = useSubscriptionOptional()?.status ?? null
-  const { user, isLoading: authLoading, openAuthModal } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [pill, setPill] = useState<LinkPlanPill | null>(null)
+  const showPlanLine = location.pathname === "/"
 
   useEffect(() => {
     if (!user) {
@@ -66,6 +69,12 @@ export function LandingSidebarProfile({
     ? displayName.trim() || (user.email?.split("@")[0] ?? "Account")
     : "Guest"
 
+  const goToUpgrade = () => {
+    onNavigate()
+    beginRouteTransition(560)
+    navigate("/upgrade")
+  }
+
   const planLine = (() => {
     if (authLoading && user) return <PlanLineLoading />
     if (!user) {
@@ -73,16 +82,24 @@ export function LandingSidebarProfile({
         <button
           type="button"
           className="max-w-full truncate text-left text-[11px] leading-tight text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
-          onClick={() => {
-            openAuthModal()
-            onNavigate()
-          }}
+          onClick={goToUpgrade}
         >
-          {formatPlanSubtitle(GUEST_PLAN_PILL)}
+          Free · Guest · Upgrade
         </button>
       )
     }
     if (pill === null) return <PlanLineLoading />
+    if (pill.to === "/upgrade") {
+      return (
+        <button
+          type="button"
+          className="block max-w-full truncate text-[11px] leading-snug text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
+          onClick={goToUpgrade}
+        >
+          {formatPlanSubtitle(pill)}
+        </button>
+      )
+    }
     return (
       <Link
         to={pill.to}
@@ -135,7 +152,7 @@ export function LandingSidebarProfile({
         </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <p className="truncate text-sm font-semibold leading-none text-foreground">{titleName}</p>
-          {planLine}
+          {showPlanLine ? planLine : null}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <Link
@@ -144,8 +161,8 @@ export function LandingSidebarProfile({
             aria-label="Settings and account"
             onClick={onNavigate}
           >
-            <ChevronsUpDown
-              className="h-4 w-4 opacity-85 transition-transform duration-200 ease-out motion-safe:group-hover:translate-y-px motion-safe:group-hover:scale-110"
+            <Settings2
+              className="h-4 w-4 opacity-85 transition-transform duration-200 ease-out motion-safe:group-hover:rotate-12 motion-safe:group-hover:scale-110"
               strokeWidth={1.65}
               aria-hidden
             />

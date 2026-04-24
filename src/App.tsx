@@ -5,6 +5,7 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-r
 import SettingsPage from "@/pages/settings"
 import DiscoverPage from "@/pages/discover"
 import MyLibraryPage from "@/pages/my-library"
+import UpgradePage from "@/pages/upgrade"
 import { LandingShellLayout } from "./components/landing-shell-layout"
 import { LandingScreen } from "./components/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "./components/loading-overlay"
@@ -81,6 +82,7 @@ export default function App() {
   const { user, isLoading: authLoading } = useAuth()
 
   const [appState, setAppState] = useState<AppState>("landing")
+
   /** In-memory + sessionStorage: survives reading → home and page refresh (same tab). */
   const [landingDraft, setLandingDraft] = useState(() => getStoredLandingDraft())
 
@@ -104,6 +106,14 @@ export default function App() {
   useEffect(() => {
     setDisplayName(getEffectiveDisplayName(user))
   }, [user, location.pathname])
+
+  // If the user navigates away from "/" while in a reading session, exit reading mode.
+  // Otherwise the router is intentionally restricted and it feels like navigation is broken.
+  useEffect(() => {
+    if (appState === "reading" && location.pathname !== "/") {
+      setAppState("landing")
+    }
+  }, [appState, location.pathname])
 
   /** Hide shell top-left letter art (main.jsx) during article / read — not on landing */
   useEffect(() => {
@@ -673,27 +683,24 @@ export default function App() {
       <GuestSignupModal open={guestSignupOpen} onClose={() => setGuestSignupOpen(false)} />
       <Routes>
         <Route path="/settings" element={<SettingsPage />} />
-        {appState !== "reading" ? (
-          <Route
-            element={
-              <LandingShellLayout
-                theme={appTheme}
-                onThemeChange={setReadingTheme}
-                displayName={displayName}
-                sidebarDisabled={appState === "loading"}
-              />
-            }
-          >
-            <Route path="/" element={landingIndexElement} />
-            <Route
-              path="/discover"
-              element={<DiscoverPage onStartReading={handleDiscoverStartReading} />}
+        <Route path="/upgrade" element={<UpgradePage />} />
+        <Route
+          element={
+            <LandingShellLayout
+              theme={appTheme}
+              onThemeChange={setReadingTheme}
+              displayName={displayName}
+              sidebarDisabled={appState === "loading"}
             />
-            <Route path="/my-library" element={<MyLibraryPage />} />
-          </Route>
-        ) : (
-          <Route path="/" element={readingHome} />
-        )}
+          }
+        >
+          <Route index element={appState === "reading" ? readingHome : landingIndexElement} />
+          <Route
+            path="discover"
+            element={<DiscoverPage onStartReading={handleDiscoverStartReading} />}
+          />
+          <Route path="my-library" element={<MyLibraryPage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {(rateLimitMessage || planLimitModal) && (

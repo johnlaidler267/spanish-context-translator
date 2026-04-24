@@ -376,8 +376,7 @@ export function ArticleContent({
         )}
       >
         {loading && (
-          <div className="flex items-center gap-2 text-muted-foreground font-sans text-base py-8">
-            <Loader2 className="h-5 w-5 animate-spin shrink-0" aria-hidden />
+          <div className="py-8 indent-0 font-reading text-[1.6875rem] leading-[1.75] text-foreground/72 md:text-[1.725rem] md:leading-[1.85]">
             <span className="translating-page-gradient">Translating this page…</span>
           </div>
         )}

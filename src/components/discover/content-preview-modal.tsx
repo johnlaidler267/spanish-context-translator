@@ -69,11 +69,11 @@ export function ContentPreviewModal({
 
           <div className="absolute bottom-4 left-6 right-6">
             <div className="mb-2 flex items-center gap-2">
-              <ContentTypeBadge type={content.type} size="md" />
+              <ContentTypeBadge type={content.type} size="md" className="rounded-md" />
               <Badge
                 variant="outline"
                 className={cn(
-                  "rounded-full border px-3 py-1.5 text-sm font-medium",
+                  "rounded-md border px-3 py-1.5 text-sm font-medium shadow-sm",
                   difficultyColors[content.difficulty],
                 )}
               >
@@ -108,7 +108,7 @@ export function ContentPreviewModal({
             {content.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-border/70 bg-muted px-3 py-1 text-sm font-medium text-foreground"
+                className="rounded-md border border-border/70 bg-muted px-3 py-1 text-sm font-medium text-foreground"
               >
                 {tag}
               </span>

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { Compass, Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing-shell-layout"
 import { ContentTypeBadge } from "@/components/discover/content-type-badge"
+import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
 import { DiscoverLoadingState } from "@/components/discover/discover-loading-state"
 import { ContentPreviewModal } from "@/components/discover/content-preview-modal"
 import { DevEditDiscoverItemModal } from "@/components/discover/dev-edit-discover-item-modal"
@@ -282,21 +283,9 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                         <span className="absolute right-0 top-0 h-10 w-10 border-r-[4px] border-t-[4px] border-[#C97A5A]" />
                       </div>
                       <div className="aspect-[16/9] overflow-hidden">
-                        <img
-                          src={item.coverImage}
-                          alt={item.title}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
+                        <DiscoverCoverArt content={item} variant="featured" className="h-full w-full" />
                       </div>
-                      <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-black/[0.07] via-[42%] to-transparent to-[78%] dark:from-black/45 dark:via-black/12"
-                      />
-                      <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background from-0% via-background/55 via-[34%] to-transparent to-[92%] dark:via-background/50"
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 px-6 pb-7 pt-12 sm:px-7 sm:pb-8 sm:pt-14">
+                      <div className="absolute inset-0">
                         {(DISCOVER_DEV_EDIT || showCuratorUi) && (
                           <div className="absolute right-6 top-4 flex gap-1 sm:right-7">
                             {DISCOVER_DEV_EDIT && (
@@ -327,13 +316,6 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                             )}
                           </div>
                         )}
-                        <ContentTypeBadge type={item.type} size="sm" className="mb-3" />
-                        <h3 className="mb-1.5 font-serif text-lg font-bold leading-snug text-black dark:text-neutral-100">
-                          {item.title}
-                        </h3>
-                        <p className="font-serif text-xs font-normal italic text-black/90 dark:text-neutral-200">
-                          {item.author}
-                        </p>
                       </div>
                     </div>
                   ))}

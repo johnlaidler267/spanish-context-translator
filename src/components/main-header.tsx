@@ -1,15 +1,43 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Link, useLocation } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Sun, Moon, Settings2, Loader2, Menu } from "lucide-react"
 import { useSubscriptionOptional } from "@/contexts/subscription-context"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 import { GUEST_PLAN_PILL, planPillFromRow, type LinkPlanPill } from "@/lib/plan-pill"
+import type { SubscriptionRowLike } from "@/lib/subscription-display"
+import { beginRouteTransition } from "@/lib/route-transition-shell"
 import type { ReadingTheme } from "./theme-toggle"
 import { LexaLensWordmark } from "./lexa-lens-wordmark"
 import { useMediaQuery } from "@/hooks/use-media-query"
+
+const LANDING_SUB_ROW_CACHE = "lexa.landingSubRow.v1"
+
+function readCachedSubscriptionRow(userId: string): SubscriptionRowLike | undefined {
+  if (typeof window === "undefined") return undefined
+  try {
+    const raw = sessionStorage.getItem(`${LANDING_SUB_ROW_CACHE}:${userId}`)
+    if (raw == null) return undefined
+    if (raw === "__null__") return null
+    return JSON.parse(raw) as SubscriptionRowLike
+  } catch {
+    return undefined
+  }
+}
+
+function writeCachedSubscriptionRow(userId: string, row: SubscriptionRowLike) {
+  if (typeof window === "undefined") return
+  try {
+    sessionStorage.setItem(
+      `${LANDING_SUB_ROW_CACHE}:${userId}`,
+      row == null ? "__null__" : JSON.stringify(row),
+    )
+  } catch {
+    /* quota / private mode */
+  }
+}
 
 interface MainHeaderProps {
   theme: ReadingTheme
@@ -50,7 +78,24 @@ function PlanBadgeLoading() {
 function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "upgrade" }) {
   const ctxStatus = useSubscriptionOptional()?.status ?? null
   const { user, isLoading: authLoading, openAuthModal } = useAuth()
-  const [pill, setPill] = useState<LinkPlanPill | null>(null)
+  const navigate = useNavigate()
+  const cachedSubscriptionRow = useMemo(
+    () => (user?.id ? readCachedSubscriptionRow(user.id) : undefined),
+    [user?.id],
+  )
+  const optimisticPill = user
+    ? planPillFromRow(cachedSubscriptionRow ?? null, user.is_anonymous === true)
+    : null
+  const [pill, setPill] = useState<LinkPlanPill | null>(optimisticPill)
+
+  useEffect(() => {
+    setPill(optimisticPill)
+  }, [optimisticPill])
+
+  const goToUpgrade = () => {
+    beginRouteTransition(560)
+    navigate("/upgrade")
+  }
 
   useEffect(() => {
     if (!user) {
@@ -69,6 +114,7 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
         .maybeSingle<{ plan_id: string; status: string; trial_end: string | null }>()
 
       if (cancelled) return
+      writeCachedSubscriptionRow(user.id, data ?? null)
       setPill(planPillFromRow(data ?? null, user.is_anonymous === true))
     })()
 
@@ -78,7 +124,46 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
   }, [user?.id, user?.is_anonymous, ctxStatus])
 
   if (authLoading) {
-    return guestMode === "upgrade" ? null : <PlanBadgeLoading />
+    if (guestMode === "upgrade") return null
+    if (optimisticPill) {
+      if (optimisticPill.to === "/upgrade") {
+        return (
+          <button
+            type="button"
+            className="contents cursor-pointer text-left border-0 bg-transparent p-0 [font:inherit] text-inherit"
+            onClick={goToUpgrade}
+          >
+            <span className="plan-badge-lead">
+              <span className="plan-badge-plan">{optimisticPill.primary}</span>
+              {optimisticPill.secondary ? (
+                <span className="plan-badge-dot" aria-hidden>
+                  ·
+                </span>
+              ) : null}
+            </span>
+            {optimisticPill.secondary ? (
+              <span className="plan-badge-upgrade">{optimisticPill.secondary}</span>
+            ) : null}
+          </button>
+        )
+      }
+      return (
+        <Link to={optimisticPill.to} className="contents">
+          <span className="plan-badge-lead">
+            <span className="plan-badge-plan">{optimisticPill.primary}</span>
+            {optimisticPill.secondary ? (
+              <span className="plan-badge-dot" aria-hidden>
+                ·
+              </span>
+            ) : null}
+          </span>
+          {optimisticPill.secondary ? (
+            <span className="plan-badge-upgrade">{optimisticPill.secondary}</span>
+          ) : null}
+        </Link>
+      )
+    }
+    return <PlanBadgeLoading />
   }
 
   if (!user) {
@@ -101,9 +186,13 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
     )
     if (guestMode === "upgrade") {
       return (
-        <Link to="/upgrade" className="contents">
+        <button
+          type="button"
+          className="contents cursor-pointer text-left border-0 bg-transparent p-0 [font:inherit] text-inherit"
+          onClick={goToUpgrade}
+        >
           {inner}
-        </Link>
+        </button>
       )
     }
     return (
@@ -141,9 +230,19 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
   )
 
   return (
-    <Link to={pill.to} className="contents">
-      {inner}
-    </Link>
+    pill.to === "/upgrade" ? (
+      <button
+        type="button"
+        className="contents cursor-pointer text-left border-0 bg-transparent p-0 [font:inherit] text-inherit"
+        onClick={goToUpgrade}
+      >
+        {inner}
+      </button>
+    ) : (
+      <Link to={pill.to} className="contents">
+        {inner}
+      </Link>
+    )
   )
 }
 
