@@ -6,6 +6,8 @@ import SettingsPage from "@/pages/settings"
 import DiscoverPage from "@/pages/discover"
 import MyLibraryPage from "@/pages/my-library"
 import UpgradePage from "@/pages/upgrade"
+import TermsPage from "@/pages/terms"
+import PrivacyPage from "@/pages/privacy"
 import { LandingShellLayout } from "./components/landing-shell-layout"
 import { LandingScreen } from "./components/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "./components/loading-overlay"
@@ -684,6 +686,8 @@ export default function App() {
       <Routes>
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/upgrade" element={<UpgradePage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route
           element={
             <LandingShellLayout

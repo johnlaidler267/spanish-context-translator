@@ -70,7 +70,6 @@ export function LandingSidebarProfile({
     : "Guest"
 
   const goToUpgrade = () => {
-    onNavigate()
     beginRouteTransition(560)
     navigate("/upgrade")
   }
@@ -122,12 +121,11 @@ export function LandingSidebarProfile({
     return (
       <div className="overflow-hidden border-t border-border/60 bg-muted px-2 py-2 font-sans transition-[background-color] duration-200 ease-out motion-safe:hover:bg-muted/90">
         <div className="flex flex-col items-center gap-2">
-          <Link
-            to="/settings"
-            className={avatarClass}
-            aria-label="Settings"
-            onClick={onNavigate}
-          >
+        <Link
+          to="/settings"
+          className={avatarClass}
+          aria-label="Settings"
+        >
             {letterInitial ?? (
               <User className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
             )}
@@ -144,7 +142,6 @@ export function LandingSidebarProfile({
           to="/settings"
           className={avatarClass}
           aria-label="Account and settings"
-          onClick={onNavigate}
         >
           {letterInitial ?? (
             <User className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
@@ -159,7 +156,6 @@ export function LandingSidebarProfile({
             to="/settings"
             className={cn(iconBtn, "relative px-2")}
             aria-label="Settings and account"
-            onClick={onNavigate}
           >
             <Settings2
               className="h-4 w-4 opacity-85 transition-transform duration-200 ease-out motion-safe:group-hover:rotate-12 motion-safe:group-hover:scale-110"

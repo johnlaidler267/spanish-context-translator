@@ -6,9 +6,6 @@ import { AuthProvider } from '@/contexts/auth-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { AuthModal } from '@/components/auth-modal'
 import App from '@/App'
-import UpgradePage from '@/pages/upgrade'
-import TermsPage from '@/pages/terms'
-import PrivacyPage from '@/pages/privacy'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -34,10 +31,7 @@ createRoot(document.getElementById('root')).render(
             </div>
 
             <Routes>
-              <Route path="/upgrade" element={<UpgradePage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              {/* App owns / + /settings so reading state survives settings */}
+              {/* App owns all app routes */}
               <Route path="*" element={<App />} />
             </Routes>
 

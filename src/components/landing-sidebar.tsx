@@ -75,6 +75,7 @@ export function LandingSidebar({
 
   const navWrapRef = useRef<HTMLDivElement>(null)
   const navItemRefs = useRef<(HTMLAnchorElement | null)[]>([null, null, null])
+  const previousPathnameRef = useRef(pathname)
   const [navIndicator, setNavIndicator] = useState({ top: 0, height: 0, opacity: 0 })
 
   const syncNavIndicator = useCallback(() => {
@@ -141,6 +142,13 @@ export function LandingSidebar({
     return () => window.removeEventListener("keydown", onKey)
   }, [mobileOpen, isMdUp, onMobileOpenChange])
 
+  useEffect(() => {
+    if (previousPathnameRef.current !== pathname && !isMdUp && mobileOpen) {
+      onMobileOpenChange(false)
+    }
+    previousPathnameRef.current = pathname
+  }, [pathname, isMdUp, mobileOpen, onMobileOpenChange])
+
   const expanded = isMdUp ? desktopExpanded : mobileOpen
   const compactRail = isMdUp && !desktopExpanded
 
@@ -187,7 +195,6 @@ export function LandingSidebar({
             compactRail && "flex flex-1 items-center justify-center",
           )}
           aria-label="Lexa Lens — home"
-          onClick={() => !isMdUp && onMobileOpenChange(false)}
         >
           <LexaLensWordmark
             className={cn(!compactRail && "text-[1.05rem] md:text-[1.2rem]", compactRail && "text-[1.15rem]")}
@@ -244,7 +251,6 @@ export function LandingSidebar({
             to="/"
             aria-current={homeActive ? "page" : undefined}
             className={navItemClass(homeActive)}
-            onClick={() => !isMdUp && onMobileOpenChange(false)}
           >
             <span
               className={cn(
@@ -263,7 +269,6 @@ export function LandingSidebar({
             to="/discover"
             aria-current={discoverActive ? "page" : undefined}
             className={navItemClass(discoverActive)}
-            onClick={() => !isMdUp && onMobileOpenChange(false)}
           >
             <span
               className={cn(
@@ -282,7 +287,6 @@ export function LandingSidebar({
             to="/my-library"
             aria-current={libraryActive ? "page" : undefined}
             className={navItemClass(libraryActive)}
-            onClick={() => !isMdUp && onMobileOpenChange(false)}
           >
             <span
               className={cn(

@@ -2,15 +2,44 @@
 
 import { Clock, Pencil, Trash2 } from "lucide-react"
 import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import type { ContentItem, DifficultyLevel } from "@/lib/content-data"
-import { difficultyColors } from "@/lib/content-data"
+import { cn } from "@/lib/utils"
 
 const difficultyLabels: Record<DifficultyLevel, string> = {
   beginner: "Beginner",
   intermediate: "Intermediate",
   advanced: "Advanced",
+}
+
+const difficultyPillStyles: Record<DifficultyLevel, { shell: string; barActive: string }> = {
+  beginner:
+    {
+      shell: "border-[#73d8bc] bg-[#edf8f3] text-[#0f5f4c]",
+      barActive: "bg-[#31b18f]",
+    },
+  intermediate:
+    {
+      shell: "border-[#b5b6ff] bg-[#f1f0ff] text-[#4741a3]",
+      barActive: "bg-[#7672eb]",
+    },
+  advanced:
+    {
+      shell: "border-[#f0b4c8] bg-[#fff1f6] text-[#9c3f66]",
+      barActive: "bg-[#df6f97]",
+    },
+}
+
+const difficultyBarCount: Record<DifficultyLevel, number> = {
+  beginner: 1,
+  intermediate: 2,
+  advanced: 3,
+}
+
+function normalizeDifficulty(level: string): DifficultyLevel {
+  const key = level.trim().toLowerCase()
+  if (key === "advanced" || key === "intermediate" || key === "beginner") return key
+  return "beginner"
 }
 
 interface ContentCardProps {
@@ -21,9 +50,11 @@ interface ContentCardProps {
 }
 
 export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardProps) {
+  const difficulty = normalizeDifficulty(content.difficulty)
+
   return (
     <Card
-      className="group cursor-pointer overflow-hidden rounded-none border-2 border-border/80 bg-card/70 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/55 hover:bg-card hover:shadow-md hover:shadow-primary/5"
+      className="group min-w-0 cursor-pointer overflow-hidden rounded-none border-2 border-border/80 bg-card/70 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/55 hover:bg-card hover:shadow-md hover:shadow-primary/5"
       onClick={onClick}
     >
       <div className="relative aspect-[3/4] overflow-hidden">
@@ -60,12 +91,27 @@ export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardP
         )}
 
         <div className="absolute bottom-4 left-4 right-4">
-          <Badge
-            variant="outline"
-            className={`${difficultyColors[content.difficulty]} border text-xs`}
+          <div
+            className={cn(
+              "inline-flex h-7 items-center gap-1.5 rounded-[11px] border px-2.5 text-[0.74rem] font-semibold tracking-[-0.01em] shadow-[0_1px_0_rgba(255,255,255,0.32)_inset]",
+              difficultyPillStyles[difficulty].shell,
+            )}
           >
-            {difficultyLabels[content.difficulty]}
-          </Badge>
+            <span className="inline-flex items-center gap-1" aria-hidden>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <span
+                  key={`${content.id}-difficulty-bar-${index}`}
+                  className={cn(
+                    "h-3 w-[0.32rem] rounded-full",
+                    index < difficultyBarCount[difficulty]
+                      ? difficultyPillStyles[difficulty].barActive
+                      : "bg-[#d8d7d2]",
+                  )}
+                />
+              ))}
+            </span>
+            <span>{difficultyLabels[difficulty]}</span>
+          </div>
         </div>
       </div>
 

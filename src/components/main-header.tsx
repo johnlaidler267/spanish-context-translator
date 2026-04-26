@@ -88,10 +88,6 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
     : null
   const [pill, setPill] = useState<LinkPlanPill | null>(optimisticPill)
 
-  useEffect(() => {
-    setPill(optimisticPill)
-  }, [optimisticPill])
-
   const goToUpgrade = () => {
     beginRouteTransition(560)
     navigate("/upgrade")
@@ -102,6 +98,8 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
       setPill(null)
       return
     }
+    // Sync from cached row when identity changes; avoid per-render state writes.
+    setPill(planPillFromRow(cachedSubscriptionRow ?? null, user.is_anonymous === true))
 
     let cancelled = false
 
@@ -121,7 +119,7 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
     return () => {
       cancelled = true
     }
-  }, [user?.id, user?.is_anonymous, ctxStatus])
+  }, [user?.id, user?.is_anonymous, cachedSubscriptionRow, ctxStatus])
 
   if (authLoading) {
     if (guestMode === "upgrade") return null

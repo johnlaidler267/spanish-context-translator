@@ -24,14 +24,14 @@ export function ContentTypeBadge({ type, size = "sm", className }: ContentTypeBa
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border font-medium",
-        size === "sm" && "gap-1 px-2.5 py-1 text-xs",
-        size === "md" && "gap-1.5 px-3 py-1.5 text-sm",
+        "inline-flex items-center rounded-[8px] border font-semibold leading-none",
+        size === "sm" && "gap-1.5 px-2.5 py-1.5 text-[0.8rem]",
+        size === "md" && "gap-2 px-3 py-2 text-sm",
         contentTypeBadgeClassNames[type],
         className,
       )}
     >
-      <Icon className={cn("shrink-0", size === "sm" ? "size-3.5" : "size-5")} aria-hidden />
+      <Icon className={cn("shrink-0", size === "sm" ? "size-4" : "size-[1.05rem]")} aria-hidden />
       <span>{contentTypeLabels[type]}</span>
     </span>
   )

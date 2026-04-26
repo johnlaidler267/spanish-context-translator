@@ -223,15 +223,15 @@ export const contentTypeLabels: Record<ContentType, string> = {
 }
 
 /**
- * Distinct but soft tints so types scan quickly on covers and in the modal.
+ * Filled badge palette to match the reference chips.
  */
 export const contentTypeBadgeClassNames: Record<ContentType, string> = {
   book:
-    "border-amber-600/60 bg-amber-500/45 text-amber-950 shadow-sm dark:border-amber-400/60 dark:bg-amber-500/50 dark:text-amber-50",
+    "border-transparent bg-[#5c53bd] text-white shadow-none",
   article:
-    "border-sky-600/60 bg-sky-500/40 text-sky-950 shadow-sm dark:border-sky-400/60 dark:bg-sky-500/45 dark:text-sky-50",
+    "border-transparent bg-[#2c6fb7] text-white shadow-none",
   song:
-    "border-violet-600/60 bg-violet-500/40 text-violet-950 shadow-sm dark:border-violet-400/60 dark:bg-violet-500/45 dark:text-violet-50",
+    "border-transparent bg-[#ab3d63] text-white shadow-none",
   poem:
-    "border-emerald-600/60 bg-emerald-500/40 text-emerald-950 shadow-sm dark:border-emerald-400/60 dark:bg-emerald-500/45 dark:text-emerald-50",
+    "border-transparent bg-[#4b7f16] text-white shadow-none",
 }

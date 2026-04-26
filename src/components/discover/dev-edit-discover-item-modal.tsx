@@ -94,7 +94,7 @@ export function DevEditDiscoverItemModal({
         .from("discover_items")
         .select("*")
         .eq("id", content.id)
-        .single()
+        .maybeSingle()
 
       if (cancelled) return
       setRowLoading(false)
@@ -187,17 +187,35 @@ export function DevEditDiscoverItemModal({
     }
 
     setSaving(true)
-    const { data, error } = await supabase
+    const { error, count } = await supabase
       .from("discover_items")
-      .update(update)
+      .update(update, { count: "exact" })
       .eq("id", rowId)
+    if (error) {
+      setSaving(false)
+      onError(
+        error.message ??
+          "Update failed. This item may no longer exist, or your account may not have curator access.",
+      )
+      return
+    }
+
+    if (!count) {
+      setSaving(false)
+      onError("Update failed. This item may no longer exist, or your account may not have curator access.")
+      return
+    }
+
+    const { data, error: reloadError } = await supabase
+      .from("discover_items")
       .select(LIST_SELECT)
-      .single()
+      .eq("id", rowId)
+      .maybeSingle()
 
     setSaving(false)
 
-    if (error || !data) {
-      onError(error?.message ?? "Update failed. Curator access may be required.")
+    if (reloadError || !data) {
+      onError(reloadError?.message ?? "Saved, but could not reload the updated item.")
       return
     }
 

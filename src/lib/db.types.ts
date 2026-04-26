@@ -130,11 +130,6 @@ export interface DiscoverItemRow {
   updated_at: string
 }
 
-/** Row from `public.discover_curators`. */
-export interface DiscoverCuratorRow {
-  user_id: string
-}
-
 // ─── Insert types (omit server-generated fields) ──────────────────────────────
 
 export type UserSubscriptionInsert = Omit<
@@ -156,8 +151,6 @@ export type DiscoverItemInsert = Omit<
   DiscoverItemRow,
   "id" | "created_at" | "updated_at"
 > & { id?: string }
-
-export type DiscoverCuratorInsert = Pick<DiscoverCuratorRow, "user_id">
 
 // ─── Update types (all fields optional except id) ────────────────────────────
 
@@ -190,11 +183,6 @@ export interface Database {
         Row:    DiscoverItemRow
         Insert: DiscoverItemInsert
         Update: DiscoverItemUpdate
-      }
-      discover_curators: {
-        Row:    DiscoverCuratorRow
-        Insert: DiscoverCuratorInsert
-        Update: Partial<DiscoverCuratorInsert>
       }
     }
     Views: {

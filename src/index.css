@@ -189,6 +189,11 @@ html.lector-reading-session .global-corner-letter {
   body * {
     touch-action: manipulation;
   }
+  /* Discover uses an inner scroll container; allow vertical pan within this subtree. */
+  .discover-scroll-surface,
+  .discover-scroll-surface * {
+    touch-action: pan-y;
+  }
   #root {
     min-height: 100svh;
     min-height: 100dvh;
@@ -235,6 +240,36 @@ html.lector-reading-session .global-corner-letter {
     width: 100%;
     min-height: 0;
     height: auto !important;
+  }
+
+  /* Discover lives inside LandingShellLayout; unlock that shell too on mobile. */
+  html.mobile-scroll-discover {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  html.mobile-scroll-discover body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+  }
+  html.mobile-scroll-discover #root,
+  html.mobile-scroll-discover .app-viewport {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+  html.mobile-scroll-discover .landing-route-shell {
+    height: auto !important;
+    min-height: 100svh;
+    min-height: 100dvh;
+    overflow: visible !important;
+    align-items: stretch;
+  }
+  html.mobile-scroll-discover .landing-route-shell > .flex {
+    min-height: 100svh;
+    min-height: 100dvh;
   }
 
   /*
@@ -1433,14 +1468,7 @@ article span {
 .discover-loading-card-grid {
   display: grid;
   gap: 1.5rem;
-}
-
-.discover-loading-feature-grid {
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-}
-
-.discover-loading-card-grid {
-  grid-template-columns: repeat(1, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
 }
 
 .discover-loading-feature-card,
@@ -1649,6 +1677,15 @@ article span {
   padding: 1rem 1rem 0.95rem;
 }
 
+.discover-cover-art--card .discover-cover-art__footer {
+  /* Difficulty badge stays left; stack time + words on the right. */
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.22rem;
+  padding-left: 0;
+}
+
 .discover-cover-art--card .discover-cover-art__title {
   font-size: clamp(1.2rem, 5.2vw, 2rem);
 }
@@ -1662,8 +1699,69 @@ article span {
   padding: 1.15rem 1.15rem 1.1rem;
 }
 
+.discover-cover-art--featured .discover-cover-art__body {
+  gap: 0.72rem;
+}
+
 .discover-cover-art--featured .discover-cover-art__title {
-  font-size: clamp(1.6rem, 4.4vw, 2.5rem);
+  font-size: clamp(1.05rem, 2.25vw, 1.72rem);
+  line-height: 1.06;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-wrap: pretty;
+}
+
+.discover-cover-art--featured .discover-cover-art__eyebrow {
+  margin-bottom: 0.32rem;
+  font-size: 0.74rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discover-cover-art--featured .discover-cover-art__copy {
+  padding-bottom: 0.38rem;
+  min-width: 0;
+}
+
+.discover-cover-art--featured .discover-cover-art__footer {
+  flex-wrap: wrap;
+  gap: 0.62rem;
+  row-gap: 0.28rem;
+}
+
+.discover-cover-art--featured .discover-cover-art__meta {
+  font-size: 0.64rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+  .discover-cover-art--featured .discover-cover-art__inner {
+    gap: 0.65rem;
+    padding: 0.95rem 1rem 0.92rem;
+  }
+
+  .discover-cover-art--featured .discover-cover-art__motif,
+  .discover-cover-art--featured .discover-cover-art__eyebrow {
+    display: none;
+  }
+
+  .discover-cover-art--featured .discover-cover-art__title {
+    font-size: clamp(0.98rem, 2.8vw, 1.38rem);
+    line-height: 1.12;
+  }
+
+  .discover-cover-art--featured .discover-cover-art__footer {
+    gap: 0.45rem;
+  }
+
+  .discover-cover-art--featured .discover-cover-art__meta {
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+  }
 }
 
 .dark .discover-cover-art {
@@ -1766,10 +1864,6 @@ article span {
   .discover-loading-intro {
     padding: 1.35rem 1.4rem 1.45rem;
   }
-
-  .discover-loading-card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (min-width: 1024px) {
@@ -1781,10 +1875,6 @@ article span {
     padding: 1.55rem 1.7rem 1.6rem;
   }
 
-  .discover-loading-feature-grid,
-  .discover-loading-card-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 .dark .settings-nav-item--active {
   background: rgba(234, 224, 213, 0.06);
