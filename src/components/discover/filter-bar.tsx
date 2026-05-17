@@ -22,6 +22,7 @@ interface FilterBarProps {
   onTypeChange: (types: ContentType[]) => void
   selectedDifficulties: DifficultyLevel[]
   onDifficultyChange: (difficulties: DifficultyLevel[]) => void
+  onClearFilters?: () => void
 }
 
 const contentTypes: { type: ContentType; label: string; icon: ReactNode }[] = [
@@ -44,7 +45,11 @@ export function FilterBar({
   onTypeChange,
   selectedDifficulties,
   onDifficultyChange,
+  onClearFilters,
 }: FilterBarProps) {
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 || selectedTypes.length > 0 || selectedDifficulties.length > 0
+
   const toggleType = (type: ContentType) => {
     if (selectedTypes.includes(type)) {
       onTypeChange(selectedTypes.filter((t) => t !== type))
@@ -138,6 +143,18 @@ export function FilterBar({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {hasActiveFilters && onClearFilters ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-10 rounded-none px-3 text-[#6f625a] hover:bg-[#ece5de] hover:text-[#2f2520] dark:text-[#d8d1ca] dark:hover:bg-[#34312d] dark:hover:text-white"
+            onClick={onClearFilters}
+          >
+            Clear
+          </Button>
+        ) : null}
       </div>
     </div>
   )

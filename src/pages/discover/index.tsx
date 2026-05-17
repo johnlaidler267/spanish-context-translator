@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Compass, Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
+import { BookOpen, Compass, Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing-shell-layout"
 import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
@@ -116,6 +116,16 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     })
   }, [discoverItems, searchQuery, selectedTypes, selectedDifficulties])
 
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 || selectedTypes.length > 0 || selectedDifficulties.length > 0
+  const hasCatalogContent = discoverItems.length > 0
+
+  const clearFilters = () => {
+    setSearchQuery("")
+    setSelectedTypes([])
+    setSelectedDifficulties([])
+  }
+
   const handleContentClick = (content: ContentItem) => {
     setSelectedContent(content)
     setModalOpen(true)
@@ -201,6 +211,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   }
 
   const featuredContent = discoverItems.slice(0, 3)
+  const showFeaturedContent = featuredContent.length > 0
 
   return (
     <>
@@ -242,59 +253,61 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
             <DiscoverLoadingState />
           ) : (
             <>
-              <section className="mb-12">
-                <div className="mb-6 flex items-center gap-2">
-                  <Sparkles className="size-5 shrink-0 text-accent/80" />
-                  <h2 className="font-serif text-base font-semibold tracking-wide text-black md:text-lg dark:text-muted-foreground">
-                    Featured for You
-                  </h2>
-                </div>
-                <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
-                  {featuredContent.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleContentClick(item)}
-                      className="group relative min-w-0 cursor-pointer overflow-hidden rounded-none"
-                    >
-                      <div aria-hidden className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
-                        <span className="absolute left-0 top-0 h-10 w-10 border-l-[4px] border-t-[4px] border-[#C97A5A]" />
-                        <span className="absolute right-0 top-0 h-10 w-10 border-r-[4px] border-t-[4px] border-[#C97A5A]" />
+              {showFeaturedContent && (
+                <section className="mb-12">
+                  <div className="mb-6 flex items-center gap-2">
+                    <Sparkles className="size-5 shrink-0 text-accent/80" />
+                    <h2 className="font-serif text-base font-semibold tracking-wide text-black md:text-lg dark:text-muted-foreground">
+                      Featured for You
+                    </h2>
+                  </div>
+                  <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
+                    {featuredContent.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => handleContentClick(item)}
+                        className="group relative min-w-0 cursor-pointer overflow-hidden rounded-none"
+                      >
+                        <div aria-hidden className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
+                          <span className="absolute left-0 top-0 h-10 w-10 border-l-[4px] border-t-[4px] border-[#C97A5A]" />
+                          <span className="absolute right-0 top-0 h-10 w-10 border-r-[4px] border-t-[4px] border-[#C97A5A]" />
+                        </div>
+                        <div className="aspect-[16/9] overflow-hidden">
+                          <DiscoverCoverArt content={item} variant="featured" className="h-full w-full" />
+                        </div>
+                        <div className="absolute inset-0">
+                          {canManageCatalog && (
+                            <div className="absolute right-6 top-4 flex gap-1 sm:right-7">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  openDevEdit(item)
+                                }}
+                                className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                                aria-label={`Edit ${item.title}`}
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  void handleDeleteContent(item.id)
+                                }}
+                                className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive"
+                                aria-label={`Delete ${item.title}`}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="aspect-[16/9] overflow-hidden">
-                        <DiscoverCoverArt content={item} variant="featured" className="h-full w-full" />
-                      </div>
-                      <div className="absolute inset-0">
-                        {canManageCatalog && (
-                          <div className="absolute right-6 top-4 flex gap-1 sm:right-7">
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                openDevEdit(item)
-                              }}
-                              className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-                              aria-label={`Edit ${item.title}`}
-                            >
-                              <Pencil className="size-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                void handleDeleteContent(item.id)
-                              }}
-                              className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive"
-                              aria-label={`Delete ${item.title}`}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               <section>
                 <div className="mb-6">
@@ -308,20 +321,37 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                     onTypeChange={setSelectedTypes}
                     selectedDifficulties={selectedDifficulties}
                     onDifficultyChange={setSelectedDifficulties}
+                    onClearFilters={clearFilters}
                   />
                 </div>
 
                 {filteredContent.length === 0 ? (
                   <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 py-16">
                     <div className="mb-4 rounded-full bg-secondary p-4">
-                      <Compass className="size-8 text-black dark:text-muted-foreground" />
+                      {hasCatalogContent ? (
+                        <Compass className="size-8 text-black dark:text-muted-foreground" />
+                      ) : (
+                        <BookOpen className="size-8 text-black dark:text-muted-foreground" />
+                      )}
                     </div>
                     <h3 className="mb-2 font-serif text-lg font-semibold text-black dark:text-foreground">
-                      No content found
+                      {hasCatalogContent ? "No matches yet" : "No content yet"}
                     </h3>
                     <p className="font-reading text-sm text-black dark:text-muted-foreground">
-                      Try adjusting your filters or search query
+                      {hasCatalogContent
+                        ? "Try a different search, or clear the current filters."
+                        : "Publish your first discover item to start building the library."}
                     </p>
+                    {hasActiveFilters ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-5 rounded-none"
+                        onClick={clearFilters}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
