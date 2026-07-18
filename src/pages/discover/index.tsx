@@ -2,9 +2,8 @@
 
 import { useEffect, useLayoutEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Compass, Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
+import { Clock3, Compass, Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing-shell-layout"
-import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
 import { DiscoverLoadingState } from "@/components/discover/discover-loading-state"
 import { ContentPreviewModal } from "@/components/discover/content-preview-modal"
@@ -313,50 +312,63 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                     <div
                       key={item.id}
                       onClick={() => handleContentClick(item)}
-                      className="group relative min-w-0 cursor-pointer overflow-hidden rounded-none"
+                      className="group relative min-w-0 cursor-pointer overflow-hidden rounded-[1.75rem] border border-[#dacfbf] bg-[#fbf7f0]/96 shadow-[0_14px_34px_rgba(76,56,39,0.10)] transition-all duration-300 hover:-translate-y-1 hover:border-[#cfa38d] hover:shadow-[0_22px_44px_rgba(76,56,39,0.16)] dark:border-border/80 dark:bg-card/92 dark:hover:border-primary/40"
                     >
-                      <div aria-hidden className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
-                        <span className="absolute left-0 top-0 h-10 w-10 border-l-[4px] border-t-[4px] border-[#C97A5A]" />
-                        <span className="absolute right-0 top-0 h-10 w-10 border-r-[4px] border-t-[4px] border-[#C97A5A]" />
-                      </div>
-                      <div className="aspect-[16/9] overflow-hidden">
+                      <div className="relative aspect-[16/9] overflow-hidden">
                         <DiscoverCoverArt
                           content={item}
-                          variant="featured"
-                          className={
-                            canManageCatalog
-                              ? "h-full w-full discover-cover-art--featured-dev-controls"
-                              : "h-full w-full"
-                          }
+                          variant="card"
+                          className="h-full w-full"
                         />
-                      </div>
-                      <div className="absolute inset-0">
-                        {canManageCatalog && (
-                          <div className="absolute right-3 top-3 z-30 flex gap-1 sm:right-4 sm:top-4">
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                openDevEdit(item)
-                              }}
-                              className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-                              aria-label={`Edit ${item.title}`}
-                            >
-                              <Pencil className="size-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                void handleDeleteContent(item.id)
-                              }}
-                              className="rounded-md border border-border/60 bg-background/85 p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-destructive"
-                              aria-label={`Delete ${item.title}`}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
+                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,244,238,0.18)_0%,rgba(248,244,238,0.08)_26%,rgba(248,244,238,0.7)_72%,rgba(248,244,238,0.92)_100%)] dark:bg-[linear-gradient(180deg,rgba(18,18,18,0.08)_0%,rgba(18,18,18,0.16)_24%,rgba(18,18,18,0.66)_74%,rgba(18,18,18,0.86)_100%)]" />
+                        <div className="absolute left-4 right-4 top-4 z-30 flex items-start justify-between gap-3">
+                          <span className="inline-flex max-w-[calc(100%-5.5rem)] items-center rounded-full border border-white/55 bg-[rgba(255,252,247,0.7)] px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.13em] text-[#6d6055] backdrop-blur-sm dark:border-white/10 dark:bg-[rgba(34,34,32,0.72)] dark:text-muted-foreground">
+                            {`${item.type} · ${item.language}`}
+                          </span>
+                          {canManageCatalog && (
+                            <div className="ml-auto flex shrink-0 gap-1">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  openDevEdit(item)
+                                }}
+                                className="rounded-xl border border-border/60 bg-background/82 p-2 text-muted-foreground backdrop-blur-sm transition-colors hover:bg-background hover:text-foreground"
+                                aria-label={`Edit ${item.title}`}
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  void handleDeleteContent(item.id)
+                                }}
+                                className="rounded-xl border border-border/60 bg-background/82 p-2 text-muted-foreground backdrop-blur-sm transition-colors hover:bg-background hover:text-destructive"
+                                aria-label={`Delete ${item.title}`}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="absolute inset-x-0 bottom-0 z-20 p-5">
+                          <div className="max-w-[78%]">
+                            <p className="mb-2 line-clamp-1 font-reading text-[0.98rem] italic leading-none text-[#75685e] dark:text-muted-foreground">
+                              {item.author}
+                            </p>
+                            <h3 className="line-clamp-2 text-balance font-reading text-[1.25rem] leading-[0.98] tracking-[-0.04em] text-[#2d2621] dark:text-foreground sm:text-[1.45rem]">
+                              {item.title}
+                            </h3>
+                            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-[#6f6258] dark:text-muted-foreground">
+                              <span className="flex min-w-0 items-center gap-1.5">
+                                <Clock3 className="size-3.5 shrink-0" />
+                                {item.estimatedTime}
+                              </span>
+                              <span className="shrink-0 tabular-nums">{item.wordCount.toLocaleString()} words</span>
+                            </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   ))}

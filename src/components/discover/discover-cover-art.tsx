@@ -57,6 +57,7 @@ type DiscoverCoverArtProps = {
 export function DiscoverCoverArt({ content, variant, className = "" }: DiscoverCoverArtProps) {
   const Icon = typeIcon[content.type]
   const palette = paletteForContent(content)
+  const showCoverChrome = variant === "featured"
   const style = {
     "--discover-cover-accent": palette.accent,
     "--discover-cover-glow": palette.glow,
@@ -75,33 +76,43 @@ export function DiscoverCoverArt({ content, variant, className = "" }: DiscoverC
       <div className="discover-cover-art__grain" aria-hidden />
 
       <div className="discover-cover-art__inner">
-        <div className="discover-cover-art__topline">
-          <ContentTypeBadge type={content.type} size="sm" className="discover-cover-art__badge" />
-          <span className="discover-cover-art__language">
-            <Globe2 className="size-3.5" aria-hidden />
-            {content.language}
-          </span>
-        </div>
+        {showCoverChrome ? (
+          <>
+            <div className="discover-cover-art__topline">
+              <ContentTypeBadge type={content.type} size="sm" className="discover-cover-art__badge" />
+              <span className="discover-cover-art__language">
+                <Globe2 className="size-3.5" aria-hidden />
+                {content.language}
+              </span>
+            </div>
 
-        <div className="discover-cover-art__body">
-          <div className="discover-cover-art__motif" aria-hidden>
-            <Icon className="discover-cover-art__motif-icon" />
-          </div>
-          <div className="discover-cover-art__copy">
-            <p className="discover-cover-art__eyebrow">{content.author}</p>
-            <h3 className="discover-cover-art__title">{content.title}</h3>
-          </div>
-        </div>
+            <div className="discover-cover-art__body">
+              <div className="discover-cover-art__motif" aria-hidden>
+                <Icon className="discover-cover-art__motif-icon" />
+              </div>
+              <div className="discover-cover-art__copy">
+                <p className="discover-cover-art__eyebrow">{content.author}</p>
+                <h3 className="discover-cover-art__title">{content.title}</h3>
+              </div>
+            </div>
 
-        <div className="discover-cover-art__footer">
-          <span className="discover-cover-art__meta">
-            <Timer className="size-3.5" aria-hidden />
-            {content.estimatedTime}
-          </span>
-          <span className="discover-cover-art__meta discover-cover-art__meta--strong">
-            {content.wordCount.toLocaleString()} words
-          </span>
-        </div>
+            <div className="discover-cover-art__footer">
+              <span className="discover-cover-art__meta">
+                <Timer className="size-3.5" aria-hidden />
+                {content.estimatedTime}
+              </span>
+              <span className="discover-cover-art__meta discover-cover-art__meta--strong">
+                {content.wordCount.toLocaleString()} words
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="discover-cover-art__body" aria-hidden>
+            <div className="discover-cover-art__motif">
+              <Icon className="discover-cover-art__motif-icon" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

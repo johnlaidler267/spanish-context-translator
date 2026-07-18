@@ -62,8 +62,8 @@ export function FilterBar({
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="relative max-w-md flex-1 overflow-visible">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative min-w-0 overflow-visible lg:min-w-[15rem] lg:max-w-xl lg:flex-[1.2]">
         <span className="corner corner-tl" aria-hidden />
         <span className="corner corner-tr" aria-hidden />
         <span className="corner corner-bl" aria-hidden />
@@ -77,9 +77,9 @@ export function FilterBar({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 lg:flex-[0.95] lg:justify-end">
         <div
-          className="inline-flex h-10 flex-wrap items-center gap-1 rounded-none border border-[#d8d1ca] bg-[#e9e4de]/95 p-1 shadow-[0_1px_2px_rgba(44,34,28,0.08)] dark:border-[#4c4640] dark:bg-[#2a2724] dark:shadow-sm"
+          className="inline-flex min-w-0 h-10 flex-wrap items-center gap-1 rounded-none border border-[#d8d1ca] bg-[#e9e4de]/95 p-1 shadow-[0_1px_2px_rgba(44,34,28,0.08)] dark:border-[#4c4640] dark:bg-[#2a2724] dark:shadow-sm"
           role="group"
           aria-label="Content type"
         >

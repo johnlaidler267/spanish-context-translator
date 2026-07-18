@@ -51,14 +51,16 @@ interface ContentCardProps {
 
 export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardProps) {
   const difficulty = normalizeDifficulty(content.difficulty)
+  const summary = content.preview.trim() ? content.preview : `by ${content.author}`
 
   return (
     <Card
-      className="group min-w-0 cursor-pointer overflow-hidden rounded-none border-2 border-border/80 bg-card/70 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/55 hover:bg-card hover:shadow-md hover:shadow-primary/5"
+      className="group min-w-0 cursor-pointer overflow-hidden rounded-[1.65rem] border border-[#d9cfbf] bg-[#fbf8f2]/96 shadow-[0_10px_30px_rgba(76,56,39,0.08)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#cfa38d] hover:shadow-[0_18px_40px_rgba(76,56,39,0.14)] dark:border-border/80 dark:bg-card/92 dark:hover:border-primary/40"
       onClick={onClick}
     >
       <div className="relative aspect-[3/4] overflow-hidden">
         <DiscoverCoverArt content={content} variant="card" className="h-full w-full" />
+        <div className="absolute inset-x-0 bottom-0 h-[52%] bg-gradient-to-t from-[#f6f1e8]/95 via-[#f6f1e8]/82 to-transparent dark:from-[rgba(26,26,26,0.92)] dark:via-[rgba(26,26,26,0.78)]" />
         {(onEdit || onDelete) && (
           <div className="absolute right-4 top-4 flex gap-1">
             {onEdit && (
@@ -90,49 +92,61 @@ export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardP
           </div>
         )}
 
-        <div className="absolute bottom-4 left-4 right-4">
-          <div
-            className={cn(
-              "inline-flex h-7 items-center gap-1.5 rounded-[11px] border px-2.5 text-[0.74rem] font-semibold tracking-[-0.01em] shadow-[0_1px_0_rgba(255,255,255,0.32)_inset]",
-              difficultyPillStyles[difficulty].shell,
-            )}
-          >
-            <span className="inline-flex items-center gap-1" aria-hidden>
-              {Array.from({ length: 3 }).map((_, index) => (
-                <span
-                  key={`${content.id}-difficulty-bar-${index}`}
-                  className={cn(
-                    "h-3 w-[0.32rem] rounded-full",
-                    index < difficultyBarCount[difficulty]
-                      ? difficultyPillStyles[difficulty].barActive
-                      : "bg-[#d8d7d2]",
-                  )}
-                />
-              ))}
-            </span>
-            <span>{difficultyLabels[difficulty]}</span>
+        <div className="absolute left-5 right-5 top-5 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div
+              className={cn(
+                "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[0.74rem] font-semibold tracking-[-0.01em] shadow-[0_1px_0_rgba(255,255,255,0.32)_inset] backdrop-blur-sm",
+                difficultyPillStyles[difficulty].shell,
+              )}
+            >
+              <span className="inline-flex items-center gap-1" aria-hidden>
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <span
+                    key={`${content.id}-difficulty-bar-${index}`}
+                    className={cn(
+                      "h-3 w-[0.32rem] rounded-full",
+                      index < difficultyBarCount[difficulty]
+                        ? difficultyPillStyles[difficulty].barActive
+                        : "bg-[#d8d7d2]",
+                    )}
+                  />
+                ))}
+              </span>
+              <span>{difficultyLabels[difficulty]}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+          <div className="rounded-[1.3rem] border border-white/45 bg-[rgba(252,248,241,0.72)] p-5 shadow-[0_14px_30px_rgba(76,56,39,0.10)] backdrop-blur-md dark:border-white/8 dark:bg-[rgba(34,34,32,0.72)] dark:shadow-[0_14px_30px_rgba(0,0,0,0.18)]">
+            <p className="mb-2 font-reading text-[1rem] italic leading-none text-[#6a5d54] dark:text-muted-foreground">
+              {content.author}
+            </p>
+            <h3 className="text-balance font-reading text-[2rem] leading-[0.92] tracking-[-0.04em] text-[#2d2621] dark:text-foreground sm:text-[2.2rem]">
+              {content.title}
+            </h3>
+            <div className="mt-4 flex items-center justify-between gap-3 text-[0.78rem] font-medium uppercase tracking-[0.08em] text-[#6f6258] dark:text-muted-foreground">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <Clock className="size-3.5 shrink-0" />
+                {content.estimatedTime}
+              </span>
+              <span className="shrink-0 tabular-nums">{content.wordCount.toLocaleString()} words</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <CardContent className="p-5 sm:p-6">
-        <p className="mb-4 line-clamp-2 font-sans text-sm leading-6 text-black/75 dark:text-muted-foreground">
-          {content.preview.trim() ? content.preview : `by ${content.author}`}
+      <CardContent className="border-t border-[#e5dccf] bg-[linear-gradient(to_bottom,rgba(249,245,237,0.96),rgba(245,240,231,0.98))] p-5 dark:border-border/70 dark:bg-[linear-gradient(to_bottom,rgba(32,32,30,0.96),rgba(26,26,26,0.98))]">
+        <p className="line-clamp-3 text-pretty font-sans text-[0.96rem] leading-6 text-[#433a34]/78 dark:text-muted-foreground">
+          {summary}
         </p>
 
-        <div className="flex items-center justify-between gap-3 text-xs text-black dark:text-muted-foreground">
-          <span className="flex min-w-0 items-center gap-1">
-            <Clock className="size-3 shrink-0" />
-            {content.estimatedTime}
-          </span>
-          <span className="shrink-0 tabular-nums">{content.wordCount.toLocaleString()} words</span>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-wrap gap-2">
           {content.tags.slice(0, 2).map((tag) => (
             <span
               key={tag}
-              className="rounded-full border border-border/70 bg-muted px-2 py-0.5 text-xs font-medium text-black dark:text-foreground"
+              className="rounded-full border border-[#d8cfbf] bg-[#f3ede2] px-2.5 py-1 text-[0.72rem] font-medium uppercase tracking-[0.05em] text-[#5f534b] dark:border-border/70 dark:bg-muted/50 dark:text-foreground"
             >
               {tag}
             </span>
