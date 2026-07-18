@@ -205,9 +205,9 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   return (
     <>
       <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(201,122,90,0.16)_0%,rgba(247,243,238,0)_56%),linear-gradient(to_bottom,rgba(240,235,228,0.72)_0%,rgba(247,243,238,1)_72%)] font-sans dark:bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(176,107,86,0.2)_0%,rgba(26,26,26,0)_56%),linear-gradient(to_bottom,rgba(34,34,32,0.58)_0%,rgba(26,26,26,1)_72%)]">
-        <main className="mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(5rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-8 lg:px-8">
-          <div className="mb-10 flex items-start justify-between gap-4 md:mb-12">
-            <div>
+        <main className="mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(6.5rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-24 lg:px-8 lg:pt-28">
+          <div className="mb-10 flex flex-wrap items-start justify-between gap-4 md:mb-12 md:gap-6">
+            <div className="min-w-0 flex-1">
               <h1 className="font-serif text-3xl font-bold tracking-tight text-black md:text-4xl dark:text-foreground">
                 Discover
               </h1>
@@ -218,7 +218,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
             {canManageCatalog && (
               <Button
                 variant="outline"
-                className="shrink-0 rounded-none"
+                className="shrink-0 self-start rounded-none"
                 onClick={() => setUploadModalOpen(true)}
               >
                 <Plus className="mr-2 size-4" />

@@ -130,6 +130,7 @@ export function LandingScreen({
           : null
 
   const [charLimitTipOpen, setCharLimitTipOpen] = useState(false)
+  const [charLimitTipHoverEnabled, setCharLimitTipHoverEnabled] = useState(false)
   const charLimitTipWrapRef = useRef<HTMLDivElement>(null)
 
   const [langPrefs, setLangPrefs] = useState<LanguageLearningPreferences>(() =>
@@ -181,6 +182,15 @@ export function LandingScreen({
   const submissionCharCount = text.trim().length
   const charCountOverLimit =
     showCharLimitCounter && submissionCharCount > charsPerSubmissionLimit
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)")
+    const sync = () => setCharLimitTipHoverEnabled(mq.matches)
+    sync()
+    mq.addEventListener("change", sync)
+    return () => mq.removeEventListener("change", sync)
+  }, [])
 
   useEffect(() => {
     if (!charLimitTipOpen) return
@@ -443,14 +453,40 @@ export function LandingScreen({
               </div>
               <div className="textarea-toolbar" aria-label="Composer actions">
                 {showCharLimitCounter && (
-                  <div className="textarea-toolbar-left" ref={charLimitTipWrapRef}>
+                  <div
+                    className="textarea-toolbar-left"
+                    ref={charLimitTipWrapRef}
+                    onPointerEnter={() => {
+                      if (charLimitTipHoverEnabled) setCharLimitTipOpen(true)
+                    }}
+                    onPointerLeave={() => {
+                      if (charLimitTipHoverEnabled) setCharLimitTipOpen(false)
+                    }}
+                    onFocusCapture={() => {
+                      if (charLimitTipHoverEnabled) setCharLimitTipOpen(true)
+                    }}
+                    onBlurCapture={(e) => {
+                      if (
+                        charLimitTipHoverEnabled &&
+                        !e.currentTarget.contains(e.relatedTarget as Node | null)
+                      ) {
+                        setCharLimitTipOpen(false)
+                      }
+                    }}
+                  >
                     <button
                       type="button"
                       className={`char-limit-counter${charCountOverLimit ? " char-limit-counter--over" : ""}`}
                       aria-expanded={charLimitTipOpen}
-                      aria-haspopup="dialog"
-                      aria-label="Submission character limit. Tap for details."
-                      onClick={() => setCharLimitTipOpen((o) => !o)}
+                      aria-describedby={charLimitTipOpen ? "char-limit-tip" : undefined}
+                      aria-label={
+                        charLimitTipHoverEnabled
+                          ? "Submission character limit. Hover for details."
+                          : "Submission character limit. Tap for details."
+                      }
+                      onClick={() => {
+                        if (!charLimitTipHoverEnabled) setCharLimitTipOpen((o) => !o)
+                      }}
                     >
                       <span className="char-limit-counter-value">
                         {submissionCharCount.toLocaleString()}
@@ -463,7 +499,12 @@ export function LandingScreen({
                       </span>
                     </button>
                     {charLimitTipOpen && (
-                      <div className="char-limit-tip" role="dialog" aria-label="Upgrade for unlimited">
+                      <div
+                        id="char-limit-tip"
+                        className="char-limit-tip"
+                        role="tooltip"
+                        aria-label="Upgrade for unlimited"
+                      >
                         <p className="char-limit-tip-text">
                           Upgrade to Pro for a much higher per-paste limit and generous monthly fair-use allowances.
                         </p>

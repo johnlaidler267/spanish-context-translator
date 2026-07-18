@@ -23,6 +23,7 @@ type LandingShellLayoutProps = {
   onThemeChange: (theme: ReadingTheme) => void
   displayName: string
   sidebarDisabled: boolean
+  showHeader?: boolean
 }
 
 export function LandingShellLayout({
@@ -30,6 +31,7 @@ export function LandingShellLayout({
   onThemeChange,
   displayName,
   sidebarDisabled,
+  showHeader = true,
 }: LandingShellLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarInsetPx, setSidebarInsetPx] = useState(0)
@@ -58,15 +60,17 @@ export function LandingShellLayout({
         displayName={displayName}
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col max-md:min-h-0 max-md:flex-1">
-        <MainHeader
-          theme={theme}
-          onThemeChange={onThemeChange}
-          showPlanBanner={false}
-          showMobilePlanBanner
-          showBrandWordmark={false}
-          onMenuClick={() => setMobileSidebarOpen(true)}
-          contentInsetLeftPx={sidebarInsetPx}
-        />
+        {showHeader ? (
+          <MainHeader
+            theme={theme}
+            onThemeChange={onThemeChange}
+            showPlanBanner={false}
+            showMobilePlanBanner
+            showBrandWordmark={false}
+            onMenuClick={() => setMobileSidebarOpen(true)}
+            contentInsetLeftPx={sidebarInsetPx}
+          />
+        ) : null}
         <Outlet context={outletContext} />
       </div>
     </div>

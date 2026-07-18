@@ -303,7 +303,7 @@ export function LandingSidebar({
 
       <div
         className={cn(
-          "mt-auto flex w-full shrink-0 flex-col border-t border-border/60 bg-background pb-[max(0.25rem,env(safe-area-inset-bottom,0px))]",
+          "mt-auto flex w-full shrink-0 flex-col border-t border-border/60 bg-background pb-[env(safe-area-inset-bottom,0px)] md:pb-0",
         )}
       >
         <div className={cn("p-3 pb-2", compactRail && "px-2")}>

@@ -695,6 +695,7 @@ export default function App() {
               onThemeChange={setReadingTheme}
               displayName={displayName}
               sidebarDisabled={appState === "loading"}
+              showHeader={appState !== "reading"}
             />
           }
         >
