@@ -25,18 +25,42 @@ import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/content-da
 const LIST_SELECT =
   "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at"
 
+const DISCOVER_CACHE_KEY = "lexa.discover.catalog.v1"
+
 type DiscoverPageProps = {
   onStartReading: (content: ContentItem) => Promise<void> | void
 }
 
 const DISCOVER_DEV_EDIT = import.meta.env.DEV
 
+function readCachedDiscoverItems(): ContentItem[] | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = sessionStorage.getItem(DISCOVER_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as ContentItem[]
+    return Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedDiscoverItems(items: ContentItem[]) {
+  if (typeof window === "undefined") return
+  try {
+    sessionStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items))
+  } catch {
+    /* ignore quota/private mode */
+  }
+}
+
 export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const navigate = useNavigate()
   const { registerNewChat } = useLandingShellNewChat()
+  const cachedItems = useMemo(() => readCachedDiscoverItems(), [])
 
-  const [discoverItems, setDiscoverItems] = useState<ContentItem[]>([])
-  const [listLoading, setListLoading] = useState(true)
+  const [discoverItems, setDiscoverItems] = useState<ContentItem[]>(() => cachedItems ?? [])
+  const [listLoading, setListLoading] = useState(() => cachedItems == null)
   const [listError, setListError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -70,7 +94,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      setListLoading(true)
+      if (!cachedItems?.length) setListLoading(true)
       setListError(null)
       const { data, error } = await supabase
         .from("discover_items")
@@ -80,17 +104,18 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
       if (cancelled) return
       if (error) {
         setListError(error.message)
-        setDiscoverItems([])
       } else {
         const rows = (data ?? []) as DiscoverListRow[]
-        setDiscoverItems(rows.map(discoverRowToContentItem))
+        const mapped = rows.map(discoverRowToContentItem)
+        setDiscoverItems(mapped)
+        writeCachedDiscoverItems(mapped)
       }
       setListLoading(false)
     })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [cachedItems])
 
   useEffect(() => {
     if (!selectedContent) return
@@ -129,16 +154,22 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   /** Deletes `discover_items` by primary key. Returns false if the DB removed zero rows (RLS, bad id). */
   const handleDeleteContent = async (contentId: string): Promise<boolean> => {
     const previous = discoverItems
-    setDiscoverItems((currentItems) => currentItems.filter((item) => item.id !== contentId))
+    setDiscoverItems((currentItems) => {
+      const next = currentItems.filter((item) => item.id !== contentId)
+      writeCachedDiscoverItems(next)
+      return next
+    })
     setActionError(null)
     const { data, error } = await supabase.from("discover_items").delete().eq("id", contentId).select("id")
     if (error) {
       setDiscoverItems(previous)
+      writeCachedDiscoverItems(previous)
       setActionError(error.message)
       return false
     }
     if (!data?.length) {
       setDiscoverItems(previous)
+      writeCachedDiscoverItems(previous)
       setActionError("Nothing was deleted. Check that this item still exists.")
       return false
     }
@@ -155,7 +186,11 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   }
 
   const handleDiscoverItemSaved = (item: ContentItem) => {
-    setDiscoverItems((prev) => prev.map((x) => (x.id === item.id ? item : x)))
+    setDiscoverItems((prev) => {
+      const next = prev.map((x) => (x.id === item.id ? item : x))
+      writeCachedDiscoverItems(next)
+      return next
+    })
     setSelectedContent((prev) => (prev?.id === item.id ? item : prev))
     setEditModalOpen(false)
     setEditTarget(null)
@@ -195,7 +230,11 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     }
 
     const newItem = discoverRowToContentItem(data as DiscoverListRow)
-    setDiscoverItems((currentItems) => [newItem, ...currentItems])
+    setDiscoverItems((currentItems) => {
+      const next = [newItem, ...currentItems]
+      writeCachedDiscoverItems(next)
+      return next
+    })
     setSelectedContent(newItem)
     setModalOpen(true)
   }
