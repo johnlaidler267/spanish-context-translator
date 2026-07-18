@@ -13,7 +13,6 @@ export type DiscoverListRow = Pick<
   | "language"
   | "cover_image"
   | "tags"
-  | "preview"
   | "estimated_time"
   | "created_at"
 >
@@ -29,7 +28,7 @@ export function discoverRowToContentItem(row: DiscoverListRow): ContentItem {
     language: row.language,
     coverImage: row.cover_image,
     tags: row.tags,
-    preview: row.preview,
+    preview: "",
     estimatedTime: row.estimated_time,
   }
 }

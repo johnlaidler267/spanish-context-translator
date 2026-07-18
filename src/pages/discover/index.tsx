@@ -23,7 +23,7 @@ import type { DiscoverItemInsert } from "@/lib/db.types"
 import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/content-data"
 
 const LIST_SELECT =
-  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at"
+  "id, title, author, type, difficulty, word_count, language, cover_image, tags, estimated_time, created_at"
 
 const DISCOVER_CACHE_KEY = "lexa.discover.catalog.v1"
 
@@ -144,6 +144,26 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const handleContentClick = (content: ContentItem) => {
     setSelectedContent(content)
     setModalOpen(true)
+    if (content.preview.trim()) return
+    void (async () => {
+      const { data, error } = await supabase
+        .from("discover_items")
+        .select("preview")
+        .eq("id", content.id)
+        .maybeSingle<{ preview: string | null }>()
+      const preview = data?.preview?.trim() ?? ""
+      if (error || preview.length === 0) return
+      setDiscoverItems((prev) => {
+        const next = prev.map((item) =>
+          item.id === content.id ? { ...item, preview } : item,
+        )
+        writeCachedDiscoverItems(next)
+        return next
+      })
+      setSelectedContent((prev) =>
+        prev?.id === content.id ? { ...prev, preview } : prev,
+      )
+    })()
   }
 
   const handleCloseModal = () => {

@@ -122,9 +122,15 @@ export function ContentPreviewModal({
               Preview
             </h4>
             <ScrollArea className="h-36 max-h-[40vh] rounded-lg border border-border/50 bg-background/50 p-4 sm:h-48 sm:max-h-none">
-              <p className="whitespace-pre-line leading-relaxed text-foreground/90">
-                {content.preview}
-              </p>
+              {content.preview.trim() ? (
+                <p className="whitespace-pre-line leading-relaxed text-foreground/90">
+                  {content.preview}
+                </p>
+              ) : (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Loading preview…
+                </p>
+              )}
             </ScrollArea>
           </div>
 

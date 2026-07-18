@@ -116,8 +116,8 @@ export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardP
       </div>
 
       <CardContent className="p-5 sm:p-6">
-        <p className="mb-4 line-clamp-3 font-sans text-sm leading-6 text-black/75 dark:text-muted-foreground">
-          {content.preview}
+        <p className="mb-4 line-clamp-2 font-sans text-sm leading-6 text-black/75 dark:text-muted-foreground">
+          {content.preview.trim() ? content.preview : `by ${content.author}`}
         </p>
 
         <div className="flex items-center justify-between gap-3 text-xs text-black dark:text-muted-foreground">
