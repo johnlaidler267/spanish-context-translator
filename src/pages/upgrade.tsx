@@ -933,23 +933,6 @@ export default function UpgradePage() {
                   : "Flexible plans with no long-term commitment. Cancel anytime."
               })()}
             </p>
-            {user?.is_anonymous === true && (
-              <div className="mt-4 mx-auto max-w-xl rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-left">
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-300">
-                  You&apos;re on a guest session.
-                </p>
-                <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-200/90 leading-relaxed">
-                  Sign in before subscribing so your paid plan is linked to your account and won&apos;t be lost.
-                </p>
-                <Button
-                  type="button"
-                  onClick={() => openAuthModal()}
-                  className="mt-3 h-8 rounded-md border-2 border-foreground bg-background px-3 text-xs font-semibold text-foreground hover:bg-background/90 dark:border-[rgba(234,224,213,0.28)]"
-                >
-                  Sign in
-                </Button>
-              </div>
-            )}
             {confirmingActivation && (
               <p className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground font-sans">
                 <Loader2 className="h-4 w-4 animate-spin" />
