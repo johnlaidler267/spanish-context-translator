@@ -1591,13 +1591,14 @@ article span {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border: 1px solid rgba(47, 32, 24, 0.12);
-  background: rgba(255, 255, 255, 0.42);
-  padding: 0.38rem 0.58rem;
+  border: 1px solid color-mix(in srgb, var(--discover-cover-ink) 14%, white 86%);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0.35rem 0.62rem;
   font-family: var(--font-sans);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.018em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--discover-cover-ink) 78%, white 22%);
 }
@@ -1661,6 +1662,10 @@ article span {
   display: inline-flex;
   align-items: center;
   gap: 0.36rem;
+  border: 1px solid color-mix(in srgb, var(--discover-cover-ink) 12%, white 88%);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 0.24rem 0.52rem;
   font-family: var(--font-sans);
   font-size: 0.7rem;
   font-weight: 600;
@@ -1738,6 +1743,11 @@ article span {
   white-space: nowrap;
 }
 
+/* Featured cards with dev action controls need right-side space in the topline. */
+.discover-cover-art--featured-dev-controls .discover-cover-art__topline {
+  padding-right: 3.4rem;
+}
+
 @media (max-width: 1024px) {
   .discover-cover-art--featured .discover-cover-art__inner {
     gap: 0.65rem;
@@ -1761,6 +1771,10 @@ article span {
   .discover-cover-art--featured .discover-cover-art__meta {
     font-size: 0.6rem;
     letter-spacing: 0.02em;
+  }
+
+  .discover-cover-art--featured-dev-controls .discover-cover-art__topline {
+    padding-right: 3.05rem;
   }
 }
 
@@ -1787,8 +1801,8 @@ article span {
 }
 
 .dark .discover-cover-art__language {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
   color: color-mix(in srgb, var(--discover-cover-wash) 78%, white 22%);
 }
 
@@ -1802,6 +1816,8 @@ article span {
 
 .dark .discover-cover-art__meta,
 .dark .discover-cover-art__meta--strong {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.06);
   color: color-mix(in srgb, var(--discover-cover-wash) 72%, white 28%);
 }
 

@@ -227,11 +227,11 @@ export const contentTypeLabels: Record<ContentType, string> = {
  */
 export const contentTypeBadgeClassNames: Record<ContentType, string> = {
   book:
-    "border-transparent bg-[#5c53bd] text-white shadow-none",
+    "border-[#7a70d2]/45 bg-[#ece9ff] text-[#4b4596] shadow-none dark:border-[#7a70d2]/40 dark:bg-[#2a2744] dark:text-[#d8d3ff]",
   article:
-    "border-transparent bg-[#2c6fb7] text-white shadow-none",
+    "border-[#6e98bd]/45 bg-[#e9f1f8] text-[#325f84] shadow-none dark:border-[#6e98bd]/40 dark:bg-[#233340] dark:text-[#cde6fb]",
   song:
-    "border-transparent bg-[#ab3d63] text-white shadow-none",
+    "border-[#c18097]/45 bg-[#f8ecf2] text-[#8b4862] shadow-none dark:border-[#c18097]/40 dark:bg-[#392633] dark:text-[#f4cede]",
   poem:
-    "border-transparent bg-[#4b7f16] text-white shadow-none",
+    "border-[#79a27f]/45 bg-[#eaf4ec] text-[#3f6f45] shadow-none dark:border-[#79a27f]/40 dark:bg-[#253429] dark:text-[#caebd1]",
 }

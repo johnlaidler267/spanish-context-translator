@@ -24,7 +24,7 @@ export function ContentTypeBadge({ type, size = "sm", className }: ContentTypeBa
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-[8px] border font-semibold leading-none",
+        "inline-flex items-center rounded-full border font-semibold leading-none",
         size === "sm" && "gap-1.5 px-2.5 py-1.5 text-[0.8rem]",
         size === "md" && "gap-2 px-3 py-2 text-sm",
         contentTypeBadgeClassNames[type],
