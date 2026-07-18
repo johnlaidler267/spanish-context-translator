@@ -258,6 +258,7 @@ export function MainHeader({
   const isMdUp = useMediaQuery("(min-width: 768px)")
   const location = useLocation()
   const showHomeMobilePlanBanner = showMobilePlanBanner && !isMdUp && location.pathname === "/"
+  const showSettingsShortcut = showBrandWordmark && location.pathname !== "/settings"
   const fixedInset =
     !stacked && isMdUp && contentInsetLeftPx > 0
       ? { left: contentInsetLeftPx, right: 0, width: "auto" as const }
@@ -309,7 +310,7 @@ export function MainHeader({
                 ? <Moon className="moon-icon h-4 w-4 max-md:h-5 max-md:w-5" />
                 : <Sun className="sun-icon h-4 w-4 max-md:h-5 max-md:w-5" />}
             </button>
-            {showBrandWordmark ? (
+            {showSettingsShortcut ? (
               <>
                 <Link
                   to="/settings"
