@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
-import { Outlet, useOutletContext } from "react-router-dom"
+import { Outlet, useLocation, useOutletContext } from "react-router-dom"
 import { LandingSidebar, type LandingSidebarLayout } from "@/components/landing-sidebar"
 import { MainHeader } from "@/components/main-header"
 import type { ReadingTheme } from "@/components/theme-toggle"
@@ -33,6 +33,7 @@ export function LandingShellLayout({
   sidebarDisabled,
   showHeader = true,
 }: LandingShellLayoutProps) {
+  const location = useLocation()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarInsetPx, setSidebarInsetPx] = useState(0)
   const onSidebarLayoutChange = useCallback((layout: LandingSidebarLayout) => {
@@ -64,6 +65,8 @@ export function LandingShellLayout({
           <MainHeader
             theme={theme}
             onThemeChange={onThemeChange}
+            showThemeToggle={location.pathname !== "/discover"}
+            forceDark={location.pathname === "/discover"}
             showPlanBanner={false}
             showMobilePlanBanner
             showBrandWordmark={false}

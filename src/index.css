@@ -168,6 +168,113 @@ html.lector-reading-session .global-corner-letter {
 }
 
 /* Mobile: min-height with dvh/svh — no JS pixel height (keyboard-safe) */
+/* Discover uses an inner scroll container; allow vertical pan within this subtree. */
+.discover-scroll-surface,
+.discover-scroll-surface * {
+  touch-action: pan-y;
+}
+.discover-scroll-surface {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(92% 22% at 18% 20%, rgba(242, 238, 228, 0.82) 0%, rgba(242, 238, 228, 0) 0%),
+    radial-gradient(72% 56% at 84% 14%, rgba(122, 165, 144, 0.16) 20%, rgba(122, 165, 144, 0) 14%),
+    radial-gradient(88% 72% at 92% 94%, rgba(39, 84, 62, 0.34) 0%, rgba(39, 84, 62, 0) 2%),
+    linear-gradient(135deg, #c8d8cf 0%, #89ab9d 42%, #4a7465 100%);
+}
+.discover-scroll-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.8;
+  background:
+    radial-gradient(34% 26% at 82% 10%, rgba(36, 82, 59, 0.24) 0%, rgba(36, 82, 59, 0) 72%),
+    radial-gradient(26% 22% at 24% 76%, rgba(118, 151, 121, 0.16) 0%, rgba(118, 151, 121, 0) 76%),
+    radial-gradient(58% 38% at 30% -4%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 72%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 34%, rgba(42, 94, 72, 0.12) 100%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(246, 241, 231, 0.02) 0px,
+      rgba(246, 241, 231, 0.02) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.018) 0px,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+  background-size:
+    auto,
+    auto,
+    auto,
+    auto,
+    auto,
+    auto;
+  background-position:
+    right top,
+    left bottom,
+    center top,
+    center,
+    0 0,
+    0 0;
+  mix-blend-mode: overlay;
+}
+.discover-scroll-surface > * {
+  position: relative;
+  z-index: 1;
+}
+.dark .discover-scroll-surface,
+.discover-scroll-surface.dark {
+  background:
+    radial-gradient(64% 52% at 18% 16%, rgba(214, 225, 217, 0.1) 0%, rgba(214, 225, 217, 0) 56%),
+    radial-gradient(72% 56% at 84% 14%, rgba(88, 135, 111, 0.14) 0%, rgba(88, 135, 111, 0) 54%),
+    radial-gradient(88% 72% at 92% 94%, rgba(9, 29, 20, 0.42) 0%, rgba(9, 29, 20, 0) 58%),
+    linear-gradient(135deg, #496b5d 0%, #2f4d42 42%, #17231f 100%);
+}
+.dark .discover-scroll-surface::before,
+.discover-scroll-surface.dark::before {
+  opacity: 0.52;
+  background:
+    radial-gradient(34% 26% at 82% 10%, rgba(16, 42, 29, 0.28) 0%, rgba(16, 42, 29, 0) 72%),
+    radial-gradient(26% 22% at 24% 76%, rgba(84, 112, 92, 0.16) 0%, rgba(84, 112, 92, 0) 76%),
+    radial-gradient(58% 38% at 30% -4%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 72%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 34%, rgba(18, 57, 41, 0.18) 100%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.012) 0px,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.01) 0px,
+      rgba(255, 255, 255, 0.01) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+  background-size:
+    auto,
+    auto,
+    auto,
+    auto,
+    auto,
+    auto;
+  background-position:
+    right top,
+    left bottom,
+    center top,
+    center,
+    0 0,
+    0 0;
+  mix-blend-mode: overlay;
+}
+
 @media (max-width: 767px) {
   /*
    * Disable double-tap zoom (common on textarea / composer) while keeping pinch-zoom.
@@ -188,11 +295,6 @@ html.lector-reading-session .global-corner-letter {
   }
   body * {
     touch-action: manipulation;
-  }
-  /* Discover uses an inner scroll container; allow vertical pan within this subtree. */
-  .discover-scroll-surface,
-  .discover-scroll-surface * {
-    touch-action: pan-y;
   }
   #root {
     min-height: 100svh;
@@ -242,34 +344,36 @@ html.lector-reading-session .global-corner-letter {
     height: auto !important;
   }
 
-  /* Discover lives inside LandingShellLayout; unlock that shell too on mobile. */
-  html.mobile-scroll-discover {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-  html.mobile-scroll-discover body {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    overscroll-behavior-y: contain;
-  }
-  html.mobile-scroll-discover #root,
-  html.mobile-scroll-discover .app-viewport {
-    overflow: visible !important;
-    height: auto !important;
-    min-height: 100svh;
-    min-height: 100dvh;
-  }
-  html.mobile-scroll-discover .landing-route-shell {
-    height: auto !important;
-    min-height: 100svh;
-    min-height: 100dvh;
-    overflow: visible !important;
-    align-items: stretch;
-  }
-  html.mobile-scroll-discover .landing-route-shell > .flex {
-    min-height: 100svh;
-    min-height: 100dvh;
+  /* Discover lives inside LandingShellLayout; unlock that shell only on mobile. */
+  @media (max-width: 767px) {
+    html.mobile-scroll-discover {
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+    html.mobile-scroll-discover body {
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      overscroll-behavior-y: contain;
+    }
+    html.mobile-scroll-discover #root,
+    html.mobile-scroll-discover .app-viewport {
+      overflow: visible !important;
+      height: auto !important;
+      min-height: 100svh;
+      min-height: 100dvh;
+    }
+    html.mobile-scroll-discover .landing-route-shell {
+      height: auto !important;
+      min-height: 100svh;
+      min-height: 100dvh;
+      overflow: visible !important;
+      align-items: stretch;
+    }
+    html.mobile-scroll-discover .landing-route-shell > .flex {
+      min-height: 100svh;
+      min-height: 100dvh;
+    }
   }
 
   /*

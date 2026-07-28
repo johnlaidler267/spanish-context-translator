@@ -55,7 +55,7 @@ export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardP
 
   return (
     <Card
-      className="group min-w-0 cursor-pointer overflow-hidden rounded-[1.65rem] border border-[#d9cfbf] bg-[#fbf8f2]/96 shadow-[0_10px_30px_rgba(76,56,39,0.08)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#cfa38d] hover:shadow-[0_18px_40px_rgba(76,56,39,0.14)] dark:border-border/80 dark:bg-card/92 dark:hover:border-primary/40"
+      className="group min-w-0 cursor-pointer overflow-hidden rounded-[1.65rem] border border-[#d9cfbf] bg-[#fbf8f2]/96 shadow-[0_10px_30px_rgba(76,56,39,0.08)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#cfa38d] hover:shadow-[0_18px_40px_rgba(76,56,39,0.14)] dark:border-border/80 dark:bg-[#1d201f] dark:hover:border-primary/40"
       onClick={onClick}
     >
       <div className="relative aspect-[3/4] overflow-hidden">
@@ -137,7 +137,7 @@ export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardP
         </div>
       </div>
 
-      <CardContent className="border-t border-[#e5dccf] bg-[linear-gradient(to_bottom,rgba(249,245,237,0.96),rgba(245,240,231,0.98))] p-5 dark:border-border/70 dark:bg-[linear-gradient(to_bottom,rgba(32,32,30,0.96),rgba(26,26,26,0.98))]">
+      <CardContent className="border-t border-[#e5dccf] bg-[linear-gradient(to_bottom,rgba(249,245,237,0.96),rgba(245,240,231,0.98))] p-5 dark:border-border/70 dark:bg-[linear-gradient(to_bottom,#242624,#1d201f)]">
         <p className="line-clamp-3 text-pretty font-sans text-[0.96rem] leading-6 text-[#433a34]/78 dark:text-muted-foreground">
           {summary}
         </p>
@@ -146,7 +146,7 @@ export function ContentCard({ content, onClick, onDelete, onEdit }: ContentCardP
           {content.tags.slice(0, 2).map((tag) => (
             <span
               key={tag}
-              className="rounded-full border border-[#d8cfbf] bg-[#f3ede2] px-2.5 py-1 text-[0.72rem] font-medium uppercase tracking-[0.05em] text-[#5f534b] dark:border-border/70 dark:bg-muted/50 dark:text-foreground"
+              className="rounded-full border border-[#d8cfbf] bg-[#f3ede2] px-2.5 py-1 text-[0.72rem] font-medium uppercase tracking-[0.05em] text-[#5f534b] dark:border-[#cfc4b3] dark:bg-[#f3ede2] dark:text-[#5f534b]"
             >
               {tag}
             </span>

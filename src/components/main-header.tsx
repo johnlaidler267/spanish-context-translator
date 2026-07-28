@@ -42,6 +42,8 @@ function writeCachedSubscriptionRow(userId: string, row: SubscriptionRowLike) {
 interface MainHeaderProps {
   theme: ReadingTheme
   onThemeChange: (theme: ReadingTheme) => void
+  showThemeToggle?: boolean
+  forceDark?: boolean
   /** Free plan pill + mobile strip — landing only */
   showPlanBanner?: boolean
   /** Mobile-only upgrade reminder on the homepage. */
@@ -247,6 +249,8 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
 export function MainHeader({
   theme,
   onThemeChange,
+  showThemeToggle = true,
+  forceDark = false,
   showPlanBanner = false,
   showMobilePlanBanner = false,
   showBrandWordmark = true,
@@ -266,10 +270,12 @@ export function MainHeader({
 
   return (
     <header
+      data-force-dark={forceDark ? "true" : undefined}
       className={
-        stacked
+        (forceDark ? "dark " : "") +
+        (stacked
           ? "relative z-40 w-full shrink-0 pointer-events-none min-h-[calc(5rem+env(safe-area-inset-top,0px))] md:min-h-20"
-          : "fixed top-0 left-0 right-0 z-40 pointer-events-none"
+          : "fixed top-0 left-0 right-0 z-40 pointer-events-none")
       }
       style={fixedInset}
     >
@@ -301,15 +307,17 @@ export function MainHeader({
             ) : null}
           </div>
           <div className="flex items-center gap-2 md:gap-3 pointer-events-auto shrink-0">
-            <button
-              onClick={() => onThemeChange(theme === "light" ? "dark" : "light")}
-              className="theme-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full transition-colors duration-200 ease-in-out text-foreground hover:bg-muted/50"
-              aria-label="Toggle theme"
-            >
-              {theme === "light"
-                ? <Moon className="moon-icon h-4 w-4 max-md:h-5 max-md:w-5" />
-                : <Sun className="sun-icon h-4 w-4 max-md:h-5 max-md:w-5" />}
-            </button>
+            {showThemeToggle ? (
+              <button
+                onClick={() => onThemeChange(theme === "light" ? "dark" : "light")}
+                className="theme-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-11 max-md:h-11 rounded-full transition-colors duration-200 ease-in-out text-foreground hover:bg-muted/50"
+                aria-label="Toggle theme"
+              >
+                {theme === "light"
+                  ? <Moon className="moon-icon h-4 w-4 max-md:h-5 max-md:w-5" />
+                  : <Sun className="sun-icon h-4 w-4 max-md:h-5 max-md:w-5" />}
+              </button>
+            ) : null}
             {showSettingsShortcut ? (
               <>
                 <Link

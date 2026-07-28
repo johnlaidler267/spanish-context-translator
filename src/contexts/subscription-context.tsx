@@ -70,7 +70,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           : subscriptionBlockingCheckDone
     if (!silent) setIsLoading(true)
     try {
-      const result = await checkSubscriptionStatus()
+      const result = await Promise.race([
+        checkSubscriptionStatus(),
+        new Promise<Awaited<ReturnType<typeof checkSubscriptionStatus>>>((resolve) => {
+          window.setTimeout(() => resolve({ status: "free", subscription: null }), 3000)
+        }),
+      ])
       setStatus(result.status)
       if (result.status === "lapsed") {
         setPopupDismissed(readLapsedModalAckSession(user?.id))

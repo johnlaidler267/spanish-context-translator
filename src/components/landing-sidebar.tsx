@@ -67,8 +67,8 @@ export function LandingSidebar({
   const pathname = location.pathname
   const homeActive = pathname === "/"
   /** Home composer puts submit bottom-right; same corner as this FAB — hide FAB there only. */
-  const showMobileNewChatFab = !isMdUp && pathname !== "/"
   const discoverActive = pathname === "/discover"
+  const showMobileNewChatFab = !isMdUp && pathname !== "/" && !discoverActive
   const libraryActive = pathname.startsWith("/my-library")
 
   const navActiveIndex = homeActive ? 0 : discoverActive ? 1 : libraryActive ? 2 : -1

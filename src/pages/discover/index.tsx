@@ -27,7 +27,7 @@ const LIST_SELECT =
 const DISCOVER_CACHE_KEY = "lexa.discover.catalog.v1"
 
 type DiscoverPageProps = {
-  onStartReading: (content: ContentItem) => Promise<void> | void
+  onStartReading: (content: ContentItem) => Promise<{ blockedMessage?: string } | void> | { blockedMessage?: string } | void
 }
 
 const DISCOVER_DEV_EDIT = import.meta.env.DEV
@@ -195,9 +195,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     return true
   }
 
-  const handleStartReading = (content: ContentItem) => {
-    void onStartReading(content)
-  }
+  const handleStartReading = (content: ContentItem) => onStartReading(content)
 
   const openDevEdit = (item: ContentItem) => {
     setEditTarget(item)
@@ -262,14 +260,14 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
 
   return (
     <>
-      <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(201,122,90,0.16)_0%,rgba(247,243,238,0)_56%),linear-gradient(to_bottom,rgba(240,235,228,0.72)_0%,rgba(247,243,238,1)_72%)] font-sans dark:bg-[radial-gradient(120%_85%_at_86%_-12%,rgba(176,107,86,0.2)_0%,rgba(26,26,26,0)_56%),linear-gradient(to_bottom,rgba(34,34,32,0.58)_0%,rgba(26,26,26,1)_72%)]">
-        <main className="mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(6.5rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-24 lg:px-8 lg:pt-28">
+      <div className="dark discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
+        <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
           <div className="mb-10 flex flex-wrap items-start justify-between gap-4 md:mb-12 md:gap-6">
             <div className="min-w-0 flex-1">
-              <h1 className="font-serif text-3xl font-bold tracking-tight text-black md:text-4xl dark:text-foreground">
+              <h1 className="font-serif text-3xl font-bold tracking-tight text-[#efe4d1] md:text-4xl dark:text-[#efe4d1]">
                 Discover
               </h1>
-              <p className="mt-2 font-sans text-base leading-relaxed text-black md:text-lg dark:text-muted-foreground">
+              <p className="mt-2 font-sans text-base leading-relaxed text-[#e5d8c4] md:text-lg dark:text-[#d7c8b2]">
                 Browse books, articles, songs, and poems matched to your level.
               </p>
             </div>
@@ -303,7 +301,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
               <section className="mb-12">
                 <div className="mb-6 flex items-center gap-2">
                   <Sparkles className="size-5 shrink-0 text-accent/80" />
-                  <h2 className="font-serif text-base font-semibold tracking-wide text-black md:text-lg dark:text-muted-foreground">
+                  <h2 className="font-serif text-base font-semibold tracking-wide text-[#eadfcf] md:text-lg dark:text-[#d7c8b2]">
                     Featured for You
                   </h2>
                 </div>
@@ -377,7 +375,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
 
               <section>
                 <div className="mb-6">
-                  <h2 className="mb-4 font-serif text-lg font-semibold tracking-wide text-black md:text-xl dark:text-muted-foreground">
+                  <h2 className="mb-4 font-serif text-lg font-semibold tracking-wide text-[#eadfcf] md:text-xl dark:text-[#d7c8b2]">
                     Browse All Content
                   </h2>
                   <FilterBar
@@ -393,12 +391,12 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
                 {filteredContent.length === 0 ? (
                   <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 py-16">
                     <div className="mb-4 rounded-full bg-secondary p-4">
-                      <Compass className="size-8 text-black dark:text-muted-foreground" />
+                      <Compass className="size-8 text-[#e5d8c4] dark:text-[#d7c8b2]" />
                     </div>
-                    <h3 className="mb-2 font-serif text-lg font-semibold text-black dark:text-foreground">
+                    <h3 className="mb-2 font-serif text-lg font-semibold text-[#efe4d1] dark:text-[#efe4d1]">
                       No content found
                     </h3>
-                    <p className="font-reading text-sm text-black dark:text-muted-foreground">
+                    <p className="font-reading text-sm text-[#dccdb9] dark:text-[#cbb99f]">
                       Try adjusting your filters or search query
                     </p>
                   </div>

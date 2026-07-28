@@ -42,8 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // calls + a second onAuthStateChange in SubscriptionProvider fight the Web Lock and
   // trigger Strict Mode "orphaned lock" warnings in dev.
   useEffect(() => {
+    const fallback = window.setTimeout(() => setLoading(false), 3000)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        window.clearTimeout(fallback)
         const nextUser = session?.user ?? null
         setUser(nextUser)
         setLoading(false)
@@ -56,7 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      window.clearTimeout(fallback)
+      subscription.unsubscribe()
+    }
   }, [])
 
   // ── Actions ────────────────────────────────────────────────────────────────

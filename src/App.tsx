@@ -56,6 +56,7 @@ import {
 } from "./lib/usage"
 import type { ContentItem } from "./lib/content-data"
 import { supabase } from "./lib/supabase"
+import { getTier } from "./lib/tiers"
 
 type AppState = "landing" | "loading" | "reading"
 
@@ -80,7 +81,7 @@ type UsagePreflightSnapshot = {
 export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
+  const { status: subscriptionStatus, isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
   const { user, isLoading: authLoading } = useAuth()
 
   const [appState, setAppState] = useState<AppState>("landing")
@@ -385,15 +386,31 @@ export default function App() {
         .eq("id", content.id)
         .maybeSingle()
       const body = data?.body_text?.trim() ?? ""
-      if (!error && body.length > 0) {
-        await handleTextSubmit(body)
-        return
+      const sourceText = !error && body.length > 0 ? body : content.preview.trim()
+      if (!sourceText) return
+
+      const freeCharLimit = getTier("free").limits.charsPerSubmission
+      const isEffectivelyFreeUser =
+        user != null &&
+        (subscriptionStatus == null || subscriptionStatus === "free")
+      if (
+        isEffectivelyFreeUser &&
+        freeCharLimit !== null &&
+        sourceText.length > freeCharLimit
+      ) {
+        const blockedMessage =
+          `This reading is ${sourceText.length.toLocaleString()} characters long, which is over the free plan limit of ` +
+          `${freeCharLimit.toLocaleString()} characters per submission. Upgrade to continue.`
+        setPlanLimitModal({
+          title: "Submission exceeds free plan allowance",
+          message: blockedMessage,
+        })
+        return { blockedMessage }
       }
-      const fallback = content.preview.trim()
-      if (!fallback) return
-      await handleTextSubmit(fallback)
+
+      await handleTextSubmit(sourceText)
     },
-    [handleTextSubmit],
+    [handleTextSubmit, subscriptionStatus, user],
   )
 
   const handleBack = useCallback(() => {
@@ -484,7 +501,7 @@ export default function App() {
   const viewportMain =
     "min-h-app flex flex-col max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden overflow-hidden"
 
-  if (authLoading || subscriptionLoading) {
+  if ((authLoading || subscriptionLoading) && location.pathname !== "/discover") {
     return (
       <main className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden">
         <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />

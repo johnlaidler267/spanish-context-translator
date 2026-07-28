@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { BookMarked, Clock, Globe, Trash2, X } from "lucide-react"
 import { ContentTypeBadge } from "@/components/discover/content-type-badge"
 import { Badge } from "@/components/ui/badge"
@@ -26,7 +27,7 @@ interface ContentPreviewModalProps {
   content: ContentItem | null
   open: boolean
   onClose: () => void
-  onStartReading: (content: ContentItem) => void
+  onStartReading: (content: ContentItem) => Promise<{ blockedMessage?: string } | void> | { blockedMessage?: string } | void
   /** When set (e.g. Vite dev), shows a catalog edit entry point. */
   onDevEdit?: () => void
   /** When set (curator / dev), removes this row from `discover_items` then closes. */
@@ -41,7 +42,21 @@ export function ContentPreviewModal({
   onDevEdit,
   onDeleteCatalog,
 }: ContentPreviewModalProps) {
+  const [startReadingError, setStartReadingError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) setStartReadingError(null)
+  }, [open, content?.id])
+
   if (!content) return null
+
+  const handleStartReading = async () => {
+    setStartReadingError(null)
+    const result = await onStartReading(content)
+    if (result?.blockedMessage) {
+      setStartReadingError(result.blockedMessage)
+    }
+  }
 
   return (
     <Dialog
@@ -134,8 +149,14 @@ export function ContentPreviewModal({
             </ScrollArea>
           </div>
 
+          {startReadingError ? (
+            <div className="mb-4 rounded-lg border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+              {startReadingError}
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap gap-3">
-            <Button className="min-w-0 flex-1" size="lg" onClick={() => onStartReading(content)}>
+            <Button className="min-w-0 flex-1" size="lg" onClick={() => void handleStartReading()}>
               Start Reading
             </Button>
             <Button variant="outline" size="lg" className="min-w-0 flex-1">

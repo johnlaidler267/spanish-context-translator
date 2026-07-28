@@ -68,18 +68,18 @@ export function FilterBar({
         <span className="corner corner-tr" aria-hidden />
         <span className="corner corner-bl" aria-hidden />
         <span className="corner corner-br" aria-hidden />
-        <Search className="pointer-events-none absolute left-3 top-1/2 z-20 size-4 -translate-y-1/2 text-black/70 dark:text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 z-20 size-4 -translate-y-1/2 text-[#ddcfbb] dark:text-[#cbb99f]" />
         <Input
           placeholder="Search content..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="rounded-none border border-border/70 bg-secondary/50 pl-10 text-black placeholder:text-black/50 shadow-sm transition-colors focus-visible:border-primary/70 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-[#4c4640] dark:bg-[#1f1d1a] dark:text-[#f2ede4] dark:placeholder:text-[#9f978c]"
+          className="rounded-none border border-[#d8ccba]/55 bg-[rgba(245,237,225,0.08)] pl-10 text-[#f0e5d5] placeholder:text-[#d7c8b3] shadow-sm transition-colors focus-visible:border-[#e6d7c1] focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-[#6a665d] dark:bg-[rgba(31,29,26,0.42)] dark:text-[#f2ede4] dark:placeholder:text-[#bcae9c]"
         />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 lg:flex-[0.95] lg:justify-end">
         <div
-          className="inline-flex min-w-0 h-10 flex-wrap items-center gap-1 rounded-none border border-[#d8d1ca] bg-[#e9e4de]/95 p-1 shadow-[0_1px_2px_rgba(44,34,28,0.08)] dark:border-[#4c4640] dark:bg-[#2a2724] dark:shadow-sm"
+          className="inline-flex min-w-0 h-10 flex-wrap items-center gap-1 rounded-none border border-[#d9ccb8]/50 bg-[rgba(245,237,225,0.12)] p-1 shadow-[0_1px_2px_rgba(44,34,28,0.08)] dark:border-[#4c4640] dark:bg-[#2a2724] dark:shadow-sm"
           role="group"
           aria-label="Content type"
         >
@@ -97,7 +97,7 @@ export function FilterBar({
                   "active:scale-[0.98]",
                   selected
                     ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20 dark:text-white"
-                    : "border border-transparent bg-transparent text-[#6f625a] hover:bg-background/75 hover:text-[#3b2f2a] dark:text-white dark:hover:bg-white/10 dark:hover:text-white",
+                    : "border border-transparent bg-transparent text-[#eadfcf] hover:bg-[rgba(255,248,239,0.14)] hover:text-[#fff5e7] dark:text-white dark:hover:bg-white/10 dark:hover:text-white",
                 )}
               >
                 {icon}
@@ -113,7 +113,7 @@ export function FilterBar({
               type="button"
               variant="outline"
               size="sm"
-              className="h-10 gap-2 rounded-none border-[#d8d1ca] bg-[#f0ece7] px-3 text-[#2f2520] shadow-[0_1px_2px_rgba(44,34,28,0.08)] hover:bg-[#f5f1ed] dark:border-[#4c4640] dark:bg-[#2a2724] dark:text-white dark:hover:bg-[#34312d] dark:hover:text-white"
+              className="h-10 gap-2 rounded-none border-[#d9ccb8]/55 bg-[rgba(245,237,225,0.12)] px-3 text-[#efe3d1] shadow-[0_1px_2px_rgba(44,34,28,0.08)] hover:bg-[rgba(255,248,239,0.16)] dark:border-[#4c4640] dark:bg-[#2a2724] dark:text-white dark:hover:bg-[#34312d] dark:hover:text-white"
             >
               <SlidersHorizontal className="size-4" />
               <span className="hidden sm:inline">Difficulty</span>
