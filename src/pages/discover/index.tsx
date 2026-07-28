@@ -261,7 +261,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   return (
     <>
       <div className="dark discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
-        <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
+        <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(5.25rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
           <div className="mb-10 flex flex-wrap items-start justify-between gap-4 md:mb-12 md:gap-6">
             <div className="min-w-0 flex-1">
               <h1 className="font-serif text-3xl font-bold tracking-tight text-[#efe4d1] md:text-4xl dark:text-[#efe4d1]">

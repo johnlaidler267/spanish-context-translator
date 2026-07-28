@@ -294,7 +294,11 @@ export function MainHeader({
               <button
                 type="button"
                 onClick={onMenuClick}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/50 md:hidden"
+                className={
+                  forceDark
+                    ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#eadfcf]/25 bg-[#173126]/45 text-[#efe4d1] shadow-[0_10px_28px_rgba(9,29,20,0.22)] backdrop-blur-md transition-colors hover:bg-[#eadfcf]/12 md:hidden"
+                    : "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/50 md:hidden"
+                }
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" aria-hidden />
