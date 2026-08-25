@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Loader2, Settings2, User } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useSubscriptionOptional } from "@/contexts/subscription-context"
@@ -12,7 +12,7 @@ import {
   type LinkPlanPill,
 } from "@/lib/plan-pill"
 import { beginRouteTransition } from "@/lib/route-transition-shell"
-import { cn } from "@/lib/utils"
+
 function PlanLineLoading() {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground" aria-busy="true">
@@ -35,10 +35,8 @@ export function LandingSidebarProfile({
 }: LandingSidebarProfileProps) {
   const ctxStatus = useSubscriptionOptional()?.status ?? null
   const { user, isLoading: authLoading } = useAuth()
-  const location = useLocation()
   const navigate = useNavigate()
   const [pill, setPill] = useState<LinkPlanPill | null>(null)
-  const showPlanLine = location.pathname === "/"
 
   useEffect(() => {
     if (!user) {
@@ -80,7 +78,7 @@ export function LandingSidebarProfile({
       return (
         <button
           type="button"
-          className="max-w-full truncate text-left text-[11px] leading-tight text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
+          className="block max-w-full appearance-none truncate border-0 bg-transparent p-0 text-left text-[11px] leading-tight text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
           onClick={goToUpgrade}
         >
           Free · Guest · Upgrade
@@ -92,7 +90,7 @@ export function LandingSidebarProfile({
       return (
         <button
           type="button"
-          className="block max-w-full truncate text-[11px] leading-snug text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
+          className="block max-w-full appearance-none truncate border-0 bg-transparent p-0 text-left text-[11px] leading-snug text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
           onClick={goToUpgrade}
         >
           {formatPlanSubtitle(pill)}
@@ -111,21 +109,17 @@ export function LandingSidebarProfile({
   })()
 
   const iconBtn =
-    "group flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border/80 bg-background text-foreground/85 outline-none focus-visible:ring-2 focus-visible:ring-ring transition-[color,background-color,transform,box-shadow] duration-200 ease-out hover:bg-muted/50 hover:text-foreground motion-safe:hover:scale-105 motion-safe:active:scale-95 motion-safe:hover:shadow-sm"
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground/60 outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors duration-200 ease-out hover:bg-secondary hover:text-foreground"
 
-  /** Solid fill + ring so the initial stays legible on `bg-muted` in light and dark. */
+  /** Terracotta fill keeps the initial legible against the footer surface in every theme. */
   const avatarClass =
-    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-border bg-foreground text-background text-[13px] font-semibold no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 dark:border-border transition-[color,background-color,transform,box-shadow] duration-200 ease-out hover:bg-foreground/92 hover:text-background motion-safe:hover:scale-105 motion-safe:active:scale-95 motion-safe:hover:shadow-md"
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-[13px] font-semibold no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring transition-opacity duration-200 ease-out hover:opacity-90"
 
   if (compactRail) {
     return (
-      <div className="overflow-hidden border-t border-border/60 bg-muted px-2 py-2 font-sans transition-[background-color] duration-200 ease-out motion-safe:hover:bg-muted/90">
-        <div className="flex flex-col items-center gap-2">
-        <Link
-          to="/settings"
-          className={avatarClass}
-          aria-label="Settings"
-        >
+      <div className="overflow-hidden border-t border-border/50 px-2 py-3 font-sans">
+        <div className="flex flex-col items-center">
+          <Link to="/settings" className={avatarClass} aria-label="Settings" title="Settings">
             {letterInitial ?? (
               <User className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
             )}
@@ -136,34 +130,20 @@ export function LandingSidebarProfile({
   }
 
   return (
-    <div className="overflow-hidden border-t border-border/60 bg-muted px-3 py-2.5 font-sans transition-[background-color] duration-200 ease-out motion-safe:hover:bg-muted/90">
+    <div className="overflow-hidden border-t border-border/50 px-3 py-3 font-sans">
       <div className="flex items-center gap-2.5">
-        <Link
-          to="/settings"
-          className={avatarClass}
-          aria-label="Account and settings"
-        >
+        <Link to="/settings" className={avatarClass} aria-label="Account and settings">
           {letterInitial ?? (
             <User className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
           )}
         </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <p className="truncate text-sm font-semibold leading-none text-foreground">{titleName}</p>
-          {showPlanLine ? planLine : null}
+          {planLine}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <Link
-            to="/settings"
-            className={cn(iconBtn, "relative px-2")}
-            aria-label="Settings and account"
-          >
-            <Settings2
-              className="h-4 w-4 opacity-85 transition-transform duration-200 ease-out motion-safe:group-hover:rotate-12 motion-safe:group-hover:scale-110"
-              strokeWidth={1.65}
-              aria-hidden
-            />
-          </Link>
-        </div>
+        <Link to="/settings" className={iconBtn} aria-label="Settings and account">
+          <Settings2 className="h-4 w-4" strokeWidth={1.65} aria-hidden />
+        </Link>
       </div>
     </div>
   )

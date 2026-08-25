@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import SettingsPage from "@/pages/settings"
 import DiscoverPage from "@/pages/discover"
-import MyLibraryPage from "@/pages/my-library"
 import UpgradePage from "@/pages/upgrade"
 import TermsPage from "@/pages/terms"
 import PrivacyPage from "@/pages/privacy"
@@ -721,7 +720,6 @@ export default function App() {
             path="discover"
             element={<DiscoverPage onStartReading={handleDiscoverStartReading} />}
           />
-          <Route path="my-library" element={<MyLibraryPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

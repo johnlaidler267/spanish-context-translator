@@ -7,7 +7,6 @@ import {
   ChevronsRight,
   Compass,
   Home,
-  Library,
 } from "lucide-react"
 import { BsTranslate } from "react-icons/bs"
 import { cn } from "@/lib/utils"
@@ -20,6 +19,11 @@ const SIDEBAR_COLLAPSED_PX = 72
 
 const navIconClass = "mx-auto block h-[18px] w-[18px] shrink-0"
 const navIconStroke = 1.65
+
+const NAV_ITEMS = [
+  { to: "/", label: "Home", Icon: Home },
+  { to: "/discover", label: "Discover", Icon: Compass },
+] as const
 
 function SidebarToggleIcon({
   isMdUp,
@@ -69,12 +73,11 @@ export function LandingSidebar({
   /** Home composer puts submit bottom-right; same corner as this FAB — hide FAB there only. */
   const discoverActive = pathname === "/discover"
   const showMobileNewChatFab = !isMdUp && pathname !== "/" && !discoverActive
-  const libraryActive = pathname.startsWith("/my-library")
 
-  const navActiveIndex = homeActive ? 0 : discoverActive ? 1 : libraryActive ? 2 : -1
+  const navActiveIndex = homeActive ? 0 : discoverActive ? 1 : -1
 
   const navWrapRef = useRef<HTMLDivElement>(null)
-  const navItemRefs = useRef<(HTMLAnchorElement | null)[]>([null, null, null])
+  const navItemRefs = useRef<(HTMLAnchorElement | null)[]>([null, null])
   const previousPathnameRef = useRef(pathname)
   const [navIndicator, setNavIndicator] = useState({ top: 0, height: 0, opacity: 0 })
 
@@ -154,13 +157,12 @@ export function LandingSidebar({
 
   const navItemClass = (active: boolean) =>
     cn(
-      "group relative z-10 flex items-center gap-3 px-3 py-2.5 text-sm font-normal tracking-[-0.015em] text-foreground/90",
-      "transition-[color,background-color,box-shadow,transform] duration-200 ease-out",
-      "motion-safe:hover:-translate-y-px motion-safe:active:translate-y-0 motion-safe:active:scale-[0.99]",
+      "group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm tracking-[-0.015em]",
+      "transition-colors duration-200 ease-out",
       "outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       active
-        ? "text-foreground"
-        : "rounded-lg hover:bg-muted/50 hover:text-foreground motion-safe:hover:shadow-sm",
+        ? "font-medium text-foreground"
+        : "font-normal text-foreground/75 hover:bg-muted/60 hover:text-foreground",
       compactRail && "justify-center px-0 gap-0",
     )
 
@@ -175,12 +177,7 @@ export function LandingSidebar({
   }
 
   const sidebarInner = (
-    <div
-      className={cn(
-        "flex min-h-0 flex-1 flex-col overflow-hidden border-border/80 bg-background font-display tracking-[-0.015em] [font-feature-settings:'kern'_1,'liga'_1,'onum'_1] [text-rendering:optimizeLegibility] antialiased",
-        isMdUp ? "border-r" : "border-r",
-      )}
-    >
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-r border-border/60 bg-background font-display tracking-[-0.015em] [font-feature-settings:'kern'_1,'liga'_1,'onum'_1] [text-rendering:optimizeLegibility] antialiased">
       <div
         className={cn(
           "flex shrink-0 items-center gap-2 border-b border-border/50 px-3 py-3.5",
@@ -204,9 +201,8 @@ export function LandingSidebar({
         <button
           type="button"
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/80 text-foreground/80",
-            "transition-[color,background-color,transform,box-shadow] duration-200 ease-out",
-            "hover:bg-muted/60 hover:text-foreground motion-safe:hover:scale-105 motion-safe:active:scale-95 motion-safe:hover:shadow-sm",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/60 text-foreground/70",
+            "transition-colors duration-200 ease-out hover:bg-muted/60 hover:text-foreground",
             "outline-none focus-visible:ring-2 focus-visible:ring-ring",
           )}
           aria-label={
@@ -228,10 +224,15 @@ export function LandingSidebar({
       </div>
 
       <nav
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-3"
+        className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-3", compactRail && "px-2")}
         aria-label="Main"
       >
-        <div ref={navWrapRef} className="relative flex min-h-0 flex-col gap-0.5">
+        {!compactRail ? (
+          <p className="px-3 pb-2 pt-1 font-sans text-[0.66rem] font-bold uppercase tracking-[0.17em] text-muted-foreground/70">
+            Browse
+          </p>
+        ) : null}
+        <div ref={navWrapRef} className="relative flex min-h-0 flex-col gap-1">
           <div
             aria-hidden
             className={cn(
@@ -244,60 +245,31 @@ export function LandingSidebar({
               transform: `translateY(${navIndicator.top}px)`,
             }}
           />
-          <Link
-            ref={(el) => {
-              navItemRefs.current[0] = el
-            }}
-            to="/"
-            aria-current={homeActive ? "page" : undefined}
-            className={navItemClass(homeActive)}
-          >
-            <span
-              className={cn(
-                "text-foreground/85 transition-transform duration-200 ease-out motion-safe:group-hover:scale-110",
-                compactRail && "shrink-0",
-              )}
-            >
-              <Home className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
-            </span>
-            {!compactRail ? <span className="truncate">Home</span> : null}
-          </Link>
-          <Link
-            ref={(el) => {
-              navItemRefs.current[1] = el
-            }}
-            to="/discover"
-            aria-current={discoverActive ? "page" : undefined}
-            className={navItemClass(discoverActive)}
-          >
-            <span
-              className={cn(
-                "text-foreground/85 transition-transform duration-200 ease-out motion-safe:group-hover:scale-110",
-                compactRail && "shrink-0",
-              )}
-            >
-              <Compass className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
-            </span>
-            {!compactRail ? <span className="truncate">Discover</span> : null}
-          </Link>
-          <Link
-            ref={(el) => {
-              navItemRefs.current[2] = el
-            }}
-            to="/my-library"
-            aria-current={libraryActive ? "page" : undefined}
-            className={navItemClass(libraryActive)}
-          >
-            <span
-              className={cn(
-                "text-foreground/85 transition-transform duration-200 ease-out motion-safe:group-hover:scale-110",
-                compactRail && "shrink-0",
-              )}
-            >
-              <Library className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
-            </span>
-            {!compactRail ? <span className="truncate">My Library</span> : null}
-          </Link>
+          {NAV_ITEMS.map(({ to, label, Icon }, index) => {
+            const active = index === navActiveIndex
+            return (
+              <Link
+                key={to}
+                ref={(el) => {
+                  navItemRefs.current[index] = el
+                }}
+                to={to}
+                aria-current={active ? "page" : undefined}
+                title={compactRail ? label : undefined}
+                className={navItemClass(active)}
+              >
+                <span
+                  className={cn(
+                    "shrink-0 transition-colors duration-200 ease-out",
+                    active ? "text-primary" : "text-foreground/60 group-hover:text-foreground/85",
+                  )}
+                >
+                  <Icon className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
+                </span>
+                <span className={cn("truncate", compactRail && "sr-only")}>{label}</span>
+              </Link>
+            )
+          })}
         </div>
       </nav>
 
@@ -310,21 +282,19 @@ export function LandingSidebar({
           <button
             type="button"
             className={cn(
-              "group flex w-full items-center justify-center gap-2 rounded-lg border border-border/80 bg-background px-3 py-2.5 text-sm font-normal tracking-[-0.015em] text-foreground/90",
-              "transition-[color,background-color,transform,box-shadow] duration-200 ease-out",
-              "hover:bg-muted/40 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.99]",
+              "group flex w-full items-center justify-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2.5 text-sm font-medium tracking-[-0.015em] text-foreground/90 shadow-sm",
+              "transition-[color,background-color,border-color,box-shadow] duration-200 ease-out",
+              "hover:border-primary/40 hover:text-foreground hover:shadow-md",
               "disabled:pointer-events-none disabled:opacity-50",
               "outline-none focus-visible:ring-2 focus-visible:ring-ring",
               compactRail && "px-0 py-2.5",
             )}
+            title={compactRail ? "New translation" : undefined}
             onClick={handleNewChat}
             disabled={disabled}
           >
-            <BsTranslate
-              className="h-4 w-4 shrink-0 text-foreground/80 transition-transform duration-200 ease-out motion-safe:group-hover:rotate-6 motion-safe:group-hover:scale-105"
-              aria-hidden
-            />
-            {!compactRail ? <span>New translation</span> : null}
+            <BsTranslate className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <span className={cn(compactRail && "sr-only")}>New translation</span>
           </button>
         </div>
         <LandingSidebarProfile
@@ -341,7 +311,7 @@ export function LandingSidebar({
       {!isMdUp && mobileOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-[45] bg-black/35 backdrop-blur-[1px] md:hidden"
+          className="fixed inset-0 z-[45] bg-black/40 backdrop-blur-sm md:hidden"
           aria-label="Close menu"
           onClick={() => onMobileOpenChange(false)}
         />
@@ -356,7 +326,7 @@ export function LandingSidebar({
                 desktopExpanded ? "w-64" : "w-[4.5rem]",
               )
             : cn(
-                "fixed bottom-0 left-0 top-0 min-h-0 w-[min(19rem,86vw)] max-w-[19rem] transition-transform duration-200 ease-out md:hidden",
+                "fixed bottom-0 left-0 top-0 min-h-0 w-[min(19rem,86vw)] max-w-[19rem] shadow-2xl transition-transform duration-200 ease-out md:hidden",
                 mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none",
               ),
         )}
