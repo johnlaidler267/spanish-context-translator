@@ -205,15 +205,6 @@ export const contentTypeIcons: Record<ContentType, string> = {
   poem: "Feather",
 }
 
-export const difficultyColors: Record<DifficultyLevel, string> = {
-  beginner:
-    "bg-emerald-500/18 text-emerald-950 border-emerald-700/30 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30",
-  intermediate:
-    "bg-amber-400/78 text-amber-950 border-amber-700/45 dark:bg-amber-400/42 dark:text-amber-100 dark:border-amber-300/45",
-  advanced:
-    "bg-rose-500/18 text-rose-950 border-rose-700/30 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30",
-}
-
 /** Short labels for type pills (featured grid, cards, preview). */
 export const contentTypeLabels: Record<ContentType, string> = {
   book: "Book",

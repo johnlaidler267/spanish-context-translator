@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { BookOpen, Feather, FileText, Music, Search, SlidersHorizontal } from "lucide-react"
+import { BookOpen, Feather, FileText, Music, Search, SlidersHorizontal, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -25,10 +25,10 @@ interface FilterBarProps {
 }
 
 const contentTypes: { type: ContentType; label: string; icon: ReactNode }[] = [
-  { type: "book", label: "Books", icon: <BookOpen className="size-4" /> },
-  { type: "article", label: "Articles", icon: <FileText className="size-4" /> },
-  { type: "song", label: "Songs", icon: <Music className="size-4" /> },
-  { type: "poem", label: "Poems", icon: <Feather className="size-4" /> },
+  { type: "book", label: "Books", icon: <BookOpen className="size-4" aria-hidden /> },
+  { type: "article", label: "Articles", icon: <FileText className="size-4" aria-hidden /> },
+  { type: "song", label: "Songs", icon: <Music className="size-4" aria-hidden /> },
+  { type: "poem", label: "Poems", icon: <Feather className="size-4" aria-hidden /> },
 ]
 
 const difficulties: { level: DifficultyLevel; label: string }[] = [
@@ -62,49 +62,47 @@ export function FilterBar({
   }
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div className="relative min-w-0 overflow-visible lg:min-w-[15rem] lg:max-w-xl lg:flex-[1.2]">
+    <div className="discover-filters">
+      <div className="discover-search">
         <span className="corner corner-tl" aria-hidden />
         <span className="corner corner-tr" aria-hidden />
         <span className="corner corner-bl" aria-hidden />
         <span className="corner corner-br" aria-hidden />
-        <Search className="pointer-events-none absolute left-3 top-1/2 z-20 size-4 -translate-y-1/2 text-[#ddcfbb] dark:text-[#cbb99f]" />
+        <Search className="discover-search__icon" aria-hidden />
         <Input
-          placeholder="Search content..."
+          placeholder="Search by title, author, or tag…"
           value={searchQuery}
+          aria-label="Search content"
           onChange={(e) => onSearchChange(e.target.value)}
-          className="rounded-none border border-[#d8ccba]/55 bg-[rgba(245,237,225,0.08)] pl-10 text-[#f0e5d5] placeholder:text-[#d7c8b3] shadow-sm transition-colors focus-visible:border-[#e6d7c1] focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-[#6a665d] dark:bg-[rgba(31,29,26,0.42)] dark:text-[#f2ede4] dark:placeholder:text-[#bcae9c]"
+          className="discover-search__input"
         />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => onSearchChange("")}
+            className="discover-search__clear"
+            aria-label="Clear search"
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
+        )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 lg:flex-[0.95] lg:justify-end">
-        <div
-          className="inline-flex min-w-0 h-10 flex-wrap items-center gap-1 rounded-none border border-[#d9ccb8]/50 bg-[rgba(245,237,225,0.12)] p-1 shadow-[0_1px_2px_rgba(44,34,28,0.08)] dark:border-[#4c4640] dark:bg-[#2a2724] dark:shadow-sm"
-          role="group"
-          aria-label="Content type"
-        >
-          {contentTypes.map(({ type, label, icon }) => {
-            const selected = selectedTypes.includes(type)
-            return (
-              <button
-                key={type}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => toggleType(type)}
-                className={cn(
-                  "inline-flex h-full items-center gap-1.5 rounded-none px-2 py-1 text-sm font-medium transition-all duration-150",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  "active:scale-[0.98]",
-                  selected
-                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20 dark:text-white"
-                    : "border border-transparent bg-transparent text-[#eadfcf] hover:bg-[rgba(255,248,239,0.14)] hover:text-[#fff5e7] dark:text-white dark:hover:bg-white/10 dark:hover:text-white",
-                )}
-              >
-                {icon}
-                <span className="hidden sm:inline">{label}</span>
-              </button>
-            )
-          })}
+      <div className="discover-filters__controls">
+        <div className="discover-seg" role="group" aria-label="Content type">
+          {contentTypes.map(({ type, label, icon }) => (
+            <button
+              key={type}
+              type="button"
+              aria-pressed={selectedTypes.includes(type)}
+              onClick={() => toggleType(type)}
+              className="discover-seg__btn"
+              title={label}
+            >
+              {icon}
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))}
         </div>
 
         <DropdownMenu>
@@ -113,19 +111,17 @@ export function FilterBar({
               type="button"
               variant="outline"
               size="sm"
-              className="h-10 gap-2 rounded-none border-[#d9ccb8]/55 bg-[rgba(245,237,225,0.12)] px-3 text-[#efe3d1] shadow-[0_1px_2px_rgba(44,34,28,0.08)] hover:bg-[rgba(255,248,239,0.16)] dark:border-[#4c4640] dark:bg-[#2a2724] dark:text-white dark:hover:bg-[#34312d] dark:hover:text-white"
+              className={cn("discover-trigger", selectedDifficulties.length > 0 && "discover-trigger--active")}
             >
-              <SlidersHorizontal className="size-4" />
+              <SlidersHorizontal className="size-4" aria-hidden />
               <span className="hidden sm:inline">Difficulty</span>
               {selectedDifficulties.length > 0 && (
-                <span className="ml-1 rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
-                  {selectedDifficulties.length}
-                </span>
+                <span className="discover-trigger__count">{selectedDifficulties.length}</span>
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Difficulty Level</DropdownMenuLabel>
+            <DropdownMenuLabel>Difficulty level</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {difficulties.map(({ level, label }) => (
               <DropdownMenuCheckboxItem

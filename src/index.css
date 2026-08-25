@@ -177,10 +177,9 @@ html.lector-reading-session .global-corner-letter {
   position: relative;
   isolation: isolate;
   background:
-    radial-gradient(92% 22% at 18% 20%, rgba(242, 238, 228, 0.82) 0%, rgba(242, 238, 228, 0) 0%),
-    radial-gradient(72% 56% at 84% 14%, rgba(122, 165, 144, 0.16) 20%, rgba(122, 165, 144, 0) 14%),
-    radial-gradient(88% 72% at 92% 94%, rgba(39, 84, 62, 0.34) 0%, rgba(39, 84, 62, 0) 2%),
-    linear-gradient(135deg, #c8d8cf 0%, #89ab9d 42%, #4a7465 100%);
+    radial-gradient(115% 58% at 6% -10%, rgba(201, 122, 90, 0.09) 0%, rgba(201, 122, 90, 0) 62%),
+    radial-gradient(85% 52% at 100% -4%, rgba(122, 165, 144, 0.12) 0%, rgba(122, 165, 144, 0) 60%),
+    linear-gradient(180deg, #f8f4ee 0%, #f4efe6 100%);
 }
 .discover-scroll-surface::before {
   content: "";
@@ -188,91 +187,35 @@ html.lector-reading-session .global-corner-letter {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.8;
-  background:
-    radial-gradient(34% 26% at 82% 10%, rgba(36, 82, 59, 0.24) 0%, rgba(36, 82, 59, 0) 72%),
-    radial-gradient(26% 22% at 24% 76%, rgba(118, 151, 121, 0.16) 0%, rgba(118, 151, 121, 0) 76%),
-    radial-gradient(58% 38% at 30% -4%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 72%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 34%, rgba(42, 94, 72, 0.12) 100%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(246, 241, 231, 0.02) 0px,
-      rgba(246, 241, 231, 0.02) 1px,
-      transparent 1px,
-      transparent 3px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.018) 0px,
-      rgba(255, 255, 255, 0.018) 1px,
-      transparent 1px,
-      transparent 4px
-    );
-  background-size:
-    auto,
-    auto,
-    auto,
-    auto,
-    auto,
-    auto;
-  background-position:
-    right top,
-    left bottom,
-    center top,
-    center,
-    0 0,
-    0 0;
-  mix-blend-mode: overlay;
+  opacity: 0.55;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(93, 72, 56, 0.028) 0px,
+    rgba(93, 72, 56, 0.028) 1px,
+    transparent 1px,
+    transparent 26px
+  );
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.15) 70%, transparent);
 }
 .discover-scroll-surface > * {
   position: relative;
   z-index: 1;
 }
-.dark .discover-scroll-surface,
-.discover-scroll-surface.dark {
+.dark .discover-scroll-surface {
   background:
-    radial-gradient(64% 52% at 18% 16%, rgba(214, 225, 217, 0.1) 0%, rgba(214, 225, 217, 0) 56%),
-    radial-gradient(72% 56% at 84% 14%, rgba(88, 135, 111, 0.14) 0%, rgba(88, 135, 111, 0) 54%),
-    radial-gradient(88% 72% at 92% 94%, rgba(9, 29, 20, 0.42) 0%, rgba(9, 29, 20, 0) 58%),
-    linear-gradient(135deg, #496b5d 0%, #2f4d42 42%, #17231f 100%);
+    radial-gradient(115% 58% at 6% -10%, rgba(176, 107, 86, 0.13) 0%, rgba(176, 107, 86, 0) 62%),
+    radial-gradient(85% 52% at 100% -4%, rgba(88, 135, 111, 0.1) 0%, rgba(88, 135, 111, 0) 60%),
+    linear-gradient(180deg, #1b1b19 0%, #151514 100%);
 }
-.dark .discover-scroll-surface::before,
-.discover-scroll-surface.dark::before {
-  opacity: 0.52;
-  background:
-    radial-gradient(34% 26% at 82% 10%, rgba(16, 42, 29, 0.28) 0%, rgba(16, 42, 29, 0) 72%),
-    radial-gradient(26% 22% at 24% 76%, rgba(84, 112, 92, 0.16) 0%, rgba(84, 112, 92, 0) 76%),
-    radial-gradient(58% 38% at 30% -4%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 72%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 34%, rgba(18, 57, 41, 0.18) 100%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.012) 0px,
-      rgba(255, 255, 255, 0.012) 1px,
-      transparent 1px,
-      transparent 3px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.01) 0px,
-      rgba(255, 255, 255, 0.01) 1px,
-      transparent 1px,
-      transparent 4px
-    );
-  background-size:
-    auto,
-    auto,
-    auto,
-    auto,
-    auto,
-    auto;
-  background-position:
-    right top,
-    left bottom,
-    center top,
-    center,
-    0 0,
-    0 0;
-  mix-blend-mode: overlay;
+.dark .discover-scroll-surface::before {
+  opacity: 0.5;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(234, 224, 213, 0.03) 0px,
+    rgba(234, 224, 213, 0.03) 1px,
+    transparent 1px,
+    transparent 26px
+  );
 }
 
 @media (max-width: 767px) {
@@ -1482,161 +1425,18 @@ article span {
   }
 }
 
-@keyframes discover-loading-progress {
-  0%,
-  100% {
-    transform: scaleX(0.32);
-    opacity: 0.65;
-  }
-  50% {
-    transform: scaleX(0.72);
-    opacity: 1;
-  }
-}
-
-.discover-loading-shell {
+/* ── Discover: loading skeleton ─────────────────────────────────── */
+/* Mirrors the real card + grid classes so the skeleton previews the exact
+   layout that replaces it, with no shape shift on load. */
+.discover-loading {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  padding-bottom: 0.25rem;
+  gap: 3.5rem;
 }
 
-.discover-loading-intro {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid rgba(58, 51, 46, 0.12);
-  background:
-    radial-gradient(circle at top right, rgba(201, 122, 90, 0.14), transparent 38%),
-    linear-gradient(180deg, rgba(255, 252, 249, 0.92), rgba(245, 238, 231, 0.88));
-  box-shadow: 0 16px 45px rgba(93, 72, 56, 0.08);
-  padding: 1rem 1rem 1.1rem;
-}
-
-.discover-loading-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 1px solid rgba(58, 51, 46, 0.1);
-  background: rgba(255, 255, 255, 0.62);
-  color: rgba(58, 51, 46, 0.84);
-  padding: 0.38rem 0.68rem;
-  border-radius: 999px;
-  font-family: var(--font-sans);
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.discover-loading-copy {
-  margin-top: 1rem;
-  max-width: 34rem;
-}
-
-.discover-loading-title {
-  font-family: var(--font-serif);
-  font-size: clamp(1.8rem, 4vw, 2.7rem);
-  line-height: 1.02;
-  letter-spacing: -0.03em;
-  color: rgba(25, 20, 16, 0.95);
-}
-
-.discover-loading-text {
-  margin-top: 0.65rem;
-  max-width: 31rem;
-  font-family: var(--font-sans);
-  font-size: 0.98rem;
-  line-height: 1.65;
-  color: rgba(58, 51, 46, 0.72);
-}
-
-.discover-loading-progress {
-  margin-top: 1.05rem;
-  height: 4px;
-  width: min(11.5rem, 100%);
-  border-radius: 999px;
-  background: rgba(58, 51, 46, 0.09);
-  overflow: hidden;
-}
-
-.discover-loading-progress > span {
-  display: block;
-  height: 100%;
-  width: 100%;
-  transform-origin: left center;
-  border-radius: inherit;
-  background: linear-gradient(90deg, rgba(201, 122, 90, 0.55), rgba(177, 106, 86, 0.95));
-  animation: discover-loading-progress 1.9s ease-in-out infinite;
-}
-
-.discover-loading-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.discover-loading-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.discover-loading-section-head--stacked {
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.discover-loading-section-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  font-family: var(--font-serif);
-  font-size: 1.02rem;
-  font-weight: 600;
-  color: rgba(25, 20, 16, 0.84);
-}
-
-.discover-loading-feature-grid,
-.discover-loading-card-grid {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-}
-
-.discover-loading-feature-card,
-.discover-loading-card {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid rgba(58, 51, 46, 0.12);
-  background: rgba(255, 251, 247, 0.72);
-  box-shadow: 0 10px 28px rgba(93, 72, 56, 0.06);
-}
-
-.discover-loading-feature-image {
-  aspect-ratio: 16 / 9;
-}
-
-.discover-loading-feature-overlay {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  padding: 1.5rem;
-  background: linear-gradient(180deg, transparent 0%, rgba(247, 243, 238, 0.18) 25%, rgba(247, 243, 238, 0.86) 100%);
-}
-
-.discover-loading-card-image {
-  aspect-ratio: 3 / 4;
-}
-
-.discover-loading-card-body {
-  padding: 1.35rem 1.35rem 1.45rem;
-}
-
-.discover-loading-filterbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+.discover-card--skeleton {
+  cursor: default;
+  pointer-events: none;
 }
 
 .discover-loading-shimmer {
@@ -1654,350 +1454,716 @@ article span {
   animation: discover-loading-sheen 1.75s ease-in-out infinite;
 }
 
-.discover-cover-art {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  background:
-    radial-gradient(circle at 18% 16%, var(--discover-cover-glow) 0%, transparent 34%),
-    radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.5) 0%, transparent 24%),
-    linear-gradient(145deg, color-mix(in srgb, var(--discover-cover-wash) 78%, white 22%), var(--discover-cover-wash));
-}
-
-.discover-cover-art__media,
-.discover-cover-art__wash,
-.discover-cover-art__grain {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.discover-cover-art__media {
-  background-image: var(--discover-cover-image);
-  background-size: cover;
-  background-position: center;
-  filter: saturate(0.65) contrast(0.95);
-  opacity: 0.2;
-  mix-blend-mode: multiply;
-  transform: scale(1.04);
-}
-
-.discover-cover-art__wash {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.06) 30%, rgba(255, 255, 255, 0.3)),
-    linear-gradient(135deg, transparent 0 58%, color-mix(in srgb, var(--discover-cover-accent) 14%, transparent) 58% 63%, transparent 63% 100%);
-}
-
-.discover-cover-art__grain {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 22px 22px;
-  opacity: 0.35;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 82%);
-}
-
-.discover-cover-art__inner {
-  position: relative;
-  z-index: 1;
+/* ── Discover: masthead ─────────────────────────────────────────── */
+.discover-masthead {
   display: flex;
-  height: 100%;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 0.85rem;
-  padding: 1rem;
-}
-
-.discover-cover-art__topline {
-  display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 1rem;
+  margin-bottom: 2.75rem;
 }
 
-.discover-cover-art__badge {
+.discover-masthead__eyebrow {
+  font-family: var(--font-reading);
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--primary);
+  opacity: 0.9;
+}
+
+.discover-masthead__title {
+  margin-top: 0.3rem;
+  font-family: var(--font-serif);
+  font-size: clamp(2.1rem, 5vw, 2.9rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: #2f2823;
+}
+
+.discover-masthead__lede {
+  margin-top: 0.7rem;
+  max-width: 44ch;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: #7a6b5e;
+}
+
+.dark .discover-masthead__title {
+  color: #f0e7db;
+}
+.dark .discover-masthead__lede {
+  color: #a99c8e;
+}
+
+/* ── Discover: section headings ─────────────────────────────────── */
+.discover-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.15rem;
+}
+
+.discover-heading__mark {
+  display: inline-flex;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.discover-heading__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #7a6b5e;
+}
+
+.discover-heading__count {
+  border-radius: 999px;
+  background: rgba(93, 72, 56, 0.09);
+  padding: 0.1rem 0.42rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: #8a7a6d;
+}
+
+.discover-heading__rule {
+  flex: 1;
+  height: 1px;
+  min-width: 1rem;
+  background: linear-gradient(90deg, rgba(93, 72, 56, 0.18), rgba(93, 72, 56, 0));
+}
+
+.dark .discover-heading__label {
+  color: #a99c8e;
+}
+.dark .discover-heading__count {
+  background: rgba(234, 224, 213, 0.1);
+  color: #b5a897;
+}
+.dark .discover-heading__rule {
+  background: linear-gradient(90deg, rgba(234, 224, 213, 0.16), rgba(234, 224, 213, 0));
+}
+
+/* ── Discover: grids ────────────────────────────────────────────── */
+.discover-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+}
+
+@media (min-width: 40rem) {
+  .discover-grid {
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 11.5rem), 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .discover-grid {
+    gap: 1.15rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr));
+  }
+}
+
+.discover-grid--featured {
+  gap: 1.1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 64rem) {
+  .discover-grid--featured {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── Discover: content card ─────────────────────────────────────── */
+.discover-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  cursor: pointer;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(58, 51, 46, 0.1);
+  border-radius: 1rem;
+  background: #fdfaf5;
+  box-shadow:
+    0 1px 2px rgba(76, 56, 39, 0.05),
+    0 12px 26px -18px rgba(76, 56, 39, 0.4);
+  text-align: left;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
+}
+
+.discover-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .discover-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(201, 122, 90, 0.4);
+    box-shadow:
+      0 2px 4px rgba(76, 56, 39, 0.06),
+      0 24px 42px -22px rgba(76, 56, 39, 0.55);
+  }
+  .discover-card:hover .discover-cover__img {
+    transform: scale(1.05);
+  }
+}
+
+.discover-card__frame {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(58, 51, 46, 0.08);
+  background: #ece5da;
+}
+
+/* Spotlight items read as a shelf row: portrait cover beside the copy, so book
+   jackets keep their native proportions instead of being cropped to landscape. */
+.discover-card--featured {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.discover-card--featured .discover-card__frame {
+  flex: 0 0 9rem;
+  aspect-ratio: auto;
+  border-right: 1px solid rgba(58, 51, 46, 0.08);
+  border-bottom: none;
+}
+
+.discover-card--featured .discover-card__body {
+  min-height: 12rem;
+  justify-content: center;
+  padding: 1.1rem 1.25rem;
+}
+
+.discover-card__art {
+  height: 100%;
+  width: 100%;
+}
+
+.discover-card__type {
+  position: absolute;
+  left: 0.7rem;
+  top: 0.7rem;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background: rgba(253, 250, 245, 0.85);
+  padding: 0.2rem 0.58rem;
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b5b50;
   backdrop-filter: blur(8px);
 }
 
-.discover-cover-art__language {
+.discover-card__tools {
+  position: absolute;
+  right: 0.6rem;
+  top: 0.6rem;
+  z-index: 3;
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.discover-card:hover .discover-card__tools,
+.discover-card:focus-within .discover-card__tools {
+  opacity: 1;
+}
+
+.discover-card__tools button {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  border: 1px solid color-mix(in srgb, var(--discover-cover-ink) 14%, white 86%);
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.5);
-  padding: 0.35rem 0.62rem;
-  font-family: var(--font-sans);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.018em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--discover-cover-ink) 78%, white 22%);
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 0.5rem;
+  background: rgba(253, 250, 245, 0.88);
+  padding: 0.3rem;
+  color: #6b5b50;
+  backdrop-filter: blur(8px);
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.discover-cover-art__body {
-  display: flex;
-  min-height: 0;
-  flex: 1;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.9rem;
+.discover-card__tools button:hover {
+  background: #fdfaf5;
+  color: #2d2621;
 }
 
-.discover-cover-art__motif {
-  align-self: stretch;
+.discover-card__tools button:last-child:hover {
+  color: var(--destructive);
+}
+
+.discover-card__body {
   display: flex;
   min-width: 0;
-  align-items: flex-end;
+  flex: 1;
+  flex-direction: column;
+  padding: 0.8rem 0.9rem 0.85rem;
 }
 
-.discover-cover-art__motif-icon {
-  height: clamp(3.3rem, 16vw, 6.8rem);
-  width: clamp(3.3rem, 16vw, 6.8rem);
-  color: color-mix(in srgb, var(--discover-cover-accent) 78%, white 22%);
-  opacity: 0.18;
-  transform: translateY(8%);
-}
-
-.discover-cover-art__copy {
-  margin-top: auto;
-  max-width: min(100%, 30rem);
-}
-
-.discover-cover-art__eyebrow {
-  margin-bottom: 0.5rem;
-  font-family: var(--font-serif);
+.discover-card__author {
+  overflow: hidden;
+  font-family: var(--font-reading);
   font-size: 0.82rem;
   font-style: italic;
-  color: color-mix(in srgb, var(--discover-cover-ink) 76%, white 24%);
-  opacity: 0.88;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #8a7a6d;
 }
 
-.discover-cover-art__title {
-  font-family: var(--font-serif);
-  font-size: clamp(1.5rem, 4vw, 2.6rem);
-  line-height: 0.98;
-  letter-spacing: -0.045em;
-  color: var(--discover-cover-ink);
-  text-wrap: balance;
-}
-
-.discover-cover-art__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding-top: 0.2rem;
-}
-
-.discover-cover-art__meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.36rem;
-  border: 1px solid color-mix(in srgb, var(--discover-cover-ink) 12%, white 88%);
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.42);
-  padding: 0.24rem 0.52rem;
-  font-family: var(--font-sans);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--discover-cover-ink) 66%, white 34%);
-}
-
-.discover-cover-art__meta--strong {
-  color: color-mix(in srgb, var(--discover-cover-ink) 78%, white 22%);
-}
-
-.discover-cover-art--card .discover-cover-art__inner {
-  padding: 1rem 1rem 0.95rem;
-}
-
-.discover-cover-art--card .discover-cover-art__footer {
-  /* Difficulty badge stays left; stack time + words on the right. */
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 0.22rem;
-  padding-left: 0;
-}
-
-.discover-cover-art--card .discover-cover-art__title {
-  font-size: clamp(1.2rem, 5.2vw, 2rem);
-}
-
-.discover-cover-art--card .discover-cover-art__motif-icon {
-  height: clamp(3rem, 14vw, 5.2rem);
-  width: clamp(3rem, 14vw, 5.2rem);
-}
-
-.discover-cover-art--featured .discover-cover-art__inner {
-  padding: 1.15rem 1.15rem 1.1rem;
-}
-
-.discover-cover-art--featured .discover-cover-art__body {
-  gap: 0.72rem;
-}
-
-.discover-cover-art--featured .discover-cover-art__title {
-  font-size: clamp(1.05rem, 2.25vw, 1.72rem);
-  line-height: 1.06;
+.discover-card__title {
   display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.15rem;
+  font-family: var(--font-reading);
+  font-size: 1.1rem;
+  line-height: 1.18;
+  letter-spacing: -0.018em;
+  color: #2d2621;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  overflow: hidden;
-  text-wrap: pretty;
 }
 
-.discover-cover-art--featured .discover-cover-art__eyebrow {
-  margin-bottom: 0.32rem;
-  font-size: 0.74rem;
-  line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.discover-card--featured .discover-card__title {
+  font-size: 1.28rem;
 }
 
-.discover-cover-art--featured .discover-cover-art__copy {
-  padding-bottom: 0.38rem;
-  min-width: 0;
-}
-
-.discover-cover-art--featured .discover-cover-art__footer {
+.discover-card__meta {
+  display: flex;
   flex-wrap: wrap;
-  gap: 0.62rem;
-  row-gap: 0.28rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem 0.7rem;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(58, 51, 46, 0.09);
+  font-family: var(--font-sans);
+  font-size: 0.67rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
-.discover-cover-art--featured .discover-cover-art__meta {
-  font-size: 0.64rem;
+.discover-card__time {
+  flex-shrink: 0;
+  color: #8a7a6d;
+}
+
+/* Narrow grid cards can't fit "Intermediate · 12 min" on one line — stack it so
+   every card in a row breaks the same way. */
+@media (max-width: 39.999rem) {
+  .discover-card:not(.discover-card--featured) .discover-card__meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+}
+
+.dark .discover-card {
+  border-color: rgba(234, 224, 213, 0.12);
+  background: #201f1d;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 12px 26px -18px rgba(0, 0, 0, 0.7);
+}
+.dark .discover-card__frame {
+  border-color: rgba(234, 224, 213, 0.09);
+  background: #2a2825;
+}
+.dark .discover-card__type,
+.dark .discover-card__tools button {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(26, 26, 25, 0.78);
+  color: #c9bcab;
+}
+.dark .discover-card__tools button:hover {
+  background: #1a1a19;
+  color: #f0e7db;
+}
+.dark .discover-card__title {
+  color: #f0e7db;
+}
+.dark .discover-card__author,
+.dark .discover-card__time {
+  color: #a2958a;
+}
+.dark .discover-card__meta {
+  border-top-color: rgba(234, 224, 213, 0.1);
+}
+@media (hover: hover) {
+  .dark .discover-card:hover {
+    border-color: rgba(176, 107, 86, 0.5);
+  }
+}
+
+/* ── Discover: cover art ────────────────────────────────────────── */
+.discover-cover {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+.discover-cover__img {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.discover-cover__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(28, 20, 14, 0.26) 0%,
+    rgba(28, 20, 14, 0) 24%,
+    rgba(28, 20, 14, 0) 70%,
+    rgba(28, 20, 14, 0.12) 100%
+  );
+}
+
+/* Generated plate — shown when an item has no cover image. */
+.discover-cover--plate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1.2rem;
+  text-align: center;
+  background:
+    radial-gradient(78% 52% at 50% 6%, rgba(255, 255, 255, 0.5), transparent 72%),
+    linear-gradient(160deg, color-mix(in srgb, var(--cover-wash) 80%, white 20%), var(--cover-wash));
+}
+
+.discover-cover__rule {
+  position: absolute;
+  inset: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--cover-ink) 16%, transparent);
+  border-radius: 0.55rem;
+  pointer-events: none;
+}
+
+.discover-cover__motif {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--cover-accent);
+  opacity: 0.9;
+  stroke-width: 1.4;
+}
+
+.discover-cover__plate-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-family: var(--font-reading);
+  font-size: 1.15rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--cover-ink);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.discover-cover__plate-author {
+  margin-top: 0.35rem;
+  overflow: hidden;
+  font-family: var(--font-reading);
+  font-size: 0.78rem;
+  font-style: italic;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
+  color: var(--cover-ink);
+  opacity: 0.62;
 }
 
-/* Featured cards with dev action controls need right-side space in the topline. */
-.discover-cover-art--featured-dev-controls .discover-cover-art__topline {
-  padding-right: 3.4rem;
+.dark .discover-cover--plate {
+  filter: brightness(0.82) saturate(0.9);
 }
 
-@media (max-width: 1024px) {
-  .discover-cover-art--featured .discover-cover-art__inner {
-    gap: 0.65rem;
-    padding: 0.95rem 1rem 0.92rem;
-  }
-
-  .discover-cover-art--featured .discover-cover-art__motif,
-  .discover-cover-art--featured .discover-cover-art__eyebrow {
-    display: none;
-  }
-
-  .discover-cover-art--featured .discover-cover-art__title {
-    font-size: clamp(0.98rem, 2.8vw, 1.38rem);
-    line-height: 1.12;
-  }
-
-  .discover-cover-art--featured .discover-cover-art__footer {
-    gap: 0.45rem;
-  }
-
-  .discover-cover-art--featured .discover-cover-art__meta {
-    font-size: 0.6rem;
-    letter-spacing: 0.02em;
-  }
-
-  .discover-cover-art--featured-dev-controls .discover-cover-art__topline {
-    padding-right: 3.05rem;
-  }
+/* ── Discover: difficulty mark ──────────────────────────────────── */
+.discover-level {
+  display: inline-flex;
+  min-width: 0;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--level-tone);
 }
 
-.dark .discover-cover-art {
-  background:
-    radial-gradient(circle at 18% 16%, color-mix(in srgb, var(--discover-cover-glow) 82%, black 18%) 0%, transparent 34%),
-    radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.08) 0%, transparent 24%),
-    linear-gradient(145deg, color-mix(in srgb, var(--discover-cover-wash) 18%, #181614 82%), color-mix(in srgb, var(--discover-cover-wash) 9%, #111 91%));
+.discover-level__dots {
+  display: inline-flex;
+  gap: 2px;
 }
 
-.dark .discover-cover-art__media {
-  opacity: 0.16;
-  mix-blend-mode: screen;
+.discover-level__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.24;
 }
 
-.dark .discover-cover-art__wash {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01) 30%, rgba(255, 255, 255, 0.04)),
-    linear-gradient(135deg, transparent 0 58%, color-mix(in srgb, var(--discover-cover-accent) 16%, transparent) 58% 63%, transparent 63% 100%);
+.discover-level__dot--on {
+  opacity: 1;
 }
 
-.dark .discover-cover-art__grain {
-  opacity: 0.12;
+/* ── Discover: filters ──────────────────────────────────────────── */
+.discover-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 1.5rem;
 }
 
-.dark .discover-cover-art__language {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
-  color: color-mix(in srgb, var(--discover-cover-wash) 78%, white 22%);
+.discover-search {
+  position: relative;
+  flex: 1 1 15rem;
+  min-width: 0;
+  max-width: 26rem;
 }
 
-.dark .discover-cover-art__eyebrow {
-  color: color-mix(in srgb, var(--discover-cover-wash) 82%, white 18%);
+.discover-search__icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  z-index: 2;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #a1907f;
 }
 
-.dark .discover-cover-art__title {
-  color: color-mix(in srgb, var(--discover-cover-wash) 92%, white 8%);
+.discover-search__input {
+  height: 2.5rem;
+  border-radius: 0;
+  border: 1px solid rgba(58, 51, 46, 0.18);
+  background: rgba(255, 253, 249, 0.72);
+  padding-left: 2.25rem;
+  padding-right: 2rem;
+  font-size: 0.9rem;
+  color: var(--foreground);
+  box-shadow: none;
 }
 
-.dark .discover-cover-art__meta,
-.dark .discover-cover-art__meta--strong {
-  border-color: rgba(255, 255, 255, 0.13);
-  background: rgba(255, 255, 255, 0.06);
-  color: color-mix(in srgb, var(--discover-cover-wash) 72%, white 28%);
+.discover-search__input::placeholder {
+  color: #a1907f;
 }
 
-@media (min-width: 640px) {
-  .discover-cover-art--featured .discover-cover-art__inner {
-    padding: 1.25rem 1.3rem 1.2rem;
-  }
+.discover-search__input:focus-visible {
+  border-color: rgba(201, 122, 90, 0.6);
+  outline: none;
+  box-shadow: none;
+  --tw-ring-shadow: 0 0 #0000;
 }
 
-.dark .discover-loading-intro {
-  border-color: rgba(234, 224, 213, 0.12);
-  background:
-    radial-gradient(circle at top right, rgba(201, 122, 90, 0.18), transparent 40%),
-    linear-gradient(180deg, rgba(40, 36, 33, 0.96), rgba(28, 26, 24, 0.94));
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+.discover-search__clear {
+  position: absolute;
+  right: 0.55rem;
+  top: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  padding: 0.2rem;
+  color: #a1907f;
+  transition: color 0.15s ease;
 }
 
-.dark .discover-loading-chip {
-  border-color: rgba(234, 224, 213, 0.12);
+.discover-search__clear:hover {
+  color: var(--foreground);
+}
+
+.discover-filters__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.discover-seg {
+  display: inline-flex;
+  height: 2.5rem;
+  align-items: stretch;
+  gap: 2px;
+  border: 1px solid rgba(58, 51, 46, 0.18);
+  background: rgba(255, 253, 249, 0.72);
+  padding: 3px;
+}
+
+.discover-seg__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: #6f6156;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.discover-seg__btn:hover {
+  background: rgba(93, 72, 56, 0.07);
+  color: #2d2621;
+}
+
+.discover-seg__btn[aria-pressed="true"] {
+  background: var(--primary);
+  color: #fff;
+}
+
+.discover-seg__btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.discover-trigger {
+  height: 2.5rem;
+  gap: 0.45rem;
+  border-radius: 0;
+  border: 1px solid rgba(58, 51, 46, 0.18);
+  background: rgba(255, 253, 249, 0.72);
+  padding: 0 0.75rem;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: #6f6156;
+}
+
+.discover-trigger:hover {
+  background: rgba(93, 72, 56, 0.07);
+  color: #2d2621;
+}
+
+.discover-trigger--active {
+  border-color: rgba(201, 122, 90, 0.5);
+  color: #2d2621;
+}
+
+.discover-trigger__count {
+  border-radius: 999px;
+  background: var(--primary);
+  padding: 0 0.34rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.dark .discover-search__input,
+.dark .discover-seg,
+.dark .discover-trigger {
+  border-color: rgba(234, 224, 213, 0.16);
   background: rgba(255, 255, 255, 0.04);
-  color: rgba(234, 224, 213, 0.82);
+}
+.dark .discover-search__icon,
+.dark .discover-search__input::placeholder,
+.dark .discover-search__clear,
+.dark .discover-seg__btn,
+.dark .discover-trigger {
+  color: #a2958a;
+}
+.dark .discover-seg__btn:hover,
+.dark .discover-trigger:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #f0e7db;
+}
+.dark .discover-seg__btn[aria-pressed="true"] {
+  color: #fff;
 }
 
-.dark .discover-loading-title {
-  color: rgba(246, 240, 232, 0.95);
+/* ── Discover: empty state ──────────────────────────────────────── */
+.discover-empty {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(58, 51, 46, 0.12);
+  background: rgba(255, 253, 249, 0.5);
+  padding: 4rem 1.5rem;
+  text-align: center;
 }
 
-.dark .discover-loading-text {
-  color: rgba(234, 224, 213, 0.68);
+.discover-empty__icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--primary);
+  opacity: 0.65;
+  stroke-width: 1.4;
 }
 
-.dark .discover-loading-progress {
-  background: rgba(234, 224, 213, 0.1);
+.discover-empty__title {
+  margin-top: 0.85rem;
+  font-family: var(--font-reading);
+  font-size: 1.3rem;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  color: #2d2621;
 }
 
-.dark .discover-loading-section-label {
-  color: rgba(246, 240, 232, 0.82);
+.discover-empty__text {
+  margin-top: 0.35rem;
+  max-width: 32ch;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #8a7a6d;
 }
 
-.dark .discover-loading-feature-card,
-.dark .discover-loading-card {
-  border-color: rgba(234, 224, 213, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+.dark .discover-empty {
+  border-color: rgba(234, 224, 213, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+}
+.dark .discover-empty__title {
+  color: #f0e7db;
+}
+.dark .discover-empty__text {
+  color: #a2958a;
 }
 
-.dark .discover-loading-feature-overlay {
-  background: linear-gradient(180deg, transparent 0%, rgba(26, 26, 26, 0.18) 25%, rgba(26, 26, 26, 0.88) 100%);
+@media (prefers-reduced-motion: reduce) {
+  .discover-card,
+  .discover-cover__img {
+    transition: none;
+  }
+  .discover-card:hover {
+    transform: none;
+  }
+  .discover-card:hover .discover-cover__img {
+    transform: none;
+  }
 }
 
 .dark .discover-loading-shimmer {
@@ -2008,22 +2174,6 @@ article span {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
 }
 
-@media (min-width: 640px) {
-  .discover-loading-intro {
-    padding: 1.35rem 1.4rem 1.45rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .discover-loading-shell {
-    gap: 2.4rem;
-  }
-
-  .discover-loading-intro {
-    padding: 1.55rem 1.7rem 1.6rem;
-  }
-
-}
 .dark .settings-nav-item--active {
   background: rgba(234, 224, 213, 0.06);
   border-color: rgba(130, 160, 195, 0.45);
@@ -2334,4 +2484,247 @@ article span {
   :where(button, a, input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
     transition: all 0.2s ease;
   }
+}
+
+/* ── Discover: preview modal ────────────────────────────────────── */
+.discover-modal {
+  display: flex;
+  max-height: 92dvh;
+  width: calc(100vw - 1.5rem);
+  max-width: 42rem;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(58, 51, 46, 0.14);
+  border-radius: 1rem;
+  background: #fdfaf5;
+  padding: 0;
+  font-family: var(--font-sans);
+  box-shadow: 0 32px 70px -28px rgba(48, 34, 24, 0.55);
+}
+
+.discover-modal__close {
+  position: absolute;
+  right: 0.85rem;
+  top: 0.85rem;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.45rem;
+  color: #8a7a6d;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.discover-modal__close:hover {
+  background: rgba(93, 72, 56, 0.09);
+  color: #2d2621;
+}
+
+.discover-modal__scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.6rem 1.5rem 0;
+}
+
+.discover-modal__head {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.discover-modal__cover {
+  position: relative;
+  flex: 0 0 8rem;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 1px solid rgba(58, 51, 46, 0.12);
+  border-radius: 0.6rem;
+  background: #ece5da;
+}
+
+.discover-modal__intro {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0;
+  text-align: left;
+}
+
+.discover-modal__kicker {
+  /* Clears the absolutely-positioned close button so long titles never run under it. */
+  padding-right: 2rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.discover-modal__title {
+  margin-top: 0.4rem;
+  padding-right: 2rem;
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: #2f2823;
+}
+
+.discover-modal__author {
+  margin-top: 0.3rem;
+  font-family: var(--font-reading);
+  font-size: 0.95rem;
+  font-style: italic;
+  color: #8a7a6d;
+}
+
+.discover-modal__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.85rem;
+  margin-top: 0.9rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #8a7a6d;
+}
+
+.discover-modal__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.85rem;
+}
+
+.discover-modal__tags span {
+  border: 1px solid rgba(58, 51, 46, 0.14);
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #6f6156;
+}
+
+.discover-modal__preview {
+  margin-top: 1.5rem;
+}
+
+.discover-modal__excerpt {
+  max-height: 34vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(58, 51, 46, 0.12);
+  border-radius: 0.6rem;
+  background: rgba(93, 72, 56, 0.035);
+  padding: 1rem 1.1rem;
+}
+
+.discover-modal__excerpt p {
+  font-family: var(--font-reading);
+  font-size: 1.02rem;
+  line-height: 1.7;
+  white-space: pre-line;
+  color: #3a332e;
+}
+
+.discover-modal__excerpt-pending {
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.discover-modal__notice {
+  margin-top: 1rem;
+  border: 1px solid rgba(163, 122, 46, 0.35);
+  border-radius: 0.6rem;
+  background: rgba(163, 122, 46, 0.1);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.88rem;
+  color: #7a5a1e;
+}
+
+.discover-modal__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  border-top: 1px solid rgba(58, 51, 46, 0.1);
+  background: rgba(93, 72, 56, 0.03);
+  padding: 1rem 1.5rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.discover-modal__cta {
+  min-width: 0;
+  flex: 1;
+  gap: 0.5rem;
+  border-radius: 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.discover-modal__danger:hover {
+  border-color: rgba(180, 85, 58, 0.5);
+  color: var(--destructive);
+}
+
+@media (max-width: 30rem) {
+  .discover-modal__head {
+    gap: 1rem;
+  }
+  .discover-modal__cover {
+    flex-basis: 5.5rem;
+  }
+  .discover-modal__title {
+    font-size: 1.3rem;
+  }
+  .discover-modal__scroll {
+    padding: 1.4rem 1.15rem 0;
+  }
+  .discover-modal__actions {
+    padding-inline: 1.15rem;
+  }
+}
+
+.dark .discover-modal {
+  border-color: rgba(234, 224, 213, 0.14);
+  background: #201f1d;
+}
+.dark .discover-modal__close {
+  color: #a2958a;
+}
+.dark .discover-modal__close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0e7db;
+}
+.dark .discover-modal__cover {
+  border-color: rgba(234, 224, 213, 0.12);
+  background: #2a2825;
+}
+.dark .discover-modal__title {
+  color: #f0e7db;
+}
+.dark .discover-modal__author,
+.dark .discover-modal__meta {
+  color: #a2958a;
+}
+.dark .discover-modal__tags span {
+  border-color: rgba(234, 224, 213, 0.14);
+  color: #b5a897;
+}
+.dark .discover-modal__excerpt {
+  border-color: rgba(234, 224, 213, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+.dark .discover-modal__excerpt p {
+  color: #ded3c5;
+}
+.dark .discover-modal__actions {
+  border-top-color: rgba(234, 224, 213, 0.1);
+  background: rgba(255, 255, 255, 0.02);
 }

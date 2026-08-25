@@ -1,13 +1,14 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
-import { Outlet, useLocation, useOutletContext } from "react-router-dom"
+import { Outlet, useOutletContext } from "react-router-dom"
 import { LandingSidebar, type LandingSidebarLayout } from "@/components/landing-sidebar"
 import { MainHeader } from "@/components/main-header"
 import type { ReadingTheme } from "@/components/theme-toggle"
 
 export type LandingShellOutletContext = {
   registerNewChat: (handler: (() => void) | null) => void
+  sidebarInsetPx: number
 }
 
 export function useLandingShellNewChat(): LandingShellOutletContext {
@@ -33,7 +34,6 @@ export function LandingShellLayout({
   sidebarDisabled,
   showHeader = true,
 }: LandingShellLayoutProps) {
-  const location = useLocation()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarInsetPx, setSidebarInsetPx] = useState(0)
   const onSidebarLayoutChange = useCallback((layout: LandingSidebarLayout) => {
@@ -48,7 +48,7 @@ export function LandingShellLayout({
     newChatHandlerRef.current?.()
   }, [])
 
-  const outletContext: LandingShellOutletContext = { registerNewChat }
+  const outletContext: LandingShellOutletContext = { registerNewChat, sidebarInsetPx }
 
   return (
     <div className="landing-route-shell landing-route-enter relative z-10 flex h-[100dvh] min-h-0 min-w-0 w-full flex-1 flex-row overflow-hidden max-md:min-h-0 max-md:flex-1">
@@ -65,8 +65,6 @@ export function LandingShellLayout({
           <MainHeader
             theme={theme}
             onThemeChange={onThemeChange}
-            showThemeToggle={location.pathname !== "/discover"}
-            forceDark={location.pathname === "/discover"}
             showPlanBanner={false}
             showMobilePlanBanner
             showBrandWordmark={false}

@@ -43,7 +43,6 @@ interface MainHeaderProps {
   theme: ReadingTheme
   onThemeChange: (theme: ReadingTheme) => void
   showThemeToggle?: boolean
-  forceDark?: boolean
   /** Free plan pill + mobile strip — landing only */
   showPlanBanner?: boolean
   /** Mobile-only upgrade reminder on the homepage. */
@@ -250,7 +249,6 @@ export function MainHeader({
   theme,
   onThemeChange,
   showThemeToggle = true,
-  forceDark = false,
   showPlanBanner = false,
   showMobilePlanBanner = false,
   showBrandWordmark = true,
@@ -270,12 +268,10 @@ export function MainHeader({
 
   return (
     <header
-      data-force-dark={forceDark ? "true" : undefined}
       className={
-        (forceDark ? "dark " : "") +
-        (stacked
+        stacked
           ? "relative z-40 w-full shrink-0 pointer-events-none min-h-[calc(5rem+env(safe-area-inset-top,0px))] md:min-h-20"
-          : "fixed top-0 left-0 right-0 z-40 pointer-events-none")
+          : "fixed top-0 left-0 right-0 z-40 pointer-events-none"
       }
       style={fixedInset}
     >
@@ -294,11 +290,7 @@ export function MainHeader({
               <button
                 type="button"
                 onClick={onMenuClick}
-                className={
-                  forceDark
-                    ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#eadfcf]/25 bg-[#173126]/45 text-[#efe4d1] shadow-[0_10px_28px_rgba(9,29,20,0.22)] backdrop-blur-md transition-colors hover:bg-[#eadfcf]/12 md:hidden"
-                    : "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/50 md:hidden"
-                }
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/50 md:hidden"
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" aria-hidden />

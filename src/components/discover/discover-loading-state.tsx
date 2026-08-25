@@ -1,90 +1,73 @@
 "use client"
 
-import { Compass, Sparkles } from "lucide-react"
+import { Library, Sparkles } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-function ShimmerBlock({ className }: { className: string }) {
-  return <div aria-hidden className={`discover-loading-shimmer ${className}`} />
+function Shimmer({ className }: { className: string }) {
+  return <span aria-hidden className={cn("discover-loading-shimmer block", className)} />
+}
+
+function SkeletonCard({ featured = false }: { featured?: boolean }) {
+  return (
+    <div
+      aria-hidden
+      className={cn("discover-card discover-card--skeleton", featured && "discover-card--featured")}
+    >
+      <div className="discover-card__frame">
+        <Shimmer className="h-full w-full" />
+      </div>
+      <div className="discover-card__body">
+        <Shimmer className="h-3 w-1/2 rounded-full" />
+        <Shimmer className="mt-2 h-4 w-4/5 rounded-full" />
+        <Shimmer className="mt-1.5 h-4 w-3/5 rounded-full" />
+        <div className="discover-card__meta">
+          <Shimmer className="h-2.5 w-20 rounded-full" />
+          <Shimmer className="h-2.5 w-12 rounded-full" />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function DiscoverLoadingState() {
   return (
     <section
-      className="discover-loading-shell"
+      className="discover-loading"
       aria-live="polite"
       aria-busy="true"
       aria-label="Loading discover catalog"
     >
-      <div className="discover-loading-intro">
-        <div className="discover-loading-chip">
-          <Sparkles className="size-3.5" aria-hidden />
-          <span>Curating your next read</span>
-        </div>
-        <div className="discover-loading-copy">
-          <h2 className="discover-loading-title">Building the shelf around you</h2>
-          <p className="discover-loading-text">
-            Pulling in featured picks, fresh finds, and level-matched reads.
-          </p>
-        </div>
-        <div className="discover-loading-progress" aria-hidden>
-          <span />
-        </div>
-      </div>
-
-      <div className="discover-loading-section">
-        <div className="discover-loading-section-head">
-          <div className="discover-loading-section-label">
+      <div className="discover-loading__section">
+        <div className="discover-heading">
+          <span className="discover-heading__mark" aria-hidden>
             <Sparkles className="size-4" aria-hidden />
-            <span>Featured for You</span>
-          </div>
+          </span>
+          <h2 className="discover-heading__label">Featured for you</h2>
+          <span className="discover-heading__rule" aria-hidden />
         </div>
-        <div className="discover-loading-feature-grid">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <article key={`feature-${index}`} className="discover-loading-feature-card">
-              <div className="discover-loading-feature-image">
-                <ShimmerBlock className="h-full w-full" />
-              </div>
-              <div className="discover-loading-feature-overlay">
-                <ShimmerBlock className="h-6 w-20 rounded-full" />
-                <ShimmerBlock className="mt-4 h-7 w-[78%] rounded-sm" />
-                <ShimmerBlock className="mt-2 h-4 w-28 rounded-sm" />
-              </div>
-            </article>
+        <div className="discover-grid discover-grid--featured">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <SkeletonCard key={`featured-${index}`} featured />
           ))}
         </div>
       </div>
 
-      <div className="discover-loading-section">
-        <div className="discover-loading-section-head discover-loading-section-head--stacked">
-          <div className="discover-loading-section-label">
-            <Compass className="size-4" aria-hidden />
-            <span>Browse All Content</span>
-          </div>
-          <div className="discover-loading-filterbar">
-            <ShimmerBlock className="h-11 flex-1 rounded-[1.1rem]" />
-            <ShimmerBlock className="h-11 w-28 rounded-full" />
-            <ShimmerBlock className="h-11 w-32 rounded-full" />
-          </div>
+      <div className="discover-loading__section">
+        <div className="discover-heading">
+          <span className="discover-heading__mark" aria-hidden>
+            <Library className="size-4" aria-hidden />
+          </span>
+          <h2 className="discover-heading__label">The library</h2>
+          <span className="discover-heading__rule" aria-hidden />
         </div>
-        <div className="discover-loading-card-grid">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <article key={`card-${index}`} className="discover-loading-card">
-              <div className="discover-loading-card-image">
-                <ShimmerBlock className="h-full w-full" />
-              </div>
-              <div className="discover-loading-card-body">
-                <ShimmerBlock className="h-5 w-20 rounded-full" />
-                <ShimmerBlock className="mt-4 h-6 w-[82%] rounded-sm" />
-                <ShimmerBlock className="mt-2 h-4 w-24 rounded-sm" />
-                <div className="mt-5 flex items-center justify-between gap-3">
-                  <ShimmerBlock className="h-3.5 w-20 rounded-sm" />
-                  <ShimmerBlock className="h-3.5 w-16 rounded-sm" />
-                </div>
-                <div className="mt-5 flex gap-2">
-                  <ShimmerBlock className="h-6 w-16 rounded-full" />
-                  <ShimmerBlock className="h-6 w-14 rounded-full" />
-                </div>
-              </div>
-            </article>
+        <div className="discover-filters" aria-hidden>
+          <Shimmer className="h-10 max-w-[26rem] flex-1 basis-60" />
+          <Shimmer className="h-10 w-28" />
+          <Shimmer className="h-10 w-24" />
+        </div>
+        <div className="discover-grid">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <SkeletonCard key={`card-${index}`} />
           ))}
         </div>
       </div>

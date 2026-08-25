@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useLayoutEffect, useMemo, useState } from "react"
+import type { ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
-import { Clock3, Compass, Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
+import { Compass, Library, Plus, Sparkles } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing-shell-layout"
-import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
 import { DiscoverLoadingState } from "@/components/discover/discover-loading-state"
 import { ContentPreviewModal } from "@/components/discover/content-preview-modal"
 import { DevEditDiscoverItemModal } from "@/components/discover/dev-edit-discover-item-modal"
@@ -31,6 +31,18 @@ type DiscoverPageProps = {
 }
 
 const DISCOVER_DEV_EDIT = import.meta.env.DEV
+
+function SectionHeading({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <div className="discover-heading">
+      <span className="discover-heading__mark" aria-hidden>
+        {icon}
+      </span>
+      <h2 className="discover-heading__label">{children}</h2>
+      <span className="discover-heading__rule" aria-hidden />
+    </div>
+  )
+}
 
 function readCachedDiscoverItems(): ContentItem[] | null {
   if (typeof window === "undefined") return null
@@ -256,32 +268,27 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     setModalOpen(true)
   }
 
-  const featuredContent = discoverItems.slice(0, 3)
+  const featuredContent = discoverItems.slice(0, 4)
 
   return (
     <>
-      <div className="dark discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
-        <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-8 pt-[calc(5.25rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
-          <div className="mb-10 flex flex-wrap items-start justify-between gap-4 md:mb-12 md:gap-6">
+      <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
+        <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-16 pt-[calc(5.25rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
+          <header className="discover-masthead">
             <div className="min-w-0 flex-1">
-              <h1 className="font-serif text-3xl font-bold tracking-tight text-[#efe4d1] md:text-4xl dark:text-[#efe4d1]">
-                Discover
-              </h1>
-              <p className="mt-2 font-sans text-base leading-relaxed text-[#e5d8c4] md:text-lg dark:text-[#d7c8b2]">
-                Browse books, articles, songs, and poems matched to your level.
+              <p className="discover-masthead__eyebrow">Descubre</p>
+              <h1 className="discover-masthead__title">Discover</h1>
+              <p className="discover-masthead__lede">
+                Books, articles, songs, and poems — matched to the Spanish you already know.
               </p>
             </div>
             {canManageCatalog && (
-              <Button
-                variant="outline"
-                className="shrink-0 self-start rounded-none"
-                onClick={() => setUploadModalOpen(true)}
-              >
-                <Plus className="mr-2 size-4" />
+              <Button variant="outline" className="discover-trigger shrink-0" onClick={() => setUploadModalOpen(true)}>
+                <Plus className="size-4" aria-hidden />
                 Upload Resource
               </Button>
             )}
-          </div>
+          </header>
 
           {listError && (
             <p className="mb-4 text-sm text-destructive" role="alert">
@@ -298,110 +305,55 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
             <DiscoverLoadingState />
           ) : (
             <>
-              <section className="mb-12">
-                <div className="mb-6 flex items-center gap-2">
-                  <Sparkles className="size-5 shrink-0 text-accent/80" />
-                  <h2 className="font-serif text-base font-semibold tracking-wide text-[#eadfcf] md:text-lg dark:text-[#d7c8b2]">
-                    Featured for You
-                  </h2>
-                </div>
-                <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
-                  {featuredContent.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleContentClick(item)}
-                      className="group relative min-w-0 cursor-pointer overflow-hidden rounded-[1.75rem] border border-[#dacfbf] bg-[#fbf7f0]/96 shadow-[0_14px_34px_rgba(76,56,39,0.10)] transition-all duration-300 hover:-translate-y-1 hover:border-[#cfa38d] hover:shadow-[0_22px_44px_rgba(76,56,39,0.16)] dark:border-border/80 dark:bg-card/92 dark:hover:border-primary/40"
-                    >
-                      <div className="relative aspect-[16/9] overflow-hidden">
-                        <DiscoverCoverArt
-                          content={item}
-                          variant="card"
-                          className="h-full w-full"
-                        />
-                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,244,238,0.18)_0%,rgba(248,244,238,0.08)_26%,rgba(248,244,238,0.7)_72%,rgba(248,244,238,0.92)_100%)] dark:bg-[linear-gradient(180deg,rgba(18,18,18,0.08)_0%,rgba(18,18,18,0.16)_24%,rgba(18,18,18,0.66)_74%,rgba(18,18,18,0.86)_100%)]" />
-                        <div className="absolute left-4 right-4 top-4 z-30 flex items-start justify-between gap-3">
-                          <span className="inline-flex max-w-[calc(100%-5.5rem)] items-center rounded-full border border-white/55 bg-[rgba(255,252,247,0.7)] px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.13em] text-[#6d6055] backdrop-blur-sm dark:border-white/10 dark:bg-[rgba(34,34,32,0.72)] dark:text-muted-foreground">
-                            {`${item.type} · ${item.language}`}
-                          </span>
-                          {canManageCatalog && (
-                            <div className="ml-auto flex shrink-0 gap-1">
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  openDevEdit(item)
-                                }}
-                                className="rounded-xl border border-border/60 bg-background/82 p-2 text-muted-foreground backdrop-blur-sm transition-colors hover:bg-background hover:text-foreground"
-                                aria-label={`Edit ${item.title}`}
-                              >
-                                <Pencil className="size-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  void handleDeleteContent(item.id)
-                                }}
-                                className="rounded-xl border border-border/60 bg-background/82 p-2 text-muted-foreground backdrop-blur-sm transition-colors hover:bg-background hover:text-destructive"
-                                aria-label={`Delete ${item.title}`}
-                              >
-                                <Trash2 className="size-3.5" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="absolute inset-x-0 bottom-0 z-20 p-5">
-                          <div className="max-w-[78%]">
-                            <p className="mb-2 line-clamp-1 font-reading text-[0.98rem] italic leading-none text-[#75685e] dark:text-muted-foreground">
-                              {item.author}
-                            </p>
-                            <h3 className="line-clamp-2 text-balance font-reading text-[1.25rem] leading-[0.98] tracking-[-0.04em] text-[#2d2621] dark:text-foreground sm:text-[1.45rem]">
-                              {item.title}
-                            </h3>
-                            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-[#6f6258] dark:text-muted-foreground">
-                              <span className="flex min-w-0 items-center gap-1.5">
-                                <Clock3 className="size-3.5 shrink-0" />
-                                {item.estimatedTime}
-                              </span>
-                              <span className="shrink-0 tabular-nums">{item.wordCount.toLocaleString()} words</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
+              {featuredContent.length > 0 && (
+                <section className="mb-14">
+                  <SectionHeading icon={<Sparkles className="size-4" aria-hidden />}>
+                    Featured for you
+                  </SectionHeading>
+                  <div className="discover-grid discover-grid--featured">
+                    {featuredContent.map((item) => (
+                      <ContentCard
+                        key={item.id}
+                        content={item}
+                        featured
+                        onClick={() => handleContentClick(item)}
+                        onDelete={canManageCatalog ? (id) => void handleDeleteContent(id) : undefined}
+                        onEdit={canManageCatalog ? () => openDevEdit(item) : undefined}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
 
               <section>
-                <div className="mb-6">
-                  <h2 className="mb-4 font-serif text-lg font-semibold tracking-wide text-[#eadfcf] md:text-xl dark:text-[#d7c8b2]">
-                    Browse All Content
-                  </h2>
-                  <FilterBar
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    selectedTypes={selectedTypes}
-                    onTypeChange={setSelectedTypes}
-                    selectedDifficulties={selectedDifficulties}
-                    onDifficultyChange={setSelectedDifficulties}
-                  />
-                </div>
+                <SectionHeading icon={<Library className="size-4" aria-hidden />}>
+                  The library
+                  <span className="discover-heading__count">{filteredContent.length}</span>
+                </SectionHeading>
+
+                <FilterBar
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  selectedTypes={selectedTypes}
+                  onTypeChange={setSelectedTypes}
+                  selectedDifficulties={selectedDifficulties}
+                  onDifficultyChange={setSelectedDifficulties}
+                />
 
                 {filteredContent.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 py-16">
-                    <div className="mb-4 rounded-full bg-secondary p-4">
-                      <Compass className="size-8 text-[#e5d8c4] dark:text-[#d7c8b2]" />
-                    </div>
-                    <h3 className="mb-2 font-serif text-lg font-semibold text-[#efe4d1] dark:text-[#efe4d1]">
-                      No content found
-                    </h3>
-                    <p className="font-reading text-sm text-[#dccdb9] dark:text-[#cbb99f]">
-                      Try adjusting your filters or search query
+                  <div className="discover-empty">
+                    <span className="corner corner-tl" aria-hidden />
+                    <span className="corner corner-tr" aria-hidden />
+                    <span className="corner corner-bl" aria-hidden />
+                    <span className="corner corner-br" aria-hidden />
+                    <Compass className="discover-empty__icon" aria-hidden />
+                    <h3 className="discover-empty__title">Nada por aquí</h3>
+                    <p className="discover-empty__text">
+                      Nothing matches those filters yet. Try a different search or clear a filter.
                     </p>
                   </div>
                 ) : (
-                  <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
+                  <div className="discover-grid">
                     {filteredContent.map((item) => (
                       <ContentCard
                         key={item.id}
