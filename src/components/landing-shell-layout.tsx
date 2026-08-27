@@ -24,7 +24,8 @@ type LandingShellLayoutProps = {
   onThemeChange: (theme: ReadingTheme) => void
   displayName: string
   sidebarDisabled: boolean
-  showHeader?: boolean
+  readingActive?: boolean
+  onExitReading?: () => void
 }
 
 export function LandingShellLayout({
@@ -32,7 +33,8 @@ export function LandingShellLayout({
   onThemeChange,
   displayName,
   sidebarDisabled,
-  showHeader = true,
+  readingActive = false,
+  onExitReading,
 }: LandingShellLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarInsetPx, setSidebarInsetPx] = useState(0)
@@ -59,9 +61,11 @@ export function LandingShellLayout({
         onNewChat={onNewChat}
         disabled={sidebarDisabled}
         displayName={displayName}
+        readingActive={readingActive}
+        onExitReading={onExitReading}
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col max-md:min-h-0 max-md:flex-1">
-        {showHeader ? (
+        {!readingActive ? (
           <MainHeader
             theme={theme}
             onThemeChange={onThemeChange}

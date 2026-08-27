@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, type ReactNode } from "react"
 import { useSearchParams } from "react-router-dom"
-import { ArrowLeft, LogOut, User, Mail } from "lucide-react"
+import { ArrowLeft, Check, CreditCard, LogOut, SlidersHorizontal, UserRound } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
 import { MainHeader } from "@/components/main-header"
 import { SubscriptionStatus } from "@/components/subscription-status"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import type { ReadingTheme } from "@/components/theme-toggle"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
 import {
@@ -33,8 +34,13 @@ import {
 
 const LEARNING_ORDER: LearningLanguage[] = ["spanish", "french", "english"]
 
-const TABS = ["General", "Account", "Billing"] as const
-type SettingsTab = (typeof TABS)[number]
+const TABS = [
+  { id: "General", Icon: SlidersHorizontal },
+  { id: "Account", Icon: UserRound },
+  { id: "Billing", Icon: CreditCard },
+] as const
+
+type SettingsTab = (typeof TABS)[number]["id"]
 const IS_LOCAL_DEV = import.meta.env.DEV
 
 const TAB_FROM_PARAM: Record<string, SettingsTab> = {
@@ -46,6 +52,129 @@ const TAB_FROM_PARAM: Record<string, SettingsTab> = {
 function tabFromSearchParam(raw: string | null): SettingsTab {
   if (!raw) return "General"
   return TAB_FROM_PARAM[raw.toLowerCase()] ?? "General"
+}
+
+const focusRing = "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+
+function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
+  const id = `settings-${title.toLowerCase()}-heading`
+  return (
+    <section aria-labelledby={id}>
+      <h2
+        id={id}
+        className="font-display text-lg font-medium tracking-[-0.015em] text-foreground sm:text-xl"
+      >
+        {title}
+      </h2>
+      <div className="mt-5 divide-y divide-border/50 border-t border-border/50">{children}</div>
+    </section>
+  )
+}
+
+function SettingsRow({
+  label,
+  description,
+  htmlFor,
+  labelAs = "label",
+  children,
+}: {
+  label: string
+  description?: string
+  htmlFor?: string
+  labelAs?: "label" | "p"
+  children: ReactNode
+}) {
+  const labelClass = "block text-sm font-semibold text-foreground"
+  return (
+    <div className="flex flex-col gap-3 py-5 sm:flex-row sm:items-start sm:justify-between sm:gap-10">
+      <div className="min-w-0 sm:max-w-[19rem] sm:pt-1.5">
+        {labelAs === "label" ? (
+          <label htmlFor={htmlFor} className={labelClass}>
+            {label}
+          </label>
+        ) : (
+          <p id={htmlFor} className={labelClass}>
+            {label}
+          </p>
+        )}
+        {description ? (
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      <div className="min-w-0 sm:flex sm:max-w-[22rem] sm:flex-1 sm:justify-end">{children}</div>
+    </div>
+  )
+}
+
+function LanguageSegmentedControl<T extends string>({
+  options,
+  value,
+  labels,
+  onSelect,
+  labelledBy,
+}: {
+  options: readonly T[]
+  value: T
+  labels: Record<T, string>
+  onSelect: (next: T) => void
+  labelledBy: string
+}) {
+  // Single-option groups shouldn't stretch into one full-width segment.
+  const stretch = options.length > 1
+  return (
+    <div
+      role="group"
+      aria-labelledby={labelledBy}
+      className={cn(
+        "flex max-w-full flex-wrap gap-1 rounded-lg border border-border/60 bg-muted/30 p-1",
+        stretch ? "w-full sm:w-auto" : "w-fit",
+      )}
+    >
+      {options.map((id) => {
+        const active = value === id
+        return (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onSelect(id)}
+            className={cn(
+              "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm",
+              "transition-[color,background-color,box-shadow] duration-200 ease-out",
+              stretch && "flex-1 sm:flex-none",
+              focusRing,
+              active
+                ? "bg-background font-medium text-foreground shadow-sm ring-1 ring-border"
+                : "font-normal text-muted-foreground hover:bg-background/60 hover:text-foreground",
+            )}
+          >
+            <span className="text-[1.05rem] leading-none" aria-hidden>
+              {languageOptionFlagEmoji(id)}
+            </span>
+            {labels[id]}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function ReadOnlyField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="font-sans text-label-xs font-bold uppercase text-muted-foreground/70">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-1 break-all text-sm text-foreground",
+          mono && "font-mono text-xs text-muted-foreground",
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  )
 }
 
 export default function SettingsPage() {
@@ -153,62 +282,74 @@ export default function SettingsPage() {
         <MainHeader theme={theme} onThemeChange={setTheme} variant="stacked" />
       </div>
 
-      <main className="relative z-[1] px-3 sm:px-4 md:px-8 overflow-x-hidden">
-        <div className="max-w-5xl mx-auto">
-          <BackToHomeLink className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 ease-in-out mb-6 md:mb-8">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+      <main className="relative z-[1] overflow-x-hidden px-3 sm:px-4 md:px-8">
+        <div className="mx-auto max-w-5xl font-sans [font-feature-settings:'kern'_1,'liga'_1] [text-rendering:optimizeLegibility] antialiased">
+          <BackToHomeLink
+            className={cn(
+              "mb-6 inline-flex items-center rounded-md text-sm text-muted-foreground md:mb-8",
+              "transition-colors duration-200 ease-out hover:text-foreground",
+              focusRing,
+            )}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" strokeWidth={1.65} />
             Back to reading
           </BackToHomeLink>
 
-          <div className="mb-6 md:mb-10">
-            <h1 className="font-serif text-[2rem] sm:text-3xl md:text-4xl font-medium text-foreground">
+          <header className="mb-6 md:mb-10">
+            <h1 className="font-display text-display-lg font-medium text-foreground md:text-display-xl">
               Settings
             </h1>
-            <p className="mt-1.5 md:mt-2 text-sm sm:text-base text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground md:mt-2 md:text-base">
               Manage your account and preferences
             </p>
-          </div>
+          </header>
 
-          <div className="flex flex-col md:flex-row gap-5 md:gap-12 lg:gap-16">
-            <nav
-              className="settings-nav shrink-0 md:w-52 max-md:-mx-1 max-md:rounded-2xl"
-              aria-label="Settings sections"
-            >
-              <ul className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 pr-1 md:pr-0 snap-x snap-mandatory">
-                {TABS.map((tab) => (
-                  <li key={tab} className="flex-none md:w-auto snap-start">
-                    <button
-                      type="button"
-                      onClick={() => goTab(tab)}
-                      className={`settings-nav-item w-auto md:w-full text-left px-3.5 sm:px-4 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 ease-in-out whitespace-nowrap ${
-                        activeTab === tab
-                          ? "settings-nav-item--active text-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  </li>
-                ))}
+          <div className="flex flex-col gap-5 md:flex-row md:gap-12 lg:gap-14">
+            <nav className="shrink-0 md:w-52" aria-label="Settings sections">
+              <ul className="-mx-1 flex snap-x snap-mandatory flex-row gap-1 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-col md:overflow-visible md:px-0 md:pb-0">
+                {TABS.map(({ id, Icon }) => {
+                  const active = activeTab === id
+                  return (
+                    <li key={id} className="flex-none snap-start md:w-full">
+                      <button
+                        type="button"
+                        onClick={() => goTab(id)}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "group flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm",
+                          "transition-colors duration-200 ease-out",
+                          focusRing,
+                          active
+                            ? "bg-secondary font-medium text-foreground"
+                            : "font-normal text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            "h-[18px] w-[18px] shrink-0 transition-colors duration-200 ease-out",
+                            active ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
+                          )}
+                          strokeWidth={1.65}
+                          aria-hidden
+                        />
+                        {id}
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             </nav>
 
-            <div className="settings-panel flex-1 min-w-0 border border-border rounded-2xl md:rounded-md bg-card/55 md:bg-card/40 p-4 sm:p-5 md:p-8 shadow-[0_1px_0_rgba(0,0,0,0.02)] dark:shadow-none">
+            <div className="min-w-0 flex-1 rounded-xl border border-border/60 bg-card/40 p-4 shadow-sm sm:p-6 md:p-8 dark:shadow-none">
               {activeTab === "General" && (
-                <section aria-labelledby="settings-general-heading">
-                  <h2 id="settings-general-heading" className="font-serif text-lg sm:text-xl font-medium text-foreground mb-3">
-                    General
-                  </h2>
-                  <div className="divide-y divide-border/40">
-                    <div className="pb-4">
-                      <label
-                        htmlFor="display-name"
-                        className="block text-sm font-medium text-foreground mb-1.5"
-                      >
-                        What should we call you?
-                      </label>
-
-                      <div className="flex flex-col sm:flex-row gap-2 sm:items-stretch">
+                <SettingsSection title="General">
+                  <SettingsRow
+                    label="Display name"
+                    description="What we call you around the app."
+                    htmlFor="display-name"
+                  >
+                    <div className="w-full">
+                      <div className="flex flex-col gap-2 sm:flex-row">
                         <input
                           id="display-name"
                           type="text"
@@ -220,7 +361,11 @@ export default function SettingsPage() {
                           maxLength={40}
                           placeholder="Your name"
                           autoComplete="name"
-                          className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/40"
+                          className={cn(
+                            "h-10 w-full rounded-lg border border-border/60 bg-background px-3 text-sm text-foreground shadow-sm",
+                            "transition-colors duration-200 ease-out placeholder:text-muted-foreground/40",
+                            "outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring",
+                          )}
                         />
                         {nameDirty && (
                           <Button
@@ -228,7 +373,7 @@ export default function SettingsPage() {
                             variant="outline"
                             onClick={() => void handleSaveDisplayName()}
                             disabled={nameSaving}
-                            className="h-10 shrink-0 sm:min-w-24 font-normal"
+                            className="h-10 shrink-0 font-normal sm:min-w-[5rem]"
                           >
                             {nameSaving ? "Saving…" : "Save"}
                           </Button>
@@ -242,225 +387,153 @@ export default function SettingsPage() {
                       )}
 
                       {nameSavedNotice && (
-                        <div
+                        <p
                           className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"
                           aria-live="polite"
                         >
-                          <svg
-                            className="w-3.5 h-3.5 text-green-500 shrink-0"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            aria-hidden
-                          >
-                            <path
-                              d="M3 8l3.5 3.5L13 5"
-                              stroke="currentColor"
-                              strokeWidth="1.75"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
+                          <Check className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2} aria-hidden />
                           Saved
-                        </div>
+                        </p>
                       )}
                     </div>
+                  </SettingsRow>
 
-                    <div className="py-4 space-y-5">
-                      <div role="group" aria-labelledby="settings-learning-lang-label">
-                        <p
-                          id="settings-learning-lang-label"
-                          className="text-sm font-medium text-foreground mb-1.5"
-                        >
-                          I&apos;m learning
-                        </p>
-                        <div className="flex flex-wrap gap-1.5 p-0.5 rounded-md border border-border bg-muted/20 w-fit max-w-full">
-                          {LEARNING_ORDER.map((id) => (
-                            <button
-                              key={id}
-                              type="button"
-                              onClick={() => setLearningLanguage(id)}
-                              className={[
-                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200 ease-in-out shrink-0",
-                                languagePrefs.learning === id
-                                  ? "bg-background text-foreground shadow-sm ring-1 ring-border"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-background/60",
-                              ].join(" ")}
-                            >
-                              <span className="text-[1.05rem] leading-none" aria-hidden>
-                                {languageOptionFlagEmoji(id)}
-                              </span>
-                              {LEARNING_LANGUAGE_LABEL[id]}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                  <SettingsRow
+                    label="I'm learning"
+                    description="The language your articles are written in."
+                    htmlFor="settings-learning-lang-label"
+                    labelAs="p"
+                  >
+                    <LanguageSegmentedControl
+                      options={LEARNING_ORDER}
+                      value={languagePrefs.learning}
+                      labels={LEARNING_LANGUAGE_LABEL}
+                      onSelect={setLearningLanguage}
+                      labelledBy="settings-learning-lang-label"
+                    />
+                  </SettingsRow>
 
-                      <div role="group" aria-labelledby="settings-native-lang-label">
-                        <p
-                          id="settings-native-lang-label"
-                          className="text-sm font-medium text-foreground mb-1.5"
-                        >
-                          My native language is
-                        </p>
-                        <div className="flex flex-wrap gap-1.5 p-0.5 rounded-md border border-border bg-muted/20 w-fit max-w-full">
-                          {nativeOptionsForLearning(languagePrefs.learning).map((id) => (
-                            <button
-                              key={id}
-                              type="button"
-                              onClick={() => setNativeLanguage(id)}
-                              className={[
-                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200 ease-in-out shrink-0",
-                                languagePrefs.native === id
-                                  ? "bg-background text-foreground shadow-sm ring-1 ring-border"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-background/60",
-                              ].join(" ")}
-                            >
-                              <span className="text-[1.05rem] leading-none" aria-hidden>
-                                {languageOptionFlagEmoji(id)}
-                              </span>
-                              {NATIVE_LANGUAGE_LABEL[id]}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                  <SettingsRow
+                    label="My native language"
+                    description="Translations and explanations use this language."
+                    htmlFor="settings-native-lang-label"
+                    labelAs="p"
+                  >
+                    <LanguageSegmentedControl
+                      options={nativeOptionsForLearning(languagePrefs.learning)}
+                      value={languagePrefs.native}
+                      labels={NATIVE_LANGUAGE_LABEL}
+                      onSelect={setNativeLanguage}
+                      labelledBy="settings-native-lang-label"
+                    />
+                  </SettingsRow>
 
-                    {IS_LOCAL_DEV && (
-                      <div className="py-4">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                          Translation models
-                        </p>
-                        <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                          Which provider and models chunk your text and power Learn-topic paragraphs. Values come from
-                          this app&apos;s deployment config (not editable here).
-                        </p>
-                        <dl className="space-y-3 text-sm border border-border rounded-md p-4 bg-muted/20">
-                          <div>
-                            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-                              Provider
-                            </dt>
-                            <dd className="font-mono text-foreground break-all">
-                              {llmInfo.provider === "gemini" ? "Gemini" : "Groq"}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-                              Main translation
-                            </dt>
-                            <dd className="font-mono text-foreground break-all">{llmInfo.translateModel}</dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-                              Learn / topic paragraph
-                            </dt>
-                            <dd className="font-mono text-foreground break-all">{llmInfo.learnModel}</dd>
-                          </div>
-                        </dl>
-                      </div>
-                    )}
-                  </div>
-                </section>
+                  {IS_LOCAL_DEV && (
+                    <SettingsRow
+                      label="Translation models"
+                      description="Set by this deployment's config — not editable here."
+                      labelAs="p"
+                    >
+                      <dl className="w-full space-y-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                        <ReadOnlyField
+                          label="Provider"
+                          value={llmInfo.provider === "gemini" ? "Gemini" : "Groq"}
+                          mono
+                        />
+                        <ReadOnlyField label="Main translation" value={llmInfo.translateModel} mono />
+                        <ReadOnlyField label="Learn / topic paragraph" value={llmInfo.learnModel} mono />
+                      </dl>
+                    </SettingsRow>
+                  )}
+                </SettingsSection>
               )}
-              {activeTab === "Account" && (
-                <section aria-labelledby="settings-account-heading">
-                  <h2 id="settings-account-heading" className="font-serif text-lg sm:text-xl font-medium text-foreground mb-5 sm:mb-6">
-                    Account
-                  </h2>
 
+              {activeTab === "Account" && (
+                <SettingsSection title="Account">
                   {user ? (
-                    <div className="space-y-6">
+                    <>
                       {user.is_anonymous === true && (
-                        <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                          <p className="font-medium text-foreground mb-1">Guest session</p>
-                          <p className="leading-relaxed">
-                            Sign in with Google or email to attach a real account and keep your plan if you switch devices.
-                          </p>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="mt-3"
-                            onClick={() => openAuthModal()}
-                          >
-                            Sign in / Sign up
-                          </Button>
+                        <div className="py-5">
+                          <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3.5">
+                            <p className="text-sm font-semibold text-foreground">Guest session</p>
+                            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                              Sign in with Google or email to attach a real account and keep your plan if you
+                              switch devices.
+                            </p>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="mt-3"
+                              onClick={() => openAuthModal()}
+                            >
+                              Sign in / Sign up
+                            </Button>
+                          </div>
                         </div>
                       )}
-                      {/* Email */}
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                          <Mail className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-                            Email
-                          </p>
-                          <p className="text-sm text-foreground font-sans break-all">
-                            {user.email?.trim() ? user.email : "—"}
-                          </p>
-                        </div>
-                      </div>
 
-                      {/* User ID (helpful for support) */}
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-                            Account ID
-                          </p>
-                          <p className="text-xs text-muted-foreground font-mono break-all">
-                            {user.id}
-                          </p>
-                        </div>
-                      </div>
+                      <SettingsRow label="Email" description="Where account notices are sent." labelAs="p">
+                        <p className="w-full break-all text-sm text-foreground sm:pt-1.5 sm:text-right">
+                          {user.email?.trim() ? user.email : "—"}
+                        </p>
+                      </SettingsRow>
 
-                      {/* Sign out */}
-                      <div className="pt-2 border-t border-border">
+                      <SettingsRow
+                        label="Account ID"
+                        description="Share this if you contact support."
+                        labelAs="p"
+                      >
+                        <p className="w-full break-all font-mono text-xs text-muted-foreground sm:pt-2 sm:text-right">
+                          {user.id}
+                        </p>
+                      </SettingsRow>
+
+                      <SettingsRow
+                        label="Sign out"
+                        description="End this session on this device."
+                        labelAs="p"
+                      >
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="gap-2 text-muted-foreground hover:text-foreground"
+                          className="h-10 gap-2 font-normal text-muted-foreground hover:text-foreground"
                           onClick={handleSignOut}
                           disabled={signingOut}
                         >
-                          <LogOut className="h-4 w-4" />
+                          <LogOut className="h-4 w-4" strokeWidth={1.65} aria-hidden />
                           {signingOut ? "Signing out…" : "Sign out"}
                         </Button>
-                      </div>
-                    </div>
+                      </SettingsRow>
+                    </>
                   ) : (
-                    <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        You're not signed in. Sign in to save your reading history and manage your plan.
+                    <div className="py-5">
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        You&apos;re not signed in. Sign in to save your reading history and manage your plan.
                       </p>
-                      <Button onClick={() => openAuthModal()} className="gap-2">
+                      <Button onClick={() => openAuthModal()} className="mt-4">
                         Sign in / Sign up
                       </Button>
                     </div>
                   )}
-                </section>
+                </SettingsSection>
               )}
+
               {/* Signed in: mount billing panel off-tab so data is often ready when user opens Billing (no remount on tab switch). */}
               {user ? (
-                <section
-                  aria-labelledby="settings-billing-heading"
-                  hidden={activeTab !== "Billing"}
-                >
-                  <h2 id="settings-billing-heading" className="font-serif text-xl font-medium text-foreground mb-6">
-                    Billing
-                  </h2>
-                  <SubscriptionStatus />
-                </section>
+                <div hidden={activeTab !== "Billing"}>
+                  <SettingsSection title="Billing">
+                    <div className="py-5">
+                      <SubscriptionStatus />
+                    </div>
+                  </SettingsSection>
+                </div>
               ) : (
                 activeTab === "Billing" && (
-                  <section aria-labelledby="settings-billing-heading">
-                    <h2 id="settings-billing-heading" className="font-serif text-lg sm:text-xl font-medium text-foreground mb-5 sm:mb-6">
-                      Billing
-                    </h2>
-                    <SubscriptionStatus />
-                  </section>
+                  <SettingsSection title="Billing">
+                    <div className="py-5">
+                      <SubscriptionStatus />
+                    </div>
+                  </SettingsSection>
                 )
               )}
             </div>

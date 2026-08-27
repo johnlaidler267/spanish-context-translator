@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
+import { useLandingShellNewChat } from "./landing-shell-layout"
 import { AppErrorModal } from "./app-error-modal"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
@@ -86,6 +87,7 @@ export function ArticleContent({
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
   const [menuOnlyChunkId, setMenuOnlyChunkId] = useState<number | null>(null)
   const chunkDetails = useChunkDetails()
+  const { sidebarInsetPx } = useLandingShellNewChat()
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
   const tooltipFollowRef = useRef<{ x: number; y: number } | null>(null)
   const followTooltipPlaceRef = useRef<((x: number, y: number) => void) | null>(null)
@@ -490,7 +492,7 @@ export function ArticleContent({
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
-          <span className="text-sm font-sans text-muted-foreground tabular-nums max-md:font-serif max-md:text-[1.05rem] max-md:tracking-[0.02em] max-md:text-[#6f6258] dark:max-md:text-[#c9b8a8]">
+          <span className="text-sm font-sans text-muted-foreground tabular-nums max-md:font-serif max-md:text-ui-lg max-md:text-[#6f6258] dark:max-md:text-[#c9b8a8]">
             <span className="max-md:text-[#8f796a] max-md:italic dark:max-md:text-[#b89f8c]">Page</span>{" "}
             {pagination.pageIndex + 1}{" "}
             <span className="max-md:text-[#b59a86] dark:max-md:text-[#8f7968]">of</span>{" "}
@@ -543,6 +545,7 @@ export function ArticleContent({
         loading={chunkDetails.loading}
         error={chunkDetails.error}
         onClose={handleDetailsClose}
+        sidebarInsetPx={sidebarInsetPx}
       />
     </div>
     {showTranslationErrorModal && (

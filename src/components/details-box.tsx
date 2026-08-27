@@ -16,6 +16,7 @@ import { chunkTextForWordDisplay } from "@/lib/chunk-text"
 import { cn } from "@/lib/utils"
 import { fetchMemoryTrickViaEdge } from "@/lib/groq-edge"
 import { type DetailState } from "@/hooks/use-chunk-details"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 /** Deceleration — quick start, soft settle (supplementary UI, not a drawer). */
 const EASE_OUT_DECEL: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -34,6 +35,8 @@ interface DetailsBoxProps {
   error:       string | null
   onClose:     () => void
   className?:  string
+  /** Desktop sidebar rail width (px), so the sheet centers in the remaining content area. */
+  sidebarInsetPx?: number
 }
 
 export function DetailsBox({
@@ -43,11 +46,17 @@ export function DetailsBox({
   error,
   onClose,
   className,
+  sidebarInsetPx = 0,
 }: DetailsBoxProps) {
   const open = Boolean(activeChunk?.trim())
   const headerWord =
     activeChunk != null && activeChunk.trim() ? chunkTextForWordDisplay(activeChunk) : ""
   const reduceMotion = useReducedMotion()
+  const isMdUp = useMediaQuery("(min-width: 768px)")
+  const fixedInset =
+    isMdUp && sidebarInsetPx > 0
+      ? { left: sidebarInsetPx, right: 0, width: "auto" as const }
+      : undefined
 
   const enter =
     reduceMotion
@@ -71,6 +80,7 @@ export function DetailsBox({
             "pointer-events-none",
             className,
           )}
+          style={fixedInset}
           initial={{ y: SLIDE_IN_PX, opacity: 0 }}
           animate={{ y: 0, opacity: 1, transition: enter }}
           exit={{
@@ -147,10 +157,10 @@ function DetailContent({ detail }: { detail: DetailState }) {
     return (
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <span className="text-[0.65rem] uppercase tracking-widest text-muted-foreground font-sans leading-snug">
+          <span className="text-label-2xs uppercase text-muted-foreground font-sans leading-snug">
             verb
           </span>
-          <span className="text-[0.65rem] text-[rgba(201,122,90,0.6)] font-sans leading-snug" aria-hidden>
+          <span className="text-ui-2xs text-[rgba(201,122,90,0.6)] font-sans leading-snug" aria-hidden>
             ·
           </span>
           <span className="text-xs font-serif font-semibold text-[#c97a5a] leading-snug -translate-y-[2px]">
@@ -161,7 +171,7 @@ function DetailContent({ detail }: { detail: DetailState }) {
           <span className="text-foreground/85 leading-snug">{detail.tense}</span>
           {detail.person !== "—" && (
             <>
-              <span className="text-muted-foreground/50 text-[0.65rem]">·</span>
+              <span className="text-muted-foreground/50 text-ui-2xs">·</span>
               <span className="text-muted-foreground text-xs">{detail.person}</span>
             </>
           )}
@@ -242,7 +252,7 @@ function DetailsFooter({ headerWord }: { headerWord: string }) {
           >
             <div
               className={cn(
-                "mb-1.5 font-sans text-[10px] font-medium uppercase tracking-[0.1em] text-[#C0392B]",
+                "mb-1.5 font-sans text-label-2xs font-medium uppercase text-[#C0392B]",
                 "dark:text-[#e07060]",
               )}
             >
@@ -293,7 +303,7 @@ function DetailsFooter({ headerWord }: { headerWord: string }) {
             <GiBrain className="h-[18px] w-[18px]" />
           </span>
           <span className="min-w-0">
-            <span className="block font-sans text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            <span className="block font-sans text-label-2xs font-medium uppercase text-muted-foreground">
               Memory tip
             </span>
             <span className="block font-serif text-sm leading-snug truncate">

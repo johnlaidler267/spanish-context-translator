@@ -922,10 +922,10 @@ export default function UpgradePage() {
 
           {/* Header */}
           <div className="mb-8 text-center">
-            <h1 className="font-display text-[2.7rem] font-medium leading-[0.96] tracking-[-0.035em] text-foreground md:text-[3.35rem]">
+            <h1 className="font-display text-display-2xl font-medium text-foreground">
               Choose your plan
             </h1>
-            <p className="mt-3 text-[0.95rem] text-[#6b615a] font-sans dark:text-muted-foreground">
+            <p className="mt-3 text-ui-base text-[#6b615a] font-sans dark:text-muted-foreground">
               {(() => {
                 const days = getTier("pro").trialDays
                 return days > 0
@@ -1050,7 +1050,7 @@ export default function UpgradePage() {
                         <span
                           className={
                             isFree
-                              ? "px-2 py-0.5 text-[11px] font-medium font-sans rounded-full " +
+                              ? "px-2 py-0.5 text-ui-2xs font-medium font-sans rounded-full " +
                                 "bg-muted/50 text-muted-foreground border border-border/90"
                               : "px-2.5 py-1 text-xs font-bold font-sans rounded-full " +
                                 "bg-[#FDBB2D]/90 text-foreground border-[3px] border-foreground " +
@@ -1084,8 +1084,8 @@ export default function UpgradePage() {
                           className={
                             "min-w-0 font-display leading-none tracking-[-0.03em] " +
                             (isPro
-                              ? "text-[2.7rem] md:text-[3rem] font-medium text-[#cb7d6e] dark:text-foreground"
-                              : "text-[2.7rem] md:text-[3rem] font-medium text-foreground")
+                              ? "text-display-2xl font-medium text-[#cb7d6e] dark:text-foreground"
+                              : "text-display-2xl font-medium text-foreground")
                           }
                         >
                           {isPro ? "Pro" : tier.name}
@@ -1096,7 +1096,7 @@ export default function UpgradePage() {
                       {id === "pro" ? (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-[4rem] leading-none font-black font-sans tracking-[-0.05em] text-[#3a2b24] dark:text-foreground md:text-[4.35rem]">
+                            <span className="text-display-3xl font-black font-sans text-[#3a2b24] dark:text-foreground">
                               {formatPrice(
                                 interval === "annual"
                                   ? tier.pricing.annual.amountCents
@@ -1108,11 +1108,11 @@ export default function UpgradePage() {
                             </span>
                           </CardTitle>
                           {tier.trialDays > 0 && interval === "monthly" ? (
-                            <p className="mt-2 text-base font-medium text-[#cf8778] dark:text-primary md:text-[1.05rem]">
+                            <p className="mt-2 text-base font-medium text-[#cf8778] dark:text-primary md:text-ui-lg">
                               {tier.trialDays}-day free trial included
                             </p>
                           ) : (
-                            <p className="mt-2 text-[0.78rem] text-muted-foreground font-sans md:whitespace-nowrap">
+                            <p className="mt-2 text-ui-sm text-muted-foreground font-sans md:whitespace-nowrap">
                               {formatAnnualMonthlyEquivalent("pro")}/mo · billed annually — two months free
                               {tier.pricing.annual.savingsPercent > 0 && (
                                 <span className="ml-1.5 text-primary font-medium">
@@ -1126,7 +1126,7 @@ export default function UpgradePage() {
                       ) : (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-[4rem] leading-none font-black font-sans tracking-[-0.05em] text-[#3a2b24] dark:text-foreground md:text-[4.35rem]">
+                            <span className="text-display-3xl font-black font-sans text-[#3a2b24] dark:text-foreground">
                               {nonProPrice}
                             </span>
                             <span className="text-lg font-semibold text-[#5a4b42] dark:text-muted-foreground md:text-xl">
@@ -1135,7 +1135,7 @@ export default function UpgradePage() {
                           </CardTitle>
 
                           {interval === "annual" && pricing.amountCents > 0 && (
-                            <p className="mt-2 text-[0.78rem] text-muted-foreground font-sans md:whitespace-nowrap">
+                            <p className="mt-2 text-ui-sm text-muted-foreground font-sans md:whitespace-nowrap">
                               {formatAnnualMonthlyEquivalent(id)}/mo · billed annually
                               {tier.pricing.annual.savingsPercent > 0 && (
                                 <span className="ml-1.5 text-primary font-medium">
@@ -1149,7 +1149,7 @@ export default function UpgradePage() {
                       )}
 
                       {tier.tagline ? (
-                        <CardDescription className="mt-3 text-[1rem] font-sans font-medium leading-snug text-[#5f5450] dark:text-muted-foreground">
+                        <CardDescription className="mt-3 text-ui-lg font-sans font-medium leading-snug text-[#5f5450] dark:text-muted-foreground">
                           {tier.tagline}
                         </CardDescription>
                       ) : null}
@@ -1187,7 +1187,7 @@ export default function UpgradePage() {
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-foreground/90 leading-snug">{row.feature}</p>
-                                  <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground/85 font-normal">
+                                  <p className="mt-0.5 text-ui-2xs leading-snug text-muted-foreground/85 font-normal">
                                     {row.limitHint}
                                   </p>
                                 </div>

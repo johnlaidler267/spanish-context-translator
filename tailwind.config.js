@@ -35,8 +35,30 @@ export default {
         /** Long-form Spanish reading (article + read mode) */
         reading: ["var(--font-reading)", "Georgia", "serif"],
         display: ["var(--font-display)", "Georgia", "serif"],
-        /** Header wordmark — soft serif, pairs with Playfair + Source Sans */
-        fraunces: ["Fraunces", "var(--font-display)", "Georgia", "serif"],
+      },
+      /**
+       * Type scale — values live in :root in src/index.css so CSS and JSX
+       * can never drift. Each token pairs a size with its tracking; use
+       * these instead of arbitrary `text-[1.05rem] tracking-[-0.015em]`.
+       */
+      fontSize: {
+        "display-3xl": ["var(--text-display-3xl)", { lineHeight: "0.94", letterSpacing: "var(--track-display-3xl)" }],
+        "display-2xl": ["var(--text-display-2xl)", { lineHeight: "0.96", letterSpacing: "var(--track-display-2xl)" }],
+        "display-xl": ["var(--text-display-xl)", { lineHeight: "1", letterSpacing: "var(--track-display-xl)" }],
+        "display-lg": ["var(--text-display-lg)", { lineHeight: "1.1", letterSpacing: "var(--track-display-lg)" }],
+        "display-md": ["var(--text-display-md)", { lineHeight: "1.2", letterSpacing: "var(--track-display-md)" }],
+        "display-sm": ["var(--text-display-sm)", { lineHeight: "1.25", letterSpacing: "var(--track-display-sm)" }],
+        "display-xs": ["var(--text-display-xs)", { lineHeight: "1.35", letterSpacing: "var(--track-display-xs)" }],
+        "ui-lg": ["var(--text-ui-lg)", { lineHeight: "1.5", letterSpacing: "var(--track-ui-lg)" }],
+        "ui-base": ["var(--text-ui-base)", { lineHeight: "1.55", letterSpacing: "var(--track-ui-base)" }],
+        "ui-sm": ["var(--text-ui-sm)", { lineHeight: "1.5", letterSpacing: "var(--track-ui-sm)" }],
+        "ui-xs": ["var(--text-ui-xs)", { lineHeight: "1.45", letterSpacing: "var(--track-ui-xs)" }],
+        "ui-2xs": ["var(--text-ui-2xs)", { lineHeight: "1.4", letterSpacing: "var(--track-ui-2xs)" }],
+        "label-sm": ["var(--text-label-sm)", { lineHeight: "1", letterSpacing: "var(--track-label-sm)" }],
+        "label-xs": ["var(--text-label-xs)", { lineHeight: "1", letterSpacing: "var(--track-label-xs)" }],
+        "label-2xs": ["var(--text-label-2xs)", { lineHeight: "1", letterSpacing: "var(--track-label-2xs)" }],
+        "meta-sm": ["var(--text-meta-sm)", { lineHeight: "1.2", letterSpacing: "var(--track-meta-sm)" }],
+        "meta-xs": ["var(--text-meta-xs)", { lineHeight: "1.2", letterSpacing: "var(--track-meta-xs)" }],
       },
       keyframes: {
         "accordion-down": {

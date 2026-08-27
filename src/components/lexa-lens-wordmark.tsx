@@ -14,7 +14,7 @@ export function LexaLensWordmark({ className, compact }: LexaLensWordmarkProps) 
   return (
     <span
       className={cn(
-        "font-fraunces text-[1.2rem] font-bold leading-none tracking-[-0.03em] antialiased max-md:text-[1.15rem] md:text-[1.35rem] [font-feature-settings:'kern'_1,'liga'_1] inline-flex items-center gap-px min-w-0",
+        "font-display text-[1.2rem] font-bold leading-none tracking-[-0.03em] antialiased max-md:text-[1.15rem] md:text-[1.35rem] [font-feature-settings:'kern'_1,'liga'_1] inline-flex items-center gap-px min-w-0",
         className,
       )}
     >

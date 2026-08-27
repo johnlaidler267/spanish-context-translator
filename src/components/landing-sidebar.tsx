@@ -54,6 +54,8 @@ type LandingSidebarProps = {
   onNewChat: () => void
   disabled?: boolean
   displayName: string
+  readingActive?: boolean
+  onExitReading?: () => void
 }
 
 export function LandingSidebar({
@@ -63,13 +65,16 @@ export function LandingSidebar({
   onNewChat,
   disabled,
   displayName,
+  readingActive = false,
+  onExitReading,
 }: LandingSidebarProps) {
   const location = useLocation()
   const isMdUp = useMediaQuery("(min-width: 768px)")
   const [desktopExpanded, setDesktopExpanded] = useState(true)
 
   const pathname = location.pathname
-  const homeActive = pathname === "/"
+  /** Reading renders on "/" without a route change, so path alone would mislabel Home as current. */
+  const homeActive = pathname === "/" && !readingActive
   /** Home composer puts submit bottom-right; same corner as this FAB — hide FAB there only. */
   const discoverActive = pathname === "/discover"
   const showMobileNewChatFab = !isMdUp && pathname !== "/" && !discoverActive
@@ -176,6 +181,13 @@ export function LandingSidebar({
     if (!isMdUp) onMobileOpenChange(false)
   }
 
+  /** Link to "/" is a no-op mid-read; tear down the session so Home actually goes home. */
+  const handleGoHome = () => {
+    if (!readingActive) return
+    onExitReading?.()
+    if (!isMdUp) onMobileOpenChange(false)
+  }
+
   const sidebarInner = (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-r border-border/60 bg-background font-display tracking-[-0.015em] [font-feature-settings:'kern'_1,'liga'_1,'onum'_1] [text-rendering:optimizeLegibility] antialiased">
       <div
@@ -192,6 +204,7 @@ export function LandingSidebar({
             compactRail && "flex flex-1 items-center justify-center",
           )}
           aria-label="Lexa Lens — home"
+          onClick={handleGoHome}
         >
           <LexaLensWordmark
             className={cn(!compactRail && "text-[1.05rem] md:text-[1.2rem]", compactRail && "text-[1.15rem]")}
@@ -228,7 +241,7 @@ export function LandingSidebar({
         aria-label="Main"
       >
         {!compactRail ? (
-          <p className="px-3 pb-2 pt-1 font-sans text-[0.66rem] font-bold uppercase tracking-[0.17em] text-muted-foreground/70">
+          <p className="px-3 pb-2 pt-1 font-sans text-label-xs font-bold uppercase text-muted-foreground/70">
             Browse
           </p>
         ) : null}
@@ -254,6 +267,7 @@ export function LandingSidebar({
                   navItemRefs.current[index] = el
                 }}
                 to={to}
+                onClick={to === "/" ? handleGoHome : undefined}
                 aria-current={active ? "page" : undefined}
                 title={compactRail ? label : undefined}
                 className={navItemClass(active)}

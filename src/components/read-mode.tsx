@@ -20,6 +20,7 @@ import {
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { DetailsBox } from "./details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
+import { useLandingShellNewChat } from "./landing-shell-layout"
 import { AppErrorModal } from "./app-error-modal"
 import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
@@ -105,6 +106,7 @@ export function ReadMode({
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
   const [menuOnlyChunkId, setMenuOnlyChunkId] = useState<number | null>(null)
   const chunkDetails = useChunkDetails()
+  const { sidebarInsetPx } = useLandingShellNewChat()
   /** Desktop hover: viewport position for tooltip arrow (read mode delegates pointer to parent) */
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
   /** Touch drag: updated without React state so the sentence doesn’t re-render every frame */
@@ -632,6 +634,7 @@ export function ReadMode({
         loading={chunkDetails.loading}
         error={chunkDetails.error}
         onClose={handleDetailsClose}
+        sidebarInsetPx={sidebarInsetPx}
       />
     </div>
   )

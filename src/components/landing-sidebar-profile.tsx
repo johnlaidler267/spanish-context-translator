@@ -78,7 +78,7 @@ export function LandingSidebarProfile({
       return (
         <button
           type="button"
-          className="block max-w-full appearance-none truncate border-0 bg-transparent p-0 text-left text-[11px] leading-tight text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
+          className="block max-w-full appearance-none truncate border-0 bg-transparent p-0 text-left text-ui-2xs leading-tight text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
           onClick={goToUpgrade}
         >
           Free · Guest · Upgrade
@@ -90,7 +90,7 @@ export function LandingSidebarProfile({
       return (
         <button
           type="button"
-          className="block max-w-full appearance-none truncate border-0 bg-transparent p-0 text-left text-[11px] leading-snug text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
+          className="block max-w-full appearance-none truncate border-0 bg-transparent p-0 text-left text-ui-2xs leading-snug text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
           onClick={goToUpgrade}
         >
           {formatPlanSubtitle(pill)}
@@ -100,7 +100,7 @@ export function LandingSidebarProfile({
     return (
       <Link
         to={pill.to}
-        className="block max-w-full truncate text-[11px] leading-snug text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
+        className="block max-w-full truncate text-ui-2xs leading-snug text-muted-foreground transition-colors duration-200 ease-out hover:text-foreground"
         onClick={onNavigate}
       >
         {formatPlanSubtitle(pill)}
@@ -113,7 +113,7 @@ export function LandingSidebarProfile({
 
   /** Terracotta fill keeps the initial legible against the footer surface in every theme. */
   const avatarClass =
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-[13px] font-semibold no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring transition-opacity duration-200 ease-out hover:opacity-90"
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-ui-sm font-semibold no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring transition-opacity duration-200 ease-out hover:opacity-90"
 
   if (compactRail) {
     return (

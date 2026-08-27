@@ -338,12 +338,50 @@ html.lector-reading-session .global-corner-letter {
 @layer base {
   :root {
     /* Editorial / literary — quiet bookstore, not startup */
-    --font-sans: "Source Sans 3", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-    /* Headlines / UI serif — Playfair */
-    --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
-    --font-display: "Playfair Display", Georgia, serif;
+    --font-sans: "Libre Franklin", -apple-system, BlinkMacSystemFont, sans-serif;
+    /* Headlines / UI serif — Fraunces (variable opsz keeps it readable at small sizes) */
+    --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+    --font-display: "Fraunces", Georgia, serif;
     /* Article + read mode body — EB Garamond (free OFL); Adobe Garamond is licensed separately */
     --font-reading: "EB Garamond", Georgia, "Times New Roman", serif;
+
+    /* ── Type scale ───────────────────────────────────────────────────
+       Single source of truth; tailwind.config.js reads these same vars,
+       so `text-display-lg` in JSX and var(--text-display-lg) in CSS
+       always agree. Tracking is PAIRED to size, never set ad-hoc:
+         display — negative, tightening as it grows (optical correction)
+         ui      — near-zero, Libre Franklin needs no help
+         label   — positive, opening up as it shrinks (uppercase micro)
+       Intentionally OFF-scale: the wordmark lockup, the drop cap, the tilde
+       watermark, the Courier counters/folio, and the article reading body —
+       each is tuned to its own job, not part of the UI ladder.             */
+
+    /* Display — Fraunces headings. Top two steps use clamp() so they grow with
+       the viewport instead of needing a md: override at every call site. */
+    --text-display-3xl: clamp(4rem, 7vw, 4.35rem);     --track-display-3xl: -0.05em;
+    --text-display-2xl: clamp(2.7rem, 5.5vw, 3.35rem); --track-display-2xl: -0.035em;
+    --text-display-xl:  clamp(2.1rem, 5vw, 2.9rem);    --track-display-xl:  -0.028em;
+    --text-display-lg:  2rem;                          --track-display-lg:  -0.022em;
+    --text-display-md:  1.625rem;                      --track-display-md:  -0.018em;
+    --text-display-sm:  1.3125rem;                     --track-display-sm:  -0.012em;
+    --text-display-xs:  1.125rem;                      --track-display-xs:  -0.008em;
+
+    /* UI — Libre Franklin body & controls */
+    --text-ui-lg:   1.0625rem;  --track-ui-lg:   -0.005em;
+    --text-ui-base: 0.9375rem;  --track-ui-base: 0em;
+    --text-ui-sm:   0.8125rem;  --track-ui-sm:   0.005em;
+    --text-ui-xs:   0.75rem;    --track-ui-xs:   0.01em;
+    --text-ui-2xs:  0.6875rem;  --track-ui-2xs:  0.015em;
+
+    /* Label — uppercase section labels, wide tracking (FEATURED FOR YOU, BROWSE) */
+    --text-label-sm:  0.75rem;    --track-label-sm:  0.14em;
+    --text-label-xs:  0.6875rem;  --track-label-xs:  0.16em;
+    --text-label-2xs: 0.625rem;   --track-label-2xs: 0.18em;
+
+    /* Meta — uppercase data/stats, moderate tracking (485 WORDS · 3 MIN) */
+    --text-meta-sm: 0.75rem;    --track-meta-sm: 0.06em;
+    --text-meta-xs: 0.6875rem;  --track-meta-xs: 0.07em;
+
     /* Museum light: warm ivory, clear terracotta, deep brown text */
     --background: #f7f3ee;
     --foreground: #3a332e;
@@ -464,10 +502,10 @@ html.lector-reading-session .global-corner-letter {
 .entry-3 { animation: fade-in-up 0.2s 0.08s ease-out both; }
 .entry-4 { animation: fade-in-up 0.2s 0.12s ease-out both; }
 
-/* Editorial typography — headings tracking, body opacity & line-height */
-h1, h2, h3 {
-  letter-spacing: 0.03em;
-}
+/* Editorial typography — body opacity & line-height.
+   Heading tracking is NOT set globally: it comes paired with size from the
+   type scale (text-display-*). The old blanket `letter-spacing: 0.03em` here
+   was backwards — large display serif wants negative tracking, not positive. */
 
 article p,
 article span {
@@ -528,14 +566,17 @@ article span {
   opacity: 0.75;
 }
 .dark .textarea-wrapper {
-  background-color: #141414;
+  background-color: #232321;
   border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 6px 16px -8px rgba(0, 0, 0, 0.5);
 }
 .dark .textarea-wrapper:focus-within {
   border-color: rgba(200, 195, 185, 0.35);
   box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.45),
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 6px 16px -8px rgba(0, 0, 0, 0.5),
     0 0 0 2px rgba(200, 195, 185, 0.12);
 }
 .dark .textarea-field {
@@ -593,18 +634,35 @@ article span {
 }
 
 /* ── outside the box: light cream on dark bg ── */
-.dark .sample-excerpt-label    { color: rgba(234,224,213,0.5); }
+.dark .sample-excerpt-label    { color: rgba(234,224,213,0.72); }
 .dark .sample-paragraph        { color: rgba(234,224,213,0.85); }
 .dark .sample-link             { color: rgba(234,224,213,0.75); }
 /* Don’t invert — invert turns terracotta SVG into muddy blue; keep warm ink */
 .dark .filigree-divider {
-  opacity: 0.62;
+  opacity: 0.78;
   filter: brightness(1.2) saturate(0.92);
 }
 
 /* Landing page background image — faded behind content */
 .landing-page {
   position: relative;
+}
+
+/* Clear the motifs out from behind the reading column so the art reads as
+   edge texture rather than blotches under the composer. */
+.landing-bg-art {
+  -webkit-mask-image: radial-gradient(
+    ellipse 60% 56% at 50% 46%,
+    transparent 30%,
+    rgba(0, 0, 0, 0.55) 68%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 60% 56% at 50% 46%,
+    transparent 30%,
+    rgba(0, 0, 0, 0.55) 68%,
+    #000 100%
+  );
 }
 .landing-bg {
   position: absolute;
@@ -717,16 +775,19 @@ article span {
   position: relative;
   display: flex;
   flex-direction: column;
-  background-color: #ffffff;
+  background-color: #fdfbf7;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.088); /* was shy — +10% */
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 1px 2px rgba(58, 51, 46, 0.04),
+    0 6px 16px -8px rgba(58, 51, 46, 0.1);
   transition: all var(--transition-restraint);
 }
 .textarea-wrapper:focus-within {
   border-color: #c97a5a;
   box-shadow:
-    inset 0 1px 3px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(58, 51, 46, 0.04),
+    0 6px 16px -8px rgba(58, 51, 46, 0.1),
     0 0 0 2px rgba(201, 122, 90, 0.15);
 }
 
@@ -746,11 +807,11 @@ article span {
   flex-shrink: 0;
   padding: 12px 14px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
-  background-color: #ffffff;
+  background-color: #fdfbf7;
 }
 .dark .textarea-toolbar {
   border-top-color: rgba(255, 255, 255, 0.08);
-  background-color: #141414;
+  background-color: #232321;
 }
 .textarea-toolbar-right {
   display: flex;
@@ -891,7 +952,8 @@ article span {
 .char-limit-tip-text {
   margin: 0 0 10px;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-ui-sm);
+  letter-spacing: var(--track-ui-sm);
   line-height: 1.45;
   color: #3a332e;
 }
@@ -900,7 +962,8 @@ article span {
 }
 .char-limit-tip-link {
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-ui-sm);
+  letter-spacing: var(--track-ui-sm);
   font-weight: 500;
   color: #c97a5a;
   text-decoration: none;
@@ -1072,7 +1135,8 @@ article span {
 }
 
 .voice-input-feedback {
-  font-size: 0.7rem;
+  font-size: var(--text-ui-xs);
+  letter-spacing: var(--track-ui-xs);
   line-height: 1.25;
   text-align: right;
   color: rgba(58, 51, 46, 0.48);
@@ -1109,7 +1173,8 @@ article span {
   /* Toolbar is below — even padding (no overlaid controls) */
   padding: 22px 22px 22px;
   font-family: var(--font-serif);
-  font-size: 1.05rem;
+  font-size: var(--text-ui-lg);
+  letter-spacing: var(--track-ui-lg);
   line-height: 1.75;
   color: #3a332e;
   resize: none;
@@ -1130,7 +1195,8 @@ article span {
   padding: 22px 22px 22px;
   pointer-events: none;
   font-family: var(--font-serif);
-  font-size: 1.05rem;
+  font-size: var(--text-ui-lg);
+  letter-spacing: var(--track-ui-lg);
   line-height: 1.75;
   color: rgba(58, 51, 46, 0.38);
   transition: opacity 0.4s ease;
@@ -1139,7 +1205,7 @@ article span {
 }
 @media (min-width: 768px) {
   .textarea-field {
-    height: 17rem;
+    height: 10.5rem;
   }
 }
 
@@ -1156,7 +1222,8 @@ article span {
   }
   .textarea-wrapper .animated-placeholder {
     padding: 18px 16px 16px;
-    font-size: 0.95rem;
+    font-size: var(--text-ui-base);
+    letter-spacing: var(--track-ui-base);
     line-height: 1.65;
   }
 
@@ -1278,16 +1345,19 @@ article span {
 }
 .plan-badge-plan {
   font-family: var(--font-sans);
-  font-size: 0.78rem;
+  font-size: var(--text-ui-sm);
+  letter-spacing: var(--track-ui-sm);
   color: rgba(58, 51, 46, 0.6);
 }
 .plan-badge-dot {
-  font-size: 0.78rem;
+  font-size: var(--text-ui-sm);
+  letter-spacing: var(--track-ui-sm);
   color: rgba(58, 51, 46, 0.35);
 }
 .plan-badge-upgrade {
   font-family: var(--font-sans);
-  font-size: 0.78rem;
+  font-size: var(--text-ui-sm);
+  letter-spacing: var(--track-ui-sm);
   color: rgba(58, 51, 46, 0.75);
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -1312,7 +1382,8 @@ article span {
 .plan-badge--header .plan-badge-plan,
 .plan-badge--header .plan-badge-dot,
 .plan-badge--header .plan-badge-upgrade {
-  font-size: 0.68rem;
+  font-size: var(--text-ui-xs);
+  letter-spacing: var(--track-ui-xs);
 }
 @media (min-width: 768px) {
   .plan-badge--header {
@@ -1322,7 +1393,8 @@ article span {
   .plan-badge--header .plan-badge-plan,
   .plan-badge--header .plan-badge-dot,
   .plan-badge--header .plan-badge-upgrade {
-    font-size: 0.78rem;
+    font-size: var(--text-ui-sm);
+    letter-spacing: var(--track-ui-sm);
   }
 }
 
@@ -1350,7 +1422,8 @@ article span {
   .plan-badge--mobile-chip .plan-badge-plan,
   .plan-badge--mobile-chip .plan-badge-dot,
   .plan-badge--mobile-chip .plan-badge-upgrade {
-    font-size: 0.82rem;
+    font-size: var(--text-ui-sm);
+    letter-spacing: var(--track-ui-sm);
   }
   .plan-badge--mobile-chip .plan-badge-upgrade:hover {
     color: #a35d42;
@@ -1371,13 +1444,6 @@ article span {
 .dark .plan-badge-dot          { color: rgba(234,224,213,0.3); }
 .dark .plan-badge-upgrade      { color: rgba(234,224,213,0.7); text-decoration-color: rgba(234,224,213,0.35); }
 .dark .plan-badge-upgrade:hover { color: #c97a5a; text-decoration-color: #c97a5a; }
-
-/* Settings — vertical nav (subtle rounded, not pill) */
-.settings-nav-item--active {
-  background: rgba(58, 51, 46, 0.06);
-  border: 1px solid rgba(90, 118, 150, 0.55);
-  box-shadow: none;
-}
 
 @keyframes discover-loading-sheen {
   0% {
@@ -1430,9 +1496,9 @@ article span {
 .discover-masthead__eyebrow {
   font-family: var(--font-reading);
   font-style: italic;
-  font-size: 1.05rem;
+  font-size: var(--text-ui-lg);
   line-height: 1;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--track-ui-lg);
   color: var(--primary);
   opacity: 0.9;
 }
@@ -1440,10 +1506,10 @@ article span {
 .discover-masthead__title {
   margin-top: 0.3rem;
   font-family: var(--font-serif);
-  font-size: clamp(2.1rem, 5vw, 2.9rem);
-  font-weight: 700;
+  font-size: var(--text-display-xl);
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: -0.035em;
+  letter-spacing: var(--track-display-xl);
   color: #2f2823;
 }
 
@@ -1451,7 +1517,8 @@ article span {
   margin-top: 0.7rem;
   max-width: 44ch;
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: var(--text-ui-lg);
+  letter-spacing: var(--track-ui-lg);
   line-height: 1.55;
   color: #7a6b5e;
 }
@@ -1482,9 +1549,9 @@ article span {
   align-items: center;
   gap: 0.55rem;
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  font-size: var(--text-label-sm);
   font-weight: 700;
-  letter-spacing: 0.17em;
+  letter-spacing: var(--track-label-sm);
   text-transform: uppercase;
   white-space: nowrap;
   color: #7a6b5e;
@@ -1494,9 +1561,9 @@ article span {
   border-radius: 999px;
   background: rgba(93, 72, 56, 0.09);
   padding: 0.1rem 0.42rem;
-  font-size: 0.68rem;
+  font-size: var(--text-meta-xs);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--track-meta-xs);
   font-variant-numeric: tabular-nums;
   color: #8a7a6d;
 }
@@ -1633,9 +1700,9 @@ article span {
   background: rgba(253, 250, 245, 0.85);
   padding: 0.2rem 0.58rem;
   font-family: var(--font-sans);
-  font-size: 0.62rem;
+  font-size: var(--text-label-2xs);
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--track-label-2xs);
   text-transform: uppercase;
   color: #6b5b50;
   backdrop-filter: blur(8px);
@@ -1690,7 +1757,8 @@ article span {
 .discover-card__author {
   overflow: hidden;
   font-family: var(--font-reading);
-  font-size: 0.82rem;
+  font-size: var(--text-ui-sm);
+  letter-spacing: var(--track-ui-sm);
   font-style: italic;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -1703,16 +1771,17 @@ article span {
   overflow: hidden;
   margin-top: 0.15rem;
   font-family: var(--font-reading);
-  font-size: 1.1rem;
+  font-size: var(--text-display-xs);
   line-height: 1.18;
-  letter-spacing: -0.018em;
+  letter-spacing: var(--track-display-xs);
   color: #2d2621;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
 .discover-card--featured .discover-card__title {
-  font-size: 1.28rem;
+  font-size: var(--text-display-sm);
+  letter-spacing: var(--track-display-sm);
 }
 
 .discover-card__meta {
@@ -1725,9 +1794,9 @@ article span {
   padding-top: 0.6rem;
   border-top: 1px solid rgba(58, 51, 46, 0.09);
   font-family: var(--font-sans);
-  font-size: 0.67rem;
+  font-size: var(--text-meta-xs);
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: var(--track-meta-xs);
   text-transform: uppercase;
 }
 
@@ -1846,9 +1915,9 @@ article span {
   display: -webkit-box;
   overflow: hidden;
   font-family: var(--font-reading);
-  font-size: 1.15rem;
+  font-size: var(--text-display-xs);
   line-height: 1.15;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--track-display-xs);
   color: var(--cover-ink);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -1858,7 +1927,8 @@ article span {
   margin-top: 0.35rem;
   overflow: hidden;
   font-family: var(--font-reading);
-  font-size: 0.78rem;
+  font-size: var(--text-ui-sm);
+  letter-spacing: var(--track-ui-sm);
   font-style: italic;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1934,7 +2004,8 @@ article span {
   background: rgba(255, 253, 249, 0.72);
   padding-left: 2.25rem;
   padding-right: 2rem;
-  font-size: 0.9rem;
+  font-size: var(--text-ui-base);
+  letter-spacing: var(--track-ui-base);
   color: var(--foreground);
   box-shadow: none;
 }
@@ -1992,7 +2063,8 @@ article span {
   gap: 0.4rem;
   padding: 0 0.6rem;
   font-family: var(--font-sans);
-  font-size: 0.83rem;
+  font-size: var(--text-ui-sm);
+  letter-spacing: var(--track-ui-sm);
   font-weight: 500;
   color: #6f6156;
   transition: background-color 0.15s ease, color 0.15s ease;
@@ -2020,7 +2092,8 @@ article span {
   border: 1px solid rgba(58, 51, 46, 0.18);
   background: rgba(255, 253, 249, 0.72);
   padding: 0 0.75rem;
-  font-size: 0.83rem;
+  font-size: var(--text-ui-sm);
+  letter-spacing: var(--track-ui-sm);
   font-weight: 500;
   color: #6f6156;
 }
@@ -2039,7 +2112,8 @@ article span {
   border-radius: 999px;
   background: var(--primary);
   padding: 0 0.34rem;
-  font-size: 0.7rem;
+  font-size: var(--text-ui-xs);
+  letter-spacing: var(--track-ui-xs);
   font-weight: 600;
   color: #fff;
 }
@@ -2090,9 +2164,9 @@ article span {
 .discover-empty__title {
   margin-top: 0.85rem;
   font-family: var(--font-reading);
-  font-size: 1.3rem;
+  font-size: var(--text-display-sm);
   font-style: italic;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--track-display-sm);
   color: #2d2621;
 }
 
@@ -2100,7 +2174,8 @@ article span {
   margin-top: 0.35rem;
   max-width: 32ch;
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  font-size: var(--text-ui-base);
+  letter-spacing: var(--track-ui-base);
   line-height: 1.55;
   color: #8a7a6d;
 }
@@ -2135,11 +2210,6 @@ article span {
 
 .dark .discover-loading-shimmer::after {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
-}
-
-.dark .settings-nav-item--active {
-  background: rgba(234, 224, 213, 0.06);
-  border-color: rgba(130, 160, 195, 0.45);
 }
 
 /* Dice roll button */
@@ -2214,11 +2284,11 @@ article span {
 /* Filigree — whisper, not performance (~20% lighter + slightly smaller motif) */
 .filigree-divider {
   display: block;
-  width: 200px;
+  width: 240px;
   max-width: 90%;
   height: auto;
   margin: 0 auto;
-  opacity: 0.58; /* ornament −15% */
+  opacity: 0.75;
 }
 
 /* Folio number — bottom-right of text input, pencil grey metadata */
@@ -2230,19 +2300,13 @@ article span {
   text-transform: uppercase;
 }
 
-/* Metadata label — Sample Text, etc. pencil grey */
-.metadata-label {
-  color: #8f877c; /* +10% vs prior rail */
-  letter-spacing: 0.08em;
-}
-
 /* Subtitle — small sans rail, airy tracking, recedes */
 .subtitle {
   color: rgba(58, 51, 46, 0.78);
   font-family: var(--font-sans);
-  font-size: 0.6875rem;
+  font-size: var(--text-label-xs);
   font-weight: 500;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--track-label-xs);
   text-transform: uppercase;
   opacity: 0.88;
 }
@@ -2267,12 +2331,11 @@ article span {
 /* Sample section — excerpt rail (editorial, not “demo”) */
 .sample-excerpt-label {
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--text-label-2xs);
   font-weight: 500;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--track-label-2xs);
   text-transform: uppercase;
-  color: #8f877c; /* +10% vs prior */
-  opacity: 0.55; /* rail was faint — +10% */
+  color: #7a7268;
   margin: 0 0 12px;
 }
 
@@ -2302,9 +2365,9 @@ article span {
 .sample-link {
   position: relative;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-ui-sm);
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--track-ui-sm);
   color: rgba(58, 51, 46, 0.72); /* default link +10% */
   text-decoration: none;
   transition: all var(--transition-restraint);
@@ -2520,9 +2583,9 @@ article span {
 .discover-modal__kicker {
   /* Clears the absolutely-positioned close button so long titles never run under it. */
   padding-right: 2rem;
-  font-size: 0.65rem;
+  font-size: var(--text-label-xs);
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--track-label-xs);
   text-transform: uppercase;
   color: var(--primary);
 }
@@ -2531,17 +2594,18 @@ article span {
   margin-top: 0.4rem;
   padding-right: 2rem;
   font-family: var(--font-serif);
-  font-size: 1.6rem;
+  font-size: var(--text-display-md);
   font-weight: 700;
   line-height: 1.1;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--track-display-md);
   color: #2f2823;
 }
 
 .discover-modal__author {
   margin-top: 0.3rem;
   font-family: var(--font-reading);
-  font-size: 0.95rem;
+  font-size: var(--text-ui-base);
+  letter-spacing: var(--track-ui-base);
   font-style: italic;
   color: #8a7a6d;
 }
@@ -2552,9 +2616,9 @@ article span {
   align-items: center;
   gap: 0.45rem 0.85rem;
   margin-top: 0.9rem;
-  font-size: 0.68rem;
+  font-size: var(--text-meta-xs);
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: var(--track-meta-xs);
   text-transform: uppercase;
   color: #8a7a6d;
 }
@@ -2570,7 +2634,8 @@ article span {
   border: 1px solid rgba(58, 51, 46, 0.14);
   border-radius: 999px;
   padding: 0.18rem 0.6rem;
-  font-size: 0.72rem;
+  font-size: var(--text-ui-xs);
+  letter-spacing: var(--track-ui-xs);
   font-weight: 500;
   color: #6f6156;
 }
@@ -2591,7 +2656,8 @@ article span {
 
 .discover-modal__excerpt p {
   font-family: var(--font-reading);
-  font-size: 1.02rem;
+  font-size: var(--text-ui-lg);
+  letter-spacing: var(--track-ui-lg);
   line-height: 1.7;
   white-space: pre-line;
   color: #3a332e;
@@ -2608,7 +2674,8 @@ article span {
   border-radius: 0.6rem;
   background: rgba(163, 122, 46, 0.1);
   padding: 0.7rem 0.9rem;
-  font-size: 0.88rem;
+  font-size: var(--text-ui-base);
+  letter-spacing: var(--track-ui-base);
   color: #7a5a1e;
 }
 
@@ -2627,7 +2694,8 @@ article span {
   flex: 1;
   gap: 0.5rem;
   border-radius: 0.55rem;
-  font-size: 0.95rem;
+  font-size: var(--text-ui-base);
+  letter-spacing: var(--track-ui-base);
   font-weight: 600;
 }
 
@@ -2644,7 +2712,8 @@ article span {
     flex-basis: 5.5rem;
   }
   .discover-modal__title {
-    font-size: 1.3rem;
+    font-size: var(--text-display-sm);
+    letter-spacing: var(--track-display-sm);
   }
   .discover-modal__scroll {
     padding: 1.4rem 1.15rem 0;
