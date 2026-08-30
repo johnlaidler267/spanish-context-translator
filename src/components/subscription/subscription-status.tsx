@@ -367,9 +367,11 @@ function useSubscriptionData(tracker?: UsageTracker) {
       // Subscription row
       const { data: subRow } = await supabase
         .from("user_subscriptions")
+        // Single literal, not concatenated: postgrest-js needs a literal (not
+        // widened `string`) select clause to infer a typed row instead of
+        // falling back to `GenericStringError`.
         .select(
-          "plan_id, status, current_period_end, cancel_at_period_end, " +
-          "stripe_subscription_id, billing_interval, trial_end, past_due_since",
+          "plan_id, status, current_period_end, cancel_at_period_end, stripe_subscription_id, billing_interval, trial_end, past_due_since",
         )
         .eq("user_id", user.id)
         .is("archived_at", null)

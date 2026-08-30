@@ -46,8 +46,19 @@ export type DiscoverDifficulty = "beginner" | "intermediate" | "advanced"
 
 // ─── Row types ────────────────────────────────────────────────────────────────
 
-/** Full database row from `public.user_subscriptions`. */
-export interface UserSubscriptionRow {
+/**
+ * Full database row from `public.user_subscriptions`.
+ *
+ * NB: `type`, not `interface` — postgrest-js's GenericTable/GenericView
+ * constraints require each Row/Insert/Update to structurally satisfy
+ * `Record<string, unknown>`, which a plain `interface` does not do in a
+ * conditional-type `extends` check (TS quirk: interfaces don't get an
+ * implicit index signature there, even identically-shaped `type` aliases
+ * do). Using `interface` here silently collapsed every query's inferred
+ * row type to `never`. This is also why `supabase gen types typescript`
+ * always emits `type`, never `interface`.
+ */
+export type UserSubscriptionRow = {
   id: string
   user_id: string
   plan_id: TierId
@@ -62,13 +73,15 @@ export interface UserSubscriptionRow {
   cancel_at_period_end: boolean
   canceled_at: string | null
   cancellation_reason: string | null
+  /** Set when status becomes past_due; grace-period start (added in 0007_error_handling). */
+  past_due_since: string | null
   archived_at: string | null
   created_at: string
   updated_at: string
 }
 
-/** Full database row from `public.usage_records`. */
-export interface UsageRecordRow {
+/** Full database row from `public.usage_records`. See UserSubscriptionRow for why `type`, not `interface`. */
+export type UsageRecordRow = {
   id: string
   user_id: string
   subscription_id: string
@@ -84,8 +97,8 @@ export interface UsageRecordRow {
   updated_at: string
 }
 
-/** Full database row from `public.billing_invoices`. */
-export interface BillingInvoiceRow {
+/** Full database row from `public.billing_invoices`. See UserSubscriptionRow for why `type`, not `interface`. */
+export type BillingInvoiceRow = {
   id: string
   user_id: string
   subscription_id: string | null
@@ -112,8 +125,8 @@ export interface BillingInvoiceRow {
   updated_at: string
 }
 
-/** Full database row from `public.discover_items`. */
-export interface DiscoverItemRow {
+/** Full database row from `public.discover_items`. See UserSubscriptionRow for why `type`, not `interface`. */
+export type DiscoverItemRow = {
   id: string
   title: string
   author: string
@@ -168,28 +181,36 @@ export interface Database {
         Row:    UserSubscriptionRow
         Insert: UserSubscriptionInsert
         Update: UserSubscriptionUpdate
+        Relationships: []
       }
       usage_records: {
         Row:    UsageRecordRow
         Insert: UsageRecordInsert
         Update: UsageRecordUpdate
+        Relationships: []
       }
       billing_invoices: {
         Row:    BillingInvoiceRow
         Insert: BillingInvoiceInsert
         Update: BillingInvoiceUpdate
+        Relationships: []
       }
       discover_items: {
         Row:    DiscoverItemRow
         Insert: DiscoverItemInsert
         Update: DiscoverItemUpdate
+        Relationships: []
       }
     }
     Views: {
       active_subscriptions: {
         Row: UserSubscriptionRow   // same shape — archived_at is always null here
+        Relationships: []
       }
     }
+    // The frontend never calls .rpc() — Postgres functions (increment_usage,
+    // get_current_usage, …) are only invoked server-side from Edge Functions.
+    Functions: Record<string, never>
     Enums: {
       plan_id:                 TierId
       billing_interval:        DbBillingInterval

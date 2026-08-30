@@ -292,7 +292,10 @@ async function callTrackUsage(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.access_token}`,
-      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      // Always defined in practice — supabase.ts throws at module load if
+      // VITE_SUPABASE_ANON_KEY is missing. The fallback is only to satisfy
+      // HeadersInit's `Record<string, string>` (no `| undefined`).
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? "",
     },
     body: JSON.stringify({ increments: stripVirtualUsageIncrements(increments), checkOnly }),
   })

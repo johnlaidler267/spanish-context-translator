@@ -106,7 +106,7 @@ function SettingsRow({
   )
 }
 
-function LanguageSegmentedControl<T extends string>({
+function LanguageSegmentedControl<T extends LearningLanguage | NativeLanguage>({
   options,
   value,
   labels,

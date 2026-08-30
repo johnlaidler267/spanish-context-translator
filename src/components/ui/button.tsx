@@ -7,6 +7,7 @@ const buttonVariants = {
   secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
   ghost: "hover:bg-muted hover:text-foreground",
   outline: "border border-border bg-transparent hover:bg-muted",
+  destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
 }
 
 const buttonSizes = {

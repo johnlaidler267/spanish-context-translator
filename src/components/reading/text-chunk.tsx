@@ -10,7 +10,6 @@ import {
   type MutableRefObject,
   type RefObject,
   type TransitionEvent,
-  type TouchEvent,
 } from "react"
 import { createPortal } from "react-dom"
 import { splitChunkTextForUnderline } from "@/lib/translate/chunk-text"
@@ -467,7 +466,11 @@ export function TextChunk({
   )
 
   const handleTouchEnd = useCallback(
-    (e: TouchEvent) => {
+    // Used both as a React onTouchEnd prop and as a raw addEventListener
+    // callback (below) — React's SyntheticEvent and the native DOM
+    // TouchEvent are structurally incompatible types, but this only ever
+    // calls preventDefault(), which both provide.
+    (e: { preventDefault: () => void }) => {
       e.preventDefault()
       const sid = chunk.id
       const suppressLift = suppressDoubleTapAfterExplorationLiftRef
@@ -594,8 +597,9 @@ export function TextChunk({
           transition: isPopupOpen ? `left ${followMotionMs}ms linear` : undefined,
           zIndex: 2,
           backgroundColor: "#f4efe9",
-          borderLeft: "1px solid rgba(201,122,90,0.28)",
-          borderTop: "1px solid rgba(201,122,90,0.28)",
+          // All four border sides are set unconditionally by the
+          // placement-conditional spread below (both branches cover all
+          // four), so no default is needed here.
           transform:
             coords.placement === "above"
               ? "translateX(-50%) translateY(50%) rotate(45deg)"

@@ -193,9 +193,11 @@ function isCurrentPlanCard(
 async function fetchSubSnapshot(userId: string): Promise<SubSnapshot | null> {
   const { data, error } = await supabase
     .from("user_subscriptions")
+    // Single literal, not concatenated: postgrest-js needs a literal (not
+    // widened `string`) select clause to infer a typed row instead of
+    // falling back to `GenericStringError`.
     .select(
-      "plan_id, status, billing_interval, current_period_end, cancel_at_period_end, " +
-      "stripe_subscription_id, trial_end",
+      "plan_id, status, billing_interval, current_period_end, cancel_at_period_end, stripe_subscription_id, trial_end",
     )
     .eq("user_id", userId)
     .is("archived_at", null)

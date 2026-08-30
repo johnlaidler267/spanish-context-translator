@@ -62,7 +62,7 @@ function articleChunkTextByNumericId(
 ): string | null {
   let cid = 0
   for (const it of items) {
-    if (it.type === "text") continue
+    if (it.type !== "chunk") continue
     if (cid === id) return it.chunk
     cid++
   }
@@ -316,7 +316,9 @@ export function ArticleContent({
   /** Reconstruct full page text for LLM sentence context */
   const pageText = useMemo(() => {
     if (!items) return ""
-    return items.map(item => item.type === "text" ? item.text : item.chunk).join("")
+    return items
+      .map(item => item.type === "text" ? item.text : item.type === "chapter" ? item.label : item.chunk)
+      .join("")
   }, [items])
 
   const handleGlobalClick = useCallback((e: MouseEvent) => {
@@ -387,6 +389,14 @@ export function ArticleContent({
             {items.map((item, i) => {
               if (item.type === "text") {
                 return <span key={i}>{item.text}</span>
+              }
+              if (item.type === "chapter") {
+                // Chapter markers aren't translated chunks — render the
+                // label plainly rather than feeding them to TextChunk
+                // (which expects chunk/meaning/literal/note and would
+                // otherwise crash or render as an interactive item with
+                // undefined content).
+                return <span key={i}>{item.label}</span>
               }
               const prev = i > 0 ? items[i - 1] : null
               const gap =
