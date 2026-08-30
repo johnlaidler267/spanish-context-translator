@@ -11,16 +11,31 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 export async function ensureSessionForGroq(): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession()
   if (session) return
-  const { error } = await supabase.auth.signInAnonymously()
-  if (error) {
-    throw new Error(
-      "Could not start a session for translation. " +
-        (error.message.toLowerCase().includes("anonymous") ||
-        error.message.includes("disabled") ||
-        error.message.includes("not allowed")
-          ? "Enable Anonymous sign-ins in Supabase → Authentication → Providers."
-          : error.message),
-    )
+  try {
+    const { error } = await supabase.auth.signInAnonymously()
+    if (error) {
+      const lower = error.message.toLowerCase()
+      throw new Error(
+        lower.includes("anonymous") ||
+          lower.includes("disabled") ||
+          lower.includes("not allowed")
+          ? "Could not start a session for translation. Enable Anonymous sign-ins in Supabase -> Authentication -> Providers."
+          : lower.includes("failed to fetch") ||
+              lower.includes("network") ||
+              lower.includes("fetch")
+            ? "Could not reach Supabase to start a translation session. Check VITE_SUPABASE_URL, your network connection, and that the Supabase project is live."
+            : `Could not start a session for translation. ${error.message}`,
+      )
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error ?? "Unknown error")
+    const lower = message.toLowerCase()
+    if (lower.includes("failed to fetch") || lower.includes("network") || lower.includes("fetch")) {
+      throw new Error(
+        "Could not reach Supabase to start a translation session. Check VITE_SUPABASE_URL, your network connection, and that the Supabase project is live.",
+      )
+    }
+    throw error
   }
 }
 

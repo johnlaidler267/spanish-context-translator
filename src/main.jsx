@@ -6,9 +6,6 @@ import { AuthProvider } from '@/contexts/auth-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { AuthModal } from '@/components/auth-modal'
 import App from '@/App'
-import UpgradePage from '@/pages/upgrade'
-import TermsPage from '@/pages/terms'
-import PrivacyPage from '@/pages/privacy'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -18,7 +15,7 @@ createRoot(document.getElementById('root')).render(
           <div className="app-viewport">
             {/* Faded letter fragment — light / dark PNG swap; all viewports */}
             <div
-              className="global-corner-letter pointer-events-none fixed top-0 left-0 z-0 block w-[min(60vw,20.5rem)] select-none"
+              className="global-corner-letter pointer-events-none fixed top-0 left-0 z-0 block w-[min(60vw,20.5rem)] select-none md:left-[72px]"
               aria-hidden
             >
               <img
@@ -34,10 +31,7 @@ createRoot(document.getElementById('root')).render(
             </div>
 
             <Routes>
-              <Route path="/upgrade" element={<UpgradePage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              {/* App owns / + /settings so reading state survives settings */}
+              {/* App owns all app routes */}
               <Route path="*" element={<App />} />
             </Routes>
 

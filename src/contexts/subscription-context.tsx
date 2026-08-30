@@ -7,6 +7,7 @@ import {
   useEffect,
   useLayoutEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react"
 import { checkSubscriptionStatus, type SubscriptionStatus } from "@/lib/subscription"
@@ -44,6 +45,11 @@ function writeLapsedModalAckSession(userId: string | undefined) {
  */
 let subscriptionBlockingCheckDone = false
 
+/** Cap on how long the status check may block the app shell (supabase.auth.getUser can stall on the GoTrue lock). */
+const STATUS_CHECK_TIMEOUT_MS = 3000
+
+const TIMED_OUT = Symbol("subscription-status-timeout")
+
 /** Same-module imperative handle so pages can refresh coarse status without `useContext` (avoids duplicate Vite chunks from mixed import specifiers). */
 let subscriptionRecheckImpl: ((opts?: { silent?: boolean }) => Promise<void>) | null = null
 
@@ -56,6 +62,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SubscriptionStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [popupDismissed, setPopupDismissed] = useState(false)
+  /** Invalidates in-flight checks so a late result cannot apply to a newer user or newer request. */
+  const requestSeqRef = useRef(0)
 
   useEffect(() => {
     subscriptionBlockingCheckDone = false
@@ -69,13 +77,28 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           ? false
           : subscriptionBlockingCheckDone
     if (!silent) setIsLoading(true)
-    try {
-      const result = await checkSubscriptionStatus()
+
+    const seq = ++requestSeqRef.current
+    // The timeout only stops the check from blocking the shell — a slow check still applies its
+    // result when it lands, so a paid user is never left asserted as "free".
+    const pending = checkSubscriptionStatus().then((result) => {
+      if (requestSeqRef.current !== seq) return
       setStatus(result.status)
       if (result.status === "lapsed") {
         setPopupDismissed(readLapsedModalAckSession(user?.id))
       }
+    })
+
+    let timer: number | undefined
+    try {
+      await Promise.race([
+        pending,
+        new Promise<typeof TIMED_OUT>((resolve) => {
+          timer = window.setTimeout(() => resolve(TIMED_OUT), STATUS_CHECK_TIMEOUT_MS)
+        }),
+      ])
     } finally {
+      window.clearTimeout(timer)
       setIsLoading(false)
       subscriptionBlockingCheckDone = true
     }

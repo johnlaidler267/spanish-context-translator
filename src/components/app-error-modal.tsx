@@ -15,6 +15,11 @@ export interface AppErrorModalProps {
   dismissLabel?: string
   /** If false, backdrop click does not dismiss (still can use buttons / X). */
   closeOnBackdrop?: boolean
+  /**
+   * Raw technical detail shown only in dev (`import.meta.env.DEV`), below a clear
+   * “developer-only” label — never shown in production builds.
+   */
+  devOnlyTechnicalDetail?: string
 }
 
 export function AppErrorModal({
@@ -25,6 +30,7 @@ export function AppErrorModal({
   retryLabel = "Retry",
   dismissLabel = "OK",
   closeOnBackdrop = true,
+  devOnlyTechnicalDetail,
 }: AppErrorModalProps) {
   const [mounted, setMounted] = useState(false)
 
@@ -66,6 +72,20 @@ export function AppErrorModal({
         >
           {message}
         </p>
+
+        {import.meta.env.DEV && devOnlyTechnicalDetail?.trim() ? (
+          <div
+            className="mt-4 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2.5 text-xs text-foreground"
+            data-dev-only-app-error
+          >
+            <p className="font-semibold text-amber-950 dark:text-amber-100">
+              Developer-only popup (not shown in production)
+            </p>
+            <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-snug text-muted-foreground">
+              {devOnlyTechnicalDetail.trim()}
+            </pre>
+          </div>
+        ) : null}
 
         <div className="mt-6 flex flex-col gap-2">
           {onRetry && (

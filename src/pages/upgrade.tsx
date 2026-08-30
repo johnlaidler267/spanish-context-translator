@@ -503,16 +503,16 @@ function BillingToggle({
 
   return (
     <div className="mb-10 flex justify-center font-sans text-sm">
-      <div className="inline-flex items-center rounded-[18px] bg-[#ece9e3] p-1 dark:bg-[#2a2926]">
+      <div className="inline-flex items-center rounded-[20px] border border-[#e2d7c7] bg-[#efe8dd]/95 p-1.5 shadow-[0_8px_20px_rgba(76,56,39,0.08)] dark:border-border/70 dark:bg-[#2a2926]">
           <button
             type="button"
             onClick={() => onChange("monthly")}
             aria-pressed={interval === "monthly"}
             className={cn(
-              "rounded-[14px] px-6 py-2 font-semibold transition-colors",
+              "rounded-[16px] px-6 py-2.5 font-semibold transition-colors",
               interval === "monthly"
-                ? "bg-[#c97a5a] text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)]"
-                : "text-[#76736d] hover:text-[#4d4a45] dark:text-[#9b968c] dark:hover:text-[#c9c4ba]",
+                ? "bg-[#c97a5a] text-white shadow-[0_6px_14px_rgba(201,122,90,0.28)]"
+                : "text-[#6f6258] hover:text-[#3f352f] dark:text-[#9b968c] dark:hover:text-[#c9c4ba]",
             )}
           >
             Monthly
@@ -522,10 +522,10 @@ function BillingToggle({
             onClick={() => onChange("annual")}
             aria-pressed={interval === "annual"}
             className={cn(
-              "inline-flex items-center gap-2 rounded-[14px] px-6 py-2 font-semibold transition-colors",
+              "inline-flex items-center gap-2 rounded-[16px] px-6 py-2.5 font-semibold transition-colors",
               interval === "annual"
-                ? "bg-[#c97a5a] text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)]"
-                : "text-[#76736d] hover:text-[#4d4a45] dark:text-[#9b968c] dark:hover:text-[#c9c4ba]",
+                ? "bg-[#c97a5a] text-white shadow-[0_6px_14px_rgba(201,122,90,0.28)]"
+                : "text-[#6f6258] hover:text-[#3f352f] dark:text-[#9b968c] dark:hover:text-[#c9c4ba]",
             )}
           >
             <span>Annual</span>
@@ -922,10 +922,10 @@ export default function UpgradePage() {
 
           {/* Header */}
           <div className="mb-8 text-center">
-            <h1 className="font-serif text-3xl md:text-4xl font-medium text-foreground">
+            <h1 className="font-display text-display-2xl font-medium text-foreground">
               Choose your plan
             </h1>
-            <p className="mt-2 text-muted-foreground font-sans text-sm">
+            <p className="mt-3 text-ui-base text-[#6b615a] font-sans dark:text-muted-foreground">
               {(() => {
                 const days = getTier("pro").trialDays
                 return days > 0
@@ -933,23 +933,6 @@ export default function UpgradePage() {
                   : "Flexible plans with no long-term commitment. Cancel anytime."
               })()}
             </p>
-            {user?.is_anonymous === true && (
-              <div className="mt-4 mx-auto max-w-xl rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-left">
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-300">
-                  You&apos;re on a guest session.
-                </p>
-                <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-200/90 leading-relaxed">
-                  Sign in before subscribing so your paid plan is linked to your account and won&apos;t be lost.
-                </p>
-                <Button
-                  type="button"
-                  onClick={() => openAuthModal()}
-                  className="mt-3 h-8 rounded-md border-2 border-foreground bg-background px-3 text-xs font-semibold text-foreground hover:bg-background/90 dark:border-[rgba(234,224,213,0.28)]"
-                >
-                  Sign in
-                </Button>
-              </div>
-            )}
             {confirmingActivation && (
               <p className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground font-sans">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1067,7 +1050,7 @@ export default function UpgradePage() {
                         <span
                           className={
                             isFree
-                              ? "px-2 py-0.5 text-[11px] font-medium font-sans rounded-full " +
+                              ? "px-2 py-0.5 text-ui-2xs font-medium font-sans rounded-full " +
                                 "bg-muted/50 text-muted-foreground border border-border/90"
                               : "px-2.5 py-1 text-xs font-bold font-sans rounded-full " +
                                 "bg-[#FDBB2D]/90 text-foreground border-[3px] border-foreground " +
@@ -1093,16 +1076,16 @@ export default function UpgradePage() {
                       */}
                       <div
                         className={cn(
-                          "flex items-center gap-3 mb-3 flex-wrap",
+                          "mb-3 flex items-end gap-3 flex-wrap",
                           isFree ? "text-muted-foreground" : "text-foreground",
                         )}
                       >
                         <span
                           className={
-                            "min-w-0 font-sans tracking-tight " +
+                            "min-w-0 font-display leading-none tracking-[-0.03em] " +
                             (isPro
-                              ? "text-[2rem] md:text-[2.2rem] font-bold text-[#cb7d6e] dark:text-foreground"
-                              : "text-[2rem] md:text-[2.2rem] font-bold text-foreground")
+                              ? "text-display-2xl font-medium text-[#cb7d6e] dark:text-foreground"
+                              : "text-display-2xl font-medium text-foreground")
                           }
                         >
                           {isPro ? "Pro" : tier.name}
@@ -1113,23 +1096,23 @@ export default function UpgradePage() {
                       {id === "pro" ? (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-[4.2rem] leading-none font-black font-sans tracking-tight text-[#3a2b24] dark:text-foreground">
+                            <span className="text-display-3xl font-black font-sans text-[#3a2b24] dark:text-foreground">
                               {formatPrice(
                                 interval === "annual"
                                   ? tier.pricing.annual.amountCents
                                   : tier.pricing.monthly.amountCents,
                               )}
                             </span>
-                            <span className="text-xl font-semibold text-[#5a4b42] dark:text-muted-foreground">
+                            <span className="text-lg font-semibold text-[#5a4b42] dark:text-muted-foreground md:text-xl">
                               {interval === "annual" ? "/year" : "/month"}
                             </span>
                           </CardTitle>
                           {tier.trialDays > 0 && interval === "monthly" ? (
-                            <p className="mt-1 text-lg font-medium text-[#cf8778] dark:text-primary">
+                            <p className="mt-2 text-base font-medium text-[#cf8778] dark:text-primary md:text-ui-lg">
                               {tier.trialDays}-day free trial included
                             </p>
                           ) : (
-                            <p className="text-xs text-muted-foreground font-sans mt-1 md:whitespace-nowrap">
+                            <p className="mt-2 text-ui-sm text-muted-foreground font-sans md:whitespace-nowrap">
                               {formatAnnualMonthlyEquivalent("pro")}/mo · billed annually — two months free
                               {tier.pricing.annual.savingsPercent > 0 && (
                                 <span className="ml-1.5 text-primary font-medium">
@@ -1143,16 +1126,16 @@ export default function UpgradePage() {
                       ) : (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-[4.2rem] leading-none font-black font-sans tracking-tight text-[#3a2b24] dark:text-foreground">
+                            <span className="text-display-3xl font-black font-sans text-[#3a2b24] dark:text-foreground">
                               {nonProPrice}
                             </span>
-                            <span className="text-xl font-semibold text-[#5a4b42] dark:text-muted-foreground">
+                            <span className="text-lg font-semibold text-[#5a4b42] dark:text-muted-foreground md:text-xl">
                               /forever
                             </span>
                           </CardTitle>
 
                           {interval === "annual" && pricing.amountCents > 0 && (
-                            <p className="text-xs text-muted-foreground font-sans mt-0.5 md:whitespace-nowrap">
+                            <p className="mt-2 text-ui-sm text-muted-foreground font-sans md:whitespace-nowrap">
                               {formatAnnualMonthlyEquivalent(id)}/mo · billed annually
                               {tier.pricing.annual.savingsPercent > 0 && (
                                 <span className="ml-1.5 text-primary font-medium">
@@ -1166,7 +1149,7 @@ export default function UpgradePage() {
                       )}
 
                       {tier.tagline ? (
-                        <CardDescription className="mt-1 text-base font-medium text-[#5f5450] dark:text-muted-foreground">
+                        <CardDescription className="mt-3 text-ui-lg font-sans font-medium leading-snug text-[#5f5450] dark:text-muted-foreground">
                           {tier.tagline}
                         </CardDescription>
                       ) : null}
@@ -1204,7 +1187,7 @@ export default function UpgradePage() {
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-foreground/90 leading-snug">{row.feature}</p>
-                                  <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground/85 font-normal">
+                                  <p className="mt-0.5 text-ui-2xs leading-snug text-muted-foreground/85 font-normal">
                                     {row.limitHint}
                                   </p>
                                 </div>

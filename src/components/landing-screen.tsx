@@ -11,6 +11,7 @@ import {
   type SetStateAction,
 } from "react"
 import { Link } from "react-router-dom"
+import { useLandingShellNewChat } from "@/components/landing-shell-layout"
 import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout-fix"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { useAuth } from "@/contexts/auth-context"
@@ -18,7 +19,6 @@ import { useSubscription } from "@/contexts/subscription-context"
 import { supabase } from "@/lib/supabase"
 import { getTier, type TierId } from "@/lib/tiers"
 import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscription-display"
-import { MainHeader } from "./main-header"
 import { LandingContentPills } from "./landing-content-pills"
 import {
   appendTranscriptToField,
@@ -129,11 +129,8 @@ export function LandingScreen({
           ? cachedSubscriptionRow
           : null
 
-  const landingHidePlanBanner =
-    subscriptionRowForPlan?.status === "active" &&
-    subscriptionRowForPlan?.plan_id === "pro"
-
   const [charLimitTipOpen, setCharLimitTipOpen] = useState(false)
+  const [charLimitTipHoverEnabled, setCharLimitTipHoverEnabled] = useState(false)
   const charLimitTipWrapRef = useRef<HTMLDivElement>(null)
 
   const [langPrefs, setLangPrefs] = useState<LanguageLearningPreferences>(() =>
@@ -181,10 +178,19 @@ export function LandingScreen({
 
   const effectivePlanId: TierId = !user ? "free" : pricingUiPlanIdFromRow(subscriptionRowForPlan)
   const charsPerSubmissionLimit = getTier(effectivePlanId).limits.charsPerSubmission
-  const showCharLimitCounter = charsPerSubmissionLimit != null
   const submissionCharCount = text.trim().length
+  const showCharLimitCounter = charsPerSubmissionLimit != null && submissionCharCount > 0
   const charCountOverLimit =
     showCharLimitCounter && submissionCharCount > charsPerSubmissionLimit
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)")
+    const sync = () => setCharLimitTipHoverEnabled(mq.matches)
+    sync()
+    mq.addEventListener("change", sync)
+    return () => mq.removeEventListener("change", sync)
+  }, [])
 
   useEffect(() => {
     if (!charLimitTipOpen) return
@@ -200,6 +206,15 @@ export function LandingScreen({
   const landingColumnRef = useRef<HTMLDivElement>(null)
   const composerFormRef = useRef<HTMLFormElement>(null)
   const composerSubmitBtnRef = useRef<HTMLButtonElement>(null)
+  const { registerNewChat } = useLandingShellNewChat()
+  const handleNewChat = useCallback(() => {
+    setText("")
+    window.setTimeout(() => textareaRef.current?.focus(), 0)
+  }, [setText])
+  useLayoutEffect(() => {
+    registerNewChat(handleNewChat)
+    return () => registerNewChat(null)
+  }, [registerNewChat, handleNewChat])
   useVirtualKeyboardLayoutFix(landingColumnRef)
   const [isRolling, setIsRolling] = useState(false)
   const [isLearning, setIsLearning] = useState(false)
@@ -336,10 +351,8 @@ export function LandingScreen({
 
   return (
     <>
-    <div className="landing-route-shell landing-route-enter relative z-10 flex w-full flex-col min-h-app max-md:min-h-0 max-md:flex-1">
-      <MainHeader theme={theme} onThemeChange={onThemeChange} showPlanBanner={!landingHidePlanBanner} />
       <div
-        className="landing-page flex flex-col items-stretch md:items-center md:justify-start md:pt-[clamp(3.5rem,10vh,6.5rem)] min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
+        className="landing-page flex flex-col items-stretch md:items-center md:justify-start md:pt-20 md:pb-[clamp(3rem,10vh,7rem)] md:overflow-y-auto min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
         style={{ position: "relative" }}
       >
         <img
@@ -347,8 +360,8 @@ export function LandingScreen({
           aria-hidden
           className={
             theme === "dark"
-              ? "max-md:[filter:none] md:[filter:blur(2.3px)]"
-              : "[filter:none]"
+              ? "landing-bg-art max-md:[filter:none] md:[filter:blur(2.3px)]"
+              : "landing-bg-art [filter:none]"
           }
           style={{
             position: "absolute",
@@ -363,7 +376,7 @@ export function LandingScreen({
           }}
         />
       <div
-        className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 max-md:flex-1 max-md:min-h-0 max-md:overflow-hidden max-md:overflow-x-hidden md:flex-none md:justify-start gap-4 md:gap-6 max-md:pt-[max(7.5rem,calc(env(safe-area-inset-top,0px)+5.75rem))] md:pt-0"
+        className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 max-md:flex-1 max-md:min-h-0 max-md:overflow-hidden max-md:overflow-x-hidden md:flex-none md:justify-start md:my-auto gap-4 md:gap-6 max-md:pt-[max(7.5rem,calc(env(safe-area-inset-top,0px)+5.75rem))] md:pt-0"
         style={{ position: "relative", zIndex: 2 }}
       >
         {/* Hero — mobile: fills space above composer; desktop: top */}
@@ -440,14 +453,40 @@ export function LandingScreen({
               </div>
               <div className="textarea-toolbar" aria-label="Composer actions">
                 {showCharLimitCounter && (
-                  <div className="textarea-toolbar-left" ref={charLimitTipWrapRef}>
+                  <div
+                    className="textarea-toolbar-left"
+                    ref={charLimitTipWrapRef}
+                    onPointerEnter={() => {
+                      if (charLimitTipHoverEnabled) setCharLimitTipOpen(true)
+                    }}
+                    onPointerLeave={() => {
+                      if (charLimitTipHoverEnabled) setCharLimitTipOpen(false)
+                    }}
+                    onFocusCapture={() => {
+                      if (charLimitTipHoverEnabled) setCharLimitTipOpen(true)
+                    }}
+                    onBlurCapture={(e) => {
+                      if (
+                        charLimitTipHoverEnabled &&
+                        !e.currentTarget.contains(e.relatedTarget as Node | null)
+                      ) {
+                        setCharLimitTipOpen(false)
+                      }
+                    }}
+                  >
                     <button
                       type="button"
                       className={`char-limit-counter${charCountOverLimit ? " char-limit-counter--over" : ""}`}
                       aria-expanded={charLimitTipOpen}
-                      aria-haspopup="dialog"
-                      aria-label="Submission character limit. Tap for details."
-                      onClick={() => setCharLimitTipOpen((o) => !o)}
+                      aria-describedby={charLimitTipOpen ? "char-limit-tip" : undefined}
+                      aria-label={
+                        charLimitTipHoverEnabled
+                          ? "Submission character limit. Hover for details."
+                          : "Submission character limit. Tap for details."
+                      }
+                      onClick={() => {
+                        if (!charLimitTipHoverEnabled) setCharLimitTipOpen((o) => !o)
+                      }}
                     >
                       <span className="char-limit-counter-value">
                         {submissionCharCount.toLocaleString()}
@@ -460,7 +499,12 @@ export function LandingScreen({
                       </span>
                     </button>
                     {charLimitTipOpen && (
-                      <div className="char-limit-tip" role="dialog" aria-label="Upgrade for unlimited">
+                      <div
+                        id="char-limit-tip"
+                        className="char-limit-tip"
+                        role="tooltip"
+                        aria-label="Upgrade for unlimited"
+                      >
                         <p className="char-limit-tip-text">
                           Upgrade to Pro for a much higher per-paste limit and generous monthly fair-use allowances.
                         </p>
@@ -500,19 +544,20 @@ export function LandingScreen({
         </div>
 
         {/* Sample excerpt — desktop/tablet only */}
-        <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:-mt-4 hidden md:block">
-          <p className="sample-excerpt-label">Sample text</p>
+        <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-2 hidden md:block">
+          <p className="sample-excerpt-label text-center">Sample text</p>
           <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
-            <p className="sample-paragraph font-serif text-[15px] overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
-            <span className="sample-link mt-3 inline-flex items-center gap-2">
-              Try this sample
-              <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
+            <p className="sample-paragraph font-serif text-ui-base overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
+            <span className="mt-3 block text-center">
+              <span className="sample-link inline-flex items-center gap-2">
+                Try this sample
+                <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
+              </span>
             </span>
           </button>
         </div>
+        </div>
       </div>
-      </div>
-    </div>
       {learnError && (
         <AppErrorModal
           title="Couldn’t load text"

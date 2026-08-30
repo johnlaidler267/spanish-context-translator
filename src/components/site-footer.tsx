@@ -28,7 +28,7 @@ function FooterNavLink({ to, children }: { to: string; children: ReactNode }) {
 
 function ColumnHeading({ children }: { children: ReactNode }) {
   return (
-    <h3 className="font-fraunces text-[0.8125rem] font-semibold uppercase tracking-[0.12em] text-foreground/90">
+    <h3 className="font-display text-label-sm font-semibold uppercase text-foreground/90">
       {children}
     </h3>
   )
@@ -43,7 +43,7 @@ function BrandWordmark() {
     >
       <span
         className={
-          "font-fraunces inline-flex items-center gap-px text-[1.05rem] font-bold leading-none tracking-[-0.03em] antialiased md:text-[1.12rem] " +
+          "font-display inline-flex items-center gap-px text-[1.05rem] font-bold leading-none tracking-[-0.03em] antialiased md:text-[1.12rem] " +
           "[font-feature-settings:'kern'_1,'liga'_1]"
         }
       >
@@ -85,15 +85,15 @@ export function SiteFooter({
       )}
     >
       <div className={cn("py-10 md:py-12", contentMaxClassName)}>
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-12">
-          <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-x-12 gap-y-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-y-10">
+          <div className="space-y-2.5">
             <BrandWordmark />
-            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+            <p className="max-w-[17rem] text-sm leading-relaxed text-muted-foreground">
               Read Spanish with translations and explanations grounded in the text you&apos;re reading.
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <ColumnHeading>Product</ColumnHeading>
             <nav className="flex flex-col gap-2.5" aria-label="Product">
               <FooterNavLink to="/">Home</FooterNavLink>
@@ -102,7 +102,7 @@ export function SiteFooter({
             </nav>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <ColumnHeading>Legal</ColumnHeading>
             <nav className="flex flex-col gap-2.5" aria-label="Legal">
               <FooterNavLink to="/privacy">Privacy Policy</FooterNavLink>
@@ -110,7 +110,7 @@ export function SiteFooter({
             </nav>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <ColumnHeading>Connect</ColumnHeading>
             <p className="text-sm leading-relaxed text-muted-foreground">
               For account and billing help, open{" "}
@@ -126,7 +126,7 @@ export function SiteFooter({
         </div>
 
         <div className="mt-10 space-y-3 border-t border-border/70 pt-6 text-center">
-          <p className="font-fraunces text-xs text-muted-foreground">
+          <p className="font-display text-xs text-muted-foreground">
             © {year} LexaLens. All rights reserved.
           </p>
           <div className="text-xs">

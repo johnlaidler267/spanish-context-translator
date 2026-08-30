@@ -20,6 +20,23 @@ A Vite + React SPA for reading and translating Spanish content, with full subscr
 
 ### 1. Install dependencies
 
+`npm run dev` / `build` / `preview` will auto-use the repo-pinned `.nvmrc` version when `nvm` is installed.
+
+You can still switch manually first if you want:
+
+```bash
+nvm use
+```
+
+If that version is not installed yet:
+
+```bash
+nvm install
+nvm use
+```
+
+Then install dependencies:
+
 ```bash
 npm install
 ```

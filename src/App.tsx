@@ -3,6 +3,11 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import SettingsPage from "@/pages/settings"
+import DiscoverPage from "@/pages/discover"
+import UpgradePage from "@/pages/upgrade"
+import TermsPage from "@/pages/terms"
+import PrivacyPage from "@/pages/privacy"
+import { LandingShellLayout } from "./components/landing-shell-layout"
 import { LandingScreen } from "./components/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "./components/loading-overlay"
 import { ReadingHeader } from "./components/reading-header"
@@ -22,7 +27,7 @@ import {
   subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
   translatePageText,
-} from "./lib/translate"
+} from "@/lib/translate"
 import { TranslationCache } from "./lib/translation-cache"
 import type { ViewMode } from "./components/mode-toggle"
 import type { ReadingTheme } from "./components/theme-toggle"
@@ -48,6 +53,9 @@ import {
   type UsageLimits,
   UsageError,
 } from "./lib/usage"
+import type { ContentItem } from "./lib/content-data"
+import { supabase } from "./lib/supabase"
+import { getTier } from "./lib/tiers"
 
 type AppState = "landing" | "loading" | "reading"
 
@@ -57,8 +65,11 @@ const ENFORCE_USAGE_LIMITS =
   !IS_LOCAL_DEV || import.meta.env.VITE_ENFORCE_USAGE_IN_DEV === "true"
 const USAGE_PREFLIGHT_TTL_MS = 60_000
 const LANDING_MIN_LOADING_MS = LOADING_OVERLAY_PROGRESS_MS
-/** Desktop article pagination: trim page size slightly so body text clears footer controls. */
-const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.80
+/**
+ * Desktop: small trim on DOM-measured page limits. Measurement already reserves footer height;
+ * avoid stacking a large shrink here or article pages sit well under the viewport.
+ */
+const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.95
 
 type UsagePreflightSnapshot = {
   counters: UsageCounters
@@ -69,10 +80,11 @@ type UsagePreflightSnapshot = {
 export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
+  const { status: subscriptionStatus, isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
   const { user, isLoading: authLoading } = useAuth()
 
   const [appState, setAppState] = useState<AppState>("landing")
+
   /** In-memory + sessionStorage: survives reading → home and page refresh (same tab). */
   const [landingDraft, setLandingDraft] = useState(() => getStoredLandingDraft())
 
@@ -96,6 +108,14 @@ export default function App() {
   useEffect(() => {
     setDisplayName(getEffectiveDisplayName(user))
   }, [user, location.pathname])
+
+  // If the user navigates away from "/" while in a reading session, exit reading mode.
+  // Otherwise the router is intentionally restricted and it feels like navigation is broken.
+  useEffect(() => {
+    if (appState === "reading" && location.pathname !== "/") {
+      setAppState("landing")
+    }
+  }, [appState, location.pathname])
 
   /** Hide shell top-left letter art (main.jsx) during article / read — not on landing */
   useEffect(() => {
@@ -357,6 +377,41 @@ export default function App() {
     [user, bump, articlePageSplitLimits, refreshUsagePreflight],
   )
 
+  const handleDiscoverStartReading = useCallback(
+    async (content: ContentItem) => {
+      const { data, error } = await supabase
+        .from("discover_items")
+        .select("body_text")
+        .eq("id", content.id)
+        .maybeSingle()
+      const body = data?.body_text?.trim() ?? ""
+      const sourceText = !error && body.length > 0 ? body : content.preview.trim()
+      if (!sourceText) return
+
+      const freeCharLimit = getTier("free").limits.charsPerSubmission
+      const isEffectivelyFreeUser =
+        user != null &&
+        (subscriptionStatus == null || subscriptionStatus === "free")
+      if (
+        isEffectivelyFreeUser &&
+        freeCharLimit !== null &&
+        sourceText.length > freeCharLimit
+      ) {
+        const blockedMessage =
+          `This reading is ${sourceText.length.toLocaleString()} characters long, which is over the free plan limit of ` +
+          `${freeCharLimit.toLocaleString()} characters per submission. Upgrade to continue.`
+        setPlanLimitModal({
+          title: "Submission exceeds free plan allowance",
+          message: blockedMessage,
+        })
+        return { blockedMessage }
+      }
+
+      await handleTextSubmit(sourceText)
+    },
+    [handleTextSubmit, subscriptionStatus, user],
+  )
+
   const handleBack = useCallback(() => {
     setAppState("landing")
     setSourcePages([])
@@ -445,7 +500,7 @@ export default function App() {
   const viewportMain =
     "min-h-app flex flex-col max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden overflow-hidden"
 
-  if (authLoading || subscriptionLoading) {
+  if ((authLoading || subscriptionLoading) && location.pathname !== "/discover") {
     return (
       <main className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden">
         <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -453,18 +508,19 @@ export default function App() {
     )
   }
 
-  const landingHome = (
+  const landingIndexElement = (
     <main className={`min-h-app bg-transparent ${viewportMain}`}>
-      {appState === "loading" && <LoadingOverlay />}
-      <LandingScreen
-        draftText={typeof landingDraft === "string" ? landingDraft : ""}
-        onDraftChange={setLandingDraft}
-        onSubmit={handleTextSubmit}
-        isLoading={appState === "loading"}
-        theme={appTheme}
-        onThemeChange={setReadingTheme}
-        displayName={displayName}
-      />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <LandingScreen
+          draftText={typeof landingDraft === "string" ? landingDraft : ""}
+          onDraftChange={setLandingDraft}
+          onSubmit={handleTextSubmit}
+          isLoading={appState === "loading"}
+          theme={appTheme}
+          onThemeChange={setReadingTheme}
+          displayName={displayName}
+        />
+      </div>
       {error && (
         <AppErrorModal message={error} onDismiss={() => setError("")} />
       )}
@@ -633,11 +689,9 @@ export default function App() {
     )
   }
 
-  const indexElement =
-    appState === "landing" || appState === "loading" ? landingHome : readingHome ?? landingHome
-
   return (
     <>
+      {appState === "loading" && <LoadingOverlay />}
       {!IS_LOCAL_DEV && isLapsed && !popupDismissed && (
         <SubscriptionLapsedModal
           onDismiss={dismissLapsedModalAndGoHome}
@@ -647,7 +701,27 @@ export default function App() {
       <GuestSignupModal open={guestSignupOpen} onClose={() => setGuestSignupOpen(false)} />
       <Routes>
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/" element={indexElement} />
+        <Route path="/upgrade" element={<UpgradePage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route
+          element={
+            <LandingShellLayout
+              theme={appTheme}
+              onThemeChange={setReadingTheme}
+              displayName={displayName}
+              sidebarDisabled={appState === "loading"}
+              readingActive={appState === "reading"}
+              onExitReading={handleBack}
+            />
+          }
+        >
+          <Route index element={appState === "reading" ? readingHome : landingIndexElement} />
+          <Route
+            path="discover"
+            element={<DiscoverPage onStartReading={handleDiscoverStartReading} />}
+          />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {(rateLimitMessage || planLimitModal) && (
