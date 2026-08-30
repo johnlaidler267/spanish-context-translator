@@ -2670,7 +2670,7 @@ article span {
   color: #3a332e;
 }
 
-.discover-modal__excerpt-pending {
+.discover-modal__excerpt-empty {
   font-style: italic;
   opacity: 0.6;
 }

@@ -22,9 +22,10 @@ import type { DiscoverItemInsert } from "@/lib/db-types"
 import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 
 const LIST_SELECT =
-  "id, title, author, type, difficulty, word_count, language, cover_image, tags, estimated_time, created_at"
+  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at"
 
-const DISCOVER_CACHE_KEY = "lexa.discover.catalog.v1"
+// Bumped to v2: cached rows now carry `preview` — v1 entries would open the modal blank.
+const DISCOVER_CACHE_KEY = "lexa.discover.catalog.v2"
 
 type DiscoverPageProps = {
   onStartReading: (content: ContentItem) => Promise<{ blockedMessage?: string } | void> | { blockedMessage?: string } | void
@@ -152,29 +153,11 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     })
   }, [discoverItems, searchQuery, selectedTypes, selectedDifficulties])
 
+  // `preview` now comes with the list load (see LIST_SELECT), so the modal opens with
+  // its final content already in hand — no click-triggered fetch, no post-open resize.
   const handleContentClick = (content: ContentItem) => {
     setSelectedContent(content)
     setModalOpen(true)
-    if (content.preview.trim()) return
-    void (async () => {
-      const { data, error } = await supabase
-        .from("discover_items")
-        .select("preview")
-        .eq("id", content.id)
-        .maybeSingle<{ preview: string | null }>()
-      const preview = data?.preview?.trim() ?? ""
-      if (error || preview.length === 0) return
-      setDiscoverItems((prev) => {
-        const next = prev.map((item) =>
-          item.id === content.id ? { ...item, preview } : item,
-        )
-        writeCachedDiscoverItems(next)
-        return next
-      })
-      setSelectedContent((prev) =>
-        prev?.id === content.id ? { ...prev, preview } : prev,
-      )
-    })()
   }
 
   const handleCloseModal = () => {

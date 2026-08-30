@@ -97,7 +97,7 @@ export function ContentPreviewModal({
               {content.preview.trim() ? (
                 <p>{content.preview}</p>
               ) : (
-                <p className="discover-modal__excerpt-pending">Loading preview…</p>
+                <p className="discover-modal__excerpt-empty">No preview available.</p>
               )}
             </div>
           </div>
