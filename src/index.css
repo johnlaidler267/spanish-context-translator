@@ -398,6 +398,7 @@ html.lector-reading-session .global-corner-letter {
     --accent: #a88b4a;           /* dusty gold, slightly sharper */
     --accent-foreground: #f7f3ee;
     --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.985 0 0);
     --border: #d2c9be;
     --input: #e8e2da;
     --ring: #c97a5a;
@@ -428,6 +429,7 @@ html.lector-reading-session .global-corner-letter {
     --accent: #c97a5a;
     --accent-foreground: #f4e6d6;
     --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.985 0 0);
     --border: #d4b99a;
     --input: #e8d2bb;
     --ring: #c97a5a;
@@ -450,6 +452,7 @@ html.lector-reading-session .global-corner-letter {
     --accent: #b06b56;
     --accent-foreground: #1a1a1a;
     --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.985 0 0);
     --border: #4a4744;
     --input: #2a2a28;
     --ring: #b06b56;
