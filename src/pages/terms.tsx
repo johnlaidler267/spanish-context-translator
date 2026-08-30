@@ -1,7 +1,7 @@
 "use client"
 
-import { LegalPageShell } from "@/components/legal-page-shell"
-import { LegalSection as Section } from "@/components/legal-section"
+import { LegalPageShell } from "@/components/legal/legal-page-shell"
+import { LegalSection as Section } from "@/components/legal/legal-section"
 
 export default function TermsPage() {
   return (

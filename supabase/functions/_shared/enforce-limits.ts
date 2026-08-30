@@ -226,7 +226,8 @@ export async function enforceLimits(
     if (PER_SUBMISSION_LIMIT_METRICS.has(metricKey)) {
       const rsAfter = limit > 0 ? proposedVal / limit : 1
       let level: EnforcementLevel
-      if (proposedVal > limit) {
+      const isBlocked = limit > 0 ? rsAfter >= blockRatio : proposedVal > limit
+      if (isBlocked) {
         level = "blocked"
         blockedMetrics.push(metricKey)
       } else if (rsAfter >= warnRatio) {
@@ -250,7 +251,8 @@ export async function enforceLimits(
     const ratioAfter = limit > 0 ? (current + proposedVal) / limit : 1
 
     let level: EnforcementLevel
-    if (current + proposedVal > limit) {
+    const isBlocked = limit > 0 ? ratioAfter >= blockRatio : current + proposedVal > limit
+    if (isBlocked) {
       level = "blocked"
       blockedMetrics.push(metricKey)
     } else if (ratio >= warnRatio || ratioAfter >= warnRatio) {

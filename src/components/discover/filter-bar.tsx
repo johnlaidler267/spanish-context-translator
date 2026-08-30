@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import type { ContentType, DifficultyLevel } from "@/lib/content-data"
+import type { ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 
 interface FilterBarProps {
   searchQuery: string

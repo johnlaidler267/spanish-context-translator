@@ -11,10 +11,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/content-data"
-import { pastedImageDisplayName, readBlobAsDataUrl, readImageFileFromClipboard } from "@/lib/cover-image-clipboard"
-import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover-map"
-import type { DiscoverItemRow, DiscoverItemUpdate } from "@/lib/db.types"
+import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
+import { pastedImageDisplayName, readBlobAsDataUrl, readImageFileFromClipboard } from "@/lib/discover/cover-image-clipboard"
+import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover/discover-map"
+import type { DiscoverItemRow, DiscoverItemUpdate } from "@/lib/db-types"
 import { supabase } from "@/lib/supabase"
 
 const contentTypeOptions: ContentType[] = ["book", "article", "song", "poem"]

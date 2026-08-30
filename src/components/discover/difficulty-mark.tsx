@@ -1,7 +1,7 @@
 "use client"
 
 import type { CSSProperties } from "react"
-import type { DifficultyLevel } from "@/lib/content-data"
+import type { DifficultyLevel } from "@/lib/discover/content-data"
 import { cn } from "@/lib/utils"
 
 export const difficultyLabels: Record<DifficultyLevel, string> = {

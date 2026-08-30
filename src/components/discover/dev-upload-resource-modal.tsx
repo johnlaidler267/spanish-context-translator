@@ -12,12 +12,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import type { ContentType, DifficultyLevel } from "@/lib/content-data"
+import type { ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 import {
   CoverImageCropPanel,
   type DiscoverCoverAspect,
 } from "@/components/discover/cover-image-crop-panel"
-import { pastedImageDisplayName, readBlobAsDataUrl, readImageFileFromClipboard } from "@/lib/cover-image-clipboard"
+import { pastedImageDisplayName, readBlobAsDataUrl, readImageFileFromClipboard } from "@/lib/discover/cover-image-clipboard"
 import { fetchGroqChatViaEdge } from "@/lib/groq-edge"
 
 const contentTypeOptions: ContentType[] = ["book", "article", "song", "poem"]

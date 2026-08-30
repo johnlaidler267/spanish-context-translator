@@ -3,7 +3,7 @@ import {
   getStoredLanguageLearningPreferences,
   LEARNING_LANGUAGE_LABEL,
   type LearningLanguage,
-} from "@/lib/language-learning-preferences"
+} from "@/lib/storage/language-learning-preferences"
 
 const CHUNK_SORT_PREFIX_SPANISH = `Sort following spanish text into logical chunks.
 

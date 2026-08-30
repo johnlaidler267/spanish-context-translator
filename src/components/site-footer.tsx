@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { RiTranslateAi } from "react-icons/ri"
-import { LegalDocLinks } from "@/components/legal-doc-links"
+import { LegalDocLinks } from "@/components/legal/legal-doc-links"
 import { cn } from "@/lib/utils"
 
 const LEXA_LENS_WORD_GRADIENT =

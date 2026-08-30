@@ -121,8 +121,10 @@ All migrations live in `supabase/migrations/`. Run `npx supabase@latest db push`
 | `0008_increment_usage_utc_daily` | Daily `texts_today` reset uses UTC calendar date |
 | `0009_fix_extra_counters_null` | Harden `increment_usage` / `extra_counters` null handling |
 | `0010_chars_today_daily` | Adds `chars_today` / `chars_today_date` to `usage_records` (legacy; no longer used for tier limits) |
-| `0010_fix_trial_trigger_on_insert` | Trial trigger runs on INSERT so `has_used_trial` is set when `trial_start` is present |
 | `0011_plan_id_free_pro_only` | DB enum is `free` / `pro` only; legacy `unlimited` rows merged to `pro` |
+| `0012_discover_catalog` | Public Discover catalog tables + curator allowlist for mutations |
+| `0013_remove_discover_curators` | Drops the curator allowlist; allows direct writes to `discover_items` |
+| `0014_fix_trial_trigger_on_insert` | Trial trigger runs on INSERT so `has_used_trial` is set when `trial_start` is present |
 
 ---
 
@@ -162,7 +164,7 @@ If the browser reports **CORS** errors on `functions/v1/groq-chat` (preflight �
 
 ### Plans
 
-Plans are defined in `src/lib/tiers.ts` (frontend) and mirrored in `supabase/functions/_shared/tiers.ts` (Edge Functions). **Keep both in sync** and **redeploy `track-usage`** after changing backend caps. The database and app use **Free** and **Pro** only; legacy **Unlimited** IDs from Stripe or old rows normalize to Pro (`normalizeTierId` in `tiers.ts`).
+Plans are defined in `src/lib/subscription/tiers.ts` (frontend) and mirrored in `supabase/functions/_shared/tiers.ts` (Edge Functions). **Keep both in sync** and **redeploy `track-usage`** after changing backend caps. The database and app use **Free** and **Pro** only; legacy **Unlimited** IDs from Stripe or old rows normalize to Pro (`normalizeTierId` in `tiers.ts`).
 
 | Plan | Monthly | Annual | Trial |
 |---|---|---|---|
@@ -173,13 +175,13 @@ Free tier (see `limits` in `TIERS.free` in `tiers.ts`): **daily submission cap**
 
 ### Limit Enforcement
 
-Authenticated submits call `track-usage`, which increments counters and returns **HTTP 200** with JSON: `allowed`, `exceeded`, `limits`, `counters`, **`tierId`**, and `period`. The frontend can **reconcile `limits` from `tierId`** via `getTier()` in `src/lib/usage.ts` so UI caps match the shipped app even if an old bundle was deployed briefly.
+Authenticated submits call `track-usage`, which increments counters and returns **HTTP 200** with JSON: `allowed`, `exceeded`, `limits`, `counters`, **`tierId`**, and `period`. The frontend can **reconcile `limits` from `tierId`** via `getTier()` in `src/lib/subscription/usage.ts` so UI caps match the shipped app even if an old bundle was deployed briefly.
 
-The client also pre-checks limits before translation (`src/lib/enforce.ts` + `App.tsx`). If no subscription row exists, the function provisions free tier when possible.
+The client also pre-checks limits before translation (`src/lib/subscription/enforce.ts` + `App.tsx`). If no subscription row exists, the function provisions free tier when possible.
 
 ### Translation (Groq or Gemini)
 
-By default, chunking uses **Groq** through **`groq-chat`** (`src/lib/translate.ts` → `src/lib/groq-edge.ts`). The Groq API key is **not** in the browser. **On-demand** Groq projects enforce a low **tokens-per-minute / request-size** budget (roughly prompt + `max_tokens`). If you see TPM errors on short text, lower `TRANSLATE_MAX_COMPLETION_TOKENS` in `translate.ts`, shorten the prompt, or upgrade Groq.
+By default, chunking uses **Groq** through **`groq-chat`** (`src/lib/translate/` → `src/lib/groq-edge.ts`). The Groq API key is **not** in the browser. **On-demand** Groq projects enforce a low **tokens-per-minute / request-size** budget (roughly prompt + `max_tokens`). If you see TPM errors on short text, lower `TRANSLATE_MAX_COMPLETION_TOKENS` in `src/lib/translate/llm-settings.ts`, shorten the prompt, or upgrade Groq.
 
 **Gemini (optional):** Set `VITE_TRANSLATION_LLM_PROVIDER=gemini`, add the Supabase secret **`GEMINI_API_KEY`**, and deploy **`gemini-chat`**. Google’s API uses separate quotas from Groq; errors such as **`limit: 0`** or **free-tier quota exceeded** usually mean billing is not enabled for the Google Cloud / AI Studio project, the key has no usable quota for the chosen model, or you need to adjust usage in [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits). To fall back to Groq, remove or unset `VITE_TRANSLATION_LLM_PROVIDER`.
 
@@ -208,7 +210,7 @@ Events that fail 3 consecutive retries are marked `dead_letter`.
 
 ## Stripe Setup
 
-1. Create products and prices in the Stripe dashboard. Put the Pro monthly/annual **Price IDs** in `.env` as `VITE_STRIPE_PRICE_PRO_MONTHLY` / `VITE_STRIPE_PRICE_PRO_ANNUAL` and set matching `STRIPE_PRICE_*` secrets for Edge Functions (placeholders in `src/lib/tiers.ts` are replaced via env at build time).
+1. Create products and prices in the Stripe dashboard. Put the Pro monthly/annual **Price IDs** in `.env` as `VITE_STRIPE_PRICE_PRO_MONTHLY` / `VITE_STRIPE_PRICE_PRO_ANNUAL` and set matching `STRIPE_PRICE_*` secrets for Edge Functions (placeholders in `src/lib/subscription/tiers.ts` are replaced via env at build time).
 2. Create a webhook endpoint pointing to `https://<project>.supabase.co/functions/v1/stripe-webhook`.
 3. Subscribe to these events:
    - `customer.subscription.created`
@@ -243,30 +245,50 @@ Read mode uses the same translated slice as the current article page and only re
 
 ## Project Structure
 
+Components and `lib` modules are grouped by feature; a handful of
+cross-feature files (`main-header.tsx`, `app-error-modal.tsx`,
+`site-footer.tsx`, …) and shared low-level `lib` modules (`supabase.ts`,
+`db-types.ts`, `utils.ts`, …) stay at the top level of their folder.
+
 ```
 src/
-  components/        # UI (high level)
-    main-header.tsx           # Header + landing plan pill → /upgrade or /settings?tab=billing
-    article-content.tsx       # Article body + translation chunks
-    text-chunk.tsx            # Per-chunk translation, details, interactions
-    subscription-status.tsx   # Usage bars, billing info, payment banner
-    subscription-lapsed-modal.tsx
-    payment-error-banner.tsx  # Past-due / failed payment warning
-    plan-change-dialog.tsx    # Downgrade/cancel confirmation
-    auth-sign-in-options.tsx  # Anonymous + other auth entry points
+  components/
+    auth/              # Sign-in modal, anonymous entry points, guest signup
+    landing/            # Landing screen, sidebar, shell layout
+      landing-screen.tsx
+      landing-sidebar.tsx
+    reading/            # Article + read mode UI
+      article-content.tsx      # Article body + translation chunks
+      text-chunk.tsx            # Per-chunk translation, details, interactions
+      reading-header.tsx
+    subscription/
+      subscription-status.tsx   # Usage bars, billing info, payment banner
+      subscription-lapsed-modal.tsx
+      payment-error-banner.tsx  # Past-due / failed payment warning
+      plan-change-dialog.tsx    # Downgrade/cancel confirmation
+    legal/               # Terms/privacy page shell + section helpers
+    discover/            # Discover catalog cards, filters, upload/edit modals
+    ui/                  # Shared primitives (button, dialog, badge, …)
+    main-header.tsx       # Header + landing plan pill → /upgrade or /settings?tab=billing
   contexts/
     subscription-context.tsx  # App-wide subscription state (coarse status)
   lib/
-    tiers.ts          # Plan definitions (mirror server _shared/tiers.ts)
-    checkout.ts       # Stripe checkout + portal + confirm-checkout-session
-    subscription.ts   # Cancel / reactivate / downgrade + status check
-    usage.ts          # track-usage client + limit reconciliation from tierId
-    enforce.ts        # Client-side limit pre-checks
-    translate.ts      # Chunking + LLM provider routing (Groq / Gemini)
-    errors.ts         # Error classification → user-friendly messages
+    subscription/
+      tiers.ts           # Plan definitions (mirror server _shared/tiers.ts)
+      checkout.ts        # Stripe checkout + portal + confirm-checkout-session
+      subscription.ts    # Cancel / reactivate / downgrade + status check
+      usage.ts           # track-usage client + limit reconciliation from tierId
+      enforce.ts         # Client-side limit pre-checks
+    discover/            # Discover catalog data mapping + cover-art helpers
+    reading/             # Reading layout measurement, hover TTS
+    storage/             # localStorage-backed persistence (theme, drafts, prefs)
+    translate/           # Chunking + LLM provider routing (Groq / Gemini)
+    supabase.ts          # Supabase client singleton
+    db-types.ts          # TypeScript types mirroring the DB schema
   pages/
     upgrade.tsx       # Plan selection + Stripe checkout trigger
     settings.tsx      # General / Account / Billing tabs (?tab=billing)
+    discover/         # Discover page + content card
 
 supabase/
   config.toml         # Per-function verify_jwt and other CLI deploy settings

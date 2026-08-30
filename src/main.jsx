@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import { AuthProvider } from '@/contexts/auth-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
-import { AuthModal } from '@/components/auth-modal'
+import { AuthModal } from '@/components/auth/auth-modal'
 import App from '@/App'
 
 createRoot(document.getElementById('root')).render(

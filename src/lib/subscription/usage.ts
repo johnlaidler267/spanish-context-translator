@@ -1,0 +1,499 @@
+/**
+ * Usage tracking service — frontend layer.
+ *
+ * Wraps the track-usage Edge Function with:
+ *   • Optimistic local state (UI updates instantly, rolls back on server rejection)
+ *   • Per-metric limit status helpers
+ *   • React-friendly: use UsageTracker as a stable class instance held in a ref
+ *
+ * KEEP IN SYNC with supabase/functions/_shared/usage-metrics.ts.
+ *
+ * HOW TO ADD A NEW METRIC
+ * ───────────────────────
+ * 1. Add it to UsageMetric below.
+ * 2. Add its entry to METRIC_CONFIG.
+ * 3. Mirror the same change in _shared/usage-metrics.ts (server side).
+ * 4. Done — no other files need changing.
+ */
+
+import { supabase } from "@/lib/supabase"
+import { getLimit, getTier, type TierId, type TierLimits } from "@/lib/subscription/tiers"
+
+// ─── Metric definitions ───────────────────────────────────────────────────────
+
+export type UsageMetric =
+  | "texts_submitted"       // monthly counter
+  | "texts_submitted_today" // read-only daily counter (auto-reset by RPC)
+  | "chunks_returned"
+  | "pages_processed"
+  | "chars_processed"
+  | "chars_processed_period" // billing-period total (same DB column as chars_processed)
+  | "chars_processed_today"  // UTC daily (DB chars_today)
+  | "api_calls"
+  | "voice_requests"
+  // ↓ Add new metrics here (mirror in _shared/usage-metrics.ts)
+  // | "exports_created"
+
+interface MetricConfig {
+  /** Human-readable label for display in UI. */
+  label: string
+  /** Which TierLimits key caps this metric (null = not limit-checked). */
+  limitKey: keyof TierLimits | null
+}
+
+export const METRIC_CONFIG: Record<UsageMetric, MetricConfig> = {
+  texts_submitted:       { label: "Texts submitted",       limitKey: "textsPerMonth" },
+  texts_submitted_today: { label: "Texts submitted today", limitKey: "textsPerDay"   },
+  chunks_returned:       { label: "Chunks returned",       limitKey: "chunksPerRequest"   },
+  pages_processed:       { label: "Pages processed",       limitKey: "pagesPerSubmission" },
+  chars_processed:       { label: "Characters processed",  limitKey: "charsPerSubmission" },
+  chars_processed_period: {
+    label:   "Characters this billing period",
+    limitKey: "charsPerMonth",
+  },
+  chars_processed_today: {
+    label:   "Characters today (UTC)",
+    limitKey: "charsPerDay",
+  },
+  api_calls:             { label: "API calls",             limitKey: null                 },
+  voice_requests:        { label: "Voice requests",        limitKey: null                 },
+}
+
+export const ALL_METRICS = Object.keys(METRIC_CONFIG) as UsageMetric[]
+
+/** Keep in sync with supabase/functions/_shared/usage-metrics.ts */
+export const PER_SUBMISSION_LIMIT_METRICS = new Set<UsageMetric>([
+  "pages_processed",
+  "chars_processed",
+  "chunks_returned",
+])
+
+const metricLabel = (m: UsageMetric): string => METRIC_CONFIG[m]?.label ?? m
+
+/**
+ * Title + body for the plan-limit modal. Per-submission caps (chars/pages per submit) use
+ * submission wording; monthly/daily caps use "reached your plan limit".
+ */
+export function formatPlanLimitModal(blocked: UsageMetric[]): { title: string; message: string } {
+  const perSub = blocked.filter((m) => PER_SUBMISSION_LIMIT_METRICS.has(m))
+  const period = blocked.filter((m) => !PER_SUBMISSION_LIMIT_METRICS.has(m))
+
+  if (period.length > 0 && perSub.length > 0) {
+    return {
+      title: "Plan limit reached",
+      message:
+        `You've reached your plan limit for: ${period.map(metricLabel).join(", ")}. ` +
+        `This submission also exceeds your plan's allowance for: ${perSub.map(metricLabel).join(", ")}.`,
+    }
+  }
+
+  if (period.length === 1 && period[0] === "chars_processed_period") {
+    return {
+      title: "Plan limit reached",
+      message:
+        "You've reached the fair-use character limit for this billing period. It resets when your subscription renews.",
+    }
+  }
+  if (period.length === 1 && period[0] === "chars_processed_today") {
+    return {
+      title: "Plan limit reached",
+      message:
+        "You've reached today's fair-use character limit (UTC). Try again tomorrow or contact support if this is unexpected.",
+    }
+  }
+
+  if (period.length > 0) {
+    const names = period.map(metricLabel).join(", ")
+    return {
+      title: "Plan limit reached",
+      message: names ? `You've reached your plan limit for: ${names}.` : "You've reached a plan limit.",
+    }
+  }
+
+  if (perSub.length > 0) {
+    const title = "Submission exceeds plan allowance"
+    if (perSub.length === 1 && perSub[0] === "chars_processed") {
+      return {
+        title,
+        message: "This submission exceeds the character allowance for your plan.",
+      }
+    }
+    if (perSub.length === 1 && perSub[0] === "pages_processed") {
+      return {
+        title,
+        message: "This submission exceeds the page allowance for your plan.",
+      }
+    }
+    if (perSub.length === 1 && perSub[0] === "chunks_returned") {
+      return {
+        title,
+        message: "This submission exceeds the chunk allowance for your plan.",
+      }
+    }
+    return {
+      title,
+      message: `This submission exceeds your plan's allowance for: ${perSub.map(metricLabel).join(", ")}.`,
+    }
+  }
+
+  return {
+    title: "Plan limit reached",
+    message: "You've reached a plan limit.",
+  }
+}
+
+// ─── Response types ───────────────────────────────────────────────────────────
+
+export type UsageCounters = Record<UsageMetric, number>
+export type UsageLimits   = Record<UsageMetric, number | null>
+
+export interface TrackResult {
+  /** False when at least one limit-checked metric exceeded its cap. */
+  allowed: boolean
+  /** Post-increment counter values for the current billing period. */
+  counters: UsageCounters
+  /** Tier caps per metric (null = unlimited). */
+  limits: UsageLimits
+  /** Which metrics are over their cap. Empty array = all fine. */
+  exceeded: UsageMetric[]
+  /** Current billing period boundaries. */
+  period: { start: string; end: string }
+  /** Effective tier from track-usage (used to align limits with the shipped app). */
+  tierId?: TierId
+}
+
+/** Map tier config → per-metric limits (same shape as track-usage `limits`). */
+export function buildUsageLimitsFromTier(tierId: TierId): UsageLimits {
+  const L = getTier(tierId).limits
+  return {
+    texts_submitted:       L.textsPerMonth,
+    texts_submitted_today: L.textsPerDay,
+    chunks_returned:       L.chunksPerRequest,
+    pages_processed:       L.pagesPerSubmission,
+    chars_processed:       L.charsPerSubmission,
+    chars_processed_period: L.charsPerMonth,
+    chars_processed_today:  L.charsPerDay,
+    api_calls:             null,
+    voice_requests:        null,
+  }
+}
+
+/** Mirror `chars_processed` into virtual metrics for limit checks (client + server). */
+export function withCharsFairUseMirrors(
+  increments: Partial<UsageCounters>,
+): Partial<UsageCounters> {
+  const ch = increments.chars_processed
+  if (ch == null || ch <= 0) return { ...increments }
+  return {
+    ...increments,
+    chars_processed_period: increments.chars_processed_period ?? ch,
+    chars_processed_today: increments.chars_processed_today ?? ch,
+  }
+}
+
+/** Remove virtual keys before POSTing to `track-usage` (RPC only accepts real counters). */
+export function stripVirtualUsageIncrements(
+  increments: Partial<UsageCounters>,
+): Partial<UsageCounters> {
+  const { chars_processed_period: _p, chars_processed_today: _d, ...rest } = increments
+  return rest
+}
+
+function incrementsDeltaForMetric(
+  metric: UsageMetric,
+  increments: Partial<UsageCounters>,
+): number {
+  const ch = increments.chars_processed
+  if (metric === "chars_processed_period" || metric === "chars_processed_today") {
+    return typeof ch === "number" && ch > 0 ? ch : 0
+  }
+  if (metric === "texts_submitted_today") {
+    const t = increments.texts_submitted
+    return typeof t === "number" && t > 0 ? t : 0
+  }
+  const raw = increments[metric]
+  return typeof raw === "number" && raw > 0 ? raw : 0
+}
+
+/** Mirror track-usage exceeded rules using client tier caps (avoids stale deployed TIER_LIMITS). */
+export function computeExceededFromCounters(
+  counters: UsageCounters,
+  limits: UsageLimits,
+  increments: Partial<UsageCounters>,
+): UsageMetric[] {
+  const inc = withCharsFairUseMirrors(increments)
+  return ALL_METRICS.filter((m) => {
+    const cap = limits[m]
+    if (cap === null) return false
+    if (PER_SUBMISSION_LIMIT_METRICS.has(m)) {
+      return incrementsDeltaForMetric(m, inc) > cap
+    }
+    return (counters[m] ?? 0) > cap
+  })
+}
+
+export class UsageError extends Error {
+  constructor(message: string, public readonly status?: number) {
+    super(message)
+    this.name = "UsageError"
+  }
+}
+
+// ─── Per-metric limit status (for UI) ────────────────────────────────────────
+
+export interface LimitStatus {
+  current: number
+  limit:   number | null   // null = unlimited
+  /** 0–1 fill ratio, or null if unlimited. */
+  ratio:   number | null
+  /** True when current >= limit (hard block). */
+  exceeded: boolean
+  /** True when current >= 80% of limit (show warning). */
+  nearLimit: boolean
+}
+
+export function getLimitStatus(
+  metric: UsageMetric,
+  counters: UsageCounters,
+  limits: UsageLimits,
+): LimitStatus {
+  const current = counters[metric] ?? 0
+  const limit   = limits[metric]   ?? null
+
+  if (limit === null) {
+    return { current, limit: null, ratio: null, exceeded: false, nearLimit: false }
+  }
+
+  const ratio     = limit > 0 ? current / limit : 1
+  return {
+    current,
+    limit,
+    ratio,
+    exceeded:  current >= limit,
+    nearLimit: ratio >= 0.8,
+  }
+}
+
+// ─── Core API call ─────────────────────────────────────────────────────────────
+
+const FUNCTION_NAME = "track-usage"
+
+async function callTrackUsage(
+  increments: Partial<UsageCounters>,
+  checkOnly = false,
+): Promise<TrackResult> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new UsageError("Not authenticated", 401)
+
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${FUNCTION_NAME}`
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+      // Always defined in practice — supabase.ts throws at module load if
+      // VITE_SUPABASE_ANON_KEY is missing. The fallback is only to satisfy
+      // HeadersInit's `Record<string, string>` (no `| undefined`).
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? "",
+    },
+    body: JSON.stringify({ increments: stripVirtualUsageIncrements(increments), checkOnly }),
+  })
+
+  let payload: Partial<TrackResult> & { error?: string }
+  try { payload = await res.json() } catch {
+    throw new UsageError(`Server error (HTTP ${res.status})`, res.status)
+  }
+
+  if (!res.ok || payload.error) {
+    throw new UsageError(payload.error ?? `HTTP ${res.status}`, res.status)
+  }
+
+  const base = payload as TrackResult & { tierId?: TierId }
+  const tierId = base.tierId
+  if (!tierId || !base.counters || !base.period) {
+    return base as TrackResult
+  }
+
+  const limits = buildUsageLimitsFromTier(tierId)
+  const incForExceeded = checkOnly ? {} : withCharsFairUseMirrors(increments)
+  const exceeded = computeExceededFromCounters(base.counters, limits, incForExceeded)
+
+  return {
+    ...base,
+    limits,
+    exceeded,
+    allowed: exceeded.length === 0,
+    tierId,
+  }
+}
+
+// ─── UsageTracker class ───────────────────────────────────────────────────────
+
+/**
+ * Stateful usage tracker with optimistic local increments.
+ *
+ * Typical usage in a React component:
+ *
+ *   const trackerRef = useRef(new UsageTracker())
+ *   const tracker    = trackerRef.current
+ *
+ *   // On app mount — seed counters from the server
+ *   useEffect(() => { tracker.refresh() }, [])
+ *
+ *   // Before translating
+ *   const result = await tracker.track({ texts_submitted: 1, chars_processed: text.length })
+ *   if (!result.allowed) { showLimitModal(result.exceeded); return }
+ *
+ *   // To display "3 of 5 texts used":
+ *   const status = tracker.getLimitStatus("texts_submitted")
+ */
+export class UsageTracker {
+  private _counters: UsageCounters = zeroCounters()
+  private _limits:   UsageLimits   = nullLimits()
+  private _period:   TrackResult["period"] | null = null
+  private _tierId:   TierId | null = null
+
+  /** Listeners notified after every server sync. */
+  private _listeners: Set<() => void> = new Set()
+
+  subscribe(fn: () => void): () => void {
+    this._listeners.add(fn)
+    return () => this._listeners.delete(fn)
+  }
+
+  private _notify() { this._listeners.forEach(fn => fn()) }
+
+  // ── Getters ────────────────────────────────────────────────────────────────
+
+  get counters(): UsageCounters { return { ...this._counters } }
+  get limits():   UsageLimits   { return { ...this._limits   } }
+  get period():   TrackResult["period"] | null { return this._period }
+
+  getLimitStatus(metric: UsageMetric): LimitStatus {
+    return getLimitStatus(metric, this._counters, this._limits)
+  }
+
+  isExceeded(metric: UsageMetric): boolean {
+    return this.getLimitStatus(metric).exceeded
+  }
+
+  isNearLimit(metric: UsageMetric): boolean {
+    return this.getLimitStatus(metric).nearLimit
+  }
+
+  // ── Core operations ────────────────────────────────────────────────────────
+
+  /**
+   * Increment counters, sync with the server, and return the authoritative result.
+   *
+   * Optimistic flow:
+   *   1. Apply increment locally immediately (zero latency for UI).
+   *   2. Send to server (atomic DB increment + limit check).
+   *   3. Replace local state with server-authoritative values.
+   *   4. If the request fails entirely, roll back the optimistic increment.
+   *
+   * If the server returns allowed=false the increments ARE committed to the DB
+   * (so counters reflect true usage), but the caller is told to block the action.
+   */
+  async track(increments: Partial<UsageCounters>): Promise<TrackResult> {
+    const merged = withCharsFairUseMirrors(increments)
+    // 1. Optimistic increment
+    this._applyLocally(merged)
+    this._notify()
+
+    try {
+      // 2. Server sync
+      const result = await callTrackUsage(merged)
+
+      // 3. Replace with authoritative state
+      this._counters = result.counters
+      this._limits   = result.limits
+      this._period   = result.period
+      this._notify()
+
+      return result
+    } catch (e) {
+      // 4. Roll back optimistic increment on network/server failure
+      this._applyLocally(merged, /* negate */ true)
+      this._notify()
+      throw e
+    }
+  }
+
+  /**
+   * Fetch current counters from the server without incrementing anything.
+   * Call on mount to seed local state.
+   */
+  async refresh(): Promise<TrackResult> {
+    const result = await callTrackUsage({}, /* checkOnly */ true)
+    this._counters = result.counters
+    this._limits   = result.limits
+    this._period   = result.period
+    this._notify()
+    return result
+  }
+
+  /**
+   * Seed the tracker from a known tier without a network call.
+   * Useful when you already know the user's plan and just need limit display.
+   */
+  seedLimitsFromTier(tierId: TierId): void {
+    this._tierId = tierId
+    for (const metric of ALL_METRICS) {
+      const key = METRIC_CONFIG[metric].limitKey
+      this._limits[metric] = key ? getLimit(tierId, key) : null
+    }
+    this._notify()
+  }
+
+  // ── Internal ───────────────────────────────────────────────────────────────
+
+  private _applyLocally(
+    increments: Partial<UsageCounters>,
+    negate = false,
+  ): void {
+    const sign = negate ? -1 : 1
+    for (const [metric, amount] of Object.entries(increments) as [UsageMetric, number][]) {
+      if (!amount) continue
+      this._counters[metric] = Math.max(0, (this._counters[metric] ?? 0) + sign * amount)
+    }
+  }
+}
+
+// ─── Standalone helpers (no class needed) ────────────────────────────────────
+
+/**
+ * One-shot: track metrics and get back the result.
+ * Use when you don't need persistent local state.
+ */
+export async function trackUsage(
+  increments: Partial<UsageCounters>,
+): Promise<TrackResult> {
+  return callTrackUsage(increments)
+}
+
+/**
+ * One-shot: read current usage without incrementing.
+ */
+export async function fetchCurrentUsage(): Promise<TrackResult> {
+  return callTrackUsage({}, true)
+}
+
+/** Fired after a successful `trackUsage` so billing/settings UI can refetch. */
+export const USAGE_UPDATED_EVENT = "lectora:usage-updated"
+
+export function broadcastUsageUpdated(): void {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new CustomEvent(USAGE_UPDATED_EVENT))
+}
+
+// ─── Zero values ─────────────────────────────────────────────────────────────
+
+function zeroCounters(): UsageCounters {
+  return Object.fromEntries(ALL_METRICS.map(m => [m, 0])) as UsageCounters
+}
+
+function nullLimits(): UsageLimits {
+  return Object.fromEntries(ALL_METRICS.map(m => [m, null])) as UsageLimits
+}

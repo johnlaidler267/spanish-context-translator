@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { clampCoverPan, computeCoverLayout, renderCoverCropToJpeg } from "@/lib/cover-crop"
+import { clampCoverPan, computeCoverLayout, renderCoverCropToJpeg } from "@/lib/discover/cover-crop"
 import { cn } from "@/lib/utils"
 
 export type DiscoverCoverAspect = "card" | "featured"

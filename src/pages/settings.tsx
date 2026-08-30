@@ -5,16 +5,16 @@ import { useSearchParams } from "react-router-dom"
 import { ArrowLeft, Check, CreditCard, LogOut, SlidersHorizontal, UserRound } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
 import { MainHeader } from "@/components/main-header"
-import { SubscriptionStatus } from "@/components/subscription-status"
+import { SubscriptionStatus } from "@/components/subscription/subscription-status"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { ReadingTheme } from "@/components/theme-toggle"
-import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
+import type { ReadingTheme } from "@/components/reading/theme-toggle"
+import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
 import {
   getEffectiveDisplayName,
   sanitizeDisplayName,
   setStoredDisplayName,
-} from "@/lib/display-name-storage"
+} from "@/lib/storage/display-name-storage"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { SiteFooter } from "@/components/site-footer"
@@ -30,7 +30,7 @@ import {
   type LearningLanguage,
   type LanguageLearningPreferences,
   type NativeLanguage,
-} from "@/lib/language-learning-preferences"
+} from "@/lib/storage/language-learning-preferences"
 
 const LEARNING_ORDER: LearningLanguage[] = ["spanish", "french", "english"]
 
@@ -106,7 +106,7 @@ function SettingsRow({
   )
 }
 
-function LanguageSegmentedControl<T extends string>({
+function LanguageSegmentedControl<T extends LearningLanguage | NativeLanguage>({
   options,
   value,
   labels,
