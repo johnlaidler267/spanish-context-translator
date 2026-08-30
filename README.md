@@ -121,8 +121,10 @@ All migrations live in `supabase/migrations/`. Run `npx supabase@latest db push`
 | `0008_increment_usage_utc_daily` | Daily `texts_today` reset uses UTC calendar date |
 | `0009_fix_extra_counters_null` | Harden `increment_usage` / `extra_counters` null handling |
 | `0010_chars_today_daily` | Adds `chars_today` / `chars_today_date` to `usage_records` (legacy; no longer used for tier limits) |
-| `0010_fix_trial_trigger_on_insert` | Trial trigger runs on INSERT so `has_used_trial` is set when `trial_start` is present |
 | `0011_plan_id_free_pro_only` | DB enum is `free` / `pro` only; legacy `unlimited` rows merged to `pro` |
+| `0012_discover_catalog` | Public Discover catalog tables + curator allowlist for mutations |
+| `0013_remove_discover_curators` | Drops the curator allowlist; allows direct writes to `discover_items` |
+| `0014_fix_trial_trigger_on_insert` | Trial trigger runs on INSERT so `has_used_trial` is set when `trial_start` is present |
 
 ---
 

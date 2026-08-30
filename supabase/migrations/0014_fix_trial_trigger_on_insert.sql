@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration: 0010_fix_trial_trigger_on_insert
+-- Migration: 0014_fix_trial_trigger_on_insert
 -- Description: Fire mark_trial_used on INSERT as well as UPDATE so rows
 --              inserted with trial_start set get has_used_trial = true
 --              immediately (0006 only hooked BEFORE UPDATE).
