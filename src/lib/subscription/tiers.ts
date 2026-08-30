@@ -64,7 +64,7 @@ const STRIPE_PRICE = {
 export type TierId = "free" | "pro"
 
 /** Re-exported here so UI files can import billing interval from one place. */
-export type { DbBillingInterval } from "@/lib/db.types"
+export type { DbBillingInterval } from "@/lib/db-types"
 
 /** Ordered list — use for rendering plan grids in sequence. */
 export const TIER_IDS: TierId[] = ["free", "pro"]

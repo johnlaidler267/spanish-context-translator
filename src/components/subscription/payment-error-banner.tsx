@@ -52,7 +52,6 @@ export function PaymentErrorBanner({
   if (!isPastDue && !isIncomplete) return null
 
   const msLeft = pastDueSince ? gracePeriodMsRemaining(pastDueSince) : null
-  const gracePeriodActive = msLeft !== null && msLeft > 0
   const gracePeriodExpired = msLeft !== null && msLeft <= 0
   const unknownGrace = msLeft === null  // no timestamp yet
 

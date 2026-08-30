@@ -19,7 +19,7 @@
  *   // proceed with the action
  */
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback } from "react"
 import type { UsageMetric, UsageCounters, UsageLimits, LimitStatus, UsageTracker } from "@/lib/subscription/usage"
 import {
   METRIC_CONFIG,

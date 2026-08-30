@@ -42,7 +42,6 @@ interface LandingScreenProps {
   onSubmit: (text: string) => void
   isLoading: boolean
   theme: ReadingTheme
-  onThemeChange: (theme: ReadingTheme) => void
   displayName: string
 }
 
@@ -106,7 +105,6 @@ export function LandingScreen({
   onSubmit,
   isLoading,
   theme,
-  onThemeChange,
   displayName,
 }: LandingScreenProps) {
   const { user } = useAuth()

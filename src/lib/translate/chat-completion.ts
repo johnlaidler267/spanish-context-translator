@@ -91,7 +91,7 @@ export async function fetchChatCompletion(body: object): Promise<Response> {
   const post = () =>
     translationProvider() === "gemini" ? fetchGeminiChatViaEdge(body) : fetchGroqChatViaEdge(body)
 
-  let res = await post()
+  const res = await post()
   if (res.status !== 429) return res
 
   const bodyText = await res.text().catch(() => "")

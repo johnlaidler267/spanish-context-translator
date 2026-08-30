@@ -508,7 +508,6 @@ export function TextChunk({
     }
   }, [delegatePointerHover, handleTouchEnd])
 
-  const gap = GAP_FROM_WORD[variant]
   const arrowSize = ARROW_BOX[variant]
 
   const { prefix, underline, suffix } = splitChunkTextForUnderline(chunk.text)

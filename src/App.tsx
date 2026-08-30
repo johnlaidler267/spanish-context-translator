@@ -517,7 +517,6 @@ export default function App() {
           onSubmit={handleTextSubmit}
           isLoading={appState === "loading"}
           theme={appTheme}
-          onThemeChange={setReadingTheme}
           displayName={displayName}
         />
       </div>

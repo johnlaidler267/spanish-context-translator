@@ -18,7 +18,7 @@ import { ContentCard } from "@/pages/discover/content-card"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { supabase } from "@/lib/supabase"
 import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover/discover-map"
-import type { DiscoverItemInsert } from "@/lib/db.types"
+import type { DiscoverItemInsert } from "@/lib/db-types"
 import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 
 const LIST_SELECT =

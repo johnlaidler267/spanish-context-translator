@@ -248,7 +248,7 @@ Read mode uses the same translated slice as the current article page and only re
 Components and `lib` modules are grouped by feature; a handful of
 cross-feature files (`main-header.tsx`, `app-error-modal.tsx`,
 `site-footer.tsx`, …) and shared low-level `lib` modules (`supabase.ts`,
-`db.types.ts`, `utils.ts`, …) stay at the top level of their folder.
+`db-types.ts`, `utils.ts`, …) stay at the top level of their folder.
 
 ```
 src/
@@ -284,7 +284,7 @@ src/
     storage/             # localStorage-backed persistence (theme, drafts, prefs)
     translate/           # Chunking + LLM provider routing (Groq / Gemini)
     supabase.ts          # Supabase client singleton
-    db.types.ts          # TypeScript types mirroring the DB schema
+    db-types.ts          # TypeScript types mirroring the DB schema
   pages/
     upgrade.tsx       # Plan selection + Stripe checkout trigger
     settings.tsx      # General / Account / Billing tabs (?tab=billing)

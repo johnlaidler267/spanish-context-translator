@@ -1,5 +1,5 @@
 import type { ContentItem } from "@/lib/discover/content-data"
-import type { DiscoverItemRow } from "@/lib/db.types"
+import type { DiscoverItemRow } from "@/lib/db-types"
 
 /** List / card fields (matches discover list query; no `body_text`). */
 export type DiscoverListRow = Pick<

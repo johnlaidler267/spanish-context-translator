@@ -4,7 +4,7 @@
  *
  * Usage with the Supabase client:
  *   import { createClient } from '@supabase/supabase-js'
- *   import type { Database } from '@/lib/db.types'
+ *   import type { Database } from '@/lib/db-types'
  *   const supabase = createClient<Database>(url, key)
  *
  *   // Fully typed queries:
