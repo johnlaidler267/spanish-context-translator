@@ -11,6 +11,7 @@
     "build": "./scripts/run-with-nvm.sh vite build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "preview": "./scripts/run-with-nvm.sh vite preview",
     "supabase:deploy-checkout": "npx --yes supabase@latest functions deploy create-checkout-session",
     "supabase:deploy-track-usage": "npx --yes supabase@latest functions deploy track-usage",
@@ -46,6 +47,7 @@
     "globals": "^16.5.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.1.11"
   }
 }

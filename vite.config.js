@@ -24,4 +24,15 @@ export default defineConfig({
     },
     dedupe: ['react', 'react-dom'],
   },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+    env: {
+      // Several lib modules import supabase.ts transitively, which throws
+      // at module load without these — dummy values, no real network
+      // access happens in unit tests.
+      VITE_SUPABASE_URL: 'https://example.supabase.co',
+      VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+    },
+  },
 })
