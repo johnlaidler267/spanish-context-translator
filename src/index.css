@@ -1657,6 +1657,13 @@ article span {
   }
 }
 
+/* Tactile press feedback — comes after :hover so the tap/click-down state
+   (equal specificity to :hover) wins the cascade tiebreak on desktop too. */
+.discover-card:active {
+  transform: scale(0.965);
+  transition-duration: 0.12s;
+}
+
 .discover-card__frame {
   position: relative;
   aspect-ratio: 3 / 4;

@@ -73,11 +73,35 @@ export default {
           from: { opacity: "0", transform: "translateY(12px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        /** Modal open/close "bubble pop" — the overshoot comes from the keyframe stops
+         *  themselves (0 → past 1 → settle), not the timing function. */
+        "modal-pop-in": {
+          "0%": { opacity: "0", transform: "translate(-50%, -50%) scale(0.72)" },
+          "55%": { opacity: "1", transform: "translate(-50%, -50%) scale(1.04)" },
+          "80%": { transform: "translate(-50%, -50%) scale(0.985)" },
+          "100%": { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
+        },
+        "modal-pop-out": {
+          from: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
+          to: { opacity: "0", transform: "translate(-50%, -50%) scale(0.85)" },
+        },
+        "overlay-fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "overlay-fade-out": {
+          from: { opacity: "1" },
+          to: { opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in-up": "fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "modal-pop-in": "modal-pop-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "modal-pop-out": "modal-pop-out 0.16s cubic-bezier(0.4, 0, 1, 1) both",
+        "overlay-fade-in": "overlay-fade-in 0.25s ease-out both",
+        "overlay-fade-out": "overlay-fade-out 0.15s ease-in both",
       },
     },
   },
