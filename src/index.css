@@ -2679,6 +2679,25 @@ article span {
   color: #7a5a1e;
 }
 
+.discover-modal__notice p {
+  margin: 0;
+}
+
+.discover-modal__notice p.discover-modal__notice-links {
+  margin-top: 0.4rem;
+}
+
+.discover-modal__notice-links a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.discover-modal__notice-links a:hover {
+  opacity: 0.85;
+}
+
 .discover-modal__actions {
   display: flex;
   flex-shrink: 0;

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { ArrowRight, Trash2, X } from "lucide-react"
 import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
 import { DifficultyMark, normalizeDifficulty } from "@/components/discover/difficulty-mark"
@@ -102,9 +103,18 @@ export function ContentPreviewModal({
           </div>
 
           {startReadingError && (
-            <p className="discover-modal__notice" role="alert">
-              {startReadingError}
-            </p>
+            <div className="discover-modal__notice" role="alert">
+              <p>{startReadingError}</p>
+              <p className="discover-modal__notice-links">
+                <Link to="/upgrade" onClick={onClose}>
+                  View upgrade options
+                </Link>
+                <span aria-hidden> · </span>
+                <Link to="/settings?tab=billing" onClick={onClose}>
+                  Billing & usage
+                </Link>
+              </p>
+            </div>
           )}
         </div>
 

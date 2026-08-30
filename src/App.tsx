@@ -400,10 +400,10 @@ export default function App() {
         const blockedMessage =
           `This reading is ${sourceText.length.toLocaleString()} characters long, which is over the free plan limit of ` +
           `${freeCharLimit.toLocaleString()} characters per submission. Upgrade to continue.`
-        setPlanLimitModal({
-          title: "Submission exceeds free plan allowance",
-          message: blockedMessage,
-        })
+        // Shown inline by ContentPreviewModal (which is already open here) rather than via the
+        // global RateLimitModal — stacking that on top of the open Discover dialog left it
+        // visually on top but functionally dead, since Radix's modal Dialog disables pointer
+        // events on everything outside its own content while open.
         return { blockedMessage }
       }
 
