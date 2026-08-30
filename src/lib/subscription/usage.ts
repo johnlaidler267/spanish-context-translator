@@ -17,7 +17,7 @@
  */
 
 import { supabase } from "@/lib/supabase"
-import { getLimit, getTier, type TierId, type TierLimits } from "@/lib/tiers"
+import { getLimit, getTier, type TierId, type TierLimits } from "@/lib/subscription/tiers"
 
 // ─── Metric definitions ───────────────────────────────────────────────────────
 

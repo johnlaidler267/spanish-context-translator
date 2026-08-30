@@ -1,4 +1,4 @@
-import { getStoredLanguageLearningPreferences } from "@/lib/language-learning-preferences"
+import { getStoredLanguageLearningPreferences } from "@/lib/storage/language-learning-preferences"
 import {
   fetchChatCompletion,
   parseChatJsonErrorBody,

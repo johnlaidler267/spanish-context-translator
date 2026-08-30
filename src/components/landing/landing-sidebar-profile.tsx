@@ -10,7 +10,7 @@ import {
   formatPlanSubtitle,
   planPillFromRow,
   type LinkPlanPill,
-} from "@/lib/plan-pill"
+} from "@/lib/subscription/plan-pill"
 import { beginRouteTransition } from "@/lib/route-transition-shell"
 
 function PlanLineLoading() {

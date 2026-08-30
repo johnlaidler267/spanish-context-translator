@@ -10,7 +10,7 @@ import {
   useRef,
   type ReactNode,
 } from "react"
-import { checkSubscriptionStatus, type SubscriptionStatus } from "@/lib/subscription"
+import { checkSubscriptionStatus, type SubscriptionStatus } from "@/lib/subscription/subscription"
 import { useAuth } from "@/contexts/auth-context"
 
 export interface SubscriptionContextValue {

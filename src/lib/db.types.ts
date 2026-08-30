@@ -17,7 +17,7 @@
  *   // data is UserSubscriptionRow | null
  */
 
-import type { TierId } from "@/lib/tiers"
+import type { TierId } from "@/lib/subscription/tiers"
 
 // ─── Enum mirrors ─────────────────────────────────────────────────────────────
 

@@ -10,7 +10,7 @@ import {
   type SetStateAction,
 } from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
-import { TextChunk } from "./text-chunk"
+import { TextChunk } from "@/components/reading/text-chunk"
 import { gapBetweenReconciledChunks, type ReconciledItem } from "@/lib/translate"
 import {
   getChunkIdFromPointerClientXY,
@@ -19,18 +19,18 @@ import {
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
-import { DetailsBox } from "./details-box"
+import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
+import { DetailsBox } from "@/components/reading/details-box"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
-import { useLandingShellNewChat } from "./landing-shell-layout"
-import { AppErrorModal } from "./app-error-modal"
-import { MobileReadingEdgeTurn } from "./mobile-reading-edge-turn"
+import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
+import { AppErrorModal } from "@/components/app-error-modal"
+import { MobileReadingEdgeTurn } from "@/components/reading/mobile-reading-edge-turn"
 import { useReadingPageEnterAnimation } from "@/hooks/use-reading-page-enter"
 import {
   cancelHoverSpeech,
   speakHoverChunk,
   speechUnlockForTouchGesture,
-} from "@/lib/hover-tts"
+} from "@/lib/reading/hover-tts"
 
 export type ArticlePaginationState = {
   pageIndex: number

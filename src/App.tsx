@@ -7,14 +7,14 @@ import DiscoverPage from "@/pages/discover"
 import UpgradePage from "@/pages/upgrade"
 import TermsPage from "@/pages/terms"
 import PrivacyPage from "@/pages/privacy"
-import { LandingShellLayout } from "./components/landing-shell-layout"
-import { LandingScreen } from "./components/landing-screen"
-import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "./components/loading-overlay"
-import { ReadingHeader } from "./components/reading-header"
-import { ArticleContent } from "./components/article-content"
-import { ReadMode } from "./components/read-mode"
-import { SubscriptionLapsedModal } from "./components/subscription-lapsed-modal"
-import { useSubscription } from "./contexts/subscription-context"
+import { LandingShellLayout } from "@/components/landing/landing-shell-layout"
+import { LandingScreen } from "@/components/landing/landing-screen"
+import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "@/components/loading-overlay"
+import { ReadingHeader } from "@/components/reading/reading-header"
+import { ArticleContent } from "@/components/reading/article-content"
+import { ReadMode } from "@/components/reading/read-mode"
+import { SubscriptionLapsedModal } from "@/components/subscription/subscription-lapsed-modal"
+import { useSubscription } from "@/contexts/subscription-context"
 import {
   buildSentencePages,
   clampPageLimitsForLlmBatching,
@@ -28,21 +28,21 @@ import {
   subdivideReadStepsForMobile,
   translatePageText,
 } from "@/lib/translate"
-import { TranslationCache } from "./lib/translation-cache"
-import type { ViewMode } from "./components/mode-toggle"
-import type { ReadingTheme } from "./components/theme-toggle"
-import { getStoredLandingDraft, setStoredLandingDraft } from "./lib/landing-draft-storage"
-import { getStoredReadingTheme, setStoredReadingTheme } from "./lib/theme-storage"
-import { getEffectiveDisplayName } from "./lib/display-name-storage"
-import { Button } from "./components/ui/button"
-import { AppErrorModal } from "./components/app-error-modal"
-import { RateLimitModal } from "./components/rate-limit-modal"
-import { isRateLimitApiMessage } from "./lib/api-errors"
-import { useAuth } from "./contexts/auth-context"
-import { useArticlePageSplitLimits } from "./hooks/use-article-page-split-limits"
-import { GuestSignupModal } from "./components/guest-signup-modal"
-import { hasReachedGuestLimit, incrementGuestUses } from "./lib/guest-usage"
-import { checkLimits } from "./lib/enforce"
+import { TranslationCache } from "@/lib/translation-cache"
+import type { ViewMode } from "@/components/reading/mode-toggle"
+import type { ReadingTheme } from "@/components/reading/theme-toggle"
+import { getStoredLandingDraft, setStoredLandingDraft } from "@/lib/storage/landing-draft-storage"
+import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
+import { getEffectiveDisplayName } from "@/lib/storage/display-name-storage"
+import { Button } from "@/components/ui/button"
+import { AppErrorModal } from "@/components/app-error-modal"
+import { RateLimitModal } from "@/components/subscription/rate-limit-modal"
+import { isRateLimitApiMessage } from "@/lib/api-errors"
+import { useAuth } from "@/contexts/auth-context"
+import { useArticlePageSplitLimits } from "@/hooks/use-article-page-split-limits"
+import { GuestSignupModal } from "@/components/auth/guest-signup-modal"
+import { hasReachedGuestLimit, incrementGuestUses } from "@/lib/subscription/guest-usage"
+import { checkLimits } from "@/lib/subscription/enforce"
 import {
   formatPlanLimitModal,
   broadcastUsageUpdated,
@@ -52,10 +52,10 @@ import {
   type UsageCounters,
   type UsageLimits,
   UsageError,
-} from "./lib/usage"
-import type { ContentItem } from "./lib/content-data"
-import { supabase } from "./lib/supabase"
-import { getTier } from "./lib/tiers"
+} from "@/lib/subscription/usage"
+import type { ContentItem } from "@/lib/discover/content-data"
+import { supabase } from "@/lib/supabase"
+import { getTier } from "@/lib/subscription/tiers"
 
 type AppState = "landing" | "loading" | "reading"
 

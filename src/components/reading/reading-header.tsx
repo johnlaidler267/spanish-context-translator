@@ -2,11 +2,11 @@
 
 import { Link } from "react-router-dom"
 import { ChevronLeft, Moon, Sun, Settings2, Volume2 } from "lucide-react"
-import { ModeToggle, type ViewMode } from "./mode-toggle"
-import { type ReadingTheme } from "./theme-toggle"
-import { READING_HEADER_BAND_REM } from "@/lib/reading-layout"
+import { ModeToggle, type ViewMode } from "@/components/reading/mode-toggle"
+import { type ReadingTheme } from "@/components/reading/theme-toggle"
+import { READING_HEADER_BAND_REM } from "@/lib/reading/reading-layout"
 import { cn } from "@/lib/utils"
-import { primeSpeechSynthesisFromUserGesture } from "@/lib/hover-tts"
+import { primeSpeechSynthesisFromUserGesture } from "@/lib/reading/hover-tts"
 
 interface ReadingHeaderProps {
   mode: ViewMode

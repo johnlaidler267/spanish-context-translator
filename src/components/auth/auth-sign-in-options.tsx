@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react"
 import { Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { LegalDocLinks } from "@/components/legal-doc-links"
+import { LegalDocLinks } from "@/components/legal/legal-doc-links"
 import { useAuth } from "@/contexts/auth-context"
 
 function GoogleIcon() {

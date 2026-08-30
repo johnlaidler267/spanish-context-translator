@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { BookOpen, Feather, FileText, Music } from "lucide-react"
 import type { CSSProperties } from "react"
-import type { ContentItem, ContentType } from "@/lib/content-data"
+import type { ContentItem, ContentType } from "@/lib/discover/content-data"
 
 const typeIcon = {
   book: BookOpen,

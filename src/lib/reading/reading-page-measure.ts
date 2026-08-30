@@ -5,7 +5,7 @@
  * Read-mode uses larger type; article pagination still follows article body metrics.
  */
 
-import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
+import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
 import type { PageSplitLimits } from "@/lib/translate"
 import { resolvePageSplitLimits } from "@/lib/translate"
 

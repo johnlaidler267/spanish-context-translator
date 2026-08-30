@@ -2,8 +2,8 @@
  * Frontend helpers for initiating Stripe Checkout and the Billing Portal.
  *
  * Usage:
- *   import { startCheckout, openBillingPortal } from "@/lib/checkout"
- *   import { getTier } from "@/lib/tiers"
+ *   import { startCheckout, openBillingPortal } from "@/lib/subscription/checkout"
+ *   import { getTier } from "@/lib/subscription/tiers"
  *
  *   // New subscription → Stripe Checkout
  *   await startCheckout({ stripePriceId: getTier("pro").pricing.monthly.stripePriceId! })

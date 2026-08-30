@@ -20,8 +20,8 @@
 
 import { AlertTriangle, ArrowRight, TrendingDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { TierConfig } from "@/lib/tiers"
-import { diffTiers } from "@/lib/subscription"
+import type { TierConfig } from "@/lib/subscription/tiers"
+import { diffTiers } from "@/lib/subscription/subscription"
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

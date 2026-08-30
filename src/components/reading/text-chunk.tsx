@@ -13,7 +13,7 @@ import {
   type TouchEvent,
 } from "react"
 import { createPortal } from "react-dom"
-import { splitChunkTextForUnderline } from "@/lib/chunk-text"
+import { splitChunkTextForUnderline } from "@/lib/translate/chunk-text"
 import { cn } from "@/lib/utils"
 
 interface ChunkData {

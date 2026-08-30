@@ -20,13 +20,13 @@
  */
 
 import { useState, useCallback, useRef } from "react"
-import type { UsageMetric, UsageCounters, UsageLimits, LimitStatus, UsageTracker } from "@/lib/usage"
+import type { UsageMetric, UsageCounters, UsageLimits, LimitStatus, UsageTracker } from "@/lib/subscription/usage"
 import {
   METRIC_CONFIG,
   ALL_METRICS,
   getLimitStatus,
   PER_SUBMISSION_LIMIT_METRICS,
-} from "@/lib/usage"
+} from "@/lib/subscription/usage"
 
 // ─── Thresholds (mirror supabase/functions/_shared/enforce-limits.ts) ─────────
 

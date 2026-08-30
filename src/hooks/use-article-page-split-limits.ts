@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import type { PageSplitLimits } from "@/lib/translate"
 import { resolvePageSplitLimits } from "@/lib/translate"
-import { measureArticlePageSplitLimitsWhenReady } from "@/lib/reading-page-measure"
+import { measureArticlePageSplitLimitsWhenReady } from "@/lib/reading/reading-page-measure"
 
 function viewportIsMobile(): boolean {
   if (typeof window === "undefined") return false

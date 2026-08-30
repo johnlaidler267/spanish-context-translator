@@ -11,15 +11,15 @@ import {
   type SetStateAction,
 } from "react"
 import { Link } from "react-router-dom"
-import { useLandingShellNewChat } from "@/components/landing-shell-layout"
+import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
 import { useVirtualKeyboardLayoutFix } from "@/hooks/use-virtual-keyboard-layout-fix"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { useAuth } from "@/contexts/auth-context"
 import { useSubscription } from "@/contexts/subscription-context"
 import { supabase } from "@/lib/supabase"
-import { getTier, type TierId } from "@/lib/tiers"
-import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscription-display"
-import { LandingContentPills } from "./landing-content-pills"
+import { getTier, type TierId } from "@/lib/subscription/tiers"
+import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscription/subscription-display"
+import { LandingContentPills } from "@/components/landing/landing-content-pills"
 import {
   appendTranscriptToField,
   fetchLearnRandomParagraph,
@@ -31,10 +31,10 @@ import {
   LANGUAGE_LEARNING_PREFS_UPDATED_EVENT,
   LANGUAGE_LEARNING_PREFERENCES_KEY,
   type LanguageLearningPreferences,
-} from "@/lib/language-learning-preferences"
-import { VoiceInputButton } from "./voice-input-button"
-import { AppErrorModal } from "./app-error-modal"
-import type { ReadingTheme } from "./theme-toggle"
+} from "@/lib/storage/language-learning-preferences"
+import { VoiceInputButton } from "@/components/reading/voice-input-button"
+import { AppErrorModal } from "@/components/app-error-modal"
+import type { ReadingTheme } from "@/components/reading/theme-toggle"
 
 interface LandingScreenProps {
   draftText: string

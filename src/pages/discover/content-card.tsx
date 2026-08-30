@@ -4,8 +4,8 @@ import type { KeyboardEvent } from "react"
 import { Pencil, Trash2 } from "lucide-react"
 import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
 import { DifficultyMark, normalizeDifficulty } from "@/components/discover/difficulty-mark"
-import { contentTypeLabels } from "@/lib/content-data"
-import type { ContentItem } from "@/lib/content-data"
+import { contentTypeLabels } from "@/lib/discover/content-data"
+import type { ContentItem } from "@/lib/discover/content-data"
 import { cn } from "@/lib/utils"
 
 interface ContentCardProps {

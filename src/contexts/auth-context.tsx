@@ -10,7 +10,7 @@ import {
 } from "react"
 import type { User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
-import { clearGuestUses } from "@/lib/guest-usage"
+import { clearGuestUses } from "@/lib/subscription/guest-usage"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

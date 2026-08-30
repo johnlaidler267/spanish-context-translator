@@ -1,5 +1,5 @@
-import type { TierId } from "@/lib/tiers"
-import { normalizeTierId } from "@/lib/tiers"
+import type { TierId } from "@/lib/subscription/tiers"
+import { normalizeTierId } from "@/lib/subscription/tiers"
 
 /** Minimal row shape — matches `user_subscriptions` fields used for plan pill / pricing UI. */
 export type SubscriptionRowLike = {

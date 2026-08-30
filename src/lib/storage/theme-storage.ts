@@ -1,4 +1,4 @@
-import type { ReadingTheme } from "@/components/theme-toggle"
+import type { ReadingTheme } from "@/components/reading/theme-toggle"
 
 /** Key shared with inline script in index.html (avoid flash of wrong theme). */
 export const READING_THEME_STORAGE_KEY = "lector-reading-theme"

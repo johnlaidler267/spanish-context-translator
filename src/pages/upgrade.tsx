@@ -7,8 +7,8 @@ import {
 } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
 import { MainHeader } from "@/components/main-header"
-import type { ReadingTheme } from "@/components/theme-toggle"
-import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
+import type { ReadingTheme } from "@/components/reading/theme-toggle"
+import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -28,11 +28,11 @@ import {
   type TierId,
   type TierConfig,
   type DbBillingInterval,
-} from "@/lib/tiers"
+} from "@/lib/subscription/tiers"
 import {
   pricingUiPlanIdFromRow,
   subscriptionRowShowsAsFreePlan,
-} from "@/lib/subscription-display"
+} from "@/lib/subscription/subscription-display"
 import {
   startCheckout,
   openBillingPortal,
@@ -42,7 +42,7 @@ import {
   confirmCheckoutSession,
   CheckoutError,
   isIdentityRequiredCheckoutError,
-} from "@/lib/checkout"
+} from "@/lib/subscription/checkout"
 import {
   cancelSubscription,
   reactivateSubscription,
@@ -50,8 +50,8 @@ import {
   upgradeSubscription,
   SubscriptionError,
   SUBSCRIPTION_IDENTITY_REQUIRED_CODE,
-} from "@/lib/subscription"
-import { PlanChangeDialog } from "@/components/plan-change-dialog"
+} from "@/lib/subscription/subscription"
+import { PlanChangeDialog } from "@/components/subscription/plan-change-dialog"
 import { SiteFooter } from "@/components/site-footer"
 import { supabase } from "@/lib/supabase"
 import { invokeSubscriptionRecheck } from "@/contexts/subscription-context"

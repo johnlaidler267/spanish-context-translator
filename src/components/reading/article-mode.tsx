@@ -9,14 +9,14 @@ import {
   useRef,
   type SetStateAction,
 } from "react"
-import { TextChunk } from "./text-chunk"
+import { TextChunk } from "@/components/reading/text-chunk"
 import {
   getChunkIdFromPointerClientXY,
   useChunkTouchExploration,
 } from "@/hooks/use-chunk-touch-exploration"
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { cn } from "@/lib/utils"
-import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading-layout"
+import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
 
 interface ChunkData {
   id: number

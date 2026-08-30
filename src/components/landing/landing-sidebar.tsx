@@ -11,8 +11,8 @@ import {
 import { BsTranslate } from "react-icons/bs"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { LexaLensWordmark } from "./lexa-lens-wordmark"
-import { LandingSidebarProfile } from "./landing-sidebar-profile"
+import { LexaLensWordmark } from "@/components/lexa-lens-wordmark"
+import { LandingSidebarProfile } from "@/components/landing/landing-sidebar-profile"
 
 const SIDEBAR_EXPANDED_PX = 256
 const SIDEBAR_COLLAPSED_PX = 72

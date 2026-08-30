@@ -2,9 +2,9 @@
 
 import { useCallback, useRef, useState } from "react"
 import { Outlet, useOutletContext } from "react-router-dom"
-import { LandingSidebar, type LandingSidebarLayout } from "@/components/landing-sidebar"
+import { LandingSidebar, type LandingSidebarLayout } from "@/components/landing/landing-sidebar"
 import { MainHeader } from "@/components/main-header"
-import type { ReadingTheme } from "@/components/theme-toggle"
+import type { ReadingTheme } from "@/components/reading/theme-toggle"
 
 export type LandingShellOutletContext = {
   registerNewChat: (handler: (() => void) | null) => void

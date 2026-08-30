@@ -3,8 +3,8 @@
 import { useEffect } from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AuthSignInOptions } from "@/components/auth-sign-in-options"
-import { clearGuestUses } from "@/lib/guest-usage"
+import { AuthSignInOptions } from "@/components/auth/auth-sign-in-options"
+import { clearGuestUses } from "@/lib/subscription/guest-usage"
 
 export interface GuestSignupModalProps {
   open: boolean

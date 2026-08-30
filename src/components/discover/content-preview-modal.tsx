@@ -6,8 +6,8 @@ import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
 import { DifficultyMark, normalizeDifficulty } from "@/components/discover/difficulty-mark"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { contentTypeLabels } from "@/lib/content-data"
-import type { ContentItem } from "@/lib/content-data"
+import { contentTypeLabels } from "@/lib/discover/content-data"
+import type { ContentItem } from "@/lib/discover/content-data"
 
 interface ContentPreviewModalProps {
   content: ContentItem | null

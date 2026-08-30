@@ -21,25 +21,25 @@ import {
   AlertTriangle, RefreshCw, Loader2, ArrowUpRight, RotateCcw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getTier, formatPrice, type TierId } from "@/lib/tiers"
-import type { UsageMetric, UsageCounters, UsageLimits, UsageTracker } from "@/lib/usage"
+import { getTier, formatPrice, type TierId } from "@/lib/subscription/tiers"
+import type { UsageMetric, UsageCounters, UsageLimits, UsageTracker } from "@/lib/subscription/usage"
 import {
   METRIC_CONFIG,
   ALL_METRICS,
   getLimitStatus,
   fetchCurrentUsage,
   USAGE_UPDATED_EVENT,
-} from "@/lib/usage"
-import { openBillingPortal, CheckoutError, isIdentityRequiredCheckoutError } from "@/lib/checkout"
+} from "@/lib/subscription/usage"
+import { openBillingPortal, CheckoutError, isIdentityRequiredCheckoutError } from "@/lib/subscription/checkout"
 import {
   reactivateSubscription,
   SubscriptionError,
   SUBSCRIPTION_IDENTITY_REQUIRED_CODE,
-} from "@/lib/subscription"
+} from "@/lib/subscription/subscription"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
-import { PaymentErrorBanner } from "@/components/payment-error-banner"
+import { PaymentErrorBanner } from "@/components/subscription/payment-error-banner"
 
 // ─── Display config ───────────────────────────────────────────────────────────
 

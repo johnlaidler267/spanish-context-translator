@@ -1,4 +1,4 @@
-import { postProcessChunks } from "@/lib/chunk-merges"
+import { postProcessChunks } from "@/lib/translate/chunk-merges"
 import {
   chatFinishReasonFromOpenAiStylePayload,
   combineAssistantPayloadsForChunkParse,

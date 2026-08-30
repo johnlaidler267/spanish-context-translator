@@ -1,5 +1,5 @@
-import { getTier } from "@/lib/tiers"
-import { subscriptionRowShowsAsFreePlan } from "@/lib/subscription-display"
+import { getTier } from "@/lib/subscription/tiers"
+import { subscriptionRowShowsAsFreePlan } from "@/lib/subscription/subscription-display"
 
 export type PlanPill =
   | { mode: "link"; to: string; primary: string; secondary: string }

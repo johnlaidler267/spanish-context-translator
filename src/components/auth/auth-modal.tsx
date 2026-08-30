@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { X } from "lucide-react"
-import { AuthSignInOptions } from "@/components/auth-sign-in-options"
+import { AuthSignInOptions } from "@/components/auth/auth-sign-in-options"
 import { useAuth } from "@/contexts/auth-context"
 
 export function AuthModal() {

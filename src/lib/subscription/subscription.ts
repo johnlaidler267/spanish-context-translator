@@ -9,7 +9,7 @@
  * confirmation dialog).
  *
  * Usage:
- *   import { cancelSubscription, reactivateSubscription, diffTiers } from "@/lib/subscription"
+ *   import { cancelSubscription, reactivateSubscription, diffTiers } from "@/lib/subscription/subscription"
  *
  *   // Cancel at period end
  *   const result = await cancelSubscription()
@@ -31,7 +31,7 @@ import {
   type DbBillingInterval,
   TIER_IDS,
   getTier,
-} from "@/lib/tiers"
+} from "@/lib/subscription/tiers"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

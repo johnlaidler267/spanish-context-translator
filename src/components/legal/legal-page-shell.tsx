@@ -4,8 +4,8 @@ import { useEffect, useState, type ReactNode } from "react"
 import { ArrowLeft } from "lucide-react"
 import { BackToHomeLink } from "@/components/back-to-home-link"
 import { MainHeader } from "@/components/main-header"
-import type { ReadingTheme } from "@/components/theme-toggle"
-import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/theme-storage"
+import type { ReadingTheme } from "@/components/reading/theme-toggle"
+import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
 
 type LegalPageShellProps = {
   title: string
