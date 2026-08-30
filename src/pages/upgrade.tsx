@@ -974,13 +974,15 @@ export default function UpgradePage() {
           {/* Billing interval toggle */}
           <BillingToggle interval={interval} onChange={setInterval} />
 
-          {/* Plan grid */}
-          {subLoading ? (
-            <div className="flex justify-center items-center py-24">
-              <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-6 md:flex-row md:items-stretch">
+          {/*
+            Plan grid: pricing/features are static (tiers.ts), so render immediately rather
+            than blocking on subLoading. Every helper below (buttonLabel, isCurrentPlanCard,
+            etc.) already treats sub === null as "no active subscription" — the same shape
+            they use for guests — so the only visible effect of not waiting is that a
+            paying user's card briefly shows the generic "Subscribe" state until their real
+            subscription loads a beat later, instead of a blocking spinner up front.
+          */}
+          <div className="flex flex-col gap-6 md:flex-row md:items-stretch">
               {TIER_IDS.map((id) => {
                 const tier        = getTier(id)
                 const isCurrent   = isCurrentPlanCard(sub, id, interval)
@@ -1247,8 +1249,7 @@ export default function UpgradePage() {
                   </Card>
                 )
               })}
-            </div>
-          )}
+          </div>
 
           {/* Footer note */}
           <p className="mt-10 text-center text-xs text-muted-foreground font-sans">
