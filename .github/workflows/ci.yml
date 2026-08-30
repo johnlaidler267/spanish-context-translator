@@ -13,6 +13,15 @@ jobs:
   checks:
     name: Lint, typecheck, build
     runs-on: ubuntu-latest
+    env:
+      # scripts/run-with-nvm.sh calls `nvm use` when it finds an nvm
+      # install and would otherwise pick up the runner's own preinstalled
+      # nvm, which doesn't have the exact .nvmrc patch version cached and
+      # fails the build before it even starts. actions/setup-node below
+      # already puts the correct Node on PATH for the whole job; pointing
+      # NVM_DIR somewhere with no nvm.sh makes the script's own guard
+      # (`if [ -s "$NVM_DIR/nvm.sh" ]`) skip straight to that.
+      NVM_DIR: /opt/no-nvm-here
     steps:
       - uses: actions/checkout@v4
 
