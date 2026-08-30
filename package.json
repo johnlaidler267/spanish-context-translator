@@ -16,7 +16,6 @@
     "supabase:deploy-groq": "npx --yes supabase@latest functions deploy groq-chat groq-transcribe chunk-details chunk-memory-trick gemini-chat"
   },
   "dependencies": {
-    "20": "^3.1.9",
     "@jirimracek/conjugate-esp": "^2.3.6",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
