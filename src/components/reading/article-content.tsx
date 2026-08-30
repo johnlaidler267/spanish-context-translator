@@ -474,14 +474,11 @@ export function ArticleContent({
           "flex items-center justify-between gap-4",
           // Desktop: in-flow, pushed to bottom by mt-auto
           "mt-auto shrink-0 border-t border-border/60 pt-1",
-          // Mobile: fixed to screen bottom, always visible
+          // Mobile: fixed to screen bottom, always visible — floats directly over the
+          // reading background (no bar/border/shadow); each button carries its own pill
+          // background, so it stays legible without one.
           "max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:z-30",
-          "max-md:mt-0 max-md:border-t max-md:border-[rgba(201,122,90,0.18)]",
-          "max-md:bg-[linear-gradient(180deg,rgba(248,242,234,0.98),rgba(242,234,225,0.96))]",
-          "max-md:shadow-[0_-10px_30px_rgba(86,64,47,0.08),inset_0_1px_0_rgba(255,255,255,0.72)]",
-          "dark:max-md:border-[rgba(201,122,90,0.12)]",
-          "dark:max-md:bg-[linear-gradient(180deg,rgba(30,26,23,0.98),rgba(24,21,19,0.96))]",
-          "dark:max-md:shadow-[0_-12px_30px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.04)]",
+          "max-md:mt-0",
           "max-md:px-6 max-md:pt-3.5 max-md:pb-[max(1.1rem,env(safe-area-inset-bottom,0px)+0.45rem)]",
         )}>
           <Button
