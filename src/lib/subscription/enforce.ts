@@ -103,7 +103,8 @@ export function checkLimits(
     if (status.limit !== null) {
       if (PER_SUBMISSION_LIMIT_METRICS.has(metric)) {
         ratioAfter = status.limit > 0 ? proposed / status.limit : null
-        if (proposed > status.limit) {
+        const isBlocked = ratioAfter != null ? ratioAfter >= blockRatio : proposed > status.limit
+        if (isBlocked) {
           level = "blocked"
         } else if (ratioAfter != null && ratioAfter >= warnRatio) {
           level = "warning"
@@ -114,7 +115,10 @@ export function checkLimits(
           ? (status.current + proposed) / status.limit
           : 1
 
-        if (status.current + proposed > status.limit) {
+        const isBlocked = status.limit > 0
+          ? ratioAfter >= blockRatio
+          : status.current + proposed > status.limit
+        if (isBlocked) {
           level = "blocked"
         } else if (currentRatio >= warnRatio || ratioAfter >= warnRatio) {
           level = "warning"
