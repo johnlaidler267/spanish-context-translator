@@ -224,13 +224,16 @@ export function TextChunk({
   followPointerPlaceRef,
   suppressDoubleTapAfterExplorationLiftRef,
 }: TextChunkProps) {
-  if (isPunctuationOnly(chunk.text)) {
-    return <span>{chunk.text.trim()}</span>
-  }
-
-  if (isWhitespaceOnlyChunkText(chunk.text)) {
-    return <span>{chunk.text}</span>
-  }
+  // NB: punctuation-only / whitespace-only chunks render a bare <span> below
+  // (no tooltip, no interaction) instead of returning early here — every
+  // hook in this component must run unconditionally on every render
+  // (Rules of Hooks). A chunk's punctuation/whitespace-only-ness is derived
+  // from its own text and doesn't change across renders for a given chunk,
+  // but two *different* chunks reconciled into the same list position must
+  // still see the same hook sequence, so the early exit is deferred until
+  // after every hook call below.
+  const isPunctuationOnlyChunk = isPunctuationOnly(chunk.text)
+  const isWhitespaceOnlyChunk = isWhitespaceOnlyChunkText(chunk.text)
 
   const isPopupOpen = popupChunkId === chunk.id
   const [coords, setCoords] = useState<PopupCoords | null>(null)
@@ -539,6 +542,14 @@ export function TextChunk({
       setCoords(null)
     }
   }, [])
+
+  // Every hook above has now run unconditionally; safe to exit early.
+  if (isPunctuationOnlyChunk) {
+    return <span>{chunk.text.trim()}</span>
+  }
+  if (isWhitespaceOnlyChunk) {
+    return <span>{chunk.text}</span>
+  }
 
   const popup = showTooltip && coords && (
     <div

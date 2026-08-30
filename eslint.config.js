@@ -66,6 +66,13 @@ export default defineConfig([
       'react-hooks/purity': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/preserve-manual-memoization': 'warn',
+      // Same rationale: flags mutating a ref-typed prop's .current (the
+      // standard "controlled ref" pattern — a parent hands a child a ref to
+      // write into) as "modifying a prop." Already used elsewhere in this
+      // codebase via the direct `propRef.current = x` shape without
+      // tripping this rule; only a local-variable alias to the same prop
+      // triggers it, which is a syntactic gap in the rule, not a real bug.
+      'react-hooks/immutability': 'warn',
       // Fast Refresh reliability, not a correctness issue.
       'react-refresh/only-export-components': 'warn',
     },
