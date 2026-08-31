@@ -18,6 +18,7 @@ import {
   useChunkTouchExploration,
 } from "@/hooks/use-chunk-touch-exploration"
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { DetailsBoxLazy } from "@/components/reading/details-box-lazy"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
@@ -157,6 +158,9 @@ export function ReadMode({
     const text = readChunkTextById(sentence, id)
     if (text) speakHoverChunk(text)
   }
+
+  /** Touch device: word tooltips always open above the word (see TextChunk). */
+  const isCoarsePointer = useMediaQuery("(pointer: coarse)")
 
   const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
     commitExploringChunkId,
@@ -522,6 +526,7 @@ export function ReadMode({
               <span key={chunk.id}>
                   <TextChunk
                     chunk={chunk}
+                    isCoarsePointer={isCoarsePointer}
                     popupChunkId={effectivePopupId}
                     delegatePointerHover
                     suppressDoubleTapAfterExplorationLiftRef={suppressDoubleTapAfterExplorationLiftRef}

@@ -17,6 +17,7 @@ import {
   useChunkTouchExploration,
 } from "@/hooks/use-chunk-touch-exploration"
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
@@ -143,6 +144,9 @@ export function ArticleContent({
     const text = articleChunkTextByNumericId(data, id)
     if (text) speakHoverChunk(text)
   }
+
+  /** Touch device: word tooltips always open above the word (see TextChunk). */
+  const isCoarsePointer = useMediaQuery("(pointer: coarse)")
 
   const { ref: touchSurfaceRef, touchExploring } = useChunkTouchExploration(
     commitExploringChunkId,
@@ -443,6 +447,7 @@ export function ArticleContent({
                   {gap ? <span aria-hidden="true">{gap}</span> : null}
                   <TextChunk
                     variant="article"
+                    isCoarsePointer={isCoarsePointer}
                     chunk={chunkData}
                     popupChunkId={effectivePopupId}
                     delegatePointerHover

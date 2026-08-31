@@ -49,6 +49,13 @@ interface TextChunkProps {
    */
   variant?: "article" | "read"
   /**
+   * Touch device (coarse pointer): always place the tooltip above the word instead of the
+   * space-aware above/below choice — below gets covered by the finger/hand still resting on
+   * the word. Computed once by the parent (`matchMedia("(pointer: coarse)")`) and passed down
+   * rather than queried per chunk — a page can render hundreds of these.
+   */
+  isCoarsePointer?: boolean
+  /**
    * Read / article: parent runs line-rect hit testing on the surface — skip per-span
    * mouseenter/leave so overlapping inline boxes and portaled tooltips don’t mis-target hover.
    */
@@ -217,6 +224,7 @@ export function TextChunk({
   onDoubleClickMenuOnly,
   onRequestDetails,
   variant = "read",
+  isCoarsePointer = false,
   delegatePointerHover = false,
   followPointerClient = null,
   followPointerRef,
@@ -290,9 +298,13 @@ export function TextChunk({
 
       const spaceAbove = union.top
       const spaceBelow = window.innerHeight - union.bottom
-      const placement =
-        spaceAbove < tooltipHeightEst + edgeClearance &&
-        spaceBelow >= tooltipHeightEst + edgeClearance
+      // Touch (coarse pointer): always above the word — a tooltip below gets covered by the
+      // finger/hand that's still resting on the word that opened it. Desktop hover keeps the
+      // space-aware placement (flips below only when there's no room above).
+      const placement = isCoarsePointer
+        ? "above"
+        : spaceAbove < tooltipHeightEst + edgeClearance &&
+            spaceBelow >= tooltipHeightEst + edgeClearance
           ? "below"
           : "above"
 
@@ -328,7 +340,7 @@ export function TextChunk({
         return next
       })
     },
-    [variant],
+    [variant, isCoarsePointer],
   )
 
   const flushPendingPointer = useCallback(() => {
