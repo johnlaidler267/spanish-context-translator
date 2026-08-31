@@ -48,7 +48,7 @@ export type SubscriptionStatus = "active" | "trialing" | "free" | "past_due" | "
 
 const GRACE_DAYS = 3
 
-function isWithinGracePeriod(pastDueSince: string): boolean {
+export function isWithinGracePeriod(pastDueSince: string): boolean {
   const deadline = new Date(pastDueSince).getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000
   return Date.now() < deadline
 }

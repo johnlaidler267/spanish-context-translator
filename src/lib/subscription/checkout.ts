@@ -80,7 +80,7 @@ const FUNCTION_NAME = "create-checkout-session"
  * Supabase `functions.invoke` sets `error.message` to a generic string for HTTP errors.
  * The edge function body is `{ error: "..." }` — parse it so users see the real reason.
  */
-async function checkoutErrorFromInvoke(fnError: unknown): Promise<CheckoutError> {
+export async function checkoutErrorFromInvoke(fnError: unknown): Promise<CheckoutError> {
   const generic =
     fnError instanceof Error ? fnError.message : "Edge function request failed"
   const ctx =
