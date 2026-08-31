@@ -256,7 +256,10 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   return (
     <>
       <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
-        <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-16 pt-[calc(5.25rem+env(safe-area-inset-top,0px))] sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
+        {/* Header is now `stacked` (in-flow, real height) via LandingShellLayout, so this
+            only needs normal content spacing -- not safe-area/header-clearance compensation
+            for an overlay header that no longer exists on this page. */}
+        <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-16 pt-6 sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
           <header className="discover-masthead">
             <div className="min-w-0 flex-1">
               <p className="discover-masthead__eyebrow">Descubre</p>

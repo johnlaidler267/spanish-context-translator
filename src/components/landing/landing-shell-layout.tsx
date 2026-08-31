@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
-import { Outlet, useOutletContext } from "react-router-dom"
+import { Outlet, useLocation, useOutletContext } from "react-router-dom"
 import { LandingSidebar, type LandingSidebarLayout } from "@/components/landing/landing-sidebar"
 import { MainHeader } from "@/components/main-header"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
@@ -36,6 +36,12 @@ export function LandingShellLayout({
   readingActive = false,
   onExitReading,
 }: LandingShellLayoutProps) {
+  const location = useLocation()
+  // Discover's colorful card grid scrolls fully opaque content underneath a
+  // fixed/overlay header, so its own type-badge pills end up visually
+  // colliding with the header's buttons. `stacked` reserves real space
+  // in-flow instead (same fix already used on /upgrade for the same reason).
+  const headerVariant = location.pathname === "/discover" ? "stacked" : "fixed"
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarInsetPx, setSidebarInsetPx] = useState(0)
   const onSidebarLayoutChange = useCallback((layout: LandingSidebarLayout) => {
@@ -74,6 +80,7 @@ export function LandingShellLayout({
             showBrandWordmark={false}
             onMenuClick={() => setMobileSidebarOpen(true)}
             contentInsetLeftPx={sidebarInsetPx}
+            variant={headerVariant}
           />
         ) : null}
         <Outlet context={outletContext} />
