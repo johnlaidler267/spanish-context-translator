@@ -502,7 +502,7 @@ export function ArticleContent({
         <footer className={cn(
           "flex items-center justify-between gap-4",
           // Desktop: in-flow, pushed to bottom by mt-auto
-          "mt-auto shrink-0 border-t border-border/60 pt-1",
+          "mt-auto shrink-0 pt-1",
           // Mobile: fixed to screen bottom, always visible — floats directly over the
           // reading background (no bar/border/shadow); each button carries its own pill
           // background, so it stays legible without one.
