@@ -18,7 +18,7 @@ import {
   useChunkTouchExploration,
 } from "@/hooks/use-chunk-touch-exploration"
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
-import { DetailsBox } from "@/components/reading/details-box"
+import { DetailsBoxLazy } from "@/components/reading/details-box-lazy"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
 import { AppErrorModal } from "@/components/app-error-modal"
@@ -628,7 +628,7 @@ export function ReadMode({
         />
       )}
 
-      <DetailsBox
+      <DetailsBoxLazy
         activeChunk={chunkDetails.activeChunk}
         detail={chunkDetails.detail}
         loading={chunkDetails.loading}

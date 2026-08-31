@@ -20,7 +20,7 @@ import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-dou
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
-import { DetailsBox } from "@/components/reading/details-box"
+import { DetailsBoxLazy } from "@/components/reading/details-box-lazy"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
 import { AppErrorModal } from "@/components/app-error-modal"
@@ -546,7 +546,7 @@ export function ArticleContent({
         />
       )}
 
-      <DetailsBox
+      <DetailsBoxLazy
         activeChunk={chunkDetails.activeChunk}
         detail={chunkDetails.detail}
         loading={chunkDetails.loading}
