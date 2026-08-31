@@ -270,19 +270,26 @@ export function MainHeader({
     <header
       className={
         stacked
-          ? "relative z-40 w-full shrink-0 pointer-events-none min-h-[calc(5rem+env(safe-area-inset-top,0px))] md:min-h-20"
+          ? "relative z-40 w-full shrink-0 pointer-events-none"
           : "fixed top-0 left-0 right-0 z-40 pointer-events-none"
       }
       style={fixedInset}
     >
-      <div
-        className={
-          "absolute inset-x-0 top-0 bg-gradient-to-b from-background/90 via-background/50 to-transparent md:h-20 " +
-          (showPlanBanner
-            ? "max-md:min-h-[calc(7rem+env(safe-area-inset-top,0px))]"
-            : "max-md:min-h-[calc(5rem+env(safe-area-inset-top,0px))]")
-        }
-      />
+      {stacked ? (
+        // In-flow header: nothing ever scrolls underneath it, so a solid fill
+        // (sized to its own content, not an extra fade-transition buffer)
+        // reads as a normal compact header instead of a translucent overlay.
+        <div className="absolute inset-0 bg-background" />
+      ) : (
+        <div
+          className={
+            "absolute inset-x-0 top-0 bg-gradient-to-b from-background/90 via-background/50 to-transparent md:h-20 " +
+            (showPlanBanner
+              ? "max-md:min-h-[calc(7rem+env(safe-area-inset-top,0px))]"
+              : "max-md:min-h-[calc(5rem+env(safe-area-inset-top,0px))]")
+          }
+        />
+      )}
       <div className={showPlanBanner ? "relative flex flex-col" : "relative"}>
         <div className="flex items-center justify-between min-h-14 px-5 md:px-8 pt-[env(safe-area-inset-top,0px)]">
           <div className="pointer-events-auto flex min-w-0 shrink items-center gap-2">
