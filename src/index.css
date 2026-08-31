@@ -479,8 +479,21 @@ html.lector-reading-session .global-corner-letter {
     transform: translateY(0);
   }
 }
+/*
+  fill-mode: backwards only — NOT "both"/forwards. A held transform (even
+  translateY(0), the animation's own resting value) makes this element the
+  containing block for its position:fixed descendants instead of the real
+  viewport. Invisible everywhere the shell is exactly 100dvh tall, but
+  Discover's mobile layout grows this element to height:auto so the page
+  can scroll — and once containing-blocked to that oversized box, the
+  mobile sidebar's `fixed inset-y-0` stretches to the full scrollable page
+  height, pushing its bottom profile section off the visible screen.
+  Dropping "forwards" reverts the transform to none once the animation
+  ends (same 0px-translate visual result) and frees the sidebar to size
+  against the viewport again.
+*/
 .landing-route-enter {
-  animation: landing-route-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: landing-route-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-route-enter {
