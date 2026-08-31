@@ -1,12 +1,15 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { lazy, Suspense, useState, useCallback, useEffect, useRef } from "react"
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
-import SettingsPage from "@/pages/settings"
-import DiscoverPage from "@/pages/discover"
-import UpgradePage from "@/pages/upgrade"
-import TermsPage from "@/pages/terms"
-import PrivacyPage from "@/pages/privacy"
+
+// Route-level code splitting: these pages are visited far less often than the
+// core reading flow, so keep them out of the main bundle.
+const SettingsPage = lazy(() => import("@/pages/settings"))
+const DiscoverPage = lazy(() => import("@/pages/discover"))
+const UpgradePage = lazy(() => import("@/pages/upgrade"))
+const TermsPage = lazy(() => import("@/pages/terms"))
+const PrivacyPage = lazy(() => import("@/pages/privacy"))
 import { LandingShellLayout } from "@/components/landing/landing-shell-layout"
 import { LandingScreen } from "@/components/landing/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "@/components/loading-overlay"
@@ -75,6 +78,14 @@ type UsagePreflightSnapshot = {
   counters: UsageCounters
   limits: UsageLimits
   fetchedAt: number
+}
+
+function RouteLoadingFallback() {
+  return (
+    <main className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden">
+      <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+    </main>
+  )
 }
 
 export default function App() {
@@ -698,31 +709,33 @@ export default function App() {
         />
       )}
       <GuestSignupModal open={guestSignupOpen} onClose={() => setGuestSignupOpen(false)} />
-      <Routes>
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/upgrade" element={<UpgradePage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route
-          element={
-            <LandingShellLayout
-              theme={appTheme}
-              onThemeChange={setReadingTheme}
-              displayName={displayName}
-              sidebarDisabled={appState === "loading"}
-              readingActive={appState === "reading"}
-              onExitReading={handleBack}
-            />
-          }
-        >
-          <Route index element={appState === "reading" ? readingHome : landingIndexElement} />
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/upgrade" element={<UpgradePage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route
-            path="discover"
-            element={<DiscoverPage onStartReading={handleDiscoverStartReading} />}
-          />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+            element={
+              <LandingShellLayout
+                theme={appTheme}
+                onThemeChange={setReadingTheme}
+                displayName={displayName}
+                sidebarDisabled={appState === "loading"}
+                readingActive={appState === "reading"}
+                onExitReading={handleBack}
+              />
+            }
+          >
+            <Route index element={appState === "reading" ? readingHome : landingIndexElement} />
+            <Route
+              path="discover"
+              element={<DiscoverPage onStartReading={handleDiscoverStartReading} />}
+            />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
       {(rateLimitMessage || planLimitModal) && (
         <RateLimitModal
           message={rateLimitMessage ?? planLimitModal!.message}
