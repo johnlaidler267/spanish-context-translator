@@ -72,6 +72,21 @@ export function isIdentityRequiredCheckoutError(e: unknown): boolean {
   return e instanceof CheckoutError && e.code === CHECKOUT_IDENTITY_REQUIRED_CODE
 }
 
+/**
+ * True when a billing action (checkout, reactivate, cancel, downgrade, manage
+ * billing) should open the sign-in modal client-side instead of hitting the
+ * server at all -- covers both "fully signed out" (`user` is null/undefined)
+ * and "signed in as a guest" (`is_anonymous`). Checking `user?.is_anonymous`
+ * alone misses the fully-signed-out case: the request goes through, the
+ * server rejects it with a generic 401, and the user sees a raw error
+ * banner instead of a sign-in prompt.
+ */
+export function needsAuthBeforeBilling(
+  user: { is_anonymous?: boolean | null } | null | undefined,
+): boolean {
+  return user == null || user.is_anonymous === true
+}
+
 // ─── Core ─────────────────────────────────────────────────────────────────────
 
 const FUNCTION_NAME = "create-checkout-session"

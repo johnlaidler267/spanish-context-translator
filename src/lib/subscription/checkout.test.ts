@@ -3,11 +3,36 @@ import {
   CheckoutError,
   CHECKOUT_IDENTITY_REQUIRED_CODE,
   isIdentityRequiredCheckoutError,
+  needsAuthBeforeBilling,
   checkoutErrorFromInvoke,
   didReturnFromCheckout,
   getReturnedCheckoutSessionId,
   clearCheckoutParam,
 } from "@/lib/subscription/checkout"
+
+// ─── needsAuthBeforeBilling ──────────────────────────────────────────────────
+// The client-side guard in front of every billing action (subscribe,
+// reactivate, cancel, downgrade, manage billing) in upgrade.tsx. One of its
+// four call sites had this exact check too narrow (only `is_anonymous`, not
+// "no user at all") and showed a raw error banner instead of the sign-in
+// modal for a fully signed-out visitor -- this is the shared fix, used by
+// all four now.
+
+describe("needsAuthBeforeBilling", () => {
+  it("is true when there is no user at all (fully signed out)", () => {
+    expect(needsAuthBeforeBilling(null)).toBe(true)
+    expect(needsAuthBeforeBilling(undefined)).toBe(true)
+  })
+
+  it("is true for a guest/anonymous session", () => {
+    expect(needsAuthBeforeBilling({ is_anonymous: true })).toBe(true)
+  })
+
+  it("is false for a real signed-in user", () => {
+    expect(needsAuthBeforeBilling({ is_anonymous: false })).toBe(false)
+    expect(needsAuthBeforeBilling({})).toBe(false)
+  })
+})
 
 // ─── isIdentityRequiredCheckoutError ────────────────────────────────────────
 // This is the exact check that decides "show sign-in modal" vs "show a raw

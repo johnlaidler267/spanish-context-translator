@@ -42,6 +42,7 @@ import {
   confirmCheckoutSession,
   CheckoutError,
   isIdentityRequiredCheckoutError,
+  needsAuthBeforeBilling,
 } from "@/lib/subscription/checkout"
 import {
   cancelSubscription,
@@ -684,7 +685,7 @@ export default function UpgradePage() {
   // ── Reactivation ───────────────────────────────────────────────────────────
   const handleReactivate = useCallback(async () => {
     setCheckoutError(null)
-    if (user?.is_anonymous === true) {
+    if (needsAuthBeforeBilling(user)) {
       openAuthModal()
       return
     }
@@ -708,12 +709,12 @@ export default function UpgradePage() {
     } finally {
       setProcessingTier(null)
     }
-  }, [sub, user?.is_anonymous, openAuthModal])
+  }, [sub, user, openAuthModal])
 
   // ── Dialog confirm ─────────────────────────────────────────────────────────
   const handleDialogConfirm = useCallback(async () => {
     if (!pendingAction) return
-    if (user?.is_anonymous === true) {
+    if (needsAuthBeforeBilling(user)) {
       openAuthModal()
       setPendingAction(null)
       return
@@ -749,7 +750,7 @@ export default function UpgradePage() {
     } finally {
       setDialogLoading(false)
     }
-  }, [pendingAction, user?.is_anonymous, openAuthModal])
+  }, [pendingAction, user, openAuthModal])
 
   // ── Plan selection ─────────────────────────────────────────────────────────
   const handleSelectPlan = useCallback(
@@ -757,7 +758,7 @@ export default function UpgradePage() {
       setCheckoutError(null)
 
       const requireBillingIdentity = (): boolean => {
-        if (user == null || user.is_anonymous === true) {
+        if (needsAuthBeforeBilling(user)) {
           openAuthModal()
           return false
         }
@@ -951,7 +952,7 @@ export default function UpgradePage() {
               billingPortalLoading={billingPortalLoading}
               onManageBilling={async () => {
                 setCheckoutError(null)
-                if (user?.is_anonymous === true) {
+                if (needsAuthBeforeBilling(user)) {
                   openAuthModal()
                   return
                 }
