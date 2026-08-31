@@ -111,7 +111,12 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      if (!cachedItems?.length) setListLoading(true)
+      // Must match the initial `listLoading` state's condition (cachedItems == null),
+      // not "cache is falsy or empty" -- a legitimately empty cached catalog (0 items)
+      // is still a cache hit and shouldn't flip the loading skeleton back on for the
+      // background refetch. Using a stricter check here than the initial state meant a
+      // catalog that ever cached as [] would show the skeleton again on every visit.
+      if (cachedItems == null) setListLoading(true)
       setListError(null)
       const { data, error } = await supabase
         .from("discover_items")
