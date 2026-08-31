@@ -11,7 +11,7 @@ import {
 } from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { TextChunk } from "@/components/reading/text-chunk"
-import { gapBetweenReconciledChunks, type ReconciledItem } from "@/lib/translate"
+import { gapBetweenReconciledChunks, looksLikeLineBreakHeavySource, type ReconciledItem } from "@/lib/translate"
 import {
   getChunkIdFromPointerClientXY,
   useChunkTouchExploration,
@@ -313,13 +313,20 @@ export function ArticleContent({
     if (el) el.scrollTop = 0
   }, [pageKey])
 
-  /** Reconstruct full page text for LLM sentence context */
+  /** Reconstruct full page text for LLM sentence context (also drives verse-style rendering below) */
   const pageText = useMemo(() => {
     if (!items) return ""
     return items
       .map(item => item.type === "text" ? item.text : item.type === "chapter" ? item.label : item.chunk)
       .join("")
   }, [items])
+
+  /**
+   * Lyrics/poems: preserve the line breaks the pipeline already keeps in the text (see
+   * page-split.ts) instead of letting the browser collapse them, and drop the novel-style
+   * paragraph indent, which doesn't suit verse.
+   */
+  const isVerseLike = useMemo(() => looksLikeLineBreakHeavySource(pageText), [pageText])
 
   const handleGlobalClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement
@@ -374,7 +381,11 @@ export function ArticleContent({
         ref={touchSurfaceRef}
         style={pageEnterStyle}
         className={cn(
-          "font-reading text-[1.6875rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20 indent-5 md:indent-7",
+          "font-reading text-[1.6875rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
+          // Verse (lyrics/poems): respect the line breaks the pipeline already preserves in the
+          // text instead of letting the browser collapse them into spaces, and skip the
+          // novel-style first-line indent — it reads as a paragraph mistake on a poem.
+          isVerseLike ? "whitespace-pre-line" : "indent-5 md:indent-7",
           "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
         )}

@@ -29,6 +29,7 @@ export {
   PAGE_SIZE_WORDS_MOBILE,
   buildSentencePages,
   dedupeConsecutiveDuplicateLines,
+  looksLikeLineBreakHeavySource,
   mergeArticlePagesIfWholeTextFitsLimits,
   pageCharCapForWordLimit,
   pageSourceText,

@@ -44,9 +44,11 @@ export function dedupeConsecutiveDuplicateLines(text: string): string {
 
 /**
  * Lyrics, poems, and tagged song text: many physical lines but few sentence-ending punctuators.
- * Sentence segmentation would strip line boundaries; keep one segment so newlines survive paging.
+ * Sentence segmentation would strip line boundaries; keep line structure intact so newlines
+ * survive paging. Also drives the verse-style rendering in ArticleContent (`whitespace-pre-line`,
+ * no paragraph indent) — reused there so lyrics/poems are detected the same way in both places.
  */
-function looksLikeLineBreakHeavySource(t: string): boolean {
+export function looksLikeLineBreakHeavySource(t: string): boolean {
   const rawLines = t.split(/\r?\n/)
   if (rawLines.length < 2) return false
   const lines = rawLines.filter((l) => l.trim().length > 0)
@@ -121,10 +123,31 @@ function appendTokenToRun(run: string, token: string): string {
   return `${run} ${token}`
 }
 
+/** A blank line (2+ consecutive newlines) — the natural place to break a poem/song, if one is available. */
+function isStanzaBoundaryToken(token: string): boolean {
+  return isNewlineOnlyToken(token) && token.length >= 2
+}
+
+/** Rebuild a run's text from its tokens (mirrors the incremental `appendTokenToRun` folding). */
+function joinTokens(tokens: string[]): string {
+  let out = ""
+  for (const t of tokens) out = appendTokenToRun(out, t)
+  return out
+}
+
+function wordsInTokens(tokens: string[]): number {
+  return tokens.reduce((n, t) => n + (isNewlineOnlyToken(t) ? 0 : countWordsInSentence(t)), 0)
+}
+
 /**
  * Break one long segment into smaller parts so no single unit can exceed page limits.
  * This prevents mobile overflow when a long intro contains one very long sentence.
  * Preserves newline characters so verse/lyrics are not flattened to a single paragraph before translate.
+ *
+ * For poems/songs (many blank-line stanza breaks, few sentence terminators — see
+ * `looksLikeLineBreakHeavySource`), a forced cut prefers the most recent stanza boundary within
+ * the current run over the exact token that hit the budget, so a page break lands between verses
+ * instead of mid-stanza whenever one is available.
  */
 export function splitSegmentIntoPageParts(text: string, limits: PageSplitLimits): string[] {
   const tokenStream = tokenizeSourceForPageSplitting(text)
@@ -134,6 +157,10 @@ export function splitSegmentIntoPageParts(text: string, limits: PageSplitLimits)
   let run = ""
   let runWords = 0
   let runChars = 0
+  /** Tokens composing `run`, so a forced cut can roll back to the last stanza boundary. */
+  let runTokens: string[] = []
+  /** Index into `runTokens` of the most recent stanza-boundary token, if any. */
+  let stanzaBoundaryIdx: number | null = null
 
   for (const token of tokenStream) {
     const tokenWords = isNewlineOnlyToken(token) ? 0 : countWordsInSentence(token)
@@ -144,10 +171,23 @@ export function splitSegmentIntoPageParts(text: string, limits: PageSplitLimits)
     const nextChars = runChars + charGain
 
     if (run && (nextWords > limits.maxWords || nextChars > limits.maxChars)) {
-      parts.push(run)
-      run = ""
-      runWords = 0
-      runChars = 0
+      if (stanzaBoundaryIdx !== null) {
+        parts.push(joinTokens(runTokens.slice(0, stanzaBoundaryIdx + 1)))
+        const remainder = runTokens.slice(stanzaBoundaryIdx + 1)
+        run = joinTokens(remainder)
+        runWords = wordsInTokens(remainder)
+        runChars = run.length
+        runTokens = remainder
+        const idx = remainder.findLastIndex(isStanzaBoundaryToken)
+        stanzaBoundaryIdx = idx === -1 ? null : idx
+      } else {
+        parts.push(run)
+        run = ""
+        runWords = 0
+        runChars = 0
+        runTokens = []
+        stanzaBoundaryIdx = null
+      }
     }
 
     if (
@@ -183,6 +223,8 @@ export function splitSegmentIntoPageParts(text: string, limits: PageSplitLimits)
     run = appendTokenToRun(run, token)
     runWords += tokenWords
     runChars = run.length
+    runTokens.push(token)
+    if (isStanzaBoundaryToken(token)) stanzaBoundaryIdx = runTokens.length - 1
   }
 
   if (run) parts.push(run)

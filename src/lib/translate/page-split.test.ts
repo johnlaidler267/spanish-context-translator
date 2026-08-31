@@ -6,6 +6,7 @@ import {
   splitSourceIntoSentences,
   pageSourceText,
   buildSentencePages,
+  splitSegmentIntoPageParts,
   mergeArticlePagesIfWholeTextFitsLimits,
   PAGE_SIZE_WORDS_MOBILE,
   PAGE_SIZE_WORDS_DESKTOP,
@@ -69,6 +70,20 @@ describe("splitSourceIntoSentences", () => {
   it("keeps line-break-heavy text (lyrics/poems) as one segment instead of over-splitting", () => {
     const poem = "Verso uno\nVerso dos\nVerso tres\nVerso cuatro"
     expect(splitSourceIntoSentences(poem)).toEqual([poem])
+  })
+})
+
+describe("splitSegmentIntoPageParts — stanza-preferring cuts", () => {
+  it("cuts at the blank line between stanzas instead of mid-stanza when the budget forces a break", () => {
+    const song = "Uno dos tres\n\nCuatro cinco seis"
+    const parts = splitSegmentIntoPageParts(song, { maxWords: 4, maxChars: 1000 })
+    expect(parts).toEqual(["Uno dos tres\n\n", "Cuatro cinco seis"])
+  })
+
+  it("falls back to a plain budget cut when no stanza boundary is available yet", () => {
+    const noBreaks = "Uno dos tres cuatro cinco seis"
+    const parts = splitSegmentIntoPageParts(noBreaks, { maxWords: 4, maxChars: 1000 })
+    expect(parts).toEqual(["Uno dos tres cuatro", "cinco seis"])
   })
 })
 
