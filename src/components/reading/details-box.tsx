@@ -28,7 +28,7 @@ const DURATION_OUT_S = 0.18
 const SLIDE_IN_PX = 14
 const SLIDE_OUT_PX = 12
 
-interface DetailsBoxProps {
+export interface DetailsBoxProps {
   activeChunk: string | null
   detail:      DetailState | null
   loading:     boolean

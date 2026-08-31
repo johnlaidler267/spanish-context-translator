@@ -757,7 +757,7 @@ export default function UpgradePage() {
       setCheckoutError(null)
 
       const requireBillingIdentity = (): boolean => {
-        if (user?.is_anonymous === true) {
+        if (user == null || user.is_anonymous === true) {
           openAuthModal()
           return false
         }
@@ -891,7 +891,7 @@ export default function UpgradePage() {
         setProcessingTier(null)
       }
     },
-    [interval, sub, handleReactivate, user?.is_anonymous, openAuthModal],
+    [interval, sub, handleReactivate, user, openAuthModal],
   )
 
   // ─── Render ────────────────────────────────────────────────────────────────
