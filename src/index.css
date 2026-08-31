@@ -218,6 +218,20 @@ html.lector-reading-session .global-corner-letter {
   );
 }
 
+/*
+ * Same tone as .discover-scroll-surface's own top edge (its linear-gradient
+ * layer only, no radial tints -- those scale with element height and would
+ * look wrong stretched across a header-sized box instead of the full page).
+ * Used for Discover's header backdrop so it reads as a continuation of the
+ * page instead of a visually distinct bar sitting on top of it.
+ */
+.discover-header-bg {
+  background: linear-gradient(180deg, #f8f4ee 0%, #f4efe6 100%);
+}
+.dark .discover-header-bg {
+  background: linear-gradient(180deg, #1b1b19 0%, #151514 100%);
+}
+
 @media (max-width: 767px) {
   /*
    * Disable double-tap zoom (common on textarea / composer) while keeping pinch-zoom.
