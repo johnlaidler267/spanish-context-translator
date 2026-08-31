@@ -25,16 +25,16 @@ export interface SubscriptionContextValue {
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null)
 
-function lapsedModalSessionKey(userId: string | undefined) {
+export function lapsedModalSessionKey(userId: string | undefined) {
   return userId ? `lapsed_modal_ack_${userId}` : "lapsed_modal_ack"
 }
 
-function readLapsedModalAckSession(userId: string | undefined): boolean {
+export function readLapsedModalAckSession(userId: string | undefined): boolean {
   if (typeof window === "undefined") return false
   return sessionStorage.getItem(lapsedModalSessionKey(userId)) === "1"
 }
 
-function writeLapsedModalAckSession(userId: string | undefined) {
+export function writeLapsedModalAckSession(userId: string | undefined) {
   if (typeof window === "undefined" || !userId) return
   sessionStorage.setItem(lapsedModalSessionKey(userId), "1")
 }
