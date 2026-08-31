@@ -63,6 +63,75 @@
   }
 }
 
+/* Article mode: chapter marker (a standalone Roman numeral in the source) — its own
+   centered line with small-caps flourish, instead of sitting flush in the body text. */
+.chapter-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  margin: 2.75rem 0 2.25rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.chapter-heading__rule {
+  height: 1px;
+  width: 2.25rem;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 45%, transparent));
+}
+.chapter-heading__rule:last-child {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 45%, transparent), transparent);
+}
+@media (max-width: 767px) {
+  .chapter-heading {
+    margin: 2.25rem 0 1.85rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.18em;
+  }
+}
+
+/* Article mode: drop cap on page 1's opening paragraph (prose only — see ArticleContent). */
+.article-drop-cap::first-letter {
+  float: left;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 3.3em;
+  line-height: 0.86;
+  padding: 0.02em 0.07em 0 0;
+  color: var(--primary);
+}
+@media (max-width: 767px) {
+  .article-drop-cap::first-letter {
+    font-size: 2.85em;
+  }
+}
+
+/* Article mode: thin fill bar above "Page X of Y" — a quicker sense of progress than the number alone. */
+.reading-progress-track {
+  display: block;
+  width: 6rem;
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
+  overflow: hidden;
+}
+.reading-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (max-width: 767px) {
+  .reading-progress-track {
+    width: 5rem;
+  }
+}
+
 /* Back navigation — arrow slides left with a slight overshoot (BackToHomeLink, reading header) */
 .back-nav-control svg {
   transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);

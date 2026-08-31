@@ -328,6 +328,16 @@ export function ArticleContent({
    */
   const isVerseLike = useMemo(() => looksLikeLineBreakHeavySource(pageText), [pageText])
 
+  /**
+   * Drop cap: only the very first page (no pagination = the only page), and only for prose —
+   * verse already gets its own treatment above, and a drop cap fights the "Page 1 of N" framing
+   * on later pages. Skipped when the page opens with a chapter heading (see below): the heading
+   * already signals "a new section starts here", and floating the initial next to it looks off.
+   */
+  const isFirstPage = !pagination || pagination.pageIndex === 0
+  const showDropCap =
+    !loading && !errorMessage && isFirstPage && !isVerseLike && items != null && items[0]?.type !== "chapter"
+
   const handleGlobalClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement
     if (target.closest("[data-app-error-modal]")) return
@@ -384,8 +394,10 @@ export function ArticleContent({
           "font-reading text-[1.6875rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
           // Verse (lyrics/poems): respect the line breaks the pipeline already preserves in the
           // text instead of letting the browser collapse them into spaces, and skip the
-          // novel-style first-line indent — it reads as a paragraph mistake on a poem.
-          isVerseLike ? "whitespace-pre-line" : "indent-5 md:indent-7",
+          // novel-style first-line indent — it reads as a paragraph mistake on a poem. The drop
+          // cap (prose only) already marks where the text starts, so skip the indent there too.
+          isVerseLike ? "whitespace-pre-line" : !showDropCap && "indent-5 md:indent-7",
+          showDropCap && "article-drop-cap",
           "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
           touchExploring && "touch-none select-none",
         )}
@@ -407,7 +419,13 @@ export function ArticleContent({
                 // (which expects chunk/meaning/literal/note and would
                 // otherwise crash or render as an interactive item with
                 // undefined content).
-                return <span key={i}>{item.label}</span>
+                return (
+                  <div key={i} className="chapter-heading" role="heading" aria-level={2}>
+                    <span className="chapter-heading__rule" aria-hidden />
+                    <span className="chapter-heading__label">{item.label}</span>
+                    <span className="chapter-heading__rule" aria-hidden />
+                  </div>
+                )
               }
               const prev = i > 0 ? items[i - 1] : null
               const gap =
@@ -510,12 +528,21 @@ export function ArticleContent({
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
-          <span className="text-sm font-sans text-muted-foreground tabular-nums max-md:font-serif max-md:text-ui-lg max-md:text-[#6f6258] dark:max-md:text-[#c9b8a8]">
-            <span className="max-md:text-[#8f796a] max-md:italic dark:max-md:text-[#b89f8c]">Page</span>{" "}
-            {pagination.pageIndex + 1}{" "}
-            <span className="max-md:text-[#b59a86] dark:max-md:text-[#8f7968]">of</span>{" "}
-            {pagination.pageCount}
-          </span>
+          <div className="flex flex-col items-center gap-1.5 max-md:gap-1">
+            {/* Decorative — the "Page X of Y" text below already conveys this accessibly. */}
+            <span className="reading-progress-track" aria-hidden>
+              <span
+                className="reading-progress-fill"
+                style={{ width: `${((pagination.pageIndex + 1) / pagination.pageCount) * 100}%` }}
+              />
+            </span>
+            <span className="text-sm font-sans text-muted-foreground tabular-nums max-md:font-serif max-md:text-ui-lg max-md:text-[#6f6258] dark:max-md:text-[#c9b8a8]">
+              <span className="max-md:text-[#8f796a] max-md:italic dark:max-md:text-[#b89f8c]">Page</span>{" "}
+              {pagination.pageIndex + 1}{" "}
+              <span className="max-md:text-[#b59a86] dark:max-md:text-[#8f7968]">of</span>{" "}
+              {pagination.pageCount}
+            </span>
+          </div>
           <div className="relative shrink-0">
             <Button
               type="button"
