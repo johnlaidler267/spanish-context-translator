@@ -25,6 +25,11 @@ const LIST_SELECT =
   "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at"
 
 // Bumped to v2: cached rows now carry `preview` — v1 entries would open the modal blank.
+// localStorage (not sessionStorage): the catalog rarely changes day to day, so a fresh
+// visit should paint instantly from whatever was cached last time, not show a loading
+// state again just because it's a new tab/session. The list is still re-fetched in the
+// background on every visit (see the effect below) and the cache updated, so new content
+// still shows up -- just without blocking the first paint on it.
 const DISCOVER_CACHE_KEY = "lexa.discover.catalog.v2"
 
 type DiscoverPageProps = {
@@ -48,7 +53,7 @@ function SectionHeading({ icon, children }: { icon: ReactNode; children: ReactNo
 function readCachedDiscoverItems(): ContentItem[] | null {
   if (typeof window === "undefined") return null
   try {
-    const raw = sessionStorage.getItem(DISCOVER_CACHE_KEY)
+    const raw = localStorage.getItem(DISCOVER_CACHE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as ContentItem[]
     return Array.isArray(parsed) ? parsed : null
@@ -60,7 +65,7 @@ function readCachedDiscoverItems(): ContentItem[] | null {
 function writeCachedDiscoverItems(items: ContentItem[]) {
   if (typeof window === "undefined") return
   try {
-    sessionStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items))
+    localStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items))
   } catch {
     /* ignore quota/private mode */
   }

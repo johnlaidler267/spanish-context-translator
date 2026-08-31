@@ -41,7 +41,8 @@ export function LandingShellLayout({
   // fixed/overlay header, so its own type-badge pills end up visually
   // colliding with the header's buttons. `stacked` reserves real space
   // in-flow instead (same fix already used on /upgrade for the same reason).
-  const headerVariant = location.pathname === "/discover" ? "stacked" : "fixed"
+  const isDiscover = location.pathname === "/discover"
+  const headerVariant = isDiscover ? "stacked" : "fixed"
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarInsetPx, setSidebarInsetPx] = useState(0)
   const onSidebarLayoutChange = useCallback((layout: LandingSidebarLayout) => {
@@ -81,6 +82,7 @@ export function LandingShellLayout({
             onMenuClick={() => setMobileSidebarOpen(true)}
             contentInsetLeftPx={sidebarInsetPx}
             variant={headerVariant}
+            backdropClassName={isDiscover ? "discover-header-bg" : undefined}
           />
         ) : null}
         <Outlet context={outletContext} />

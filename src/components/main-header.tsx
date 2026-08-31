@@ -61,6 +61,13 @@ interface MainHeaderProps {
    * below (e.g. /upgrade) never sit under the bar.
    */
   variant?: "fixed" | "stacked"
+  /**
+   * `stacked` only: background class for the header's solid backdrop.
+   * Defaults to `bg-background`. Pass a page-matched tint (e.g. Discover's
+   * own surface color) so the header reads as a continuation of the page
+   * instead of a visually distinct bar sitting on top of it.
+   */
+  backdropClassName?: string
 }
 
 function PlanBadgeLoading() {
@@ -255,6 +262,7 @@ export function MainHeader({
   onMenuClick,
   contentInsetLeftPx = 0,
   variant = "fixed",
+  backdropClassName = "bg-background",
 }: MainHeaderProps) {
   const stacked = variant === "stacked"
   const isMdUp = useMediaQuery("(min-width: 768px)")
@@ -279,7 +287,7 @@ export function MainHeader({
         // In-flow header: nothing ever scrolls underneath it, so a solid fill
         // (sized to its own content, not an extra fade-transition buffer)
         // reads as a normal compact header instead of a translucent overlay.
-        <div className="absolute inset-0 bg-background" />
+        <div className={`absolute inset-0 ${backdropClassName}`} />
       ) : (
         <div
           className={
