@@ -11,3 +11,5 @@ I'm a software engineer, but I'm running this project solo and I'm juggling a lo
 **Keep replies short by default.** I want the high-level outcome, not a full walkthrough. Skip step-by-step narration and only go deep if I ask.
 
 **When something's genuinely a judgment call or could affect users/money/data, flag it clearly** rather than quietly picking an option — but don't ask permission for routine stuff.
+
+**Send me a notification when a longer or background task finishes**, or when you hit something that needs my decision before you can keep going — I might have stepped away. Don't bother notifying for quick, in-the-moment back-and-forth like a normal chat exchange; I'm already watching for those.

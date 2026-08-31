@@ -130,7 +130,7 @@ function StatusPill({ status }: { status: string }) {
 
   return (
     <span className={cn(
-      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium font-sans",
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium font-sans whitespace-nowrap",
       colorClass,
     )}>
       <span className={cn("h-1.5 w-1.5 rounded-full", dotClass)} />
@@ -548,10 +548,11 @@ export function SubscriptionStatus({
       {/* ── Plan header ─────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 p-5">
         <div className="min-w-0">
-          {/* Plan name + icon */}
-          <div className="flex items-center gap-2 mb-1">
+          {/* Plan name + icon — wraps to its own line on narrow screens instead of
+              squeezing "Free Plan" and the status pill's label mid-word */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
             <span className="text-muted-foreground">{TIER_ICONS[tierId]}</span>
-            <span className="font-medium text-foreground font-sans text-sm">
+            <span className="font-medium text-foreground font-sans text-sm whitespace-nowrap">
               {tier.name} Plan
             </span>
             {sub?.status && sub.status !== "canceled" && <StatusPill status={sub.status} />}
