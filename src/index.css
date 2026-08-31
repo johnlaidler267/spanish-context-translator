@@ -1621,6 +1621,14 @@ article span {
   }
 }
 
+/* Featured shelf shows 4 from md up; on phones it's a tall single-column
+   stack, so trim to 3 rather than making people scroll past a 4th. */
+@media (max-width: 767px) {
+  .discover-grid--featured > *:nth-child(4) {
+    display: none;
+  }
+}
+
 /* ── Discover: content card ─────────────────────────────────────── */
 .discover-card {
   position: relative;
@@ -1680,6 +1688,21 @@ article span {
 .discover-card--featured {
   flex-direction: row;
   align-items: stretch;
+  /* Ambient warm glow marks these as "featured for you" — layered behind the
+     card's normal shadow rather than replacing it. */
+  box-shadow:
+    0 0 34px -4px rgba(201, 122, 90, 0.4),
+    0 1px 2px rgba(76, 56, 39, 0.05),
+    0 12px 26px -18px rgba(76, 56, 39, 0.4);
+}
+
+@media (hover: hover) {
+  .discover-card--featured:hover {
+    box-shadow:
+      0 0 40px -2px rgba(201, 122, 90, 0.5),
+      0 2px 4px rgba(76, 56, 39, 0.06),
+      0 24px 42px -22px rgba(76, 56, 39, 0.55);
+  }
 }
 
 .discover-card--featured .discover-card__frame {
@@ -1831,6 +1854,20 @@ article span {
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.2),
     0 12px 26px -18px rgba(0, 0, 0, 0.7);
+}
+.dark .discover-card--featured {
+  box-shadow:
+    0 0 36px -2px rgba(176, 107, 86, 0.45),
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 12px 26px -18px rgba(0, 0, 0, 0.7);
+}
+@media (hover: hover) {
+  .dark .discover-card--featured:hover {
+    box-shadow:
+      0 0 42px 0px rgba(176, 107, 86, 0.55),
+      0 2px 4px rgba(0, 0, 0, 0.22),
+      0 24px 42px -22px rgba(0, 0, 0, 0.75);
+  }
 }
 .dark .discover-card__frame {
   border-color: rgba(234, 224, 213, 0.09);
