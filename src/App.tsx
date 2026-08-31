@@ -391,7 +391,7 @@ export default function App() {
       const freeCharLimit = getTier("free").limits.charsPerSubmission
       const isEffectivelyFreeUser =
         user != null &&
-        (subscriptionStatus == null || subscriptionStatus === "free")
+        (subscriptionStatus == null || subscriptionStatus === "free" || isLapsed)
       if (
         isEffectivelyFreeUser &&
         freeCharLimit !== null &&
@@ -409,7 +409,7 @@ export default function App() {
 
       await handleTextSubmit(sourceText)
     },
-    [handleTextSubmit, subscriptionStatus, user],
+    [handleTextSubmit, subscriptionStatus, isLapsed, user],
   )
 
   const handleBack = useCallback(() => {
