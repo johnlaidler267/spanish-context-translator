@@ -240,6 +240,25 @@ export default function App() {
       }
       const trimmed = dedupeConsecutiveDuplicateLines(text).trim()
       setLandingDraft(trimmed)
+
+      // Free plan: block before anything gets tracked. Without this check, an over-limit
+      // paste still consumed a submission -- trackUsage below fires unconditionally, and
+      // enforcement only happened later on the actual translate call -- so a submission
+      // that could never succeed still cost you one. Mirrors handleDiscoverStartReading.
+      const freeCharLimit = getTier("free").limits.charsPerSubmission
+      const isEffectivelyFreeUser =
+        user != null &&
+        (subscriptionStatus == null || subscriptionStatus === "free" || isLapsed)
+      if (isEffectivelyFreeUser && freeCharLimit !== null && trimmed.length > freeCharLimit) {
+        setPlanLimitModal({
+          title: "Submission exceeds free plan allowance",
+          message:
+            `This text is ${trimmed.length.toLocaleString()} characters long, which is over the free plan limit of ` +
+            `${freeCharLimit.toLocaleString()} characters per submission. Upgrade to continue.`,
+        })
+        return
+      }
+
       setError("")
       rateLimitModalSuppressedRef.current = false
       setRateLimitMessage(null)
@@ -385,7 +404,7 @@ export default function App() {
         setAppState("landing")
       }
     },
-    [user, bump, articlePageSplitLimits, refreshUsagePreflight],
+    [user, bump, articlePageSplitLimits, refreshUsagePreflight, subscriptionStatus, isLapsed],
   )
 
   const handleDiscoverStartReading = useCallback(
