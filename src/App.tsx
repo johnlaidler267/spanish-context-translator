@@ -1,15 +1,17 @@
 "use client"
 
-import { lazy, Suspense, useState, useCallback, useEffect, useRef } from "react"
+import { Suspense, useState, useCallback, useEffect, useRef } from "react"
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
+import { lazyRoute } from "@/lib/lazy-route"
 
 // Route-level code splitting: these pages are visited far less often than the
-// core reading flow, so keep them out of the main bundle.
-const SettingsPage = lazy(() => import("@/pages/settings"))
-const DiscoverPage = lazy(() => import("@/pages/discover"))
-const UpgradePage = lazy(() => import("@/pages/upgrade"))
-const TermsPage = lazy(() => import("@/pages/terms"))
-const PrivacyPage = lazy(() => import("@/pages/privacy"))
+// core reading flow, so keep them out of the main bundle. lazyRoute (not React.lazy
+// directly) recovers from a stale chunk reference after a deploy — see its docstring.
+const SettingsPage = lazyRoute(() => import("@/pages/settings"))
+const DiscoverPage = lazyRoute(() => import("@/pages/discover"))
+const UpgradePage = lazyRoute(() => import("@/pages/upgrade"))
+const TermsPage = lazyRoute(() => import("@/pages/terms"))
+const PrivacyPage = lazyRoute(() => import("@/pages/privacy"))
 import { LandingShellLayout } from "@/components/landing/landing-shell-layout"
 import { LandingScreen } from "@/components/landing/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "@/components/loading-overlay"
