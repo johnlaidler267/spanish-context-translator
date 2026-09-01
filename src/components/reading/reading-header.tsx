@@ -1,7 +1,7 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { ChevronLeft, Moon, Sun, Settings2, Volume2 } from "lucide-react"
+import { ChevronLeft, Moon, Sun, Settings2, Volume2, VolumeX } from "lucide-react"
 import { ModeToggle, type ViewMode } from "@/components/reading/mode-toggle"
 import { type ReadingTheme } from "@/components/reading/theme-toggle"
 import { READING_HEADER_BAND_REM } from "@/lib/reading/reading-layout"
@@ -79,7 +79,9 @@ export function ReadingHeader({
                 : "Speak chunks aloud on hover"
             }
           >
-            <Volume2 className="hover-tts-toggle-icon h-4 w-4 max-md:h-5 max-md:w-5" aria-hidden />
+            {hoverTtsEnabled
+              ? <Volume2 className="hover-tts-toggle-icon h-4 w-4 max-md:h-5 max-md:w-5" aria-hidden />
+              : <VolumeX className="hover-tts-toggle-icon h-4 w-4 max-md:h-5 max-md:w-5" aria-hidden />}
           </button>
           <button
             type="button"
