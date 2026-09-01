@@ -432,6 +432,14 @@ function CurrentPlanSummary({
   onManageBilling?: () => void | Promise<void>
 }) {
   const tier = getTier(sub.planId)
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
+  useEffect(() => {
+    setTrialDaysLeft(
+      sub.trialEnd
+        ? Math.max(0, Math.ceil((new Date(sub.trialEnd).getTime() - Date.now()) / 86_400_000))
+        : null
+    )
+  }, [sub.trialEnd])
   return (
     <div className="rounded-lg border border-border/60 bg-card/60 px-5 py-4 mb-7 font-sans text-sm flex flex-wrap gap-x-8 gap-y-2 items-center">
       <div className="flex items-center gap-2 text-foreground font-medium">
@@ -442,13 +450,12 @@ function CurrentPlanSummary({
         </span>
       </div>
 
-      {sub.status === "trialing" && sub.trialEnd && (
+      {sub.status === "trialing" && sub.trialEnd && trialDaysLeft !== null && (
         <span className="text-primary font-medium">
           Trial ends {formatDate(sub.trialEnd)}
-          {(() => {
-            const d = Math.max(0, Math.ceil((new Date(sub.trialEnd).getTime() - Date.now()) / 86_400_000))
-            return d <= 3 ? ` (${d} day${d !== 1 ? "s" : ""} left!)` : ` (${d} days left)`
-          })()}
+          {trialDaysLeft <= 3
+            ? ` (${trialDaysLeft} day${trialDaysLeft !== 1 ? "s" : ""} left!)`
+            : ` (${trialDaysLeft} days left)`}
         </span>
       )}
 
