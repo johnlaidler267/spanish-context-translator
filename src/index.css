@@ -344,12 +344,24 @@ html.lector-reading-session .global-corner-letter {
    * /upgrade, /settings: mobile shell uses overflow:hidden on html/body — that blocks page scroll.
    * This class opts the route out so the document can scroll. Use with MainHeader
    * variant="stacked" (in-flow), not fixed — avoids overlay without a nested flex trap.
+   *
+   * Shared with .mobile-scroll-discover below: both routes need this same
+   * html-level override to unlock document scroll on mobile, so it lives once
+   * here as a grouped selector (add a route's html.mobile-scroll-* class to
+   * this list if a third route ever needs the same unlock). Everything below
+   * this rule — body/#root/.app-viewport handling — genuinely differs per
+   * route (Discover's sticky header needs body to stay overflow:visible, see
+   * the comment further down) and is kept separate on purpose; don't fold
+   * those into this shared rule.
    */
-  html.mobile-scroll-upgrade {
+  html.mobile-scroll-upgrade,
+  html.mobile-scroll-discover {
     overflow-x: hidden !important;
     overflow-y: auto !important;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
+  }
+  html.mobile-scroll-upgrade {
     touch-action: manipulation;
   }
   html.mobile-scroll-upgrade body {
@@ -374,12 +386,6 @@ html.lector-reading-session .global-corner-letter {
 
   /* Discover lives inside LandingShellLayout; unlock that shell only on mobile. */
   @media (max-width: 767px) {
-    html.mobile-scroll-discover {
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
-      overscroll-behavior-y: contain;
-      -webkit-overflow-scrolling: touch;
-    }
     /*
      * NOT overflow:auto here (unlike mobile-scroll-upgrade above): html is
      * the one true scroll container for this route -- it's the ancestor
