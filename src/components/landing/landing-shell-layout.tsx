@@ -88,13 +88,21 @@ export function LandingShellLayout({
             contentInsetLeftPx={sidebarInsetPx}
             variant={headerVariant}
             // Discover paints its own background on this wrapper
-            // (`discover-shell-bg` above) all the way up behind the header,
-            // so the header has no backdrop of its own to blend -- and
-            // needs to stay pinned itself, since Discover unlocks
-            // document-level scroll on mobile (see mobile-scroll-discover
-            // in index.css), which would otherwise carry the header away
-            // with the rest of the page.
-            backdropClassName={isDiscover ? "bg-transparent" : undefined}
+            // (`discover-shell-bg` above) all the way up behind the header.
+            // Desktop: only the inner `.discover-scroll-surface` scrolls, so
+            // the header stays a plain in-flow block and can stay fully
+            // transparent -- the shared paint shows through with no seam.
+            // Mobile: Discover unlocks document-level scroll (see
+            // mobile-scroll-discover in index.css), which would carry an
+            // in-flow header away with the rest of the page, so it's pinned
+            // (`stickyStacked`, sticky below `md` only) and needs a real
+            // backdrop of its own -- a translucent blur, not a solid fill,
+            // since it now overlaps scrolled card content.
+            backdropClassName={
+              isDiscover
+                ? "bg-background/75 backdrop-blur-lg backdrop-saturate-150 border-b border-border/35 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.35)] md:border-b-0 md:bg-transparent md:shadow-none md:backdrop-blur-none md:backdrop-saturate-100"
+                : undefined
+            }
             stickyStacked={isDiscover}
           />
         ) : null}

@@ -71,13 +71,15 @@ interface MainHeaderProps {
   backdropClassName?: string
   /**
    * `stacked` only: `position: sticky` (pinned to the top of the nearest
-   * scrolling ancestor) instead of a plain in-flow block. Use this when the
-   * page below scrolls past the header — on mobile that scrolling ancestor
-   * is the document itself (see `mobile-scroll-discover` in index.css), so
-   * without this the header just scrolls away with everything else.
-   * Default false: a plain in-flow header already stays put on pages where
-   * only an inner container scrolls underneath it (desktop, and any page
-   * that never unlocks document-level scroll on mobile).
+   * scrolling ancestor) below the `md` breakpoint only — desktop stays a
+   * plain in-flow block that scrolls away with the rest of the page. Use
+   * this when the page below unlocks document-level scroll on mobile (see
+   * `mobile-scroll-discover` in index.css) — without this the header just
+   * scrolls away there too. Pair with a `backdropClassName` that's
+   * translucent + blurred below `md` (the pinned header now overlaps
+   * scrolled content) and transparent at `md` and up (nothing scrolls
+   * under it there, so a backdrop would be a seam for nothing).
+   * Default false: a plain in-flow header at every width.
    */
   stickyStacked?: boolean
 }
@@ -291,7 +293,7 @@ export function MainHeader({
     <header
       className={
         stacked
-          ? (stickyStacked ? "sticky" : "relative") + " top-0 z-40 w-full shrink-0 pointer-events-none"
+          ? (stickyStacked ? "sticky md:relative" : "relative") + " top-0 z-40 w-full shrink-0 pointer-events-none"
           : "fixed top-0 left-0 right-0 z-40 pointer-events-none"
       }
       style={fixedInset}
