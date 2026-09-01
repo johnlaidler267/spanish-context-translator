@@ -384,45 +384,43 @@ html.lector-reading-session .global-corner-letter {
     height: auto !important;
   }
 
-  /* Discover lives inside LandingShellLayout; unlock that shell only on mobile. */
-  @media (max-width: 767px) {
-    /*
-     * NOT overflow:auto here (unlike mobile-scroll-upgrade above): html is
-     * the one true scroll container for this route -- it's the ancestor
-     * that ends up bounded to the viewport with taller content overflowing
-     * it (document.scrollingElement). body's own box just grows to match
-     * its content, so giving it overflow:auto/hidden too adds no actual
-     * scrolling; it only has a side effect. Per the CSS overflow spec, any
-     * value other than "visible" on *either* axis makes an element a
-     * scroll container even with nothing to scroll, and Discover's sticky
-     * header (see MainHeader's `stickyStacked`) picks its nearest such
-     * ancestor as the box it pins against -- so a body that qualifies as a
-     * scroll container but never actually scrolls "shadows" html and
-     * makes the sticky positioning silently do nothing (confirmed while
-     * fixing this: the header just scrolled away with the page). Leaving
-     * body fully overflow:visible lets sticky see past it to html.
-     */
-    html.mobile-scroll-discover body {
-      overflow: visible !important;
-    }
-    html.mobile-scroll-discover #root,
-    html.mobile-scroll-discover .app-viewport {
-      overflow: visible !important;
-      height: auto !important;
-      min-height: 100svh;
-      min-height: 100dvh;
-    }
-    html.mobile-scroll-discover .landing-route-shell {
-      height: auto !important;
-      min-height: 100svh;
-      min-height: 100dvh;
-      overflow: visible !important;
-      align-items: stretch;
-    }
-    html.mobile-scroll-discover .landing-route-shell > .flex {
-      min-height: 100svh;
-      min-height: 100dvh;
-    }
+  /*
+   * Discover lives inside LandingShellLayout; unlock that shell only on mobile.
+   * NOT overflow:auto here (unlike mobile-scroll-upgrade above): html is
+   * the one true scroll container for this route -- it's the ancestor
+   * that ends up bounded to the viewport with taller content overflowing
+   * it (document.scrollingElement). body's own box just grows to match
+   * its content, so giving it overflow:auto/hidden too adds no actual
+   * scrolling; it only has a side effect. Per the CSS overflow spec, any
+   * value other than "visible" on *either* axis makes an element a
+   * scroll container even with nothing to scroll, and Discover's sticky
+   * header (see MainHeader's `stickyStacked`) picks its nearest such
+   * ancestor as the box it pins against -- so a body that qualifies as a
+   * scroll container but never actually scrolls "shadows" html and
+   * makes the sticky positioning silently do nothing (confirmed while
+   * fixing this: the header just scrolled away with the page). Leaving
+   * body fully overflow:visible lets sticky see past it to html.
+   */
+  html.mobile-scroll-discover body {
+    overflow: visible !important;
+  }
+  html.mobile-scroll-discover #root,
+  html.mobile-scroll-discover .app-viewport {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+  html.mobile-scroll-discover .landing-route-shell {
+    height: auto !important;
+    min-height: 100svh;
+    min-height: 100dvh;
+    overflow: visible !important;
+    align-items: stretch;
+  }
+  html.mobile-scroll-discover .landing-route-shell > .flex {
+    min-height: 100svh;
+    min-height: 100dvh;
   }
 
   /*
