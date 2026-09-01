@@ -234,6 +234,11 @@ export default function App() {
       if (!text.trim()) return
 
       // Guests: no track-usage — cap anonymous previews in localStorage (guest_tries_used).
+      // NOTE: `!user` is only ever true for the very first submit — a successful translate
+      // creates a Supabase anonymous session as a side effect (ensureSessionForGroq in
+      // lib/groq-edge.ts), so `user` is set by the time a second submit happens and this
+      // local check never runs again. All real limiting after that point is server-side
+      // (see lib/subscription/enforce.ts + usage.ts). See guest-usage.ts for more detail.
       if (!user && hasReachedGuestLimit()) {
         setGuestSignupOpen(true)
         return

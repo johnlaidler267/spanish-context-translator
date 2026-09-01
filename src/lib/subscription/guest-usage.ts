@@ -4,6 +4,17 @@
  * Unauthenticated users get GUEST_LIMIT free text submissions before they
  * are prompted to sign up. The counter is keyed to the browser and resets
  * when the user signs in (clearGuestUses).
+ *
+ * IMPORTANT — in practice this only ever gates the very first translation
+ * attempt. `hasReachedGuestLimit()` is checked in App.tsx before a submit
+ * that has no Supabase user yet, but that very first successful translate
+ * creates a Supabase anonymous session as a side effect (see
+ * `ensureSessionForGroq` in lib/groq-edge.ts). By the *next* submit `user`
+ * is already set, so this local check is skipped entirely from then on —
+ * all further usage limiting is enforced server-side against that
+ * anonymous account (see lib/subscription/enforce.ts and usage.ts). Don't
+ * read GUEST_LIMIT as "guests get 3 tries total" — it's really "one local
+ * check before an anonymous account exists, then the server takes over."
  */
 
 export const GUEST_LIMIT = 3
