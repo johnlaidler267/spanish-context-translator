@@ -63,11 +63,23 @@ interface MainHeaderProps {
   variant?: "fixed" | "stacked"
   /**
    * `stacked` only: background class for the header's solid backdrop.
-   * Defaults to `bg-background`. Pass a page-matched tint (e.g. Discover's
-   * own surface color) so the header reads as a continuation of the page
-   * instead of a visually distinct bar sitting on top of it.
+   * Defaults to `bg-background`. Pass `bg-transparent` when the page behind
+   * it already paints its own background up through the header's spot
+   * (e.g. Discover, see `discover-shell-bg` in index.css) so the header
+   * isn't a visually separate bar at all.
    */
   backdropClassName?: string
+  /**
+   * `stacked` only: `position: sticky` (pinned to the top of the nearest
+   * scrolling ancestor) instead of a plain in-flow block. Use this when the
+   * page below scrolls past the header — on mobile that scrolling ancestor
+   * is the document itself (see `mobile-scroll-discover` in index.css), so
+   * without this the header just scrolls away with everything else.
+   * Default false: a plain in-flow header already stays put on pages where
+   * only an inner container scrolls underneath it (desktop, and any page
+   * that never unlocks document-level scroll on mobile).
+   */
+  stickyStacked?: boolean
 }
 
 function PlanBadgeLoading() {
@@ -263,6 +275,7 @@ export function MainHeader({
   contentInsetLeftPx = 0,
   variant = "fixed",
   backdropClassName = "bg-background",
+  stickyStacked = false,
 }: MainHeaderProps) {
   const stacked = variant === "stacked"
   const isMdUp = useMediaQuery("(min-width: 768px)")
@@ -278,15 +291,18 @@ export function MainHeader({
     <header
       className={
         stacked
-          ? "relative z-40 w-full shrink-0 pointer-events-none"
+          ? (stickyStacked ? "sticky" : "relative") + " top-0 z-40 w-full shrink-0 pointer-events-none"
           : "fixed top-0 left-0 right-0 z-40 pointer-events-none"
       }
       style={fixedInset}
     >
       {stacked ? (
-        // In-flow header: nothing ever scrolls underneath it, so a solid fill
+        // In-flow header: on pages where only an inner container scrolls
+        // underneath it, nothing ever moves behind this box, so a solid fill
         // (sized to its own content, not an extra fade-transition buffer)
         // reads as a normal compact header instead of a translucent overlay.
+        // `backdropClassName="bg-transparent"` opts out of the fill entirely
+        // for pages that paint their own background through this spot.
         <div className={`absolute inset-0 ${backdropClassName}`} />
       ) : (
         <div

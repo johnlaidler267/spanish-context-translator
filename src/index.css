@@ -245,12 +245,32 @@ html.lector-reading-session .global-corner-letter {
 .discover-scroll-surface {
   position: relative;
   isolation: isolate;
+  z-index: 1;
+}
+
+/*
+ * The gradient + scanline texture used to live on .discover-scroll-surface
+ * alone, which starts *below* Discover's stacked header -- so the header
+ * got its own separately color-matched backdrop instead (see git history),
+ * which was always an approximation and left a faint seam. Painting the
+ * real background here instead, on the shared ancestor that wraps both the
+ * header and .discover-scroll-surface (see landing-shell-layout.tsx), means
+ * the header can just be transparent and the *same* paint shows through
+ * both -- no seam by construction, not a color match.
+ * Neither this element nor .discover-scroll-surface itself is ever the box
+ * that scrolls (the real scrolling happens inside .discover-scroll-surface
+ * on desktop, and on the document on mobile), so moving the background up a
+ * level doesn't change how it tracks scrolling on either.
+ */
+.discover-shell-bg {
+  position: relative;
+  isolation: isolate;
   background:
     radial-gradient(115% 58% at 6% -10%, rgba(201, 122, 90, 0.09) 0%, rgba(201, 122, 90, 0) 62%),
     radial-gradient(85% 52% at 100% -4%, rgba(122, 165, 144, 0.12) 0%, rgba(122, 165, 144, 0) 60%),
     linear-gradient(180deg, #f8f4ee 0%, #f4efe6 100%);
 }
-.discover-scroll-surface::before {
+.discover-shell-bg::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -266,17 +286,13 @@ html.lector-reading-session .global-corner-letter {
   );
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.15) 70%, transparent);
 }
-.discover-scroll-surface > * {
-  position: relative;
-  z-index: 1;
-}
-.dark .discover-scroll-surface {
+.dark .discover-shell-bg {
   background:
     radial-gradient(115% 58% at 6% -10%, rgba(176, 107, 86, 0.13) 0%, rgba(176, 107, 86, 0) 62%),
     radial-gradient(85% 52% at 100% -4%, rgba(88, 135, 111, 0.1) 0%, rgba(88, 135, 111, 0) 60%),
     linear-gradient(180deg, #1b1b19 0%, #151514 100%);
 }
-.dark .discover-scroll-surface::before {
+.dark .discover-shell-bg::before {
   opacity: 0.5;
   background: repeating-linear-gradient(
     0deg,
@@ -285,20 +301,6 @@ html.lector-reading-session .global-corner-letter {
     transparent 1px,
     transparent 26px
   );
-}
-
-/*
- * Same tone as .discover-scroll-surface's own top edge (its linear-gradient
- * layer only, no radial tints -- those scale with element height and would
- * look wrong stretched across a header-sized box instead of the full page).
- * Used for Discover's header backdrop so it reads as a continuation of the
- * page instead of a visually distinct bar sitting on top of it.
- */
-.discover-header-bg {
-  background: linear-gradient(180deg, #f8f4ee 0%, #f4efe6 100%);
-}
-.dark .discover-header-bg {
-  background: linear-gradient(180deg, #1b1b19 0%, #151514 100%);
 }
 
 @media (max-width: 767px) {
@@ -375,12 +377,27 @@ html.lector-reading-session .global-corner-letter {
     html.mobile-scroll-discover {
       overflow-x: hidden !important;
       overflow-y: auto !important;
+      overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
     }
+    /*
+     * NOT overflow:auto here (unlike mobile-scroll-upgrade above): html is
+     * the one true scroll container for this route -- it's the ancestor
+     * that ends up bounded to the viewport with taller content overflowing
+     * it (document.scrollingElement). body's own box just grows to match
+     * its content, so giving it overflow:auto/hidden too adds no actual
+     * scrolling; it only has a side effect. Per the CSS overflow spec, any
+     * value other than "visible" on *either* axis makes an element a
+     * scroll container even with nothing to scroll, and Discover's sticky
+     * header (see MainHeader's `stickyStacked`) picks its nearest such
+     * ancestor as the box it pins against -- so a body that qualifies as a
+     * scroll container but never actually scrolls "shadows" html and
+     * makes the sticky positioning silently do nothing (confirmed while
+     * fixing this: the header just scrolled away with the page). Leaving
+     * body fully overflow:visible lets sticky see past it to html.
+     */
     html.mobile-scroll-discover body {
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
-      overscroll-behavior-y: contain;
+      overflow: visible !important;
     }
     html.mobile-scroll-discover #root,
     html.mobile-scroll-discover .app-viewport {

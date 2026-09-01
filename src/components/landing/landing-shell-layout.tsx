@@ -71,7 +71,12 @@ export function LandingShellLayout({
         readingActive={readingActive}
         onExitReading={onExitReading}
       />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col max-md:min-h-0 max-md:flex-1">
+      <div
+        className={
+          "flex min-h-0 min-w-0 flex-1 flex-col max-md:min-h-0 max-md:flex-1" +
+          (isDiscover ? " discover-shell-bg" : "")
+        }
+      >
         {!readingActive ? (
           <MainHeader
             theme={theme}
@@ -82,7 +87,15 @@ export function LandingShellLayout({
             onMenuClick={() => setMobileSidebarOpen(true)}
             contentInsetLeftPx={sidebarInsetPx}
             variant={headerVariant}
-            backdropClassName={isDiscover ? "discover-header-bg" : undefined}
+            // Discover paints its own background on this wrapper
+            // (`discover-shell-bg` above) all the way up behind the header,
+            // so the header has no backdrop of its own to blend -- and
+            // needs to stay pinned itself, since Discover unlocks
+            // document-level scroll on mobile (see mobile-scroll-discover
+            // in index.css), which would otherwise carry the header away
+            // with the rest of the page.
+            backdropClassName={isDiscover ? "bg-transparent" : undefined}
+            stickyStacked={isDiscover}
           />
         ) : null}
         <Outlet context={outletContext} />
