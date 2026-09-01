@@ -559,8 +559,13 @@ export default function UpgradePage() {
   const [subLoading, setSubLoading] = useState(true)
   const [processingTier, setProcessingTier] = useState<TierId | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
-  const [successBanner, setSuccessBanner] = useState<SuccessBannerState | null>(null)
-  const [confirmingActivation, setConfirmingActivation] = useState(false)
+  // Both seeded from the return-from-checkout URL state at mount, not from a later
+  // effect — didReturnFromCheckout() is a pure read of window.location and safe to
+  // call as a lazy initializer, so there's no reason to bounce it through an effect.
+  const [successBanner, setSuccessBanner] = useState<SuccessBannerState | null>(() =>
+    didReturnFromCheckout() ? { kind: "checkout" } : null,
+  )
+  const [confirmingActivation, setConfirmingActivation] = useState(() => didReturnFromCheckout())
   // Downgrade / cancel confirmation dialog state
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [dialogLoading, setDialogLoading] = useState(false)
@@ -627,8 +632,6 @@ export default function UpgradePage() {
   // ── Handle Stripe redirect-back ────────────────────────────────────────────
   useEffect(() => {
     if (!didReturnFromCheckout()) return
-    setSuccessBanner({ kind: "checkout" })
-    setConfirmingActivation(true)
 
     // Poll until the webhook has updated the DB, then refresh global subscription state.
     supabase.auth.getUser().then(async ({ data: { user } }) => {
