@@ -489,21 +489,23 @@ export default function SettingsPage() {
                         </p>
                       </SettingsRow>
 
-                      <SettingsRow
-                        label="Sign out"
-                        description="End this session on this device."
-                        labelAs="p"
-                      >
-                        <Button
-                          variant="outline"
-                          className="h-10 gap-2 font-normal text-muted-foreground hover:text-foreground"
-                          onClick={handleSignOut}
-                          disabled={signingOut}
+                      {user.is_anonymous !== true && (
+                        <SettingsRow
+                          label="Sign out"
+                          description="End this session on this device."
+                          labelAs="p"
                         >
-                          <LogOut className="h-4 w-4" strokeWidth={1.65} aria-hidden />
-                          {signingOut ? "Signing out…" : "Sign out"}
-                        </Button>
-                      </SettingsRow>
+                          <Button
+                            variant="outline"
+                            className="h-10 gap-2 font-normal text-muted-foreground hover:text-foreground"
+                            onClick={handleSignOut}
+                            disabled={signingOut}
+                          >
+                            <LogOut className="h-4 w-4" strokeWidth={1.65} aria-hidden />
+                            {signingOut ? "Signing out…" : "Sign out"}
+                          </Button>
+                        </SettingsRow>
+                      )}
                     </>
                   ) : (
                     <div className="py-5">
