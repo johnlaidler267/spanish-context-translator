@@ -243,6 +243,14 @@ Read mode uses the same translated slice as the current article page and request
 
 ---
 
+## Discover catalog prefetch
+
+A few seconds (`DISCOVER_PREFETCH_DELAY_MS` in `App.tsx`, currently 2s) after landing on `/`, a `useEffect` calls `fetchDiscoverCatalog()` (`lib/discover/discover-catalog.ts`) in the background, so the Discover catalog is usually already sitting in its `localStorage` cache by the time you tap **Discover** — the page paints from cache immediately instead of showing its loading skeleton. `DiscoverPage`'s own mount effect calls the exact same function, so this is the same cache entry and, if the two ever overlap, the same in-flight request (`fetchDiscoverCatalog` dedupes concurrent callers to one promise) — not a second, parallel fetch path.
+
+The prefetch only fires once per landing visit that stays put for the full delay (a ref guards it, set only once the timeout actually runs), and won't refire again this session once it has. It's gated on `!authLoading` and the route being `/`, but not on being signed in — the catalog isn't user-specific, so guests get it too.
+
+---
+
 ## Project Structure
 
 Components and `lib` modules are grouped by feature; a handful of

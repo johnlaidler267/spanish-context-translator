@@ -59,6 +59,7 @@ import {
   UsageError,
 } from "@/lib/subscription/usage"
 import type { ContentItem } from "@/lib/discover/content-data"
+import { fetchDiscoverCatalog } from "@/lib/discover/discover-catalog"
 import { supabase } from "@/lib/supabase"
 import { getTier } from "@/lib/subscription/tiers"
 
@@ -75,6 +76,13 @@ const LANDING_MIN_LOADING_MS = LOADING_OVERLAY_PROGRESS_MS
  * avoid stacking a large shrink here or article pages sit well under the viewport.
  */
 const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.95
+/**
+ * Discover catalog prefetch: how long a user must be sitting on the landing page before
+ * warming the Discover cache in the background. Short enough that most people have it
+ * ready by the time they navigate there; long enough to stay out of the way of the
+ * landing page's own first paint / auth resolution.
+ */
+const DISCOVER_PREFETCH_DELAY_MS = 2000
 /**
  * Article next-page prefetch: how long the user must sit on a page before the next one
  * starts translating in the background. Long enough that flipping through several pages
@@ -175,6 +183,8 @@ export default function App() {
   const [guestSignupOpen, setGuestSignupOpen] = useState(false)
   const usagePreflightRef = useRef<UsagePreflightSnapshot | null>(null)
   const usagePreflightInFlightRef = useRef<Promise<void> | null>(null)
+  /** Guards the Discover prefetch below from refiring every time the landing page mounts. */
+  const discoverPrefetchedRef = useRef(false)
 
   useEffect(() => {
     if (user) setGuestSignupOpen(false)
@@ -224,6 +234,30 @@ export default function App() {
     window.addEventListener("focus", onFocus)
     return () => window.removeEventListener("focus", onFocus)
   }, [user, appState, refreshUsagePreflight])
+
+  /**
+   * Discover catalog prefetch: while the user is sitting on the landing page (logged in
+   * or not -- the catalog isn't user-specific), warm it in the background so /discover
+   * paints instantly instead of showing its loading skeleton. Calls the exact same
+   * `fetchDiscoverCatalog()` DiscoverPage's own mount effect calls (same localStorage
+   * cache, same in-flight-request dedup), so this just kicks that fetch off earlier --
+   * it isn't a second, parallel cache. Gated on `!authLoading` so it doesn't compete with
+   * auth resolving, and on a ref (not just "once per mount") so revisiting the landing
+   * page later in the same session -- after this already fired once -- doesn't refire it;
+   * if the user leaves before the delay elapses, the ref is never set and the next landing
+   * visit tries again.
+   */
+  useEffect(() => {
+    if (authLoading) return
+    if (appState !== "landing") return
+    if (location.pathname !== "/") return
+    if (discoverPrefetchedRef.current) return
+    const timer = window.setTimeout(() => {
+      discoverPrefetchedRef.current = true
+      void fetchDiscoverCatalog()
+    }, DISCOVER_PREFETCH_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [authLoading, appState, location.pathname])
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)")
