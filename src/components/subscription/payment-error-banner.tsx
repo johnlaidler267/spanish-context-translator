@@ -76,7 +76,7 @@ export function PaymentErrorBanner({
       className={cn(
         "flex items-start gap-3 rounded-xl border p-4 text-sm font-sans",
         isUrgent
-          ? "bg-destructive/8 border-destructive/30 text-destructive"
+          ? "bg-destructive/8 border-destructive/30 text-destructive dark:text-red-400"
           : "bg-amber-500/8 border-amber-500/30 text-amber-800 dark:text-amber-300",
         className,
       )}
@@ -85,13 +85,13 @@ export function PaymentErrorBanner({
       <div className="flex-1 min-w-0 space-y-2">
         <p className={cn(
           "font-medium leading-snug",
-          isUrgent ? "text-destructive" : "text-amber-800 dark:text-amber-200",
+          isUrgent ? "text-destructive dark:text-red-400" : "text-amber-800 dark:text-amber-200",
         )}>
           {title}
         </p>
         <p className={cn(
           "text-xs leading-relaxed",
-          isUrgent ? "text-destructive/80" : "text-amber-700/90 dark:text-amber-300/80",
+          isUrgent ? "text-destructive/80 dark:text-red-400/80" : "text-amber-700/90 dark:text-amber-300/80",
         )}>
           {message}
         </p>

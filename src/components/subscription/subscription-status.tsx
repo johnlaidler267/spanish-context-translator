@@ -18,7 +18,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { Link } from "react-router-dom"
 import {
   BookOpen, Zap, CalendarCheck2,
-  AlertTriangle, RefreshCw, Loader2, ArrowUpRight, RotateCcw,
+  AlertTriangle, RefreshCw, Loader2, RotateCcw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getTier, formatPrice, type TierId } from "@/lib/subscription/tiers"
@@ -115,7 +115,7 @@ function StatusPill({ status }: { status: string }) {
   const colorClass = isGood
     ? "bg-green-500/12 text-green-700 dark:text-green-400"
     : isBad
-    ? "bg-destructive/10 text-destructive"
+    ? "bg-destructive/10 text-destructive dark:text-red-400"
     : "bg-amber-500/12 text-amber-700 dark:text-amber-400"
 
   const dotClass = isGood
@@ -274,7 +274,7 @@ function UsageBar({ metric, counters, limits, labelSuffix = "" }: UsageBarProps)
         <span
           className={cn(
             "flex items-center gap-1.5",
-            isOver ? "text-destructive" : isWarn ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
+            isOver ? "text-destructive dark:text-red-400" : isWarn ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
           )}
         >
           {(isWarn || isOver) && <AlertTriangle className="h-3 w-3 shrink-0" />}
@@ -282,7 +282,7 @@ function UsageBar({ metric, counters, limits, labelSuffix = "" }: UsageBarProps)
         </span>
         <span className={cn(
           "tabular-nums",
-          isOver ? "text-destructive font-medium" : isWarn ? "text-amber-600 dark:text-amber-400" : "text-foreground",
+          isOver ? "text-destructive dark:text-red-400 font-medium" : isWarn ? "text-amber-600 dark:text-amber-400" : "text-foreground",
         )}>
           {status.current.toLocaleString()}
           <span className="text-muted-foreground">/{status.limit.toLocaleString()}</span>
@@ -319,7 +319,7 @@ function WarningBanner({ warned, exceeded }: {
       className={cn(
         "flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm font-sans",
         isBlocked
-          ? "bg-destructive/8 border border-destructive/25 text-destructive"
+          ? "bg-destructive/8 border border-destructive/25 text-destructive dark:text-red-400"
           : "bg-amber-500/8 border border-amber-500/25 text-amber-700 dark:text-amber-400",
       )}
     >
@@ -546,7 +546,7 @@ export function SubscriptionStatus({
     <div className={cn("rounded-xl border border-border bg-card divide-y divide-border/60", className)}>
 
       {/* ── Plan header ─────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 p-5">
+      <div className="p-5">
         <div className="min-w-0">
           {/* Plan name + icon — wraps to its own line on narrow screens instead of
               squeezing "Free Plan" and the status pill's label mid-word */}
@@ -577,30 +577,29 @@ export function SubscriptionStatus({
             </div>
           )}
 
-          {/* Trial end / billing date */}
+          {/* Trial end / billing date. currentPeriodEnd can be a stale leftover
+              value (e.g. from a Stripe subscription that never activated) even
+              once the account is reporting as free / non-renewing, so only
+              show it for statuses that actually have a next renewal or retry
+              coming — not canceled/incomplete/incomplete_expired/unpaid. */}
           {sub?.status === "trialing" && sub.trialEnd ? (
             <DaysRemaining
               periodEnd={sub.trialEnd}
               cancelAtPeriodEnd={false}
               isTrialing
             />
-          ) : sub?.currentPeriodEnd ? (
+          ) : (sub?.status === "active" || sub?.status === "past_due") && sub.currentPeriodEnd ? (
             <DaysRemaining
               periodEnd={sub.currentPeriodEnd}
               cancelAtPeriodEnd={sub.cancelAtPeriodEnd}
             />
           ) : null}
         </div>
-
-        {/* Quick upgrade link — free tier only */}
-        {tierId === "free" && (
-          <Link
-            to="/upgrade"
-            className="shrink-0 flex items-center gap-1 text-xs font-medium font-sans text-primary hover:underline mt-0.5"
-          >
-            Upgrade <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        )}
+        {/* The free tier's "Upgrade" CTA lives once, at the bottom of the
+            card (see "Upgrade CTA" below) — it already adapts its copy to
+            "Upgrade to continue →" when a limit is exceeded, so a second,
+            static "Upgrade ↗" link up here duplicated it without adding
+            anything. */}
       </div>
 
       {/* ── Trial countdown ──────────────────────────────────────────────── */}
@@ -678,17 +677,27 @@ export function SubscriptionStatus({
             Per-submission limits
           </p>
           <div className="space-y-2">
-            {PER_REQUEST_FACTS.map(({ metric, label }) => {
-              const limit = limits[metric]
-              return (
-                <div key={metric} className="flex items-center justify-between text-sm font-sans">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="text-foreground tabular-nums">
-                    {limit === null ? "∞ Unlimited" : limit.toLocaleString()}
-                  </span>
-                </div>
-              )
-            })}
+            {PER_REQUEST_FACTS
+              // No tier sets pagesPerSubmission today (see tiers.ts) -- a
+              // submission's page count is just however many reading-view
+              // pages its characters happen to split into, so "Pages per
+              // submission: Unlimited" next to a *capped* character count
+              // reads as a contradiction ("pages" sounds like a bigger
+              // allowance than "characters", when it's really downstream of
+              // it). Only show this row once a tier enforces a real
+              // per-submission page cap distinct from its character cap.
+              .filter(({ metric }) => metric !== "pages_processed" || limits[metric] !== null)
+              .map(({ metric, label }) => {
+                const limit = limits[metric]
+                return (
+                  <div key={metric} className="flex items-center justify-between text-sm font-sans">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="text-foreground tabular-nums">
+                      {limit === null ? "∞ Unlimited" : limit.toLocaleString()}
+                    </span>
+                  </div>
+                )
+              })}
           </div>
         </div>
       )}
@@ -711,7 +720,7 @@ export function SubscriptionStatus({
               Reactivate subscription
             </Button>
             {reactivateError && (
-              <p className="text-xs text-destructive font-sans">{reactivateError}</p>
+              <p className="text-xs text-destructive dark:text-red-400 font-sans">{reactivateError}</p>
             )}
           </>
         )}
@@ -734,7 +743,7 @@ export function SubscriptionStatus({
               <span className="text-xs text-muted-foreground">Stripe Portal</span>
             </Button>
             {portalError && (
-              <p className="text-xs text-destructive font-sans">{portalError}</p>
+              <p className="text-xs text-destructive dark:text-red-400 font-sans">{portalError}</p>
             )}
           </>
         )}
