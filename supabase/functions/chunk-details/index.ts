@@ -13,7 +13,7 @@ import { requireAuthUser, jsonError } from "../_shared/auth-user.ts"
 import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-const MODEL = "llama-3.1-8b-instant"
+const MODEL = "openai/gpt-oss-20b"
 const MAX_TOKENS = 280
 
 const SYSTEM_PROMPT = `You are a Spanish grammar assistant for English speakers reading native Spanish.

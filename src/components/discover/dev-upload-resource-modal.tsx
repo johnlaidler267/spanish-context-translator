@@ -24,7 +24,7 @@ const contentTypeOptions: ContentType[] = ["book", "article", "song", "poem"]
 const difficultyOptions: DifficultyLevel[] = ["beginner", "intermediate", "advanced"]
 
 /** Smallest / fastest Groq model allowed by `groq-chat` — used only for tag suggestions. */
-const TAGS_GROQ_MODEL = "llama-3.1-8b-instant" as const
+const TAGS_GROQ_MODEL = "openai/gpt-oss-20b" as const
 const TAGS_EXCERPT_CHAR_CAP = 8000
 
 function firstTwoParagraphs(body: string): string {
