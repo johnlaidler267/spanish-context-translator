@@ -17,6 +17,8 @@ import { clearGuestUses } from "@/lib/subscription/guest-usage"
 interface AuthContextValue {
   user:            User | null
   isLoading:       boolean
+  /** True only while an actual sign-in is completing (OAuth/magic-link callback), never on a plain page refresh of an existing session. */
+  isSigningIn:     boolean
   signOut:         () => Promise<void>
   signInWithMagicLink: (email: string) => Promise<{ error: string | null }>
   signInWithOAuth: (provider: "google") => Promise<void>
@@ -29,11 +31,36 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * True only while the current page load looks like it's completing an OAuth or magic-link
+ * sign-in (i.e. the browser was just redirected back from the provider/email link), not a
+ * plain refresh of a page that already has a session. Supabase's browser client defaults to
+ * the PKCE flow, which returns with "?code=..." (or "?error=..." on a failed attempt); the
+ * older implicit flow returns tokens in the "#access_token=..." hash. Either marks an
+ * in-progress sign-in attempt, distinct from onAuthStateChange's INITIAL_SESSION (a restore
+ * of an existing session, which carries no such URL).
+ */
+export function isAuthCallbackInUrl(): boolean {
+  if (typeof window === "undefined") return false
+  const { search, hash } = window.location
+  return (
+    /[?&]code=/.test(search) ||
+    /[?&]error(_description)?=/.test(search) ||
+    /(?:^#|[&#])access_token=/.test(hash)
+  )
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user,    setUser   ] = useState<User | null>(null)
   const [isLoading, setLoading] = useState(true)
+  // Seeded from the URL so the very first render already knows; onAuthStateChange's event type
+  // (SIGNED_IN vs INITIAL_SESSION) then confirms or corrects it once the real answer is known,
+  // before isLoading flips to false — see the effect below.
+  const [isSigningIn, setIsSigningIn] = useState(() => isAuthCallbackInUrl())
   const [authModalOpen, setAuthModalOpen] = useState(false)
 
   // ── Session restore ────────────────────────────────────────────────────────
@@ -44,10 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fallback = window.setTimeout(() => setLoading(false), 3000)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         window.clearTimeout(fallback)
         const nextUser = session?.user ?? null
         setUser(nextUser)
+        // INITIAL_SESSION is just a restore of an already-established session (e.g. a plain
+        // refresh) — never an active login, whatever the URL looked like on first paint.
+        // SIGNED_IN is a genuine sign-in completing (OAuth/magic-link callback or otherwise).
+        setIsSigningIn(event === "SIGNED_IN")
         setLoading(false)
 
         if (nextUser) {
@@ -104,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     user,
     isLoading,
+    isSigningIn,
     signOut,
     signInWithMagicLink,
     signInWithOAuth,

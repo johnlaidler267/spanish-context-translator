@@ -1565,16 +1565,17 @@ article span {
 .dark .plan-badge-upgrade      { color: rgba(234,224,213,0.7); text-decoration-color: rgba(234,224,213,0.35); }
 .dark .plan-badge-upgrade:hover { color: #c97a5a; text-decoration-color: #c97a5a; }
 
-/* ── Auth: "Logging in…" loading bar ────────────────────────────── */
-/* Duration/timing unknown (network round trip after an OAuth redirect), so
-   this sweeps indefinitely rather than filling to a known percentage. */
+/* ── Auth: session-check loading bar ────────────────────────────── */
+/* Duration/timing unknown (network round trip after an OAuth redirect or a
+   session restore check), so this sweeps indefinitely rather than filling to
+   a known percentage. Linear + a one-way translate (no midpoint reversal) so
+   it reads as a continuously advancing line instead of sweeping back and forth. */
 @keyframes auth-loading-bar-sweep {
   0%   { transform: translateX(-100%); }
-  50%  { transform: translateX(150%); }
-  100% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
 }
 .auth-loading-bar-fill {
-  animation: auth-loading-bar-sweep 1.4s ease-in-out infinite;
+  animation: auth-loading-bar-sweep 1.1s linear infinite;
 }
 
 @keyframes discover-loading-sheen {

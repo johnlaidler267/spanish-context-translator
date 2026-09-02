@@ -94,7 +94,7 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const { status: subscriptionStatus, isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading, isSigningIn } = useAuth()
 
   const [appState, setAppState] = useState<AppState>("landing")
 
@@ -541,7 +541,9 @@ export default function App() {
     return (
       <main className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden">
         <div className="flex flex-col items-center gap-3 w-40">
-          <p className="text-muted-foreground font-sans text-xs tracking-wide">Logging in…</p>
+          {isSigningIn && (
+            <p className="text-muted-foreground font-sans text-xs tracking-wide">Logging in…</p>
+          )}
           <div className="w-full h-[2px] rounded-full bg-border overflow-hidden">
             <div className="auth-loading-bar-fill h-full w-1/3 rounded-full bg-primary" />
           </div>
