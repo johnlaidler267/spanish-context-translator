@@ -298,7 +298,7 @@ export function LandingSidebar({
             className={cn(
               "group flex w-full items-center justify-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2.5 text-sm font-medium tracking-[-0.015em] text-foreground/90 shadow-sm",
               "transition-[color,background-color,border-color,box-shadow] duration-200 ease-out",
-              "hover:border-primary/40 hover:text-foreground hover:shadow-md",
+              "hover:border-primary/40 hover:bg-muted hover:text-foreground hover:shadow-md",
               "disabled:pointer-events-none disabled:opacity-50",
               "outline-none focus-visible:ring-2 focus-visible:ring-ring",
               compactRail && "px-0 py-2.5",
