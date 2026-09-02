@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Sun, Moon, Settings2, Loader2, Menu } from "lucide-react"
 import { useSubscriptionOptional } from "@/contexts/subscription-context"
@@ -82,6 +82,15 @@ interface MainHeaderProps {
    * Default false: a plain in-flow header at every width.
    */
   stickyStacked?: boolean
+}
+
+/** Owns the centered pill-chip shell so it can collapse to nothing — never a blank shell. */
+function MobileChipWrapper({ children }: { children: ReactNode }) {
+  return (
+    <div className="pointer-events-auto md:hidden flex w-full justify-center px-2.5 pb-2 pt-0.5">
+      <div className="plan-badge plan-badge--header plan-badge--mobile-chip">{children}</div>
+    </div>
+  )
 }
 
 function PlanBadgeLoading() {
@@ -206,13 +215,15 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
     )
     if (guestMode === "upgrade") {
       return (
-        <button
-          type="button"
-          className="contents cursor-pointer text-left border-0 bg-transparent p-0 [font:inherit] text-inherit"
-          onClick={goToUpgrade}
-        >
-          {inner}
-        </button>
+        <MobileChipWrapper>
+          <button
+            type="button"
+            className="contents cursor-pointer text-left border-0 bg-transparent p-0 [font:inherit] text-inherit"
+            onClick={goToUpgrade}
+          >
+            {inner}
+          </button>
+        </MobileChipWrapper>
       )
     }
     return (
@@ -249,7 +260,7 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
     </>
   )
 
-  return (
+  const content =
     pill.to === "/upgrade" ? (
       <button
         type="button"
@@ -263,7 +274,8 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
         {inner}
       </Link>
     )
-  )
+
+  return guestMode === "upgrade" ? <MobileChipWrapper>{content}</MobileChipWrapper> : content
 }
 
 export function MainHeader({
@@ -365,13 +377,7 @@ export function MainHeader({
             ) : null}
           </div>
         </div>
-        {showHomeMobilePlanBanner && (
-          <div className="pointer-events-auto md:hidden flex w-full justify-center px-2.5 pb-2 pt-0.5">
-            <div className="plan-badge plan-badge--header plan-badge--mobile-chip">
-              <PlanBadgeContent guestMode="upgrade" />
-            </div>
-          </div>
-        )}
+        {showHomeMobilePlanBanner && <PlanBadgeContent guestMode="upgrade" />}
       </div>
     </header>
   )
