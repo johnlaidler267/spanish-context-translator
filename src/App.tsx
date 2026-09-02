@@ -449,9 +449,14 @@ export default function App() {
         return { blockedMessage }
       }
 
+      // The reading UI only mounts on the index route (see `appState === "reading"` below) --
+      // flipping appState alone leaves us stranded on /discover with the modal still open and
+      // no visible change beyond the loading overlay. Navigate home first so the state change
+      // has somewhere to render.
+      navigate("/")
       await handleTextSubmit(sourceText, { populateLandingDraft: false })
     },
-    [handleTextSubmit, subscriptionStatus, isLapsed, user],
+    [handleTextSubmit, subscriptionStatus, isLapsed, user, navigate],
   )
 
   const handleBack = useCallback(() => {
