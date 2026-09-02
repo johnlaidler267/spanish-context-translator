@@ -232,7 +232,12 @@ export default function App() {
   }, [dismissPopup, navigate])
 
   const handleTextSubmit = useCallback(
-    async (text: string) => {
+    // `populateLandingDraft` defaults to true for the landing page's own composer, whose
+    // submitted text belongs back in its own textbox on return. Discover's "Start reading"
+    // passes false: it reuses this same submit pipeline (usage checks, paging, translation)
+    // but its content is a separate catalog item, not landing-page draft text -- without this
+    // flag it was overwriting the landing textbox with whatever Discover article was opened.
+    async (text: string, { populateLandingDraft = true }: { populateLandingDraft?: boolean } = {}) => {
       if (!text.trim()) return
 
       // Guests: no track-usage — cap anonymous previews in localStorage (guest_tries_used).
@@ -246,7 +251,7 @@ export default function App() {
         return
       }
       const trimmed = dedupeConsecutiveDuplicateLines(text).trim()
-      setLandingDraft(trimmed)
+      if (populateLandingDraft) setLandingDraft(trimmed)
 
       // Free plan: block before anything gets tracked. Without this check, an over-limit
       // paste still consumed a submission -- trackUsage below fires unconditionally, and
@@ -444,7 +449,7 @@ export default function App() {
         return { blockedMessage }
       }
 
-      await handleTextSubmit(sourceText)
+      await handleTextSubmit(sourceText, { populateLandingDraft: false })
     },
     [handleTextSubmit, subscriptionStatus, isLapsed, user],
   )
