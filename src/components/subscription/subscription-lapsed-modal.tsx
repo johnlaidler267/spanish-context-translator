@@ -35,8 +35,9 @@ export function SubscriptionLapsedModal({
           Subscription ended
         </h2>
         <p id="lapsed-desc" className="mt-3 text-muted-foreground">
-          Your subscription has lapsed due to a failed payment or trial end.
-          Resubscribe to continue reading Spanish with LexaLens.
+          Your Pro subscription has lapsed due to a failed payment or trial end.
+          You can keep reading on the Free plan — resubscribe to get your Pro
+          benefits back.
         </p>
 
         <div className="mt-6 flex flex-col gap-3">

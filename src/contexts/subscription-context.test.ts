@@ -1,17 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import {
-  lapsedModalSessionKey,
-  readLapsedModalAckSession,
-  writeLapsedModalAckSession,
+  lapsedModalAckKey,
+  readLapsedModalAck,
+  writeLapsedModalAck,
+  clearLapsedModalAck,
 } from "@/contexts/subscription-context"
 
-// The lapsed-subscription popup shouldn't reopen after a user dismisses it,
-// but a SIGNED-OUT default (no userId) must never leak into a DIFFERENT
-// signed-in user's dismissal on a shared browser -- these three functions are
-// what keeps that scoped correctly. Directly relevant given the earlier fix
-// this project where the lapsed modal was stacking incorrectly.
+// The lapsed-subscription popup shouldn't reopen after a user dismisses it --
+// not even across browser sessions/logins, since it's meant to be a one-time
+// nag per lapse, not a once-per-tab one. It's also scoped to userId so a
+// SIGNED-OUT default (no userId) never leaks into a DIFFERENT signed-in
+// user's dismissal on a shared browser. Directly relevant given the earlier
+// fix in this project where the lapsed modal was stacking incorrectly.
 
-function makeMemorySessionStorage(): Storage {
+function makeMemoryStorage(): Storage {
   const store = new Map<string, string>()
   return {
     getItem: (k: string) => store.get(k) ?? null,
@@ -25,49 +27,63 @@ function makeMemorySessionStorage(): Storage {
   }
 }
 
-describe("lapsedModalSessionKey", () => {
+describe("lapsedModalAckKey", () => {
   it("scopes the key to the user id when present", () => {
-    expect(lapsedModalSessionKey("user-123")).toBe("lapsed_modal_ack_user-123")
+    expect(lapsedModalAckKey("user-123")).toBe("lapsed_modal_ack_user-123")
   })
 
   it("falls back to a shared key when there's no user id", () => {
-    expect(lapsedModalSessionKey(undefined)).toBe("lapsed_modal_ack")
+    expect(lapsedModalAckKey(undefined)).toBe("lapsed_modal_ack")
   })
 
   it("two different users get two different keys", () => {
-    expect(lapsedModalSessionKey("user-a")).not.toBe(lapsedModalSessionKey("user-b"))
+    expect(lapsedModalAckKey("user-a")).not.toBe(lapsedModalAckKey("user-b"))
   })
 })
 
-describe("readLapsedModalAckSession / writeLapsedModalAckSession", () => {
+describe("readLapsedModalAck / writeLapsedModalAck / clearLapsedModalAck", () => {
   beforeEach(() => {
     vi.stubGlobal("window", {})
-    vi.stubGlobal("sessionStorage", makeMemorySessionStorage())
+    vi.stubGlobal("localStorage", makeMemoryStorage())
   })
   afterEach(() => vi.unstubAllGlobals())
 
   it("reads false when nothing has been written yet", () => {
-    expect(readLapsedModalAckSession("user-123")).toBe(false)
+    expect(readLapsedModalAck("user-123")).toBe(false)
   })
 
   it("read reflects a prior write for the same user", () => {
-    writeLapsedModalAckSession("user-123")
-    expect(readLapsedModalAckSession("user-123")).toBe(true)
+    writeLapsedModalAck("user-123")
+    expect(readLapsedModalAck("user-123")).toBe(true)
   })
 
   it("dismissal for one user does not leak into another user's read", () => {
-    writeLapsedModalAckSession("user-a")
-    expect(readLapsedModalAckSession("user-a")).toBe(true)
-    expect(readLapsedModalAckSession("user-b")).toBe(false)
+    writeLapsedModalAck("user-a")
+    expect(readLapsedModalAck("user-a")).toBe(true)
+    expect(readLapsedModalAck("user-b")).toBe(false)
   })
 
   it("write is a no-op with no userId (never persists a signed-out ack)", () => {
-    writeLapsedModalAckSession(undefined)
-    expect(readLapsedModalAckSession(undefined)).toBe(false)
+    writeLapsedModalAck(undefined)
+    expect(readLapsedModalAck(undefined)).toBe(false)
   })
 
-  it("is false when window/sessionStorage aren't available (SSR-safe read)", () => {
+  it("is false when window/localStorage aren't available (SSR-safe read)", () => {
     vi.stubGlobal("window", undefined)
-    expect(readLapsedModalAckSession("user-123")).toBe(false)
+    expect(readLapsedModalAck("user-123")).toBe(false)
+  })
+
+  it("persists across what would be separate browser sessions (no sessionStorage involved)", () => {
+    writeLapsedModalAck("user-123")
+    // Simulate a fresh tab/session by re-reading with a brand new call --
+    // localStorage-backed reads don't depend on any session state.
+    expect(readLapsedModalAck("user-123")).toBe(true)
+  })
+
+  it("clear resets the ack so a future lapse can show the popup again", () => {
+    writeLapsedModalAck("user-123")
+    expect(readLapsedModalAck("user-123")).toBe(true)
+    clearLapsedModalAck("user-123")
+    expect(readLapsedModalAck("user-123")).toBe(false)
   })
 })

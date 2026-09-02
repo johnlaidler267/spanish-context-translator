@@ -25,18 +25,28 @@ export interface SubscriptionContextValue {
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null)
 
-export function lapsedModalSessionKey(userId: string | undefined) {
+// Persisted (not sessionStorage) so the "your plan lapsed" popup is a true
+// one-time nag per lapse, not a once-per-browser-session one -- a user who
+// closes the tab and logs back in later must not see it again for the same
+// lapse. Cleared once the account leaves "lapsed" status (see `recheck`
+// below) so a *future* lapse still shows it once.
+export function lapsedModalAckKey(userId: string | undefined) {
   return userId ? `lapsed_modal_ack_${userId}` : "lapsed_modal_ack"
 }
 
-export function readLapsedModalAckSession(userId: string | undefined): boolean {
+export function readLapsedModalAck(userId: string | undefined): boolean {
   if (typeof window === "undefined") return false
-  return sessionStorage.getItem(lapsedModalSessionKey(userId)) === "1"
+  return localStorage.getItem(lapsedModalAckKey(userId)) === "1"
 }
 
-export function writeLapsedModalAckSession(userId: string | undefined) {
+export function writeLapsedModalAck(userId: string | undefined) {
   if (typeof window === "undefined" || !userId) return
-  sessionStorage.setItem(lapsedModalSessionKey(userId), "1")
+  localStorage.setItem(lapsedModalAckKey(userId), "1")
+}
+
+export function clearLapsedModalAck(userId: string | undefined) {
+  if (typeof window === "undefined" || !userId) return
+  localStorage.removeItem(lapsedModalAckKey(userId))
 }
 
 /**
@@ -85,7 +95,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       if (requestSeqRef.current !== seq) return
       setStatus(result.status)
       if (result.status === "lapsed") {
-        setPopupDismissed(readLapsedModalAckSession(user?.id))
+        setPopupDismissed(readLapsedModalAck(user?.id))
+      } else {
+        // Left the lapsed state (resubscribed, etc.) -- reset the ack so a
+        // future lapse shows the popup once again instead of staying silent.
+        clearLapsedModalAck(user?.id)
+        setPopupDismissed(false)
       }
     })
 
@@ -130,7 +145,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [status, recheck])
 
   const dismissPopup = useCallback(() => {
-    writeLapsedModalAckSession(user?.id)
+    writeLapsedModalAck(user?.id)
     setPopupDismissed(true)
   }, [user?.id])
 
