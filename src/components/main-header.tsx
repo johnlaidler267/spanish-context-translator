@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Sun, Moon, Settings2, Loader2, Menu } from "lucide-react"
 import { useSubscriptionOptional } from "@/contexts/subscription-context"
@@ -300,9 +300,47 @@ export function MainHeader({
     !stacked && isMdUp && contentInsetLeftPx > 0
       ? { left: contentInsetLeftPx, right: 0, width: "auto" as const }
       : undefined
+  const headerRef = useRef<HTMLElement | null>(null)
+
+  // `stickyStacked` headers (mobile Discover) pin via `position: sticky` against
+  // the document's real scroll container -- see the `mobile-scroll-discover`
+  // comment in index.css. iOS Safari/WebKit has a known class of bugs where a
+  // sticky element's on-screen offset goes stale ("frozen") after something
+  // perturbs layout without a normal scroll/resize event, and a Radix Dialog
+  // closing is exactly that: react-remove-scroll's scroll lock toggles
+  // `body[data-scroll-locked]` off (see react-remove-scroll-bar), which can
+  // leave WebKit's cached sticky position pointing at wherever the header sat
+  // while locked instead of re-pinning to the top. Toggling `position` on the
+  // header forces WebKit to recompute it. This is a defensive nudge, not a
+  // reproduced-and-verified fix -- see the commit message.
+  useEffect(() => {
+    if (!stickyStacked || typeof document === "undefined") return
+
+    let wasLocked = document.body.hasAttribute("data-scroll-locked")
+
+    const nudgeStickyReflow = () => {
+      const el = headerRef.current
+      if (!el) return
+      el.style.position = "static"
+      void el.offsetHeight // force a synchronous layout before restoring
+      requestAnimationFrame(() => {
+        el.style.position = ""
+      })
+    }
+
+    const observer = new MutationObserver(() => {
+      const isLocked = document.body.hasAttribute("data-scroll-locked")
+      if (wasLocked && !isLocked) nudgeStickyReflow()
+      wasLocked = isLocked
+    })
+    observer.observe(document.body, { attributes: true, attributeFilter: ["data-scroll-locked"] })
+
+    return () => observer.disconnect()
+  }, [stickyStacked])
 
   return (
     <header
+      ref={headerRef}
       className={
         stacked
           ? (stickyStacked ? "sticky md:relative" : "relative") + " top-0 z-40 w-full shrink-0 pointer-events-none"
