@@ -380,12 +380,14 @@ export function LandingScreen({
         {/* Hero — mobile: fills space above composer; desktop: top */}
         <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block md:pb-8 pt-2 md:pt-0 pb-2 md:pb-8">
           <img
-            src="/landing-hero-books.png"
+            src="/landing-hero-books.webp"
             alt=""
-            width={72}
-            height={72}
+            width={480}
+            height={511}
             className="md:hidden mx-auto mb-2 w-[min(35vw,15rem)] h-auto max-h-18 object-contain object-center select-none pointer-events-none animate-levitate"
             aria-hidden
+            loading="eager"
+            fetchPriority="high"
           />
           <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl" style={{ lineHeight: "1.15" }}>
             <em>{heroGreeting}</em>
