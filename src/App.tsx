@@ -75,6 +75,13 @@ const LANDING_MIN_LOADING_MS = LOADING_OVERLAY_PROGRESS_MS
  * avoid stacking a large shrink here or article pages sit well under the viewport.
  */
 const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.95
+/**
+ * Article next-page prefetch: how long the user must sit on a page before the next one
+ * starts translating in the background. Long enough that flipping through several pages
+ * quickly doesn't fire a background call for every page skipped past; short enough that a
+ * normal reading pace has the next page ready before Next is tapped.
+ */
+const ARTICLE_NEXT_PAGE_PREFETCH_DELAY_MS = 4000
 
 type UsagePreflightSnapshot = {
   counters: UsageCounters
@@ -475,10 +482,35 @@ export default function App() {
   const totalPages = sourcePages.length
 
   /**
-   * Article next-page prefetch is intentionally disabled: the next slice is translated only
-   * when the user taps Next (see goArticleNext). To revisit background preload, see README
-   * “Article next-page prefetch”.
+   * Article next-page prefetch: a few seconds after the current page becomes visible, start
+   * translating the next one in the background so it's already in TranslationCache by the
+   * time the user taps Next — no spinner wait. Reuses the exact same
+   * `TranslationCache.loadPage` call goArticleNext makes on demand, so caching/dedup/retry
+   * behavior is identical either way; this just kicks it off earlier. The delay is what keeps
+   * someone flipping through several pages fast from firing a background call for every page
+   * they pass through — the effect (and its pending timer) is torn down and rescheduled every
+   * time `articlePageIndex` changes, so only a page the user actually lingers on gets prefetched.
    */
+  useEffect(() => {
+    if (appState !== "reading" || totalPages === 0) return
+    const cache = cacheRef.current
+    const nextIdx = articlePageIndex + 1
+    if (nextIdx >= totalPages) return
+    // Already cached, already errored, or already loading (e.g. a prior prefetch, or the
+    // user already hit Next) — nothing to schedule.
+    if (cache.getPage(nextIdx) != null) return
+    if (cache.getError(nextIdx) != null) return
+    if (cache.isLoading(nextIdx)) return
+
+    const timer = window.setTimeout(() => {
+      void cache
+        .loadPage(nextIdx, pageSourceText(sourcePages[nextIdx]!), translatePageText)
+        .then(bump)
+        .catch(bump)
+    }, ARTICLE_NEXT_PAGE_PREFETCH_DELAY_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [appState, articlePageIndex, totalPages, sourcePages, bump])
 
   const retryArticlePage = useCallback(() => {
     if (totalPages === 0) return
@@ -627,7 +659,11 @@ export default function App() {
         setArticlePageIndex((p) => p + 1)
         return
       }
-      if (cache.isLoading(idx)) return
+      // Not cached yet — may already be an in-flight prefetch. loadPage dedupes by index
+      // (returns the same promise rather than firing a second call), so this is exactly the
+      // on-demand path whether or not a background prefetch already kicked it off: stay on
+      // this page (Next button shows its own loading spinner via nextPageLoading) and advance
+      // once the shared promise settles.
       bump()
       void cache
         .loadPage(idx, pageSourceText(sourcePages[idx]!), translatePageText)

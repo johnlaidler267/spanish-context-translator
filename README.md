@@ -233,13 +233,13 @@ Events that fail 3 consecutive retries are marked `dead_letter`.
 
 ---
 
-## Article next-page prefetch (revisit)
+## Article next-page prefetch
 
-Article mode **does not** start translating the following page in the background while you read the current one. The LLM runs for the next slice only after you tap **Next page**; the app advances to that page once the request finishes (or immediately if that page was already cached or failed).
+Article mode starts translating the *next* page in the background a few seconds (`ARTICLE_NEXT_PAGE_PREFETCH_DELAY_MS` in `App.tsx`, currently 4s) after the current one becomes visible, so it's usually already in `TranslationCache` by the time you tap **Next page**. The `useEffect` that schedules it is keyed on `articlePageIndex`, so its pending timer is cleared (and never fires) whenever the page changes again first — flipping through several pages quickly doesn't fire a background call for every page you pass through, only the one you actually linger on.
 
-Previously, a `useEffect` in `App.tsx` called `TranslationCache.loadPage(articlePageIndex + 1, …)` whenever the visible article page changed. To restore that behavior, reintroduce that effect and set `nextPageOpen` / `goArticleNext` back to “allow next when the next page is already loaded, errored, or in flight,” with navigation on Next only incrementing the index.
+Tapping **Next page** always goes through the same `TranslationCache.loadPage(articlePageIndex + 1, …)` call (see `goArticleNext`) whether or not a prefetch already started it — `loadPage` dedupes by page index and returns the existing in-flight promise, so there's a single code path for "already cached," "prefetch in flight," and "not started yet." The app advances immediately if the page is already cached or errored; otherwise it waits (showing the normal loading state) for that same promise to settle.
 
-Read mode uses the same translated slice as the current article page and only requests the next LLM page when you advance past the last read step on that page (same `TranslationCache.loadPage` path as **Next page** in article mode). There is no read-mode-only background preload.
+Read mode uses the same translated slice as the current article page and requests the next LLM page (via the same `onRequestNextArticlePage` → `goArticleNext` path) when you advance past the last read step on that page, so it benefits from the same prefetch.
 
 ---
 
