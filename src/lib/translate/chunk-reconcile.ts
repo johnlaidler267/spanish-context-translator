@@ -167,6 +167,37 @@ function snapBoldAsteriskWrappers(s: string, idx: number, len: number): { idx: n
   return { idx: i, len: j - i }
 }
 
+function escapeRegExpLiteral(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+/**
+ * Fallback for a chunk span that has no byte-exact match anywhere near `pos`: the model
+ * routinely reflows an awkward mid-phrase line break from irregularly-formatted source (short
+ * "sentence per line" pastes, no blank lines) into a plain space when it emits `c`, so the
+ * needle no longer matches the source's literal `\n` at that word boundary.
+ *
+ * Without this, {@link findChunkSpanInSource} returns null, `reconcileChunks` pushes the
+ * model's own (unanchored) text but leaves `pos` where it was, and the *next* chunk's
+ * successful forward match then gap-fills `originalText.slice(pos, idx)` — re-emitting that
+ * same span a second time, verbatim, right next to the first: the reported "la provincia de
+ * Zaragoza la provincia de Zaragoza" duplication. Matching whitespace-tolerantly here lets the
+ * span resolve to its real source range so `pos` advances past it exactly once.
+ */
+function findChunkSpanWhitespaceTolerant(
+  original: string,
+  span: string,
+  searchStart: number,
+): { idx: number; len: number } | null {
+  const words = span.trim().split(/\s+/).filter(Boolean)
+  if (words.length < 2) return null
+  const pattern = words.map(escapeRegExpLiteral).join("\\s+")
+  const re = new RegExp(pattern)
+  const m = re.exec(original.slice(searchStart))
+  if (!m) return null
+  return snapBoldAsteriskWrappers(original, searchStart + m.index, m[0].length)
+}
+
 function findChunkSpanInSource(
   original: string,
   span: string,
@@ -184,8 +215,11 @@ function findChunkSpanInSource(
   const exact = tryNeedle(span)
   if (exact) return exact
   const stripped = span.replace(/^\*+/, "").replace(/\*+$/, "")
-  if (!stripped || stripped === span) return null
-  return tryNeedle(stripped)
+  if (stripped && stripped !== span) {
+    const strippedMatch = tryNeedle(stripped)
+    if (strippedMatch) return strippedMatch
+  }
+  return findChunkSpanWhitespaceTolerant(original, span, searchStart)
 }
 
 export function reconcileChunks(

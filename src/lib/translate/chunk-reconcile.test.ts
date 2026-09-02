@@ -5,8 +5,9 @@ import {
   shouldGlueAfterPriorChunkReadGlue,
   coalesceGlueablePunctuationChunks,
   coalesceGlueablePunctuationReconciledItems,
+  reconcileChunks,
 } from "@/lib/translate/chunk-reconcile"
-import type { ReconciledChunk, ReconciledItem } from "@/lib/translate/types"
+import type { RawChunk, ReconciledChunk, ReconciledItem } from "@/lib/translate/types"
 
 const chunk = (text: string): ReconciledChunk => ({ type: "chunk", chunk: text, meaning: "" })
 
@@ -78,6 +79,49 @@ describe("coalesceGlueablePunctuationChunks", () => {
       { text: "Cómo" },
     ])
     expect(result).toEqual([{ text: "Hola" }, { text: "¿" }, { text: "Cómo" }])
+  })
+})
+
+describe("reconcileChunks", () => {
+  it("aligns straightforward chunks against the source with no gaps or duplication", () => {
+    const chunks: RawChunk[] = [
+      { chunk: "Hola", meaning: "hi" },
+      { chunk: "mundo", meaning: "world" },
+    ]
+    expect(reconcileChunks(chunks, "Hola mundo")).toEqual([
+      { type: "chunk", chunk: "Hola", meaning: "hi" },
+      { type: "text", text: " " },
+      { type: "chunk", chunk: "mundo", meaning: "world" },
+    ])
+  })
+
+  // Regression: irregularly-formatted source (short "sentence per line" pastes, an awkward
+  // mid-phrase line break with no blank line) makes the model reflow that `\n` into a plain
+  // space when it emits a chunk's Spanish text. Before the fix, findChunkSpanInSource required
+  // a byte-exact match, so this chunk failed to match, `pos` never advanced past it, and the
+  // next chunk's successful forward match then gap-filled the same original span a second
+  // time — producing "la provincia de Zaragoza la provincia de Zaragoza" in the reported bug.
+  it("does not duplicate text when a chunk's span reflows a source line break into a space", () => {
+    const original = "en medio de\nla provincia de Zaragoza, no lejos de Sos."
+    const chunks: RawChunk[] = [
+      { chunk: "en medio de la provincia de Zaragoza", meaning: "in the middle of the province of Zaragoza" },
+      { chunk: ", no lejos de Sos.", meaning: "not far from Sos." },
+    ]
+    const result = reconcileChunks(chunks, original)
+    const rendered = result
+      .map((it) => (it.type === "text" ? it.text : it.type === "chapter" ? it.label : it.chunk))
+      .join("")
+    expect(rendered).toBe(original)
+    // The whitespace-tolerant match resolves to the real source span, `\n` intact — not the
+    // model's reflowed text — so `pos` lands in the right place for the next chunk.
+    expect(result).toEqual([
+      {
+        type: "chunk",
+        chunk: "en medio de\nla provincia de Zaragoza",
+        meaning: "in the middle of the province of Zaragoza",
+      },
+      { type: "chunk", chunk: ", no lejos de Sos.", meaning: "not far from Sos." },
+    ])
   })
 })
 
