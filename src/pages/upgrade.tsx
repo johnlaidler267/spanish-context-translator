@@ -18,7 +18,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  TIER_IDS,
   getTier,
   formatPrice,
   formatAnnualMonthlyEquivalent,
@@ -67,6 +66,9 @@ const TIER_ICONS: Record<TierId, ReactNode> = {
 }
 
 const TIER_RANK: Record<TierId, number> = { free: 0, pro: 1 }
+
+/** Display order for the pricing grid — Pro leads (it's the highlighted plan) with Free after it. */
+const DISPLAY_TIER_IDS: TierId[] = ["pro", "free"]
 
 /**
  * Same press/hover motion as homepage Random / Learn pills
@@ -994,7 +996,7 @@ export default function UpgradePage() {
             subscription loads a beat later, instead of a blocking spinner up front.
           */}
           <div className="flex flex-col gap-6 md:flex-row md:items-stretch">
-              {TIER_IDS.map((id) => {
+              {DISPLAY_TIER_IDS.map((id) => {
                 const tier        = getTier(id)
                 const isCurrent   = isCurrentPlanCard(sub, id, interval)
                 const isProcessing = processingTier === id
@@ -1054,35 +1056,10 @@ export default function UpgradePage() {
                       </div>
                     ) : null}
 
-                    {/* "Your plan" — quiet on Free so Pro stays the visual hero */}
-                    {isCurrent && (
-                      <div
-                        className={cn(
-                          "absolute left-3 z-[1] md:left-4",
-                          isPro ? "top-8 md:top-9" : "top-2.5 md:top-3",
-                        )}
-                      >
-                        <span
-                          className={
-                            isFree
-                              ? "px-2 py-0.5 text-ui-2xs font-medium font-sans rounded-full " +
-                                "bg-muted/50 text-muted-foreground border border-border/90"
-                              : "px-2.5 py-1 text-xs font-bold font-sans rounded-full " +
-                                "bg-[#FDBB2D]/90 text-foreground border-[3px] border-foreground " +
-                                "shadow-[2px_2px_0_0_var(--primary)] " +
-                                "dark:border-[rgba(234,224,213,0.28)] dark:bg-primary dark:text-primary-foreground " +
-                                "dark:shadow-[2px_2px_0_0_rgba(176,107,86,0.45)]"
-                          }
-                        >
-                          Your plan
-                        </span>
-                      </div>
-                    )}
-
                     <CardHeader
                       className={cn(
                         "px-9 pb-4",
-                        isCurrent ? "pt-11" : isPro ? "pt-9" : "pt-8",
+                        isPro ? "pt-9" : "pt-8",
                       )}
                     >
                       {/*
