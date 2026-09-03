@@ -15,9 +15,22 @@ createRoot(document.getElementById('root')).render(
         <AuthProvider>
           <SubscriptionProvider>
             <div className="app-viewport">
-              {/* Faded letter fragment — light / dark PNG swap; all viewports */}
+              {/*
+                Faded letter fragment — light / dark PNG swap; all viewports.
+                This sits above the router (always mounted, on every route and
+                loading state), so it can't be offset for the desktop sidebar
+                rail the way route content can: the md:left-[72px] this used
+                to carry only matched routes where that rail happens to be
+                showing. On everything else (initial load, the auth "Logging
+                in…" screen, /settings, /terms, /privacy, /upgrade) it just
+                left an unexplained gap between this and the true left edge.
+                Flush left is correct everywhere; on shell routes it now sits
+                partly behind the sidebar instead of peeking out from beside
+                it, which is a minor, acceptable trade for not being broken
+                everywhere else.
+              */}
               <div
-                className="global-corner-letter pointer-events-none fixed top-0 left-0 z-0 block w-[min(60vw,20.5rem)] select-none md:left-[72px]"
+                className="global-corner-letter pointer-events-none fixed top-0 left-0 z-0 block w-[min(60vw,20.5rem)] select-none"
                 aria-hidden
               >
                 <img
