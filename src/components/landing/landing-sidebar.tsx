@@ -191,7 +191,7 @@ export function LandingSidebar({
 
   const navItemClass = (active: boolean) =>
     cn(
-      "group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm tracking-[-0.015em]",
+      "group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm tracking-[-0.008em]",
       "transition-colors duration-200 ease-out",
       "outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       active
@@ -229,7 +229,7 @@ export function LandingSidebar({
   }
 
   const sidebarInner = (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-r border-border/60 bg-background font-display tracking-[-0.015em] [font-feature-settings:'kern'_1,'liga'_1,'onum'_1] [text-rendering:optimizeLegibility] antialiased">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-r border-border/60 bg-background font-display tracking-[-0.008em] [font-feature-settings:'kern'_1,'liga'_1,'onum'_1] [text-rendering:optimizeLegibility] antialiased">
       <div
         className={cn(
           "flex shrink-0 items-center gap-2 border-b border-border/50 px-3 py-3.5",
@@ -336,7 +336,7 @@ export function LandingSidebar({
           <button
             type="button"
             className={cn(
-              "group flex w-full items-center justify-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2.5 text-sm font-medium tracking-[-0.015em] text-foreground/90 shadow-sm",
+              "group flex w-full items-center justify-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2.5 text-sm font-medium tracking-[-0.008em] text-foreground/90 shadow-sm",
               "transition-[color,background-color,border-color,box-shadow] duration-200 ease-out",
               "hover:border-primary/40 hover:bg-muted hover:text-foreground hover:shadow-md",
               "disabled:pointer-events-none disabled:opacity-50",
@@ -398,7 +398,7 @@ export function LandingSidebar({
         <button
           type="button"
           className={cn(
-            "landing-new-chat-fab group fixed bottom-5 right-4 z-[48] flex items-center gap-2 rounded-full border border-border/80 bg-card px-4 py-3 font-display text-sm font-normal tracking-[-0.015em] text-foreground shadow-md [font-feature-settings:'kern'_1,'liga'_1,'onum'_1] [text-rendering:optimizeLegibility] antialiased",
+            "landing-new-chat-fab group fixed bottom-5 right-4 z-[48] flex items-center gap-2 rounded-full border border-border/80 bg-card px-4 py-3 font-display text-sm font-normal tracking-[-0.008em] text-foreground shadow-md [font-feature-settings:'kern'_1,'liga'_1,'onum'_1] [text-rendering:optimizeLegibility] antialiased",
             "transition-[opacity,transform,box-shadow,background-color] duration-200 ease-out hover:bg-muted/30 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-lg motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98] md:hidden",
             "outline-none focus-visible:ring-2 focus-visible:ring-ring",
             mobileOpen ? "opacity-0 pointer-events-none" : "opacity-100",

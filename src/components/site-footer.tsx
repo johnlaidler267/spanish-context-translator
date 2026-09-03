@@ -43,7 +43,7 @@ function BrandWordmark() {
     >
       <span
         className={
-          "font-display inline-flex items-center gap-px text-[1.05rem] font-bold leading-none tracking-[-0.03em] antialiased md:text-[1.12rem] " +
+          "font-display inline-flex items-center gap-px text-[1.05rem] font-bold leading-none tracking-[-0.02em] antialiased md:text-[1.12rem] " +
           "[font-feature-settings:'kern'_1,'liga'_1]"
         }
       >

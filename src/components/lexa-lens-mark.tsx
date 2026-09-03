@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
  * RING — drawn as a filled shape, not a stroked circle: a true circle minus an
  * ellipse that is narrower than it is tall and tipped 14°. That leaves the ring
  * thick at the sides and thin at the top/bottom, the same modulated stroke a
- * high-contrast serif "O" has, so it sits next to the Fraunces wordmark instead
+ * high-contrast serif "O" has, so it sits next to the Alegreya wordmark instead
  * of looking like a UI icon dropped beside it.
  *
  * TILDE — the eñe/tilde is the one diacritic no one reads as another language,

@@ -443,9 +443,10 @@ html.lector-reading-session .global-corner-letter {
   :root {
     /* Editorial / literary — quiet bookstore, not startup */
     --font-sans: "Libre Franklin", -apple-system, BlinkMacSystemFont, sans-serif;
-    /* Headlines / UI serif — Fraunces (variable opsz keeps it readable at small sizes) */
-    --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
-    --font-display: "Fraunces", Georgia, serif;
+    /* Headlines / UI serif — Alegreya: a literature face, so it stays open and legible
+       at the ~19px the header lockup actually renders, where Fraunces closed up. */
+    --font-serif: "Alegreya", Georgia, "Times New Roman", serif;
+    --font-display: "Alegreya", Georgia, serif;
     /* Article + read mode body — EB Garamond (free OFL); Adobe Garamond is licensed separately */
     --font-reading: "EB Garamond", Georgia, "Times New Roman", serif;
 
@@ -460,15 +461,17 @@ html.lector-reading-session .global-corner-letter {
        watermark, the Courier counters/folio, and the article reading body —
        each is tuned to its own job, not part of the UI ladder.             */
 
-    /* Display — Fraunces headings. Top two steps use clamp() so they grow with
-       the viewport instead of needing a md: override at every call site. */
-    --text-display-3xl: clamp(4rem, 7vw, 4.35rem);     --track-display-3xl: -0.05em;
-    --text-display-2xl: clamp(2.7rem, 5.5vw, 3.35rem); --track-display-2xl: -0.035em;
-    --text-display-xl:  clamp(2.1rem, 5vw, 2.9rem);    --track-display-xl:  -0.028em;
-    --text-display-lg:  2rem;                          --track-display-lg:  -0.022em;
-    --text-display-md:  1.625rem;                      --track-display-md:  -0.018em;
-    --text-display-sm:  1.3125rem;                     --track-display-sm:  -0.012em;
-    --text-display-xs:  1.125rem;                      --track-display-xs:  -0.008em;
+    /* Display — Alegreya headings. Top two steps use clamp() so they grow with
+       the viewport instead of needing a md: override at every call site.
+       Tracking is looser than it was under Fraunces across the board: Alegreya is
+       set wider and needs less optical tightening, and the old values crowded it. */
+    --text-display-3xl: clamp(4rem, 7vw, 4.35rem);     --track-display-3xl: -0.032em;
+    --text-display-2xl: clamp(2.7rem, 5.5vw, 3.35rem); --track-display-2xl: -0.024em;
+    --text-display-xl:  clamp(2.1rem, 5vw, 2.9rem);    --track-display-xl:  -0.02em;
+    --text-display-lg:  2rem;                          --track-display-lg:  -0.016em;
+    --text-display-md:  1.625rem;                      --track-display-md:  -0.012em;
+    --text-display-sm:  1.3125rem;                     --track-display-sm:  -0.008em;
+    --text-display-xs:  1.125rem;                      --track-display-xs:  -0.005em;
 
     /* UI — Libre Franklin body & controls */
     --text-ui-lg:   1.0625rem;  --track-ui-lg:   -0.005em;
@@ -658,7 +661,8 @@ article span {
 .tilde-watermark {
   font-family: var(--font-serif);
   font-size: clamp(8rem, 25vw, 14rem);
-  font-weight: 300;
+  /* Alegreya's axis starts at 400 — asking for 300 only invites a synthetic light. */
+  font-weight: 400;
   color: oklch(0.92 0.015 85);
   line-height: 1;
   pointer-events: none;
@@ -817,7 +821,7 @@ article span {
   isolation: isolate;
   font-family: var(--font-display);
   color: #3a332e;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.008em;
   font-weight: 400;
   text-rendering: optimizeLegibility;
   font-feature-settings: "kern" 1, "liga" 1, "onum" 1;
