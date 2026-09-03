@@ -38,6 +38,7 @@ import type { ViewMode } from "@/components/reading/mode-toggle"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
 import { getStoredLandingDraft, setStoredLandingDraft } from "@/lib/storage/landing-draft-storage"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
+import { getReadingProgress, setReadingProgress } from "@/lib/storage/reading-progress-storage"
 import { getEffectiveDisplayName } from "@/lib/storage/display-name-storage"
 import { Button } from "@/components/ui/button"
 import { AppErrorModal } from "@/components/app-error-modal"
@@ -177,6 +178,13 @@ export default function App() {
    */
   const [sourcePages, setSourcePages] = useState<string[][]>([])
   const [articlePageIndex, setArticlePageIndex] = useState(0)
+  /**
+   * Discover catalog id for the piece currently being read, or null for a plain landing-page
+   * submission (which has no saved-progress identity). Set on a Discover "start/continue
+   * reading" and cleared on `handleBack` — drives both resuming at a saved page and persisting
+   * the page position as the reader moves through it (see the effect below).
+   */
+  const [activeReadingContentId, setActiveReadingContentId] = useState<string | null>(null)
   const [readingSessionId, setReadingSessionId] = useState(0)
   /** Increment when Read mode goes to previous article page from first step (land on last read step). */
   const [readEnterLastStepNonce, setReadEnterLastStepNonce] = useState(0)
@@ -296,7 +304,13 @@ export default function App() {
     // passes false: it reuses this same submit pipeline (usage checks, paging, translation)
     // but its content is a separate catalog item, not landing-page draft text -- without this
     // flag it was overwriting the landing textbox with whatever Discover article was opened.
-    async (text: string, { populateLandingDraft = true }: { populateLandingDraft?: boolean } = {}) => {
+    // `contentId` is the Discover catalog id (omitted for a plain landing submission) -- when
+    // present, it both resumes at the saved page (if any) and turns on progress-saving as the
+    // reader moves through the piece; see `activeReadingContentId`.
+    async (
+      text: string,
+      { populateLandingDraft = true, contentId = null }: { populateLandingDraft?: boolean; contentId?: string | null } = {},
+    ) => {
       if (!text.trim()) return
 
       // Guests: no track-usage — cap anonymous previews in localStorage (guest_tries_used).
@@ -442,15 +456,26 @@ export default function App() {
           }
         }
 
+        // Resume at the saved page for this Discover item, if any — clamped in case the source
+        // (or the page-split limits, which vary by viewport) produced a different page count
+        // than when the position was saved. Opens the pager already on that page rather than
+        // literally starting the reader there: earlier pages are still reachable by paging back
+        // (see the on-demand load added to goArticlePrev/goReadPrevArticlePage below), they're
+        // just not pre-translated up front.
+        const savedPageIndex = contentId ? getReadingProgress(user, contentId) : null
+        const initialPageIndex =
+          savedPageIndex != null ? Math.min(Math.max(savedPageIndex, 0), pages.length - 1) : 0
+
         cacheRef.current = new TranslationCache()
         setSourcePages(pages)
-        setArticlePageIndex(0)
+        setArticlePageIndex(initialPageIndex)
+        setActiveReadingContentId(contentId ?? null)
         setReadingSessionId((k) => k + 1)
         setReadEnterLastStepNonce(0)
         setReadLastConsumedEnterNonce(0)
 
         void cacheRef.current
-          .loadPage(0, pageSourceText(pages[0]!), translatePageText)
+          .loadPage(initialPageIndex, pageSourceText(pages[initialPageIndex]!), translatePageText)
           .then(() => {
             bump()
             // Guests: count only after success; limit is enforced before submit (modal blocks new articles).
@@ -535,7 +560,7 @@ export default function App() {
       // renders fine on top of whatever screen is current) so the overlay's blurred backdrop
       // shows Discover, not the landing page. handleTextSubmit navigates home itself once the
       // translation is ready, right before switching into the reading UI.
-      await handleTextSubmit(sourceText, { populateLandingDraft: false })
+      await handleTextSubmit(sourceText, { populateLandingDraft: false, contentId: content.id })
     },
     [handleTextSubmit, subscriptionStatus, isLapsed, user],
   )
@@ -545,6 +570,7 @@ export default function App() {
     setSourcePages([])
     cacheRef.current = new TranslationCache()
     setArticlePageIndex(0)
+    setActiveReadingContentId(null)
     setError("")
     setRateLimitMessage(null)
     setPlanLimitModal(null)
@@ -554,6 +580,17 @@ export default function App() {
   }, [bump])
 
   const totalPages = sourcePages.length
+
+  /**
+   * Persist "which page was I on" for Discover content as the reader moves through it, so
+   * reopening the same item later (see the resume logic in `handleTextSubmit`) picks up where
+   * they left off. Only runs for a Discover-originated session (`activeReadingContentId` set) —
+   * a plain landing-page paste has no catalog id to key progress by.
+   */
+  useEffect(() => {
+    if (appState !== "reading" || !activeReadingContentId) return
+    setReadingProgress(user, activeReadingContentId, articlePageIndex)
+  }, [appState, activeReadingContentId, articlePageIndex, user])
 
   /**
    * Article next-page prefetch: a few seconds after the current page becomes visible, start
@@ -718,9 +755,31 @@ export default function App() {
       cache.getPage(nextIdx) == null &&
       cache.getError(nextIdx) == null
 
+    // Backing up onto a page that was never visited this session (e.g. resuming mid-document —
+    // see the initial-page-index logic in handleTextSubmit — jumps straight to the saved page,
+    // so nothing before it has been translated yet) needs the same on-demand load-then-advance
+    // treatment as going forward, not just a bare index decrement.
+    const prevIdx = articlePageIndex - 1
+    const prevPageLoading =
+      articlePageIndex > 0 &&
+      cache.isLoading(prevIdx) &&
+      cache.getPage(prevIdx) == null &&
+      cache.getError(prevIdx) == null
+
     const goArticlePrev = () => {
       if (articlePageIndex <= 0) return
-      setArticlePageIndex((p) => p - 1)
+      if (cache.getPage(prevIdx) != null || cache.getError(prevIdx) != null) {
+        setArticlePageIndex((p) => p - 1)
+        return
+      }
+      bump()
+      void cache
+        .loadPage(prevIdx, pageSourceText(sourcePages[prevIdx]!), translatePageText)
+        .then(() => {
+          setArticlePageIndex((p) => p - 1)
+          bump()
+        })
+        .catch(bump)
     }
 
     const goArticleNext = () => {
@@ -747,8 +806,20 @@ export default function App() {
 
     const goReadPrevArticlePage = () => {
       if (articlePageIndex <= 0) return
-      setReadEnterLastStepNonce((n) => n + 1)
-      setArticlePageIndex((p) => p - 1)
+      if (cache.getPage(prevIdx) != null || cache.getError(prevIdx) != null) {
+        setReadEnterLastStepNonce((n) => n + 1)
+        setArticlePageIndex((p) => p - 1)
+        return
+      }
+      bump()
+      void cache
+        .loadPage(prevIdx, pageSourceText(sourcePages[prevIdx]!), translatePageText)
+        .then(() => {
+          setReadEnterLastStepNonce((n) => n + 1)
+          setArticlePageIndex((p) => p - 1)
+          bump()
+        })
+        .catch(bump)
     }
 
     const readNextPageErrorRaw =
@@ -805,6 +876,7 @@ export default function App() {
                         onNext: goArticleNext,
                         nextPageLoading,
                         nextPageOpen,
+                        prevPageLoading,
                       }
                     : null
                 }
@@ -828,6 +900,7 @@ export default function App() {
                 nextPageOpen={nextPageOpen}
                 nextPageError={readNextPageError}
                 onRetryNextPage={readNextPageError ? retryReadNextPage : undefined}
+                prevPageLoading={prevPageLoading}
                 hoverTtsEnabled={hoverTtsEnabled}
               />
             </div>

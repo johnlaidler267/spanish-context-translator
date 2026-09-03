@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button"
 import { ContentCard } from "@/pages/discover/content-card"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/contexts/auth-context"
+import { hasReadingProgress } from "@/lib/storage/reading-progress-storage"
 import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover/discover-map"
 import {
   fetchDiscoverCatalog,
@@ -50,6 +52,7 @@ function SectionHeading({ icon, children }: { icon: ReactNode; children: ReactNo
 export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const navigate = useNavigate()
   const { registerNewChat } = useLandingShellNewChat()
+  const { user } = useAuth()
   const cachedItems = useMemo(() => readCachedDiscoverItems(), [])
 
   const [discoverItems, setDiscoverItems] = useState<ContentItem[]>(() => cachedItems ?? [])
@@ -235,6 +238,14 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     setModalOpen(true)
   }
 
+  // A plain (unmemoized) read rather than useMemo: it's a cheap synchronous localStorage
+  // lookup, and computing it fresh on every render is what lets finishing a reading session
+  // and reopening the same item from Discover in one visit pick up the progress that session
+  // just wrote (a memo keyed on `selectedContent`/`user` alone wouldn't see that change).
+  const selectedContentHasProgress = selectedContent
+    ? hasReadingProgress(user, selectedContent.id)
+    : false
+
   const featuredContent = discoverItems.slice(0, 4)
 
   return (
@@ -346,6 +357,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
         open={modalOpen}
         onClose={handleCloseModal}
         onStartReading={handleStartReading}
+        hasProgress={selectedContentHasProgress}
         onDevEdit={canManageCatalog && selectedContent ? () => openDevEdit(selectedContent) : undefined}
         onDeleteCatalog={
           canManageCatalog && selectedContent

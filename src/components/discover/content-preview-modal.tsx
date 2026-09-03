@@ -17,6 +17,8 @@ interface ContentPreviewModalProps {
   onStartReading: (
     content: ContentItem,
   ) => Promise<{ blockedMessage?: string } | void> | { blockedMessage?: string } | void
+  /** True when this reader already has a saved page position for `content` — swaps the CTA to "Continue reading". */
+  hasProgress?: boolean
   /** When set (e.g. Vite dev), shows a catalog edit entry point. */
   onDevEdit?: () => void
   /** When set (curator / dev), removes this row from `discover_items` then closes. */
@@ -28,6 +30,7 @@ export function ContentPreviewModal({
   open,
   onClose,
   onStartReading,
+  hasProgress = false,
   onDevEdit,
   onDeleteCatalog,
 }: ContentPreviewModalProps) {
@@ -120,7 +123,7 @@ export function ContentPreviewModal({
 
         <div className="discover-modal__actions">
           <Button className="discover-modal__cta" size="lg" onClick={() => void handleStartReading()}>
-            Start reading
+            {hasProgress ? "Continue reading" : "Start reading"}
             <ArrowRight className="size-4" aria-hidden />
           </Button>
           {onDevEdit && (

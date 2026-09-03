@@ -68,6 +68,8 @@ interface ReadModeProps {
   nextPageOpen: boolean
   nextPageError?: string | null
   onRetryNextPage?: () => void
+  /** Previous article page is translating after the reader asked to go back (resumed content — see App.tsx). */
+  prevPageLoading?: boolean
   hoverTtsEnabled?: boolean
 }
 
@@ -95,6 +97,7 @@ export function ReadMode({
   nextPageOpen,
   nextPageError = null,
   onRetryNextPage,
+  prevPageLoading = false,
   hoverTtsEnabled = false,
 }: ReadModeProps) {
   const [nextPageErrorDismissed, setNextPageErrorDismissed] = useState(false)
@@ -410,7 +413,9 @@ export function ReadMode({
   }, [handleGlobalClick])
 
   const atLastStep = totalSentences === 0 || currentSentenceIndex >= totalSentences - 1
+  const atFirstStep = currentSentenceIndex === 0
   const showNextPageLoading = atLastStep && nextPageLoading && articlePageIndex < totalPages - 1
+  const showPrevPageLoading = atFirstStep && prevPageLoading && articlePageIndex > 0
 
   const goToPrevious = useCallback(() => {
     if (currentSentenceIndex > 0) {
@@ -501,11 +506,11 @@ export function ReadMode({
     <div className="flex w-full flex-col max-md:h-full max-md:min-h-0 max-md:flex-1 md:min-h-[calc(100dvh-5rem)] px-6 md:px-8">
       {/* flex-1 + justify-center: sentence sits mid viewport; nav stays at bottom (shrink-0) */}
       <div className="relative mx-auto flex w-full min-h-0 max-w-[700px] flex-1 flex-col items-center justify-center max-md:pt-[max(5rem,calc(env(safe-area-inset-top,0px)+3.5rem))] md:pt-16">
-        {showNextPageLoading && (
+        {(showNextPageLoading || showPrevPageLoading) && (
           <div
             className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-[2px]"
             aria-busy
-            aria-label="Loading next section"
+            aria-label={showPrevPageLoading ? "Loading previous section" : "Loading next section"}
           >
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
           </div>
@@ -586,7 +591,11 @@ export function ReadMode({
           disabled={prevDisabled}
           className="h-12 w-12 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30"
         >
-          <ChevronLeft className="h-6 w-6" />
+          {showPrevPageLoading ? (
+            <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
+          ) : (
+            <ChevronLeft className="h-6 w-6" />
+          )}
           <span className="sr-only">Previous sentence</span>
         </Button>
 

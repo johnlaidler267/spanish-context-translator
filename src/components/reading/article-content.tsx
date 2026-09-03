@@ -42,6 +42,8 @@ export type ArticlePaginationState = {
   nextPageLoading: boolean
   /** User can request the next page (current page ready; load runs on Next if not cached). */
   nextPageOpen: boolean
+  /** Previous page is in flight after user chose Previous (uncached — e.g. paging back on resumed content). */
+  prevPageLoading?: boolean
 }
 
 interface ArticleContentProps {
@@ -531,7 +533,11 @@ export function ArticleContent({
             onClick={pagination.onPrevious}
             aria-label="Previous page"
           >
-            <ChevronLeft className="h-6 w-6" />
+            {pagination.prevPageLoading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
+            ) : (
+              <ChevronLeft className="h-6 w-6" />
+            )}
           </Button>
           <div className="flex flex-col items-center gap-1.5 max-md:gap-1">
             {/* Decorative — the "Page X of Y" text below already conveys this accessibly. */}
