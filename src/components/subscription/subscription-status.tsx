@@ -147,6 +147,14 @@ function DaysRemaining({ periodEnd, cancelAtPeriodEnd, isTrialing }: {
   const days  = daysUntil(periodEnd)
   const date  = formatDate(periodEnd)
   const urgent = days <= 3
+  // A real billing cycle (monthly or annual) is never more than ~366 days
+  // out. Anything further than that isn't a "renews soon" countdown -- it's
+  // a permanent grant with no real renewal date (see
+  // 0015_comp_pro_grant_dev_account.sql, which sets current_period_end
+  // ~100 years out so the grant never lapses). Showing a raw day count like
+  // "36523d" for that case reads as a bug, so just drop the pill and keep
+  // the date.
+  const showCountdown = days <= 400
 
   const label = isTrialing
     ? "Trial ends"
@@ -154,7 +162,7 @@ function DaysRemaining({ periodEnd, cancelAtPeriodEnd, isTrialing }: {
       ? "Cancels"
       : "Renews"
 
-  const isAmber = isTrialing ? urgent : (cancelAtPeriodEnd || urgent)
+  const isAmber = showCountdown && (isTrialing ? urgent : (cancelAtPeriodEnd || urgent))
 
   return (
     <span
@@ -163,14 +171,16 @@ function DaysRemaining({ periodEnd, cancelAtPeriodEnd, isTrialing }: {
         isAmber ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
       )}
     >
-      <span
-        className={cn(
-          "inline-block px-1.5 py-0.5 rounded font-medium",
-          isAmber ? "bg-amber-500/10" : "bg-muted/60",
-        )}
-      >
-        {days}d
-      </span>
+      {showCountdown && (
+        <span
+          className={cn(
+            "inline-block px-1.5 py-0.5 rounded font-medium",
+            isAmber ? "bg-amber-500/10" : "bg-muted/60",
+          )}
+        >
+          {days}d
+        </span>
+      )}
       {label} {date}
     </span>
   )
@@ -653,8 +663,14 @@ export function SubscriptionStatus({
           {!compact && (
             <>
               {[
-                { metric: "pages_processed" as UsageMetric, label: "Pages processed" },
-                { metric: "voice_requests"  as UsageMetric, label: "Voice requests" },
+                // Pages processed is deliberately not shown here: a
+                // submission's page count is just an artifact of how its
+                // characters happen to split across reading-view pages, not
+                // a separate resource the user consumes -- listing it next
+                // to "Characters this billing period" read as double-
+                // counting the same usage. (Same reasoning already applied
+                // to "Per-submission limits" below.)
+                { metric: "voice_requests" as UsageMetric, label: "Voice requests" },
               ]
                 .filter(({ metric }) => counters[metric] > 0)
                 .map(({ metric, label }) => (
