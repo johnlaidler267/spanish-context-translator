@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "preview": "./scripts/run-with-nvm.sh vite preview",
     "supabase:deploy-checkout": "npx --yes supabase@latest functions deploy create-checkout-session",
     "supabase:deploy-track-usage": "npx --yes supabase@latest functions deploy track-usage",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.62.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",

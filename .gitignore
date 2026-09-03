@@ -28,3 +28,8 @@ dist-ssr
 *.sln
 *.sw?
 supabase/.temp/
+
+# Playwright E2E harness output (tests/e2e-mocks — see its README)
+/test-results/
+/playwright-report/
+/blob-report/
