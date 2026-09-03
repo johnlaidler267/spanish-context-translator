@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
-import { RiTranslateAi } from "react-icons/ri"
 import { LegalDocLinks } from "@/components/legal/legal-doc-links"
+import { LexaLensMark } from "@/components/lexa-lens-mark"
 import { cn } from "@/lib/utils"
 
 const LEXA_LENS_WORD_GRADIENT =
@@ -47,10 +47,7 @@ function BrandWordmark() {
           "[font-feature-settings:'kern'_1,'liga'_1]"
         }
       >
-        <RiTranslateAi
-          className="h-[1rem] w-[1rem] shrink-0 text-[#4a3f38] dark:text-[#d4a896]"
-          aria-hidden
-        />
+        <LexaLensMark className="mr-[0.18em] h-[0.94em] w-[0.94em]" />
         <span className={`${LEXA_LENS_WORD_GRADIENT} inline-flex items-center gap-0.25`}>
           <span>Lexa</span>
           <span
