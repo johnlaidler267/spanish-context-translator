@@ -145,6 +145,24 @@ export default function App() {
     }
   }, [appState, location.pathname])
 
+  /**
+   * Set together with `pendingReadingTransitionRef` below: when a translation started from a
+   * non-"/" screen (e.g. Discover) finishes, we navigate home and flip into "reading" -- but
+   * `navigate()`'s location update and a same-tick `setAppState("reading")` don't reliably land
+   * in the same React commit (the router's own state lives in an ancestor component). If
+   * "reading" commits first, the guard effect above sees "reading" alongside the still-stale
+   * (non-"/") pathname and immediately reverts it. Deferring the appState flip to this effect --
+   * which only runs once `location.pathname` has actually become "/" -- sidesteps that race
+   * instead of depending on commit ordering.
+   */
+  const pendingReadingTransitionRef = useRef(false)
+  useEffect(() => {
+    if (pendingReadingTransitionRef.current && location.pathname === "/") {
+      pendingReadingTransitionRef.current = false
+      setAppState("reading")
+    }
+  }, [location.pathname])
+
   /** Hide shell top-left letter art (main.jsx) during article / read — not on landing */
   useEffect(() => {
     document.documentElement.classList.toggle("lector-reading-session", appState === "reading")
@@ -446,7 +464,21 @@ export default function App() {
         if (remainingLoadingMs > 0) {
           await new Promise((r) => setTimeout(r, remainingLoadingMs))
         }
-        setAppState("reading")
+        // The reading UI only mounts on the index route (see `appState === "reading"` below).
+        // Navigate here -- once translation is actually done -- rather than up front: doing it
+        // up front (as this used to) switched screens the instant "Start Reading" was clicked,
+        // so the loading overlay that follows sat on top of the landing page instead of
+        // whatever screen (e.g. Discover) the translation was actually started from.
+        if (location.pathname === "/") {
+          // Landing's own composer submit -- already home, flip straight into reading.
+          setAppState("reading")
+        } else {
+          // Discover (or any other screen): navigate home and let the
+          // pendingReadingTransitionRef effect above flip appState once the route has actually
+          // caught up, instead of racing it here.
+          pendingReadingTransitionRef.current = true
+          navigate("/")
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Something went wrong."
         if (isRateLimitApiMessage(msg)) {
@@ -457,7 +489,16 @@ export default function App() {
         setAppState("landing")
       }
     },
-    [user, bump, articlePageSplitLimits, refreshUsagePreflight, subscriptionStatus, isLapsed],
+    [
+      user,
+      bump,
+      articlePageSplitLimits,
+      refreshUsagePreflight,
+      subscriptionStatus,
+      isLapsed,
+      navigate,
+      location.pathname,
+    ],
   )
 
   const handleDiscoverStartReading = useCallback(
@@ -490,14 +531,13 @@ export default function App() {
         return { blockedMessage }
       }
 
-      // The reading UI only mounts on the index route (see `appState === "reading"` below) --
-      // flipping appState alone leaves us stranded on /discover with the modal still open and
-      // no visible change beyond the loading overlay. Navigate home first so the state change
-      // has somewhere to render.
-      navigate("/")
+      // Stay on Discover while the loading overlay runs (it's a fixed, global overlay -- it
+      // renders fine on top of whatever screen is current) so the overlay's blurred backdrop
+      // shows Discover, not the landing page. handleTextSubmit navigates home itself once the
+      // translation is ready, right before switching into the reading UI.
       await handleTextSubmit(sourceText, { populateLandingDraft: false })
     },
-    [handleTextSubmit, subscriptionStatus, isLapsed, user, navigate],
+    [handleTextSubmit, subscriptionStatus, isLapsed, user],
   )
 
   const handleBack = useCallback(() => {
@@ -640,9 +680,6 @@ export default function App() {
           displayName={displayName}
         />
       </div>
-      {error && (
-        <AppErrorModal message={error} onDismiss={() => setError("")} />
-      )}
     </main>
   )
 
@@ -815,6 +852,12 @@ export default function App() {
   return (
     <>
       {appState === "loading" && <LoadingOverlay />}
+      {error && (
+        // Global (not scoped to the landing route): a translation can now fail while
+        // initiated from a non-landing screen (e.g. Discover) without having navigated away,
+        // so this needs to surface no matter which screen is current.
+        <AppErrorModal message={error} onDismiss={() => setError("")} />
+      )}
       {!IS_LOCAL_DEV && isLapsed && !popupDismissed && (
         <SubscriptionLapsedModal
           onDismiss={dismissLapsedModalAndGoHome}
