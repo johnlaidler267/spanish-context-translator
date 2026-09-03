@@ -24,6 +24,24 @@ export default {
         border: "var(--border)",
         input: "var(--input)",
         ring: "var(--ring)",
+
+        /* Lifted out of hard-coded .tsx literals — see the "Literal palette"
+           block in src/index.css. Plain var()s like the tokens above, so the
+           same caveat applies: no /opacity modifier support. */
+        "brand-ink": "var(--brand-ink)",
+        "brand-ink-mid": "var(--brand-ink-mid)",
+        "brand-warm": "var(--brand-warm)",
+        "brand-ground": "var(--brand-ground)",
+        "plan-accent": "var(--plan-accent)",
+        "plan-accent-hover": "var(--plan-accent-hover)",
+        "plan-accent-fg": "var(--plan-accent-fg)",
+        "plan-quiet": "var(--plan-quiet)",
+        "plan-border": "var(--plan-border)",
+        "plan-tint": "var(--plan-tint)",
+        "plan-ink": "var(--plan-ink)",
+        "plan-ink-soft": "var(--plan-ink-soft)",
+        "plan-ink-dim": "var(--plan-ink-dim)",
+        "plan-ink-dim-hover": "var(--plan-ink-dim-hover)",
       },
       borderRadius: {
         lg: "var(--radius)",

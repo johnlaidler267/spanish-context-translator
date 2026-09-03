@@ -104,14 +104,13 @@ function upgradeTierButtonClassName(
         "h-14 rounded-[14px] border-0 px-4 text-lg font-bold",
         "shadow-[0_8px_16px_rgba(201,122,90,0.28)] transition-colors",
         UPGRADE_TIER_BTN_FOCUS,
-        "bg-[#cf8778] text-white hover:bg-[#c27768]",
-        "dark:bg-primary dark:text-primary-foreground dark:hover:bg-[#c97a5a]",
+        "bg-plan-accent text-plan-accent-fg hover:bg-plan-accent-hover",
       ].join(" ")
     }
     return [
-      "h-14 rounded-[14px] border-2 border-[#d89b8d] bg-transparent px-4 text-lg font-bold",
+      "h-14 rounded-[14px] border-2 border-plan-border bg-transparent px-4 text-lg font-bold",
       UPGRADE_TIER_BTN_FOCUS,
-      "text-[#c07f71] hover:bg-[#f4ecdf]",
+      "text-plan-quiet hover:bg-plan-tint",
     ].join(" ")
   }
   if (
@@ -119,15 +118,15 @@ function upgradeTierButtonClassName(
     (variant === "outline" || variant === "secondary")
   ) {
     return [
-      "h-14 rounded-[14px] border-2 border-[#d89b8d] bg-transparent px-4 text-lg font-bold",
+      "h-14 rounded-[14px] border-2 border-plan-border bg-transparent px-4 text-lg font-bold",
       UPGRADE_TIER_BTN_FOCUS,
-      "text-[#c07f71] hover:bg-[#f4ecdf] disabled:opacity-50",
+      "text-plan-quiet hover:bg-plan-tint disabled:opacity-50",
     ].join(" ")
   }
   return [
-    "h-14 rounded-[14px] border-2 border-[#d89b8d] bg-transparent px-4 text-lg font-bold",
+    "h-14 rounded-[14px] border-2 border-plan-border bg-transparent px-4 text-lg font-bold",
     UPGRADE_TIER_BTN_FOCUS,
-    "text-[#c07f71] hover:bg-[#f4ecdf] disabled:opacity-50",
+    "text-plan-quiet hover:bg-plan-tint disabled:opacity-50",
   ].join(" ")
 }
 
@@ -524,7 +523,7 @@ function BillingToggle({
               "rounded-[16px] px-6 py-2.5 font-semibold transition-colors",
               interval === "monthly"
                 ? "bg-[#c97a5a] text-white shadow-[0_6px_14px_rgba(201,122,90,0.28)]"
-                : "text-[#6f6258] hover:text-[#3f352f] dark:text-[#9b968c] dark:hover:text-[#c9c4ba]",
+                : "text-plan-ink-dim hover:text-plan-ink-dim-hover",
             )}
           >
             Monthly
@@ -537,7 +536,7 @@ function BillingToggle({
               "inline-flex items-center gap-2 rounded-[16px] px-6 py-2.5 font-semibold transition-colors",
               interval === "annual"
                 ? "bg-[#c97a5a] text-white shadow-[0_6px_14px_rgba(201,122,90,0.28)]"
-                : "text-[#6f6258] hover:text-[#3f352f] dark:text-[#9b968c] dark:hover:text-[#c9c4ba]",
+                : "text-plan-ink-dim hover:text-plan-ink-dim-hover",
             )}
           >
             <span>Annual</span>
@@ -1046,9 +1045,9 @@ export default function UpgradePage() {
                         <span
                           className={
                             "inline-flex items-center rounded-full border border-[#d38f80] " +
-                            "bg-[#cf8778] px-5 py-1.5 text-xs font-extrabold font-sans uppercase " +
+                            "bg-plan-accent px-5 py-1.5 text-xs font-extrabold font-sans uppercase " +
                             "tracking-[0.16em] text-[#fff2ec] shadow-[0_4px_10px_rgba(201,122,90,0.28)] " +
-                            "dark:border-[rgba(234,224,213,0.28)] dark:bg-primary dark:text-primary-foreground"
+                            "dark:border-[rgba(234,224,213,0.28)] dark:text-primary-foreground"
                           }
                         >
                           Most popular
@@ -1088,19 +1087,19 @@ export default function UpgradePage() {
                       {id === "pro" ? (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-display-3xl font-black font-sans text-[#3a2b24] dark:text-foreground">
+                            <span className="text-display-3xl font-black font-sans text-plan-ink">
                               {formatPrice(
                                 interval === "annual"
                                   ? tier.pricing.annual.amountCents
                                   : tier.pricing.monthly.amountCents,
                               )}
                             </span>
-                            <span className="text-lg font-semibold text-[#5a4b42] dark:text-muted-foreground md:text-xl">
+                            <span className="text-lg font-semibold text-plan-ink-soft md:text-xl">
                               {interval === "annual" ? "/year" : "/month"}
                             </span>
                           </CardTitle>
                           {tier.trialDays > 0 && interval === "monthly" ? (
-                            <p className="mt-2 text-base font-medium text-[#cf8778] dark:text-primary md:text-ui-lg">
+                            <p className="mt-2 text-base font-medium text-plan-accent md:text-ui-lg">
                               {tier.trialDays}-day free trial included
                             </p>
                           ) : (
@@ -1118,10 +1117,10 @@ export default function UpgradePage() {
                       ) : (
                         <>
                           <CardTitle className="flex items-baseline gap-1">
-                            <span className="text-display-3xl font-black font-sans text-[#3a2b24] dark:text-foreground">
+                            <span className="text-display-3xl font-black font-sans text-plan-ink">
                               {nonProPrice}
                             </span>
-                            <span className="text-lg font-semibold text-[#5a4b42] dark:text-muted-foreground md:text-xl">
+                            <span className="text-lg font-semibold text-plan-ink-soft md:text-xl">
                               /forever
                             </span>
                           </CardTitle>
@@ -1171,7 +1170,7 @@ export default function UpgradePage() {
                                 <span
                                   className={cn(
                                     "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                                    "text-[#cf8778] dark:text-primary",
+                                    "text-plan-accent",
                                   )}
                                   aria-hidden
                                 >
@@ -1191,8 +1190,8 @@ export default function UpgradePage() {
                                   className={cn(
                                     "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
                                     isPro
-                                      ? "text-[#cf8778] dark:text-primary"
-                                      : "text-[#cf8778] dark:text-primary",
+                                      ? "text-plan-accent"
+                                      : "text-plan-accent",
                                   )}
                                   aria-hidden
                                 >

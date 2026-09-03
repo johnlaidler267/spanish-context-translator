@@ -284,10 +284,10 @@ function DetailsFooter({ headerWord }: { headerWord: string }) {
         aria-expanded={memoryOpen}
         className={cn(
           "group w-full inline-flex items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
-          "border-[rgba(201,122,90,0.22)] bg-[#fffaf6] text-[#3a332e] shadow-[0_1px_0_rgba(0,0,0,0.03)]",
+          "border-[rgba(201,122,90,0.22)] bg-[#fffaf6] text-foreground shadow-[0_1px_0_rgba(0,0,0,0.03)]",
           "hover:border-[rgba(201,122,90,0.35)] hover:bg-[#fff5ec]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35",
-          "dark:border-[rgba(201,122,90,0.18)] dark:bg-[#23201d] dark:text-[#eae0d5] dark:hover:bg-[#282420]",
+          "dark:border-[rgba(201,122,90,0.18)] dark:bg-[#23201d] dark:hover:bg-[#282420]",
           trickLoading && "pointer-events-none opacity-50",
         )}
       >

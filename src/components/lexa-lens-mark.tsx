@@ -45,13 +45,13 @@ export function LexaLensMark({ className, variant = "outline" }: LexaLensMarkPro
     >
       {variant === "solid" ? (
         <>
-          <circle cx="16" cy="16" r="13.6" className="fill-[#c97a5a] dark:fill-[#d4a896]" />
-          <path d={TILDE_PATH} className="fill-[#f7f3ee] dark:fill-[#1a1a1a]" />
+          <circle cx="16" cy="16" r="13.6" className="fill-brand-warm" />
+          <path d={TILDE_PATH} className="fill-brand-ground" />
         </>
       ) : (
         <>
-          <path d={RING_PATH} fillRule="evenodd" className="fill-[#3a332e] dark:fill-[#e8dfd4]" />
-          <path d={TILDE_PATH} className="fill-[#c97a5a] dark:fill-[#d4a896]" />
+          <path d={RING_PATH} fillRule="evenodd" className="fill-brand-ink" />
+          <path d={TILDE_PATH} className="fill-brand-warm" />
         </>
       )}
     </svg>

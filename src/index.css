@@ -511,6 +511,33 @@ html.lector-reading-session .global-corner-letter {
     --ring: #c97a5a;
     --radius: 0.5rem;
     --radius-sm: calc(var(--radius) - 4px);
+    /* ── Literal palette, lifted out of the components ────────────────
+       These colours were hard-coded across .tsx files, which is what made
+       the palette a rewrite rather than a decision. They are deliberately
+       NOT --primary and friends: the mark needs a lighter terracotta on
+       dark than a button does, and the pricing page runs its own tints.
+       Values are exactly what shipped before this was tokenised.
+       The sepia theme inherits this light set on purpose — that is what
+       the hard-coded values did, since none of them had a sepia variant. */
+    --brand-ink: #3a332e;        /* mark ring */
+    --brand-ink-mid: #4a3f38;    /* wordmark separator + gradient mid-stop */
+    --brand-warm: #c97a5a;       /* the tilde, and warm marks generally */
+    --brand-ground: #f7f3ee;     /* knocked out of the solid mark */
+    --brand-wordmark: linear-gradient(to bottom right, #2f2926, #4a3f38, #c97a5a);
+
+    /* Pricing page. --plan-quiet/-border/-tint have no dark override because
+       the hard-coded classes they replace had none either. */
+    --plan-accent: #cf8778;
+    --plan-accent-hover: #c27768;
+    --plan-accent-fg: #ffffff;
+    --plan-quiet: #c07f71;
+    --plan-border: #d89b8d;
+    --plan-tint: #f4ecdf;
+    --plan-ink: #3a2b24;
+    --plan-ink-soft: #5a4b42;
+    --plan-ink-dim: #6f6258;
+    --plan-ink-dim-hover: #3f352f;
+
     /* Motion — one restraint curve, ≤200ms */
     --transition-restraint: 0.2s ease;
     /*
@@ -563,6 +590,22 @@ html.lector-reading-session .global-corner-letter {
     --border: #4a4744;
     --input: #2a2a28;
     --ring: #b06b56;
+
+    /* Literal palette — dark. See the :root block for why these are separate
+       from --primary. Values match the `dark:` classes they replace. */
+    --brand-ink: #e8dfd4;
+    --brand-ink-mid: #d4a896;
+    --brand-warm: #d4a896;
+    --brand-ground: #1a1a1a;
+    --brand-wordmark: linear-gradient(to bottom right, #e8dfd4, #d4a896, #b06b56);
+
+    --plan-accent: #b06b56;
+    --plan-accent-hover: #c97a5a;
+    --plan-accent-fg: #1a1a1a;
+    --plan-ink: #eae0d5;
+    --plan-ink-soft: #b0a89e;
+    --plan-ink-dim: #9b968c;
+    --plan-ink-dim-hover: #c9c4ba;
   }
 }
 
@@ -2977,4 +3020,15 @@ article span {
   .dark .discover-modal__cta:hover {
     box-shadow: 0 10px 22px -8px rgba(176, 107, 86, 0.5);
   }
+}
+
+/* Wordmark gradient — the three-stop ink→terracotta wash on "LexaLens".
+   Stops live in --brand-wordmark so the lockup carries no literals. */
+.wordmark-gradient {
+  /* No `display` here on purpose: both call sites set inline-flex themselves,
+     and a display rule in this class silently outranks that utility. */
+  background-image: var(--brand-wordmark);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
