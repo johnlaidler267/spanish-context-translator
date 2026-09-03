@@ -16,6 +16,8 @@ import { LandingSidebarProfile } from "@/components/landing/landing-sidebar-prof
 
 const SIDEBAR_EXPANDED_PX = 256
 const SIDEBAR_COLLAPSED_PX = 72
+/** Small buffer so a quick mouse pass over the rail edge doesn't flicker collapsed/expanded. */
+const HOVER_COLLAPSE_DELAY_MS = 250
 
 const navIconClass = "mx-auto block h-[18px] w-[18px] shrink-0"
 const navIconStroke = 1.65
@@ -70,7 +72,34 @@ export function LandingSidebar({
 }: LandingSidebarProps) {
   const location = useLocation()
   const isMdUp = useMediaQuery("(min-width: 768px)")
-  const [desktopExpanded, setDesktopExpanded] = useState(true)
+  /** Manual toggle "pins" the sidebar open/closed, overriding hover. */
+  const [desktopPinned, setDesktopPinned] = useState(false)
+  const [desktopHovering, setDesktopHovering] = useState(false)
+  const desktopExpanded = desktopPinned || desktopHovering
+  const collapseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearCollapseTimeout = useCallback(() => {
+    if (collapseTimeoutRef.current != null) {
+      clearTimeout(collapseTimeoutRef.current)
+      collapseTimeoutRef.current = null
+    }
+  }, [])
+
+  const handleSidebarMouseEnter = useCallback(() => {
+    if (!isMdUp) return
+    clearCollapseTimeout()
+    setDesktopHovering(true)
+  }, [isMdUp, clearCollapseTimeout])
+
+  const handleSidebarMouseLeave = useCallback(() => {
+    if (!isMdUp) return
+    clearCollapseTimeout()
+    collapseTimeoutRef.current = setTimeout(() => {
+      setDesktopHovering(false)
+    }, HOVER_COLLAPSE_DELAY_MS)
+  }, [isMdUp, clearCollapseTimeout])
+
+  useEffect(() => clearCollapseTimeout, [clearCollapseTimeout])
 
   const pathname = location.pathname
   /** Reading renders on "/" without a route change, so path alone would mislabel Home as current. */
@@ -172,8 +201,19 @@ export function LandingSidebar({
     )
 
   const handleToggle = () => {
-    if (isMdUp) setDesktopExpanded((e) => !e)
-    else onMobileOpenChange(!mobileOpen)
+    if (isMdUp) {
+      // Expanded (pinned or just hovering) -> collapse and un-pin.
+      // Collapsed -> pin open so it stays expanded without hovering.
+      if (desktopExpanded) {
+        clearCollapseTimeout()
+        setDesktopPinned(false)
+        setDesktopHovering(false)
+      } else {
+        setDesktopPinned(true)
+      }
+    } else {
+      onMobileOpenChange(!mobileOpen)
+    }
   }
 
   const handleNewChat = () => {
@@ -348,6 +388,8 @@ export function LandingSidebar({
         aria-modal={!isMdUp && mobileOpen ? true : undefined}
         role={!isMdUp && mobileOpen ? "dialog" : undefined}
         aria-label={!isMdUp && mobileOpen ? "Navigation" : undefined}
+        onMouseEnter={handleSidebarMouseEnter}
+        onMouseLeave={handleSidebarMouseLeave}
       >
         {sidebarInner}
       </aside>
