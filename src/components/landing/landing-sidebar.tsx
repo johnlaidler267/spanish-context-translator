@@ -2,12 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
-import {
-  ChevronsLeft,
-  ChevronsRight,
-  Compass,
-  Home,
-} from "lucide-react"
+import { Compass, Home } from "lucide-react"
 import { BsTranslate } from "react-icons/bs"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -26,23 +21,6 @@ const NAV_ITEMS = [
   { to: "/", label: "Home", Icon: Home },
   { to: "/discover", label: "Discover", Icon: Compass },
 ] as const
-
-function SidebarToggleIcon({
-  isMdUp,
-  desktopExpanded,
-  mobileOpen,
-  className,
-}: {
-  isMdUp: boolean
-  desktopExpanded: boolean
-  mobileOpen: boolean
-  className?: string
-}) {
-  const cls = cn("h-4 w-4 shrink-0", className)
-  if (!isMdUp && mobileOpen) return <ChevronsLeft className={cls} strokeWidth={navIconStroke} aria-hidden />
-  if (isMdUp && desktopExpanded) return <ChevronsLeft className={cls} strokeWidth={navIconStroke} aria-hidden />
-  return <ChevronsRight className={cls} strokeWidth={navIconStroke} aria-hidden />
-}
 
 export type LandingSidebarLayout = {
   /** Pixels to inset fixed header on desktop; 0 on mobile overlay. */
@@ -72,10 +50,8 @@ export function LandingSidebar({
 }: LandingSidebarProps) {
   const location = useLocation()
   const isMdUp = useMediaQuery("(min-width: 768px)")
-  /** Manual toggle "pins" the sidebar open/closed, overriding hover. */
-  const [desktopPinned, setDesktopPinned] = useState(false)
   const [desktopHovering, setDesktopHovering] = useState(false)
-  const desktopExpanded = desktopPinned || desktopHovering
+  const desktopExpanded = desktopHovering
   const collapseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const clearCollapseTimeout = useCallback(() => {
@@ -186,7 +162,6 @@ export function LandingSidebar({
     previousPathnameRef.current = pathname
   }, [pathname, isMdUp, mobileOpen, onMobileOpenChange])
 
-  const expanded = isMdUp ? desktopExpanded : mobileOpen
   const compactRail = isMdUp && !desktopExpanded
 
   const navItemClass = (active: boolean) =>
@@ -199,22 +174,6 @@ export function LandingSidebar({
         : "font-normal text-foreground/75 hover:bg-muted/60 hover:text-foreground",
       compactRail && "justify-center px-0 gap-0",
     )
-
-  const handleToggle = () => {
-    if (isMdUp) {
-      // Expanded (pinned or just hovering) -> collapse and un-pin.
-      // Collapsed -> pin open so it stays expanded without hovering.
-      if (desktopExpanded) {
-        clearCollapseTimeout()
-        setDesktopPinned(false)
-        setDesktopHovering(false)
-      } else {
-        setDesktopPinned(true)
-      }
-    } else {
-      onMobileOpenChange(!mobileOpen)
-    }
-  }
 
   const handleNewChat = () => {
     onNewChat()
@@ -251,29 +210,6 @@ export function LandingSidebar({
             compact={compactRail}
           />
         </Link>
-        <button
-          type="button"
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/60 text-foreground/70",
-            "transition-colors duration-200 ease-out hover:bg-muted/60 hover:text-foreground",
-            "outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          )}
-          aria-label={
-            !isMdUp && mobileOpen
-              ? "Close sidebar"
-              : isMdUp && desktopExpanded
-                ? "Collapse sidebar"
-                : "Expand sidebar"
-          }
-          aria-expanded={expanded}
-          onClick={handleToggle}
-        >
-          <SidebarToggleIcon
-            isMdUp={isMdUp}
-            desktopExpanded={desktopExpanded}
-            mobileOpen={mobileOpen}
-          />
-        </button>
       </div>
 
       <nav
