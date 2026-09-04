@@ -9,7 +9,7 @@ export function translationProvider(): "groq" | "gemini" {
 const GROQ_TRANSLATE_MODEL = "qwen/qwen3.8-27b"
 const GROQ_LEARN_MODEL = "openai/gpt-oss-20b" as const
 /** Must match a model id from the Generative Language API (see ListModels / Gemini docs). `gemini-3.0-flash` is not valid — use e.g. `gemini-2.0-flash` or `gemini-3-flash` if your project lists it. */
-const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash"
+const GEMINI_TRANSLATE_MODEL_DEFAULT = "gemini-2.5-flash-lite"
 const GEMINI_LEARN_MODEL_DEFAULT = "gemini-2.5-flash-lite"
 
 export function translateModel(): string {
