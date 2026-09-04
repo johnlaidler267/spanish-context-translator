@@ -16,6 +16,18 @@ const MAX_TRACKED_ITEMS_PER_USER = 300
 interface ProgressEntry {
   pageIndex: number
   updatedAt: number
+  /** Page count the source split into when this position was saved -- omitted for older
+   *  entries written before this field existed. Paging is viewport-dependent (see App.tsx),
+   *  so this is only ever a rough "how far in" estimate, not an exact page count. */
+  totalPages?: number
+}
+
+/** One recently-viewed item, newest first -- see `getRecentlyViewedProgress`. */
+export interface RecentlyViewedEntry {
+  contentId: string
+  pageIndex: number
+  totalPages?: number
+  updatedAt: number
 }
 
 type UserProgressMap = Record<string, ProgressEntry>
@@ -56,13 +68,26 @@ export function hasReadingProgress(user: User | null, contentId: string): boolea
   return getReadingProgress(user, contentId) != null
 }
 
-/** Records `pageIndex` (0-based) as the last-read position for `contentId`. */
-export function setReadingProgress(user: User | null, contentId: string, pageIndex: number): void {
+/**
+ * Records `pageIndex` (0-based) as the last-read position for `contentId`. `totalPages`,
+ * when given, is stored alongside it purely so a "X% through" indicator (landing page's
+ * Continue Reading row) has something to divide by -- it's not used for resume logic.
+ */
+export function setReadingProgress(
+  user: User | null,
+  contentId: string,
+  pageIndex: number,
+  totalPages?: number,
+): void {
   if (!Number.isFinite(pageIndex) || pageIndex < 0) return
   const all = readAll()
   const scope = scopeKeyFor(user)
   const scoped = { ...(all[scope] ?? {}) }
-  scoped[contentId] = { pageIndex, updatedAt: Date.now() }
+  scoped[contentId] = {
+    pageIndex,
+    updatedAt: Date.now(),
+    ...(Number.isFinite(totalPages) && (totalPages as number) > 0 ? { totalPages } : {}),
+  }
 
   const entries = Object.entries(scoped)
   if (entries.length > MAX_TRACKED_ITEMS_PER_USER) {
@@ -74,6 +99,25 @@ export function setReadingProgress(user: User | null, contentId: string, pageInd
 
   all[scope] = scoped
   writeAll(all)
+}
+
+/**
+ * Up to `limit` most-recently-viewed Discover items for this user, newest first. Powers the
+ * landing page's Continue Reading row -- the caller still has to match each `contentId`
+ * against the Discover catalog itself (this module only knows ids and positions).
+ */
+export function getRecentlyViewedProgress(user: User | null, limit: number): RecentlyViewedEntry[] {
+  const scoped = readAll()[scopeKeyFor(user)]
+  if (!scoped) return []
+  return Object.entries(scoped)
+    .map(([contentId, entry]) => ({
+      contentId,
+      pageIndex: entry.pageIndex,
+      totalPages: entry.totalPages,
+      updatedAt: entry.updatedAt,
+    }))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, limit)
 }
 
 export function clearReadingProgress(user: User | null, contentId: string): void {

@@ -589,8 +589,8 @@ export default function App() {
    */
   useEffect(() => {
     if (appState !== "reading" || !activeReadingContentId) return
-    setReadingProgress(user, activeReadingContentId, articlePageIndex)
-  }, [appState, activeReadingContentId, articlePageIndex, user])
+    setReadingProgress(user, activeReadingContentId, articlePageIndex, totalPages)
+  }, [appState, activeReadingContentId, articlePageIndex, totalPages, user])
 
   /**
    * Article next-page prefetch: a few seconds after the current page becomes visible, start
@@ -715,6 +715,7 @@ export default function App() {
           isLoading={appState === "loading"}
           theme={appTheme}
           displayName={displayName}
+          onContinueReading={handleDiscoverStartReading}
         />
       </div>
     </main>

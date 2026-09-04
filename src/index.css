@@ -1939,6 +1939,25 @@ article span {
   backdrop-filter: blur(8px);
 }
 
+/* Progress pill -- landing page's Continue Reading row (opposite corner from the type badge). */
+.discover-card__progress {
+  position: absolute;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background: rgba(253, 250, 245, 0.85);
+  padding: 0.2rem 0.58rem;
+  font-family: var(--font-sans);
+  font-size: var(--text-label-2xs);
+  font-weight: 700;
+  letter-spacing: var(--track-label-2xs);
+  text-transform: uppercase;
+  color: #6b5b50;
+  backdrop-filter: blur(8px);
+}
+
 .discover-card__tools {
   position: absolute;
   right: 0.6rem;
@@ -2072,6 +2091,7 @@ article span {
   background: #2a2825;
 }
 .dark .discover-card__type,
+.dark .discover-card__progress,
 .dark .discover-card__tools button {
   border-color: rgba(255, 255, 255, 0.1);
   background: rgba(26, 26, 25, 0.78);
@@ -2649,6 +2669,21 @@ article span {
 }
 .dark .sample-excerpt-btn:hover:not(:disabled) .sample-link {
   color: rgba(234, 224, 213, 0.75);
+}
+
+/* Continue Reading — landing page, desktop only. Sits where the sample excerpt normally
+   does (see landing-continue-reading.tsx); cards reuse .discover-card so the row reads as
+   the same "book" object as Discover instead of a one-off tile style. */
+.continue-reading__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+.continue-reading__row .discover-card__body {
+  padding: 0.65rem 0.75rem 0.7rem;
+}
+.continue-reading__row .discover-card__title {
+  font-size: var(--text-ui-base);
 }
 
 /** Details sheet — “How do I remember this?” loading dots (matches prototype bounce) */

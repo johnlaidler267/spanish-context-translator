@@ -20,6 +20,8 @@ import { supabase } from "@/lib/supabase"
 import { getTier, type TierId } from "@/lib/subscription/tiers"
 import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscription/subscription-display"
 import { LandingContentPills } from "@/components/landing/landing-content-pills"
+import { LandingContinueReading } from "@/components/landing/landing-continue-reading"
+import type { ContentItem } from "@/lib/discover/content-data"
 import {
   appendTranscriptToField,
   fetchLearnRandomParagraph,
@@ -44,6 +46,8 @@ interface LandingScreenProps {
   isLoading: boolean
   theme: ReadingTheme
   displayName: string
+  /** Opens a Discover item straight into reading (desktop Continue Reading row). */
+  onContinueReading: (content: ContentItem) => void
 }
 
 const LANDING_SUB_ROW_CACHE = "lexa.landingSubRow.v1"
@@ -107,6 +111,7 @@ export function LandingScreen({
   isLoading,
   theme,
   displayName,
+  onContinueReading,
 }: LandingScreenProps) {
   const { user } = useAuth()
   const { status: subscriptionStatus, isLapsed } = useSubscription()
@@ -621,19 +626,26 @@ export function LandingScreen({
           </div>
         </div>
 
-        {/* Sample excerpt — desktop/tablet only */}
-        <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-2 hidden md:block">
-          <p className="sample-excerpt-label text-center">Sample text</p>
-          <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
-            <p className="sample-paragraph font-serif text-ui-base overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
-            <span className="mt-3 block text-center">
-              <span className="sample-link inline-flex items-center gap-2">
-                Try this sample
-                <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
-              </span>
-            </span>
-          </button>
-        </div>
+        {/* Continue Reading (desktop only) when there's history; otherwise the sample excerpt
+            it normally replaces — LandingContinueReading owns that fallback decision. */}
+        <LandingContinueReading
+          user={user}
+          onContinue={onContinueReading}
+          fallback={
+            <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-2 hidden md:block">
+              <p className="sample-excerpt-label text-center">Sample text</p>
+              <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
+                <p className="sample-paragraph font-serif text-ui-base overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
+                <span className="mt-3 block text-center">
+                  <span className="sample-link inline-flex items-center gap-2">
+                    Try this sample
+                    <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
+                  </span>
+                </span>
+              </button>
+            </div>
+          }
+        />
         </div>
       </div>
       {learnError && (

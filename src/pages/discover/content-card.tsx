@@ -15,9 +15,18 @@ interface ContentCardProps {
   featured?: boolean
   onDelete?: (id: string) => void
   onEdit?: () => void
+  /** 1-100. Shown as a small pill on the cover (landing page's Continue Reading row). */
+  progressPercent?: number | null
 }
 
-export function ContentCard({ content, onClick, featured = false, onDelete, onEdit }: ContentCardProps) {
+export function ContentCard({
+  content,
+  onClick,
+  featured = false,
+  onDelete,
+  onEdit,
+  progressPercent,
+}: ContentCardProps) {
   const difficulty = normalizeDifficulty(content.difficulty)
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -38,6 +47,9 @@ export function ContentCard({ content, onClick, featured = false, onDelete, onEd
       <div className="discover-card__frame">
         <DiscoverCoverArt content={content} className="discover-card__art" eager={featured} />
         <span className="discover-card__type">{contentTypeLabels[content.type]}</span>
+        {progressPercent != null && (
+          <span className="discover-card__progress">{progressPercent}% read</span>
+        )}
 
         {(onEdit || onDelete) && (
           <div className="discover-card__tools">
