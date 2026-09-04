@@ -111,9 +111,14 @@ export function LandingSidebarProfile({
   const iconBtn =
     "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground/60 outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors duration-200 ease-out hover:bg-secondary hover:text-foreground"
 
-  /** Terracotta fill keeps the initial legible against the footer surface in every theme. */
+  /**
+   * Terracotta fill keeps the initial legible against the footer surface in every theme.
+   * Hover ring/glow use a literal rgba (not `ring-primary/30`) because --primary is a
+   * plain hex custom property, not the rgb-triplet form Tailwind needs to generate an
+   * opacity-modified utility — see the discover-modal__cta hover fix for the same issue.
+   */
   const avatarClass =
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-ui-sm font-semibold no-underline outline-none focus-visible:ring-2 focus-visible:ring-ring transition-opacity duration-200 ease-out hover:opacity-90"
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-ui-sm font-semibold no-underline outline-none ring-2 ring-transparent focus-visible:ring-ring transition-[transform,box-shadow] duration-200 ease-out hover:shadow-[0_0_0_4px_rgba(201,122,90,0.25)] motion-safe:hover:scale-105 motion-safe:active:scale-100"
 
   if (compactRail) {
     return (
