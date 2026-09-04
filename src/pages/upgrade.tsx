@@ -83,7 +83,19 @@ const UPGRADE_PILL_PRESS =
   "dark:active:shadow-none dark:active:translate-x-[3px] dark:active:translate-y-[3px]"
 
 const UPGRADE_TIER_BTN_FOCUS =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35 focus-visible:ring-offset-2"
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2"
+
+/**
+ * The outlined tier button. Pro is the action on this page, so it wears the
+ * anchor colour like every other primary control; the rest (including the
+ * disabled "Current plan") stay warm and quiet. Hue only — the button's
+ * prominence is deliberately unchanged.
+ */
+function upgradeTierOutlineTone(tierId: TierId): string {
+  return tierId === "pro"
+    ? "border-primary text-primary hover:bg-primary/10"
+    : "border-plan-border text-plan-quiet hover:bg-plan-tint"
+}
 
 function upgradeTierButtonClassName(
   tierId: TierId,
@@ -104,13 +116,15 @@ function upgradeTierButtonClassName(
         "h-14 rounded-[14px] border-0 px-4 text-lg font-bold",
         "shadow-[0_8px_16px_rgba(201,122,90,0.28)] transition-colors",
         UPGRADE_TIER_BTN_FOCUS,
-        "bg-plan-accent text-plan-accent-fg hover:bg-plan-accent-hover",
+        // The conversion button is an action, so it takes the anchor colour like
+        // every other primary control. The card's warm tints stay warm around it.
+        "bg-primary text-primary-foreground hover:bg-primary/90",
       ].join(" ")
     }
     return [
-      "h-14 rounded-[14px] border-2 border-plan-border bg-transparent px-4 text-lg font-bold",
+      "h-14 rounded-[14px] border-2 bg-transparent px-4 text-lg font-bold",
       UPGRADE_TIER_BTN_FOCUS,
-      "text-plan-quiet hover:bg-plan-tint",
+      upgradeTierOutlineTone(tierId),
     ].join(" ")
   }
   if (
@@ -118,15 +132,17 @@ function upgradeTierButtonClassName(
     (variant === "outline" || variant === "secondary")
   ) {
     return [
-      "h-14 rounded-[14px] border-2 border-plan-border bg-transparent px-4 text-lg font-bold",
+      "h-14 rounded-[14px] border-2 bg-transparent px-4 text-lg font-bold",
       UPGRADE_TIER_BTN_FOCUS,
-      "text-plan-quiet hover:bg-plan-tint disabled:opacity-50",
+      upgradeTierOutlineTone(tierId),
+      "disabled:opacity-50",
     ].join(" ")
   }
   return [
-    "h-14 rounded-[14px] border-2 border-plan-border bg-transparent px-4 text-lg font-bold",
+    "h-14 rounded-[14px] border-2 bg-transparent px-4 text-lg font-bold",
     UPGRADE_TIER_BTN_FOCUS,
-    "text-plan-quiet hover:bg-plan-tint disabled:opacity-50",
+    upgradeTierOutlineTone(tierId),
+    "disabled:opacity-50",
   ].join(" ")
 }
 
@@ -522,7 +538,7 @@ function BillingToggle({
             className={cn(
               "rounded-[16px] px-6 py-2.5 font-semibold transition-colors",
               interval === "monthly"
-                ? "bg-[#c97a5a] text-white shadow-[0_6px_14px_rgba(201,122,90,0.28)]"
+                ? "bg-primary text-primary-foreground shadow-[0_6px_14px_rgba(44,90,140,0.28)]"
                 : "text-plan-ink-dim hover:text-plan-ink-dim-hover",
             )}
           >
@@ -535,7 +551,7 @@ function BillingToggle({
             className={cn(
               "inline-flex items-center gap-2 rounded-[16px] px-6 py-2.5 font-semibold transition-colors",
               interval === "annual"
-                ? "bg-[#c97a5a] text-white shadow-[0_6px_14px_rgba(201,122,90,0.28)]"
+                ? "bg-primary text-primary-foreground shadow-[0_6px_14px_rgba(44,90,140,0.28)]"
                 : "text-plan-ink-dim hover:text-plan-ink-dim-hover",
             )}
           >

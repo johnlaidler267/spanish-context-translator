@@ -102,7 +102,7 @@
   font-size: 3.3em;
   line-height: 0.86;
   padding: 0.02em 0.07em 0 0;
-  color: var(--primary);
+  color: var(--editorial);
 }
 @media (max-width: 767px) {
   .article-drop-cap::first-letter {
@@ -496,7 +496,10 @@ html.lector-reading-session .global-corner-letter {
     --card-foreground: #3a332e;
     --popover: #faf7f3;
     --popover-foreground: #3a332e;
-    --primary: #c97a5a;          /* muted terracotta */
+    /* Azulejo blue. The anchor for anything you can act on — buttons, links,
+       progress, focus. Terracotta used to hold this job as well as every
+       editorial one, which left nothing able to outrank anything else. */
+    --primary: #2c5a8c;
     --primary-foreground: #f7f3ee;
     --secondary: #e8e2da;
     --secondary-foreground: #3a332e;
@@ -508,7 +511,7 @@ html.lector-reading-session .global-corner-letter {
     --destructive-foreground: oklch(0.985 0 0);
     --border: #d2c9be;
     --input: #e8e2da;
-    --ring: #c97a5a;
+    --ring: #2c5a8c;
     --radius: 0.5rem;
     --radius-sm: calc(var(--radius) - 4px);
     /* ── Literal palette, lifted out of the components ────────────────
@@ -519,6 +522,9 @@ html.lector-reading-session .global-corner-letter {
        Values are exactly what shipped before this was tokenised.
        The sepia theme inherits this light set on purpose — that is what
        the hard-coded values did, since none of them had a sepia variant. */
+    /* The warm that is NOT interactive: drop caps, eyebrows, kickers. Same
+       terracotta as the mark, so the editorial voice reads as one thing. */
+    --editorial: #c97a5a;
     --brand-ink: #3a332e;        /* mark ring */
     --brand-ink-mid: #4a3f38;    /* wordmark separator + gradient mid-stop */
     --brand-warm: #c97a5a;       /* the tilde, and warm marks generally */
@@ -554,7 +560,7 @@ html.lector-reading-session .global-corner-letter {
     --card-foreground: #5c4033;
     --popover: #f7ead8;
     --popover-foreground: #5c4033;
-    --primary: #c97a5a;
+    --primary: #2c5a8c;
     --primary-foreground: #f4e6d6;
     --secondary: #e8d2bb;
     --secondary-foreground: #5c4033;
@@ -562,11 +568,12 @@ html.lector-reading-session .global-corner-letter {
     --muted-foreground: #7a5c4a;
     --accent: #c97a5a;
     --accent-foreground: #f4e6d6;
+    --editorial: #c97a5a;
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.985 0 0);
     --border: #d4b99a;
     --input: #e8d2bb;
-    --ring: #c97a5a;
+    --ring: #2c5a8c;
   }
 
   /* Dark — warm charcoal, cream text, desaturated terracotta */
@@ -577,7 +584,7 @@ html.lector-reading-session .global-corner-letter {
     --card-foreground: #eae0d5;
     --popover: #252523;
     --popover-foreground: #eae0d5;
-    --primary: #b06b56;
+    --primary: #7fa8d0;
     --primary-foreground: #1a1a1a;
     --secondary: #2a2a28;
     --secondary-foreground: #ddd4c8;
@@ -585,11 +592,12 @@ html.lector-reading-session .global-corner-letter {
     --muted-foreground: #b0a89e;
     --accent: #b06b56;
     --accent-foreground: #1a1a1a;
+    --editorial: #d4a896;
     --destructive: oklch(0.396 0.141 25.723);
     --destructive-foreground: oklch(0.985 0 0);
     --border: #4a4744;
     --input: #2a2a28;
-    --ring: #b06b56;
+    --ring: #7fa8d0;
 
     /* Literal palette — dark. See the :root block for why these are separate
        from --primary. Values match the `dark:` classes they replace. */
@@ -1702,7 +1710,7 @@ article span {
   font-size: var(--text-ui-lg);
   line-height: 1;
   letter-spacing: var(--track-ui-lg);
-  color: var(--primary);
+  color: var(--editorial);
   opacity: 0.9;
 }
 
@@ -2423,7 +2431,7 @@ article span {
 .discover-empty__icon {
   width: 1.6rem;
   height: 1.6rem;
-  color: var(--primary);
+  color: var(--editorial);
   opacity: 0.65;
   stroke-width: 1.4;
 }
@@ -2895,7 +2903,7 @@ article span {
   font-weight: 700;
   letter-spacing: var(--track-label-xs);
   text-transform: uppercase;
-  color: var(--primary);
+  color: var(--editorial);
 }
 
 .discover-modal__title {
