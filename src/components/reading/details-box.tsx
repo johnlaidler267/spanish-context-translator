@@ -92,13 +92,13 @@ export function DetailsBox({
           <div
             className={cn(
               "pointer-events-auto w-full max-w-[700px] rounded-t-xl",
-              "bg-[#f9f5ef] dark:bg-[#1e1b18]",
+              "bg-reading-surface",
               "border border-b-0 border-[rgba(201,122,90,0.22)] dark:border-[rgba(201,122,90,0.15)]",
               "shadow-[0_-4px_24px_rgba(0,0,0,0.10)]",
             )}
           >
             <div className="flex items-center gap-3 px-5 pt-4 pb-3">
-              <BookOpen className="h-4 w-4 shrink-0 text-[#c97a5a] opacity-80 block" aria-hidden />
+              <BookOpen className="h-4 w-4 shrink-0 text-reading-warm opacity-80 block" aria-hidden />
               <span
                 className="flex-1 min-w-0 font-serif text-lg leading-snug text-foreground truncate -translate-y-[3px]"
                 title={headerWord}
@@ -163,7 +163,7 @@ function DetailContent({ detail }: { detail: DetailState }) {
           <span className="text-ui-2xs text-[rgba(201,122,90,0.6)] font-sans leading-snug" aria-hidden>
             ·
           </span>
-          <span className="text-xs font-serif font-semibold text-[#c97a5a] leading-snug -translate-y-[2px]">
+          <span className="text-xs font-serif font-semibold text-reading-warm leading-snug -translate-y-[2px]">
             {detail.infinitive}
           </span>
         </div>
@@ -246,19 +246,18 @@ function DetailsFooter({ headerWord }: { headerWord: string }) {
           <div
             className={cn(
               "rounded-r-lg border border-l-[2.5px] py-3 px-4",
-              "border-[#E3D9CC] border-l-[#C0392B] bg-[#FFF9F5]",
-              "dark:border-[rgba(201,122,90,0.2)] dark:border-l-[#c0392b] dark:bg-[#262320]",
+              "border-reading-note-border border-l-reading-warn bg-reading-note",
+              "dark:border-reading-warm/20",
             )}
           >
             <div
               className={cn(
-                "mb-1.5 font-sans text-label-2xs font-medium uppercase text-[#C0392B]",
-                "dark:text-[#e07060]",
+                "mb-1.5 font-sans text-label-2xs font-medium uppercase text-reading-warn-ink",
               )}
             >
               memory trick
             </div>
-            <div className="font-serif text-sm leading-[1.72] text-[#3D3830] dark:text-foreground/90">
+            <div className="font-serif text-sm leading-[1.72] text-reading-note-ink dark:text-foreground/90">
               {trickLoading && (
                 <span className="inline-flex items-center gap-1" aria-live="polite">
                   <span className="details-memory-dot inline-block" />
@@ -284,10 +283,10 @@ function DetailsFooter({ headerWord }: { headerWord: string }) {
         aria-expanded={memoryOpen}
         className={cn(
           "group w-full inline-flex items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
-          "border-[rgba(201,122,90,0.22)] bg-[#fffaf6] text-foreground shadow-[0_1px_0_rgba(0,0,0,0.03)]",
-          "hover:border-[rgba(201,122,90,0.35)] hover:bg-[#fff5ec]",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35",
-          "dark:border-[rgba(201,122,90,0.18)] dark:bg-[#23201d] dark:hover:bg-[#282420]",
+          "border-reading-warm/[0.22] bg-reading-raised text-foreground shadow-[0_1px_0_rgba(0,0,0,0.03)]",
+          "hover:border-reading-warm/35 hover:bg-reading-raised-hover",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35",
+          "dark:border-reading-warm/[0.18]",
           trickLoading && "pointer-events-none opacity-50",
         )}
       >
@@ -295,8 +294,8 @@ function DetailsFooter({ headerWord }: { headerWord: string }) {
           <span
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
-              "bg-[#c97a5a]/10 text-[#c97a5a]",
-              "dark:bg-[#c97a5a]/15 dark:text-[#d4a896]",
+              "bg-reading-warm/10 text-editorial",
+              "dark:bg-reading-warm/15",
             )}
             aria-hidden
           >

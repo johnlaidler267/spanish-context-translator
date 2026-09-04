@@ -544,6 +544,45 @@ html.lector-reading-session .global-corner-letter {
     --plan-ink-dim: #6f6258;
     --plan-ink-dim-hover: #3f352f;
 
+    /* ── Reading surfaces ─────────────────────────────────────────────
+       The reader's own palette — details box, mode rail, mobile pager,
+       folio. Hard-coded across five components until now, which is why
+       the reading view never followed a theme change. Values are exactly
+       what shipped.
+       --reading-warm is deliberately NOT --editorial: the terracotta
+       washes in here were literal #c97a5a in dark mode too, so this one
+       stays constant across themes (no .dark override below).
+       Worth knowing: --reading-raised (#fffaf6), --reading-note
+       (#fff9f5) and --reading-pager (#fffaf5) differ by one or two steps
+       in a single channel. Kept apart so this change is pixel-neutral;
+       collapsing them into one is a design call, not a mechanical one. */
+    --reading-warm: #c97a5a;
+    --reading-surface: #f9f5ef;
+    --reading-raised: #fffaf6;
+    --reading-raised-hover: #fff5ec;
+    --reading-note: #fff9f5;
+    --reading-note-border: #e3d9cc;
+    --reading-note-ink: #3d3830;
+    --reading-warn: #c0392b;        /* rail — same in both themes */
+    --reading-warn-ink: #c0392b;
+    --reading-rail: #faf4ed;
+    --reading-rail-border: #dccbbe;
+    --reading-mode-ink: #746254;
+    --reading-mode-ink-hover: #4f4339;
+    --reading-mode-on-accent: #fff8f1;
+    --reading-mode-active: linear-gradient(180deg, rgba(201, 122, 90, 0.82), rgba(184, 108, 79, 0.78));
+    --reading-pager: #fffaf5;
+    --reading-pager-ink: #6a584b;
+    --reading-pager-ink-hover: #4d4035;
+    --reading-folio: #6f6258;
+    --reading-folio-label: #8f796a;
+    --reading-folio-dim: #b59a86;
+
+    /* Landing content-type pills (the same three-copy class string). */
+    --pill-surface: #ffffff;
+    --pill-surface-hover: #faf8f5;
+    --pill-ink: #3a332e;
+
     /* Motion — one restraint curve, ≤200ms */
     --transition-restraint: 0.2s ease;
     /*
@@ -593,6 +632,28 @@ html.lector-reading-session .global-corner-letter {
     --accent: #b06b56;
     --accent-foreground: #1a1a1a;
     --editorial: #d4a896;
+
+    /* Reading surfaces — dark. --reading-warm intentionally absent: it
+       inherits the light value, which is what the literals did. */
+    --reading-surface: #1e1b18;
+    --reading-raised: #23201d;
+    --reading-raised-hover: #282420;
+    --reading-note: #262320;
+    --reading-warn-ink: #e07060;
+    --reading-rail: #2a221d;
+    --reading-rail-border: #5a473b;
+    --reading-mode-ink: #ccbeb0;
+    --reading-mode-ink-hover: #efe3d8;
+    --reading-pager-ink: #cbbdaf;
+    --reading-pager-ink-hover: #f0e3d6;
+    --reading-folio: #c9b8a8;
+    --reading-folio-label: #b89f8c;
+    --reading-folio-dim: #8f7968;
+
+    --pill-surface: #1a1917;
+    --pill-surface-hover: #22211e;
+    --pill-ink: #e8e4dc;
+
     --destructive: oklch(0.396 0.141 25.723);
     --destructive-foreground: oklch(0.985 0 0);
     --border: #4a4744;

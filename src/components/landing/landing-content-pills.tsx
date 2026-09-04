@@ -15,6 +15,21 @@ interface LandingContentPillsProps {
   className?: string
 }
 
+/**
+ * One surface treatment, three pills. Was copied verbatim at each call site,
+ * so a colour change meant three edits and a chance to miss one.
+ */
+const CONTENT_PILL_SURFACE = [
+  "border-black/[0.08] bg-pill-surface text-pill-ink",
+  "hover:border-reading-warm/35 hover:bg-pill-surface-hover",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35",
+].join(" ")
+
+const CONTENT_PILL_SURFACE_DARK = [
+  "dark:border-white/[0.12]",
+  "dark:hover:border-reading-warm/30",
+].join(" ")
+
 export function LandingContentPills({
   onRandom,
   onLearn,
@@ -41,12 +56,9 @@ export function LandingContentPills({
           aria-busy={randomPending}
           className={cn(
             "content-pill inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
-            "border-black/[0.08] bg-white text-[#3a332e]",
-            "hover:border-[#c97a5a]/35 hover:bg-[#faf8f5]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35",
+            CONTENT_PILL_SURFACE,
             "disabled:pointer-events-none disabled:opacity-45",
-            "dark:border-white/[0.12] dark:bg-[#1a1917] dark:text-[#e8e4dc]",
-            "dark:hover:border-[#c97a5a]/30 dark:hover:bg-[#22211e]",
+            CONTENT_PILL_SURFACE_DARK,
           )}
         >
           {randomPending ? (
@@ -64,12 +76,9 @@ export function LandingContentPills({
           aria-busy={learnPending}
           className={cn(
             "content-pill inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
-            "border-black/[0.08] bg-white text-[#3a332e]",
-            "hover:border-[#c97a5a]/35 hover:bg-[#faf8f5]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35",
+            CONTENT_PILL_SURFACE,
             "disabled:pointer-events-none disabled:opacity-45",
-            "dark:border-white/[0.12] dark:bg-[#1a1917] dark:text-[#e8e4dc]",
-            "dark:hover:border-[#c97a5a]/30 dark:hover:bg-[#22211e]",
+            CONTENT_PILL_SURFACE_DARK,
           )}
         >
           {learnPending ? (
@@ -87,12 +96,9 @@ export function LandingContentPills({
           aria-busy={uploadPending}
           className={cn(
             "content-pill inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
-            "border-black/[0.08] bg-white text-[#3a332e]",
-            "hover:border-[#c97a5a]/35 hover:bg-[#faf8f5]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c97a5a]/35",
+            CONTENT_PILL_SURFACE,
             "disabled:pointer-events-none disabled:opacity-45",
-            "dark:border-white/[0.12] dark:bg-[#1a1917] dark:text-[#e8e4dc]",
-            "dark:hover:border-[#c97a5a]/30 dark:hover:bg-[#22211e]",
+            CONTENT_PILL_SURFACE_DARK,
           )}
         >
           {uploadPending ? (

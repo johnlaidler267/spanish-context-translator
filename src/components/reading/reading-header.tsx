@@ -70,7 +70,7 @@ export function ReadingHeader({
             className={cn(
               "hover-tts-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-10.5 max-md:h-10.5 rounded-[0.7rem] text-foreground/82 transition-colors duration-200 ease-in-out hover:bg-muted/35 hover:text-foreground",
               hoverTtsEnabled &&
-                "bg-[#c97a5a]/10 text-[#b86c4f] ring-1 ring-[#c97a5a]/18",
+                "bg-reading-warm/10 text-[#b86c4f] ring-1 ring-reading-warm/[0.18]",
             )}
             aria-pressed={hoverTtsEnabled}
             aria-label={

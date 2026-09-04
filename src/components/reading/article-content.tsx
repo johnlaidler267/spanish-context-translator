@@ -524,10 +524,10 @@ export function ArticleContent({
             className={cn(
               "h-11 w-11 shrink-0 rounded-full",
               "max-md:h-10 max-md:w-10 max-md:rounded-[0.8rem] max-md:border max-md:border-[rgba(201,122,90,0.16)]",
-              "max-md:bg-[rgba(255,250,245,0.72)] max-md:text-[#6a584b]",
-              "max-md:hover:bg-[rgba(201,122,90,0.08)] max-md:hover:text-[#4d4035]",
-              "dark:max-md:border-[rgba(201,122,90,0.14)] dark:max-md:bg-[rgba(255,255,255,0.04)] dark:max-md:text-[#cbbdaf]",
-              "dark:max-md:hover:bg-[rgba(201,122,90,0.10)] dark:max-md:hover:text-[#f0e3d6]",
+              "max-md:bg-reading-pager/[0.72] max-md:text-reading-pager-ink",
+              "max-md:hover:bg-reading-warm/[0.08] max-md:hover:text-reading-pager-ink-hover",
+              "dark:max-md:border-reading-warm/[0.14] dark:max-md:bg-white/[0.04]",
+              "dark:max-md:hover:bg-reading-warm/10",
             )}
             disabled={pagination.pageIndex <= 0}
             onClick={pagination.onPrevious}
@@ -547,10 +547,10 @@ export function ArticleContent({
                 style={{ width: `${((pagination.pageIndex + 1) / pagination.pageCount) * 100}%` }}
               />
             </span>
-            <span className="text-sm font-sans text-muted-foreground tabular-nums max-md:font-serif max-md:text-ui-lg max-md:text-[#6f6258] dark:max-md:text-[#c9b8a8]">
-              <span className="max-md:text-[#8f796a] max-md:italic dark:max-md:text-[#b89f8c]">Page</span>{" "}
+            <span className="text-sm font-sans text-muted-foreground tabular-nums max-md:font-serif max-md:text-ui-lg max-md:text-reading-folio">
+              <span className="max-md:text-reading-folio-label max-md:italic">Page</span>{" "}
               {pagination.pageIndex + 1}{" "}
-              <span className="max-md:text-[#b59a86] dark:max-md:text-[#8f7968]">of</span>{" "}
+              <span className="max-md:text-reading-folio-dim">of</span>{" "}
               {pagination.pageCount}
             </span>
           </div>
@@ -562,10 +562,10 @@ export function ArticleContent({
               className={cn(
                 "h-11 w-11 rounded-full",
                 "max-md:h-10 max-md:w-10 max-md:rounded-[0.8rem] max-md:border max-md:border-[rgba(201,122,90,0.16)]",
-                "max-md:bg-[rgba(255,250,245,0.72)] max-md:text-[#6a584b]",
-                "max-md:hover:bg-[rgba(201,122,90,0.08)] max-md:hover:text-[#4d4035]",
-                "dark:max-md:border-[rgba(201,122,90,0.14)] dark:max-md:bg-[rgba(255,255,255,0.04)] dark:max-md:text-[#cbbdaf]",
-                "dark:max-md:hover:bg-[rgba(201,122,90,0.10)] dark:max-md:hover:text-[#f0e3d6]",
+                "max-md:bg-reading-pager/[0.72] max-md:text-reading-pager-ink",
+                "max-md:hover:bg-reading-warm/[0.08] max-md:hover:text-reading-pager-ink-hover",
+                "dark:max-md:border-reading-warm/[0.14] dark:max-md:bg-white/[0.04]",
+                "dark:max-md:hover:bg-reading-warm/10",
               )}
               disabled={
                 pagination.pageIndex >= pagination.pageCount - 1 || !pagination.nextPageOpen
