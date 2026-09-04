@@ -2673,11 +2673,21 @@ article span {
 
 /* Continue Reading — landing page, desktop only. Sits where the sample excerpt normally
    does (see landing-continue-reading.tsx); cards reuse .discover-card so the row reads as
-   the same "book" object as Discover instead of a one-off tile style. */
+   the same "book" object as Discover instead of a one-off tile style.
+   auto-fit collapses unused tracks, so with only 1-2 items (the common case) the lone
+   card's 1fr track absorbs the whole row width and the cover stretches huge -- auto-fill
+   instead keeps the as-many-as-fit empty tracks around, so a short row's cards stay capped
+   at the same size they'd be if the row were full (same fix shape as .discover-grid above). */
 .continue-reading__row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11.5rem), 1fr));
   gap: 0.9rem;
+  justify-content: start;
+}
+@media (min-width: 64rem) {
+  .continue-reading__row {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr));
+  }
 }
 .continue-reading__row .discover-card__body {
   padding: 0.65rem 0.75rem 0.7rem;
