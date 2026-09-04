@@ -109,7 +109,7 @@ export function LandingSidebarProfile({
   })()
 
   const iconBtn =
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground/60 outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors duration-200 ease-out hover:bg-secondary hover:text-foreground"
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors duration-200 ease-out hover:bg-secondary hover:text-foreground"
 
   /**
    * Terracotta fill keeps the initial legible against the footer surface in every theme.

@@ -4,44 +4,52 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      /**
+       * Colours go through color-mix() rather than a bare var() so Tailwind's
+       * /opacity modifiers actually compile: `bg-primary/90` needs an
+       * <alpha-value> placeholder to substitute into, and a plain hex custom
+       * property gives it nowhere to put one — so the utility silently emitted
+       * no CSS at all (the same cause as the Discover CTA hover fix, d5226f4).
+       * The custom properties themselves stay plain hex, so every var(--x)
+       * already written in index.css keeps working unchanged.
+       */
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        card: "var(--card)",
-        "card-foreground": "var(--card-foreground)",
-        popover: "var(--popover)",
-        "popover-foreground": "var(--popover-foreground)",
-        primary: "var(--primary)",
-        "primary-foreground": "var(--primary-foreground)",
-        secondary: "var(--secondary)",
-        "secondary-foreground": "var(--secondary-foreground)",
-        muted: "var(--muted)",
-        "muted-foreground": "var(--muted-foreground)",
-        accent: "var(--accent)",
-        "accent-foreground": "var(--accent-foreground)",
-        destructive: "var(--destructive)",
-        "destructive-foreground": "var(--destructive-foreground)",
-        border: "var(--border)",
-        input: "var(--input)",
-        ring: "var(--ring)",
+        background: "color-mix(in srgb, var(--background) calc(<alpha-value> * 100%), transparent)",
+        foreground: "color-mix(in srgb, var(--foreground) calc(<alpha-value> * 100%), transparent)",
+        card: "color-mix(in srgb, var(--card) calc(<alpha-value> * 100%), transparent)",
+        "card-foreground": "color-mix(in srgb, var(--card-foreground) calc(<alpha-value> * 100%), transparent)",
+        popover: "color-mix(in srgb, var(--popover) calc(<alpha-value> * 100%), transparent)",
+        "popover-foreground": "color-mix(in srgb, var(--popover-foreground) calc(<alpha-value> * 100%), transparent)",
+        primary: "color-mix(in srgb, var(--primary) calc(<alpha-value> * 100%), transparent)",
+        "primary-foreground": "color-mix(in srgb, var(--primary-foreground) calc(<alpha-value> * 100%), transparent)",
+        secondary: "color-mix(in srgb, var(--secondary) calc(<alpha-value> * 100%), transparent)",
+        "secondary-foreground": "color-mix(in srgb, var(--secondary-foreground) calc(<alpha-value> * 100%), transparent)",
+        muted: "color-mix(in srgb, var(--muted) calc(<alpha-value> * 100%), transparent)",
+        "muted-foreground": "color-mix(in srgb, var(--muted-foreground) calc(<alpha-value> * 100%), transparent)",
+        accent: "color-mix(in srgb, var(--accent) calc(<alpha-value> * 100%), transparent)",
+        "accent-foreground": "color-mix(in srgb, var(--accent-foreground) calc(<alpha-value> * 100%), transparent)",
+        destructive: "color-mix(in srgb, var(--destructive) calc(<alpha-value> * 100%), transparent)",
+        "destructive-foreground": "color-mix(in srgb, var(--destructive-foreground) calc(<alpha-value> * 100%), transparent)",
+        border: "color-mix(in srgb, var(--border) calc(<alpha-value> * 100%), transparent)",
+        input: "color-mix(in srgb, var(--input) calc(<alpha-value> * 100%), transparent)",
+        ring: "color-mix(in srgb, var(--ring) calc(<alpha-value> * 100%), transparent)",
 
         /* Lifted out of hard-coded .tsx literals — see the "Literal palette"
-           block in src/index.css. Plain var()s like the tokens above, so the
-           same caveat applies: no /opacity modifier support. */
-        "brand-ink": "var(--brand-ink)",
-        "brand-ink-mid": "var(--brand-ink-mid)",
-        "brand-warm": "var(--brand-warm)",
-        "brand-ground": "var(--brand-ground)",
-        "plan-accent": "var(--plan-accent)",
-        "plan-accent-hover": "var(--plan-accent-hover)",
-        "plan-accent-fg": "var(--plan-accent-fg)",
-        "plan-quiet": "var(--plan-quiet)",
-        "plan-border": "var(--plan-border)",
-        "plan-tint": "var(--plan-tint)",
-        "plan-ink": "var(--plan-ink)",
-        "plan-ink-soft": "var(--plan-ink-soft)",
-        "plan-ink-dim": "var(--plan-ink-dim)",
-        "plan-ink-dim-hover": "var(--plan-ink-dim-hover)",
+           block in src/index.css. */
+        "brand-ink": "color-mix(in srgb, var(--brand-ink) calc(<alpha-value> * 100%), transparent)",
+        "brand-ink-mid": "color-mix(in srgb, var(--brand-ink-mid) calc(<alpha-value> * 100%), transparent)",
+        "brand-warm": "color-mix(in srgb, var(--brand-warm) calc(<alpha-value> * 100%), transparent)",
+        "brand-ground": "color-mix(in srgb, var(--brand-ground) calc(<alpha-value> * 100%), transparent)",
+        "plan-accent": "color-mix(in srgb, var(--plan-accent) calc(<alpha-value> * 100%), transparent)",
+        "plan-accent-hover": "color-mix(in srgb, var(--plan-accent-hover) calc(<alpha-value> * 100%), transparent)",
+        "plan-accent-fg": "color-mix(in srgb, var(--plan-accent-fg) calc(<alpha-value> * 100%), transparent)",
+        "plan-quiet": "color-mix(in srgb, var(--plan-quiet) calc(<alpha-value> * 100%), transparent)",
+        "plan-border": "color-mix(in srgb, var(--plan-border) calc(<alpha-value> * 100%), transparent)",
+        "plan-tint": "color-mix(in srgb, var(--plan-tint) calc(<alpha-value> * 100%), transparent)",
+        "plan-ink": "color-mix(in srgb, var(--plan-ink) calc(<alpha-value> * 100%), transparent)",
+        "plan-ink-soft": "color-mix(in srgb, var(--plan-ink-soft) calc(<alpha-value> * 100%), transparent)",
+        "plan-ink-dim": "color-mix(in srgb, var(--plan-ink-dim) calc(<alpha-value> * 100%), transparent)",
+        "plan-ink-dim-hover": "color-mix(in srgb, var(--plan-ink-dim-hover) calc(<alpha-value> * 100%), transparent)",
       },
       borderRadius: {
         lg: "var(--radius)",

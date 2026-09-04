@@ -162,7 +162,7 @@ function LanguageSegmentedControl<T extends LearningLanguage | NativeLanguage>({
 function ReadOnlyField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <p className="font-sans text-label-xs font-bold uppercase text-muted-foreground/70">
+      <p className="font-sans text-label-xs font-bold uppercase text-muted-foreground">
         {label}
       </p>
       <p
@@ -363,7 +363,7 @@ export default function SettingsPage() {
                           autoComplete="name"
                           className={cn(
                             "h-10 w-full rounded-lg border border-border/60 bg-background px-3 text-sm text-foreground shadow-sm",
-                            "transition-colors duration-200 ease-out placeholder:text-muted-foreground/40",
+                            "transition-colors duration-200 ease-out placeholder:text-muted-foreground",
                             "outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring",
                           )}
                         />

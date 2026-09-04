@@ -171,7 +171,7 @@ export function LandingSidebar({
       "outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       active
         ? "font-medium text-foreground"
-        : "font-normal text-foreground/75 hover:bg-muted/60 hover:text-foreground",
+        : "font-normal text-foreground hover:bg-muted/60 hover:text-foreground",
       compactRail && "justify-center px-0 gap-0",
     )
 
@@ -217,7 +217,7 @@ export function LandingSidebar({
         aria-label="Main"
       >
         {!compactRail ? (
-          <p className="px-3 pb-2 pt-1 font-sans text-label-xs font-bold uppercase text-muted-foreground/70">
+          <p className="px-3 pb-2 pt-1 font-sans text-label-xs font-bold uppercase text-muted-foreground">
             Browse
           </p>
         ) : null}
@@ -251,7 +251,7 @@ export function LandingSidebar({
                 <span
                   className={cn(
                     "shrink-0 transition-colors duration-200 ease-out",
-                    active ? "text-primary" : "text-foreground/60 group-hover:text-foreground/85",
+                    active ? "text-primary" : "text-foreground group-hover:text-foreground/85",
                   )}
                 >
                   <Icon className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
@@ -345,7 +345,7 @@ export function LandingSidebar({
           aria-label="New translation"
         >
           <BsTranslate
-            className="h-[18px] w-[18px] shrink-0 text-foreground/80 transition-transform duration-200 ease-out motion-safe:group-hover:rotate-6 motion-safe:group-hover:scale-105"
+            className="h-[18px] w-[18px] shrink-0 text-foreground transition-transform duration-200 ease-out motion-safe:group-hover:rotate-6 motion-safe:group-hover:scale-105"
             aria-hidden
           />
           <span>New translation</span>

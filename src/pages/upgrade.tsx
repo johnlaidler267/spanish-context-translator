@@ -476,7 +476,7 @@ function CurrentPlanSummary({
         {sub.cancelAtPeriodEnd && onReactivate && (
           <button
             onClick={onReactivate}
-            className="flex items-center gap-1 text-primary hover:text-primary/80 font-medium transition-colors"
+            className="flex items-center gap-1 text-primary hover:text-primary font-medium transition-colors"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Reactivate
@@ -1178,7 +1178,7 @@ export default function UpgradePage() {
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-foreground/90 leading-snug">{row.feature}</p>
-                                  <p className="mt-0.5 text-ui-2xs leading-snug text-muted-foreground/85 font-normal">
+                                  <p className="mt-0.5 text-ui-2xs leading-snug text-muted-foreground font-normal">
                                     {row.limitHint}
                                   </p>
                                 </div>

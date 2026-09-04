@@ -171,7 +171,7 @@ function DetailContent({ detail }: { detail: DetailState }) {
           <span className="text-foreground/85 leading-snug">{detail.tense}</span>
           {detail.person !== "—" && (
             <>
-              <span className="text-muted-foreground/50 text-ui-2xs">·</span>
+              <span className="text-muted-foreground text-ui-2xs">·</span>
               <span className="text-muted-foreground text-xs">{detail.person}</span>
             </>
           )}

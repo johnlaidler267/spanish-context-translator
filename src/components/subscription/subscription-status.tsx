@@ -676,7 +676,7 @@ export function SubscriptionStatus({
                 .map(({ metric, label }) => (
                   <div key={metric} className="flex items-center justify-between text-xs font-sans text-muted-foreground">
                     <span>{label}</span>
-                    <span className="tabular-nums text-foreground/70">
+                    <span className="tabular-nums text-foreground">
                       {counters[metric].toLocaleString()}
                     </span>
                   </div>
