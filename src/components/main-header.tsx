@@ -105,6 +105,23 @@ function PlanBadgeLoading() {
   )
 }
 
+/**
+ * `cachedSubscriptionRow` is `undefined` when nothing has ever been cached for this
+ * user in this browser session (e.g. a fresh mobile login) -- distinct from a cached
+ * `null`, which means we already confirmed there's no row (free plan). Collapsing
+ * both to `null` before calling `planPillFromRow` would optimistically render "Free
+ * Plan · Upgrade" for a still-unknown plan, which then flashes and disappears once
+ * the real (e.g. Pro) row loads. Only render optimistically when we actually have a
+ * cached answer; otherwise treat the plan as not-yet-known.
+ */
+function optimisticPillFromCache(
+  row: SubscriptionRowLike | undefined,
+  isAnonymous: boolean,
+): LinkPlanPill | null {
+  if (row === undefined) return null
+  return planPillFromRow(row, isAnonymous)
+}
+
 /** Landing plan pill — subscription copy from DB; context status invalidates when coarse status changes. */
 function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "upgrade" }) {
   const ctxStatus = useSubscriptionOptional()?.status ?? null
@@ -115,7 +132,7 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
     [user?.id],
   )
   const optimisticPill = user
-    ? planPillFromRow(cachedSubscriptionRow ?? null, user.is_anonymous === true)
+    ? optimisticPillFromCache(cachedSubscriptionRow, user.is_anonymous === true)
     : null
   const [pill, setPill] = useState<LinkPlanPill | null>(optimisticPill)
 
@@ -130,7 +147,7 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
       return
     }
     // Sync from cached row when identity changes; avoid per-render state writes.
-    setPill(planPillFromRow(cachedSubscriptionRow ?? null, user.is_anonymous === true))
+    setPill(optimisticPillFromCache(cachedSubscriptionRow, user.is_anonymous === true))
 
     let cancelled = false
 
