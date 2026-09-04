@@ -1,6 +1,6 @@
 /**
  * TypeScript types mirroring the Supabase database schema.
- * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql).
+ * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql).
  *
  * Usage with the Supabase client:
  *   import { createClient } from '@supabase/supabase-js'
@@ -143,6 +143,21 @@ export type DiscoverItemRow = {
   updated_at: string
 }
 
+/**
+ * Full database row from `public.reading_progress` (see
+ * supabase/migrations/0016_reading_progress.sql). See UserSubscriptionRow for why `type`, not
+ * `interface`.
+ */
+export type ReadingProgressRow = {
+  id: string
+  user_id: string
+  content_id: string
+  page_index: number
+  total_pages: number | null
+  created_at: string
+  updated_at: string
+}
+
 // ─── Insert types (omit server-generated fields) ──────────────────────────────
 
 export type UserSubscriptionInsert = Omit<
@@ -165,12 +180,19 @@ export type DiscoverItemInsert = Omit<
   "id" | "created_at" | "updated_at"
 > & { id?: string }
 
+/** `updated_at` is left settable (not server-generated) — the client stamps it on every upsert. */
+export type ReadingProgressInsert = Omit<
+  ReadingProgressRow,
+  "id" | "created_at" | "updated_at"
+> & { id?: string; updated_at?: string }
+
 // ─── Update types (all fields optional except id) ────────────────────────────
 
 export type UserSubscriptionUpdate = Partial<UserSubscriptionInsert>
 export type UsageRecordUpdate      = Partial<UsageRecordInsert>
 export type BillingInvoiceUpdate   = Partial<BillingInvoiceInsert>
 export type DiscoverItemUpdate     = Partial<Omit<DiscoverItemInsert, "id">>
+export type ReadingProgressUpdate  = Partial<Omit<ReadingProgressInsert, "id">>
 
 // ─── Supabase Database shape (pass to createClient<Database>) ────────────────
 
@@ -199,6 +221,12 @@ export interface Database {
         Row:    DiscoverItemRow
         Insert: DiscoverItemInsert
         Update: DiscoverItemUpdate
+        Relationships: []
+      }
+      reading_progress: {
+        Row:    ReadingProgressRow
+        Insert: ReadingProgressInsert
+        Update: ReadingProgressUpdate
         Relationships: []
       }
     }

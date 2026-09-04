@@ -3,10 +3,15 @@ import type { User } from "@supabase/supabase-js"
 /**
  * Per-user reading position for Discover content: "which article page (0-based) was this
  * reader last on for this piece of content". Scoped by user id (falls back to a shared
- * "guest" bucket pre-login) so one browser's progress doesn't bleed across accounts, and
- * kept in localStorage rather than a new Supabase table -- there's no cross-device sync
- * requirement here, just "reopen where I left off on this browser", which localStorage
- * already gives us for free.
+ * "guest" bucket pre-login) so one browser's progress doesn't bleed across accounts.
+ *
+ * This is the fast local cache -- every read in the app goes through it synchronously, so
+ * paging/resuming never waits on a network round trip. It's no longer the only copy, though:
+ * `reading_progress` in Supabase (see reading-progress-sync.ts) is now the cross-device
+ * source of truth, pushed to on every change and pulled down (merged in here, see
+ * `mergeCloudProgress`) so a different browser/device picks up where this one left off.
+ * localStorage remains authoritative on its own for guests who don't have a session yet at
+ * all, and as an offline fallback if the network pull/push fails.
  */
 export const READING_PROGRESS_STORAGE_KEY = "lector-reading-progress"
 
@@ -128,5 +133,41 @@ export function clearReadingProgress(user: User | null, contentId: string): void
   const next = { ...scoped }
   delete next[contentId]
   all[scope] = next
+  writeAll(all)
+}
+
+/** One `reading_progress` row as pulled from Supabase -- see reading-progress-sync.ts. */
+export interface CloudProgressRow {
+  contentId: string
+  pageIndex: number
+  totalPages: number | null
+  updatedAt: number
+}
+
+/**
+ * Merges cloud rows pulled from Supabase into this user's local cache, last-write-wins by
+ * `updatedAt`. Never removes or overwrites a local entry that's newer than (or equal to) the
+ * cloud copy -- e.g. progress made on this device while offline, not yet pushed -- so a race
+ * between "just paged forward here" and "pulling what the server had a moment ago" can't
+ * regress the reader backward.
+ */
+export function mergeCloudProgress(user: User | null, rows: CloudProgressRow[]): void {
+  if (rows.length === 0) return
+  const all = readAll()
+  const scope = scopeKeyFor(user)
+  const scoped = { ...(all[scope] ?? {}) }
+  let changed = false
+  for (const row of rows) {
+    const existing = scoped[row.contentId]
+    if (existing && existing.updatedAt >= row.updatedAt) continue
+    scoped[row.contentId] = {
+      pageIndex: row.pageIndex,
+      updatedAt: row.updatedAt,
+      ...(row.totalPages != null && row.totalPages > 0 ? { totalPages: row.totalPages } : {}),
+    }
+    changed = true
+  }
+  if (!changed) return
+  all[scope] = scoped
   writeAll(all)
 }

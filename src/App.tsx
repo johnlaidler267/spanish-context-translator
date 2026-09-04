@@ -39,6 +39,10 @@ import type { ReadingTheme } from "@/components/reading/theme-toggle"
 import { getStoredLandingDraft, setStoredLandingDraft } from "@/lib/storage/landing-draft-storage"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
 import { getReadingProgress, setReadingProgress } from "@/lib/storage/reading-progress-storage"
+import {
+  ensureCloudReadingProgressPulled,
+  pushReadingProgress,
+} from "@/lib/storage/reading-progress-sync"
 import { getEffectiveDisplayName } from "@/lib/storage/display-name-storage"
 import { Button } from "@/components/ui/button"
 import { AppErrorModal } from "@/components/app-error-modal"
@@ -462,6 +466,11 @@ export default function App() {
         // literally starting the reader there: earlier pages are still reachable by paging back
         // (see the on-demand load added to goArticlePrev/goReadPrevArticlePage below), they're
         // just not pre-translated up front.
+        //
+        // Pull any progress synced from another device first (no-op after the first successful
+        // call this session/user — see ensureCloudReadingProgressPulled) so a book resumed here
+        // reflects where the reader actually left off, not just what this browser remembers.
+        if (contentId) await ensureCloudReadingProgressPulled(user)
         const savedPageIndex = contentId ? getReadingProgress(user, contentId) : null
         const initialPageIndex =
           savedPageIndex != null ? Math.min(Math.max(savedPageIndex, 0), pages.length - 1) : 0
@@ -590,6 +599,9 @@ export default function App() {
   useEffect(() => {
     if (appState !== "reading" || !activeReadingContentId) return
     setReadingProgress(user, activeReadingContentId, articlePageIndex, totalPages)
+    // Cross-device sync (debounced) on top of the localStorage write above -- see
+    // reading-progress-sync.ts. No-ops for a null user.
+    pushReadingProgress(user, activeReadingContentId, articlePageIndex, totalPages)
   }, [appState, activeReadingContentId, articlePageIndex, totalPages, user])
 
   /**

@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js"
 import { ContentCard } from "@/pages/discover/content-card"
 import { fetchDiscoverCatalog, readCachedDiscoverItems } from "@/lib/discover/discover-catalog"
 import { getRecentlyViewedProgress } from "@/lib/storage/reading-progress-storage"
+import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import type { ContentItem } from "@/lib/discover/content-data"
 
 /** "Last 4-5 pieces of content" per the feature request. */
@@ -29,6 +30,10 @@ interface LandingContinueReadingProps {
  */
 export function LandingContinueReading({ user, onContinue, fallback }: LandingContinueReadingProps) {
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
+  // Bumped once cloud-synced progress (see reading-progress-sync.ts) has been merged into the
+  // localStorage cache below, so this row also reflects progress made on another device
+  // instead of only whatever this browser already knew about.
+  const [syncVersion, setSyncVersion] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -43,6 +48,16 @@ export function LandingContinueReading({ user, onContinue, fallback }: LandingCo
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void ensureCloudReadingProgressPulled(user).then(() => {
+      if (!cancelled) setSyncVersion((n) => n + 1)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   const items = useMemo(() => {
     const recent = getRecentlyViewedProgress(user, MAX_CONTINUE_READING_ITEMS)
@@ -59,7 +74,10 @@ export function LandingContinueReading({ user, onContinue, fallback }: LandingCo
         return { content, percent }
       })
       .filter((v): v is { content: ContentItem; percent: number | null } => v != null)
-  }, [catalog, user])
+    // `syncVersion` isn't read above -- it's a deliberate recompute trigger so this memo
+    // reruns once cloud-synced progress has landed in localStorage (see the effect above).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog, user, syncVersion])
 
   if (items.length === 0) return <>{fallback}</>
 

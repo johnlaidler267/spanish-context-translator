@@ -19,6 +19,7 @@ import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transit
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { hasReadingProgress } from "@/lib/storage/reading-progress-storage"
+import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover/discover-map"
 import {
   fetchDiscoverCatalog,
@@ -70,6 +71,21 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const [editTarget, setEditTarget] = useState<ContentItem | null>(null)
 
   const canManageCatalog = DISCOVER_DEV_EDIT
+
+  // Pulls this user's cloud-synced reading progress (see reading-progress-sync.ts) into the
+  // localStorage cache that `hasReadingProgress` below reads from, then forces one re-render
+  // so a "continue reading" badge synced from another device shows up without needing a
+  // second visit. No-ops (and doesn't re-render) if there was nothing new to merge in.
+  const [, forceRerenderForSyncedProgress] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    void ensureCloudReadingProgressPulled(user).then(() => {
+      if (!cancelled) forceRerenderForSyncedProgress((n) => n + 1)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   useEffect(() => {
     beginRouteTransition(560)
