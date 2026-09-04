@@ -419,7 +419,7 @@ export function LandingScreen({
   return (
     <>
       <div
-        className="landing-page flex flex-col items-stretch md:items-center md:justify-start md:pt-20 md:pb-[clamp(3rem,10vh,7rem)] md:overflow-y-auto min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
+        className="landing-page flex flex-col items-stretch md:items-center md:justify-start md:pt-16 md:pb-[clamp(2rem,7vh,5rem)] md:overflow-y-auto min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
         style={{ position: "relative" }}
       >
         <img
@@ -443,11 +443,11 @@ export function LandingScreen({
           }}
         />
       <div
-        className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 max-md:flex-1 max-md:min-h-0 max-md:overflow-hidden max-md:overflow-x-hidden md:flex-none md:justify-start md:my-auto gap-4 md:gap-6 max-md:pt-[max(7.5rem,calc(env(safe-area-inset-top,0px)+5.75rem))] md:pt-0"
+        className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 max-md:flex-1 max-md:min-h-0 max-md:overflow-hidden max-md:overflow-x-hidden md:flex-none md:justify-start md:my-auto gap-4 md:gap-5 max-md:pt-[max(7.5rem,calc(env(safe-area-inset-top,0px)+5.75rem))] md:pt-0"
         style={{ position: "relative", zIndex: 2 }}
       >
         {/* Hero — mobile: fills space above composer; desktop: top */}
-        <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block md:pb-8 pt-2 md:pt-0 pb-2 md:pb-8">
+        <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block pt-2 md:pt-0 pb-2 md:pb-6">
           <img
             src="/landing-hero-books.webp"
             alt=""
@@ -632,7 +632,7 @@ export function LandingScreen({
           user={user}
           onContinue={onContinueReading}
           fallback={
-            <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-2 hidden md:block">
+            <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
               <p className="sample-excerpt-label text-center">Sample text</p>
               <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
                 <p className="sample-paragraph font-serif text-ui-base overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>

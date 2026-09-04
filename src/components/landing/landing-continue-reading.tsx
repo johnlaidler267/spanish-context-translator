@@ -82,7 +82,7 @@ export function LandingContinueReading({ user, onContinue, fallback }: LandingCo
   if (items.length === 0) return <>{fallback}</>
 
   return (
-    <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-2 hidden md:block">
+    <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
       <p className="sample-excerpt-label text-center">Continue reading</p>
       <div className="continue-reading__row">
         {items.map(({ content, percent }) => (
