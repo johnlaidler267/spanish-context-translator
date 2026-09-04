@@ -600,9 +600,6 @@ export function LandingScreen({
                   </div>
                 )}
                 <div className="textarea-toolbar-right">
-                  <span className="submit-arrow-label" aria-hidden="true">
-                    Translate
-                  </span>
                   <button
                     ref={composerSubmitBtnRef}
                     type="submit"
@@ -610,6 +607,9 @@ export function LandingScreen({
                     className={`submit-arrow-btn ${text.trim() ? "submit-arrow-btn--visible" : ""}`}
                     aria-label="Start reading"
                   >
+                    <span className="submit-arrow-label" aria-hidden="true">
+                      Translate
+                    </span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
