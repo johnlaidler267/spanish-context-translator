@@ -520,6 +520,9 @@ export function LandingScreen({
                   </div>
                 )}
                 <div className="textarea-toolbar-right">
+                  <span className="submit-arrow-label" aria-hidden="true">
+                    Translate
+                  </span>
                   <button
                     ref={composerSubmitBtnRef}
                     type="submit"

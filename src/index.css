@@ -1211,6 +1211,23 @@ article span {
   transform: scale(0.95);
 }
 
+/* “Translate” — small caps hint sitting beside the submit arrow */
+.submit-arrow-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-label-2xs);
+  font-weight: 600;
+  letter-spacing: var(--track-label-2xs);
+  text-transform: uppercase;
+  color: #8a7a6c;
+  opacity: 0.6;
+  white-space: nowrap;
+  user-select: none;
+  transition: opacity 0.18s ease;
+}
+.dark .submit-arrow-label {
+  color: rgba(234, 224, 213, 0.6);
+}
+
 /* Voice input — sits in bottom toolbar */
 .voice-input-wrap {
   position: relative;
@@ -1402,6 +1419,10 @@ article span {
   .textarea-toolbar .submit-arrow-btn svg {
     width: 15px;
     height: 15px;
+  }
+  /* Toolbar is tight on mobile — the arrow itself is enough there */
+  .submit-arrow-label {
+    display: none;
   }
 
   .voice-mic-btn {
