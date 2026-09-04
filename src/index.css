@@ -2679,23 +2679,39 @@ article span {
    auto-fit collapses unused tracks, so with only 1-2 items (the common case) the lone
    card's 1fr track absorbs the whole row width and the cover stretches huge -- auto-fill
    instead keeps the as-many-as-fit empty tracks around, so a short row's cards stay capped
-   at the same size they'd be if the row were full (same fix shape as .discover-grid above). */
+   at the same size they'd be if the row were full (same fix shape as .discover-grid above).
+   Deliberately smaller/terser than a Discover shelf card (shorter cover crop, no
+   difficulty/time line) -- this row sits above the fold with the composer, so it needs to
+   stay compact enough that both fit in one viewport without scrolling. */
 .continue-reading__row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11.5rem), 1fr));
-  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));
+  gap: 0.7rem;
   justify-content: start;
 }
 @media (min-width: 64rem) {
   .continue-reading__row {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
   }
 }
+.continue-reading .sample-excerpt-label {
+  margin-bottom: 0.5rem;
+}
+.continue-reading__row .discover-card__frame {
+  aspect-ratio: 4 / 3;
+}
 .continue-reading__row .discover-card__body {
-  padding: 0.65rem 0.75rem 0.7rem;
+  padding: 0.5rem 0.6rem 0.55rem;
 }
 .continue-reading__row .discover-card__title {
-  font-size: var(--text-ui-base);
+  margin-top: 0.1rem;
+  font-size: var(--text-ui-sm);
+}
+/* Difficulty + time line is useful browsing Discover's full shelf, but this row is
+   just "pick up where you left off" -- the cover's progress pill already says how far
+   in, so drop the meta line to keep each card shorter. */
+.continue-reading__row .discover-card__meta {
+  display: none;
 }
 
 /** Details sheet — “How do I remember this?” loading dots (matches prototype bounce) */
