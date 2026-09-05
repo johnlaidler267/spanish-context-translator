@@ -200,8 +200,9 @@ export function useChunkTouchExploration(
     onBeforeTouchChunkIdChange?: () => void
     /**
      * Capture-phase `touchend` / `touchcancel` on the surface, before chunk handlers: chunk id
-     * under the finger when the explore gesture ends, or `null` if none. Used so the first
-     * explore lift does not count toward the triple-tap chain on mobile.
+     * under the finger when a drag-to-explore gesture ends, or `null` when the touch never moved
+     * past tap jitter (a still tap) or nothing was under it. Used so lifting a real explore-drag
+     * does not itself count toward the tap chain on mobile — a still tap always counts.
      */
     onExplorationLiftChunk?: (chunkId: number | null) => void
   },
@@ -210,6 +211,11 @@ export function useChunkTouchExploration(
   const touchExploringRef = useRef(false)
   const lastEmittedIdRef = useRef<number | null>(null)
   const pendingPointRef = useRef<{ x: number; y: number } | null>(null)
+  /** touchstart point + whether the finger actually moved past tap jitter — a still
+   * tap-down/tap-up must count toward TextChunk's tap chain like any other tap; only
+   * a real drag-to-explore gesture should have its lift excluded (see onExplorationLiftChunk). */
+  const touchStartPointRef = useRef<{ x: number; y: number } | null>(null)
+  const didDragRef = useRef(false)
   const [touchExploring, setTouchExploring] = useState(false)
   const onTouchPointerRef = useRef(options?.onTouchPointerClient)
   onTouchPointerRef.current = options?.onTouchPointerClient
@@ -243,6 +249,8 @@ export function useChunkTouchExploration(
       onTouchExplorationStartRef.current?.()
       touchExploringRef.current = true
       setTouchExploring(true)
+      touchStartPointRef.current = { x: t.clientX, y: t.clientY }
+      didDragRef.current = false
       pendingPointRef.current = { x: t.clientX, y: t.clientY }
       onTouchPointerRef.current?.({ x: t.clientX, y: t.clientY })
       const id = getChunkIdFromPointerClientXY(t.clientX, t.clientY, el)
@@ -251,11 +259,19 @@ export function useChunkTouchExploration(
       onExploreChunkIdRef.current?.(id)
     }
 
+    /** Real device jitter during a still tap can still fire touchmove by a few px — only
+     * treat it as a drag-to-explore gesture past this distance (device-independent px). */
+    const TAP_MOVE_SLOP_PX = 8
+
     const onTouchMove = (e: TouchEvent) => {
       if (!touchExploringRef.current || e.touches.length !== 1) return
       e.preventDefault()
       const tt = e.touches[0]
       const p = { x: tt.clientX, y: tt.clientY }
+      const start = touchStartPointRef.current
+      if (start && Math.hypot(p.x - start.x, p.y - start.y) > TAP_MOVE_SLOP_PX) {
+        didDragRef.current = true
+      }
       pendingPointRef.current = p
       onTouchPointerRef.current?.(p)
       runHitTest()
@@ -270,11 +286,14 @@ export function useChunkTouchExploration(
       setActiveChunkId(null)
       onExploreChunkIdRef.current?.(null)
       pendingPointRef.current = null
+      touchStartPointRef.current = null
     }
 
     const onTouchEndCapture = () => {
       if (!touchExploringRef.current) return
-      const liftChunkId = lastEmittedIdRef.current
+      // A still tap-down/tap-up (no real drag) is a normal tap, not exploration — let it
+      // count toward TextChunk's tap chain instead of being excluded as a "first explore".
+      const liftChunkId = didDragRef.current ? lastEmittedIdRef.current : null
       onExplorationLiftChunkRef.current?.(liftChunkId)
       endTouchExploration()
     }

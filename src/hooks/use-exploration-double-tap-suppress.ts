@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from "react"
 
 /**
- * Mobile press-and-explore: the first finger lift on a chunk must not seed TextChunk’s
- * triple-tap chain. Tracks per-chunk lift ordinals and arms a ref consumed by TextChunk.
+ * Mobile press-and-explore: lifting the finger after actually dragging across the text
+ * (previewing words) must not seed TextChunk’s tap chain — only a still tap should. Tracks
+ * per-chunk drag-lift ordinals and arms a ref consumed by TextChunk.
  */
 export function useExplorationDoubleTapLiftSuppress(
   ...resetDeps: unknown[]

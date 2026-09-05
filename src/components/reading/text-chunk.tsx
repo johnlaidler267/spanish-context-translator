@@ -111,7 +111,7 @@ const GAP_FROM_WORD: Record<"article" | "read", number> = { read: 10, article: 3
 const ARROW_BOX: Record<"article" | "read", number> = { read: 10, article: 15 }
 /** Mobile: taps in a chain must fall within this gap (ms) to count toward opening details. */
 const TAP_CHAIN_GAP_MS = 550
-const TAPS_TO_OPEN_DETAILS_MOBILE = 3
+const TAPS_TO_OPEN_DETAILS_MOBILE = 2
 
 function estimateTooltipHeight(chunk: ChunkData): number {
   // Rough estimate for placement only; tooltip content remains auto-sized by the browser.
