@@ -33,6 +33,7 @@ import {
   subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
   translatePageText,
+  type ReconciledItem,
 } from "@/lib/translate"
 import { TranslationCache } from "@/lib/translation-cache"
 import type { ViewMode } from "@/components/reading/mode-toggle"
@@ -268,6 +269,66 @@ export default function App() {
   }, [user, appState, refreshUsagePreflight])
 
   /**
+   * Wraps `translatePageText` so fair-use characters (chars_processed_period/today)
+   * are charged per page, as each page is actually translated — not the whole
+   * document's length in one lump sum at submit time. That earlier behavior meant
+   * opening one long book could burn through a day's or month's whole fair-use
+   * allowance before a single page was read (reported after the EPUB library
+   * shipped, since that's the first path that regularly opens book-length text).
+   * `chars_processed` itself (the free-tier per-submission cap) is unaffected —
+   * that's still checked against the whole document before any page loads, in
+   * handleTextSubmit below.
+   */
+  const translatePageWithUsage = useCallback(
+    async (pageText: string): Promise<ReconciledItem[]> => {
+      if (!user || !ENFORCE_USAGE_LIMITS) return translatePageText(pageText)
+
+      let preflight = usagePreflightRef.current
+      if (preflight == null || Date.now() - preflight.fetchedAt >= USAGE_PREFLIGHT_TTL_MS) {
+        await refreshUsagePreflight({ force: preflight != null })
+        preflight = usagePreflightRef.current
+      }
+      if (preflight == null) {
+        throw new UsageError("Could not verify usage. Check your connection and try again.")
+      }
+
+      const guard = checkLimits(
+        preflight.counters,
+        preflight.limits,
+        withCharsFairUseMirrors({ chars_processed: pageText.length }),
+      )
+      if (!guard.allowed) {
+        setPlanLimitModal(formatPlanLimitModal(guard.blocked.map((s) => s.metric)))
+        throw new UsageError(guard.message || "You've reached a plan limit.")
+      }
+
+      const result = await translatePageText(pageText)
+
+      // Charge only after a successful translation — a failed page shouldn't cost anything.
+      // Fire-and-forget, same pattern as the submit-time charge below.
+      void trackUsage({ chars_processed: pageText.length })
+        .then((usage) => {
+          usagePreflightRef.current = {
+            counters: usage.counters,
+            limits: usage.limits,
+            fetchedAt: Date.now(),
+          }
+          if (!usage.allowed && ENFORCE_USAGE_LIMITS) {
+            setPlanLimitModal(formatPlanLimitModal(usage.exceeded))
+            return
+          }
+          broadcastUsageUpdated()
+        })
+        .catch((e) => {
+          console.warn("[usage] background per-page trackUsage failed:", e)
+        })
+
+      return result
+    },
+    [user, refreshUsagePreflight],
+  )
+
+  /**
    * Discover catalog prefetch: while the user is sitting on the landing page (logged in
    * or not -- the catalog isn't user-specific), warm it in the background so /discover
    * paints instantly instead of showing its loading skeleton. Calls the exact same
@@ -401,15 +462,19 @@ export default function App() {
                 }
                 // Mirror server: each text submit bumps monthly texts and the daily counter.
                 // checkLimits only inspects keys present in the increments object — include daily explicitly.
+                // chars_processed (the fair-use monthly/daily meters) is deliberately NOT included
+                // here — that's charged per page, as each page is actually translated, in
+                // translatePageWithUsage above. Charging the whole document upfront meant opening
+                // one long book could exhaust a day's or month's fair-use allowance before a single
+                // page was read.
                 const guard = checkLimits(
                   preflight.counters,
                   preflight.limits,
-                  withCharsFairUseMirrors({
+                  {
                     texts_submitted: 1,
                     texts_submitted_today: 1,
                     pages_processed: pages.length,
-                    chars_processed: trimmed.length,
-                  }),
+                  },
                 )
                 if (!guard.allowed) {
                   setPlanLimitModal(
@@ -429,9 +494,9 @@ export default function App() {
               }
             }
 
+            // chars_processed is intentionally omitted here — see translatePageWithUsage above.
             const usageIncrements = {
               texts_submitted: 1,
-              chars_processed: trimmed.length,
               pages_processed: pages.length,
             }
             void trackUsage(usageIncrements)
@@ -486,7 +551,7 @@ export default function App() {
         setReadLastConsumedEnterNonce(0)
 
         void cacheRef.current
-          .loadPage(initialPageIndex, pageSourceText(pages[initialPageIndex]!), translatePageText)
+          .loadPage(initialPageIndex, pageSourceText(pages[initialPageIndex]!), translatePageWithUsage)
           .then(() => {
             bump()
             // Guests: count only after success; limit is enforced before submit (modal blocks new articles).
@@ -530,6 +595,7 @@ export default function App() {
       bump,
       articlePageSplitLimits,
       refreshUsagePreflight,
+      translatePageWithUsage,
       subscriptionStatus,
       isLapsed,
       navigate,
@@ -652,13 +718,13 @@ export default function App() {
 
     const timer = window.setTimeout(() => {
       void cache
-        .loadPage(nextIdx, pageSourceText(sourcePages[nextIdx]!), translatePageText)
+        .loadPage(nextIdx, pageSourceText(sourcePages[nextIdx]!), translatePageWithUsage)
         .then(bump)
         .catch(bump)
     }, ARTICLE_NEXT_PAGE_PREFETCH_DELAY_MS)
 
     return () => window.clearTimeout(timer)
-  }, [appState, articlePageIndex, totalPages, sourcePages, bump])
+  }, [appState, articlePageIndex, totalPages, sourcePages, bump, translatePageWithUsage])
 
   const retryArticlePage = useCallback(() => {
     if (totalPages === 0) return
@@ -667,10 +733,10 @@ export default function App() {
     cacheRef.current.clearPage(i)
     bump()
     void cacheRef.current
-      .loadPage(i, pageSourceText(sourcePages[i]!), translatePageText)
+      .loadPage(i, pageSourceText(sourcePages[i]!), translatePageWithUsage)
       .then(bump)
       .catch(bump)
-  }, [articlePageIndex, sourcePages, totalPages, bump])
+  }, [articlePageIndex, sourcePages, totalPages, bump, translatePageWithUsage])
 
   useEffect(() => {
     const messages: string[] = []
@@ -715,14 +781,14 @@ export default function App() {
         if (e && isRateLimitApiMessage(e)) {
           c.clearPage(i)
           void c
-            .loadPage(i, pageSourceText(pages[i]!), translatePageText)
+            .loadPage(i, pageSourceText(pages[i]!), translatePageWithUsage)
             .then(bump)
             .catch(bump)
         }
       }
     }
     bump()
-  }, [sourcePages, bump])
+  }, [sourcePages, bump, translatePageWithUsage])
 
   const viewportMain =
     "min-h-app flex flex-col max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden overflow-hidden"
@@ -812,7 +878,7 @@ export default function App() {
       }
       bump()
       void cache
-        .loadPage(prevIdx, pageSourceText(sourcePages[prevIdx]!), translatePageText)
+        .loadPage(prevIdx, pageSourceText(sourcePages[prevIdx]!), translatePageWithUsage)
         .then(() => {
           setArticlePageIndex((p) => p - 1)
           bump()
@@ -834,7 +900,7 @@ export default function App() {
       // once the shared promise settles.
       bump()
       void cache
-        .loadPage(idx, pageSourceText(sourcePages[idx]!), translatePageText)
+        .loadPage(idx, pageSourceText(sourcePages[idx]!), translatePageWithUsage)
         .then(() => {
           setArticlePageIndex((p) => p + 1)
           bump()
@@ -851,7 +917,7 @@ export default function App() {
       }
       bump()
       void cache
-        .loadPage(prevIdx, pageSourceText(sourcePages[prevIdx]!), translatePageText)
+        .loadPage(prevIdx, pageSourceText(sourcePages[prevIdx]!), translatePageWithUsage)
         .then(() => {
           setReadEnterLastStepNonce((n) => n + 1)
           setArticlePageIndex((p) => p - 1)
@@ -872,7 +938,7 @@ export default function App() {
       rateLimitModalSuppressedRef.current = false
       cache.clearPage(nextIdx)
       void cache
-        .loadPage(nextIdx, pageSourceText(sourcePages[nextIdx]!), translatePageText)
+        .loadPage(nextIdx, pageSourceText(sourcePages[nextIdx]!), translatePageWithUsage)
         .then(bump)
         .catch(bump)
     }
