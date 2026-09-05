@@ -9,6 +9,7 @@ import { lazyRoute } from "@/lib/lazy-route"
 // directly) recovers from a stale chunk reference after a deploy — see its docstring.
 const SettingsPage = lazyRoute(() => import("@/pages/settings"))
 const DiscoverPage = lazyRoute(() => import("@/pages/discover"))
+const LibraryPage = lazyRoute(() => import("@/pages/library"))
 const UpgradePage = lazyRoute(() => import("@/pages/upgrade"))
 const TermsPage = lazyRoute(() => import("@/pages/terms"))
 const PrivacyPage = lazyRoute(() => import("@/pages/privacy"))
@@ -65,6 +66,7 @@ import {
 } from "@/lib/subscription/usage"
 import type { ContentItem } from "@/lib/discover/content-data"
 import { fetchDiscoverCatalog } from "@/lib/discover/discover-catalog"
+import { getUserEpubText, type LibraryEpub } from "@/lib/storage/epub-library"
 import { supabase } from "@/lib/supabase"
 import { getTier } from "@/lib/subscription/tiers"
 
@@ -574,6 +576,29 @@ export default function App() {
     [handleTextSubmit, subscriptionStatus, isLapsed, user],
   )
 
+  const handleLibraryStartReading = useCallback(
+    async (book: LibraryEpub) => {
+      // Fetch a fresh user rather than trusting the `user` this callback closed over: this can
+      // fire moments after a first-ever upload created a brand-new anonymous session (see
+      // library page's handleFileSelected), before the auth context's own state has caught up.
+      const {
+        data: { user: freshUser },
+      } = await supabase.auth.getUser()
+      const saved = await getUserEpubText(freshUser, book.id)
+      const sourceText = saved?.text.trim() ?? ""
+      if (!sourceText) {
+        setError("Couldn't load this book. It may have been removed.")
+        return
+      }
+      // No separate over-the-limit preview/confirm step here (unlike Discover, which shows one
+      // inside its already-open ContentPreviewModal) -- handleTextSubmit already blocks and
+      // shows the plan-limit modal itself for a free-tier user opening an oversized book, same
+      // as pasting the same text directly would.
+      await handleTextSubmit(sourceText, { populateLandingDraft: false, contentId: book.id })
+    },
+    [handleTextSubmit],
+  )
+
   const handleBack = useCallback(() => {
     setAppState("landing")
     setSourcePages([])
@@ -973,6 +998,10 @@ export default function App() {
             <Route
               path="discover"
               element={<DiscoverPage onStartReading={handleDiscoverStartReading} />}
+            />
+            <Route
+              path="library"
+              element={<LibraryPage onStartReading={(book) => void handleLibraryStartReading(book)} />}
             />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

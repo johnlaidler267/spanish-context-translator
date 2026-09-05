@@ -158,6 +158,22 @@ export type ReadingProgressRow = {
   updated_at: string
 }
 
+/**
+ * Full database row from `public.user_epubs` (see
+ * supabase/migrations/0017_user_epub_library.sql). See UserSubscriptionRow for why `type`, not
+ * `interface`.
+ */
+export type UserEpubRow = {
+  id: string
+  user_id: string
+  title: string
+  file_name: string
+  body_text: string
+  char_count: number
+  created_at: string
+  updated_at: string
+}
+
 // ─── Insert types (omit server-generated fields) ──────────────────────────────
 
 export type UserSubscriptionInsert = Omit<
@@ -186,6 +202,11 @@ export type ReadingProgressInsert = Omit<
   "id" | "created_at" | "updated_at"
 > & { id?: string; updated_at?: string }
 
+export type UserEpubInsert = Omit<
+  UserEpubRow,
+  "id" | "created_at" | "updated_at"
+> & { id?: string }
+
 // ─── Update types (all fields optional except id) ────────────────────────────
 
 export type UserSubscriptionUpdate = Partial<UserSubscriptionInsert>
@@ -193,6 +214,7 @@ export type UsageRecordUpdate      = Partial<UsageRecordInsert>
 export type BillingInvoiceUpdate   = Partial<BillingInvoiceInsert>
 export type DiscoverItemUpdate     = Partial<Omit<DiscoverItemInsert, "id">>
 export type ReadingProgressUpdate  = Partial<Omit<ReadingProgressInsert, "id">>
+export type UserEpubUpdate         = Partial<Omit<UserEpubInsert, "id">>
 
 // ─── Supabase Database shape (pass to createClient<Database>) ────────────────
 
@@ -227,6 +249,12 @@ export interface Database {
         Row:    ReadingProgressRow
         Insert: ReadingProgressInsert
         Update: ReadingProgressUpdate
+        Relationships: []
+      }
+      user_epubs: {
+        Row:    UserEpubRow
+        Insert: UserEpubInsert
+        Update: UserEpubUpdate
         Relationships: []
       }
     }

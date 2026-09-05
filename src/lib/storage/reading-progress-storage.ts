@@ -74,6 +74,20 @@ export function hasReadingProgress(user: User | null, contentId: string): boolea
 }
 
 /**
+ * "X% through" for `contentId`, or null if never started or no `totalPages` was ever recorded
+ * for it (older entries, or a source that hasn't been paged through yet). Same rounding/clamp
+ * as the landing page's Continue Reading row (see landing-continue-reading.tsx) -- pulled out
+ * here so the personal EPUB library list (src/pages/library) can show the same indicator
+ * without duplicating the formula.
+ */
+export function getReadingProgressPercent(user: User | null, contentId: string): number | null {
+  const scoped = readAll()[scopeKeyFor(user)]
+  const entry = scoped?.[contentId]
+  if (!entry || !entry.totalPages || entry.totalPages <= 0) return null
+  return Math.min(100, Math.max(1, Math.round(((entry.pageIndex + 1) / entry.totalPages) * 100)))
+}
+
+/**
  * Records `pageIndex` (0-based) as the last-read position for `contentId`. `totalPages`,
  * when given, is stored alongside it purely so a "X% through" indicator (landing page's
  * Continue Reading row) has something to divide by -- it's not used for resume logic.

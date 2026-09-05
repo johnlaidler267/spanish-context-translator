@@ -41,8 +41,12 @@ export function LandingShellLayout({
   // fixed/overlay header, so its own type-badge pills end up visually
   // colliding with the header's buttons. `stacked` reserves real space
   // in-flow instead (same fix already used on /upgrade for the same reason).
+  // The personal EPUB library page reuses the same card grid (see
+  // src/pages/library/index.tsx), so it needs the same treatment.
   const isDiscover = location.pathname === "/discover"
-  const headerVariant = isDiscover ? "stacked" : "fixed"
+  const isLibrary = location.pathname === "/library"
+  const isCardGridPage = isDiscover || isLibrary
+  const headerVariant = isCardGridPage ? "stacked" : "fixed"
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarInsetPx, setSidebarInsetPx] = useState(0)
   const onSidebarLayoutChange = useCallback((layout: LandingSidebarLayout) => {
@@ -74,7 +78,7 @@ export function LandingShellLayout({
       <div
         className={
           "flex min-h-0 min-w-0 flex-1 flex-col max-md:min-h-0 max-md:flex-1" +
-          (isDiscover ? " discover-shell-bg" : "")
+          (isCardGridPage ? " discover-shell-bg" : "")
         }
       >
         {!readingActive ? (
@@ -99,11 +103,11 @@ export function LandingShellLayout({
             // backdrop of its own -- a translucent blur, not a solid fill,
             // since it now overlaps scrolled card content.
             backdropClassName={
-              isDiscover
+              isCardGridPage
                 ? "bg-background/75 backdrop-blur-lg backdrop-saturate-150 border-b border-border/35 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.35)] md:border-b-0 md:bg-transparent md:shadow-none md:backdrop-blur-none md:backdrop-saturate-100"
                 : undefined
             }
-            stickyStacked={isDiscover}
+            stickyStacked={isCardGridPage}
           />
         ) : null}
         <Outlet context={outletContext} />
