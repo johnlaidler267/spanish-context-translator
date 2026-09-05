@@ -279,7 +279,7 @@ function UsageBar({ metric, counters, limits, labelSuffix = "" }: UsageBarProps)
       : "bg-muted/60"
 
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between text-sm font-sans leading-tight">
         <span
           className={cn(
@@ -645,18 +645,21 @@ export function SubscriptionStatus({
           )}
         </p>
 
-        <div className="space-y-2">
+        <div className="divide-y divide-border/50">
           {MONTHLY_BAR_METRICS.map(metric => (
-            <UsageBar key={metric} metric={metric} counters={counters} limits={limits} />
+            <div key={metric} className="py-2.5 first:pt-0 last:pb-0">
+              <UsageBar metric={metric} counters={counters} limits={limits} />
+            </div>
           ))}
 
           {DAILY_BAR_METRICS.filter(m => limits[m] !== null).map(metric => (
-            <UsageBar
-              key={metric}
-              metric={metric}
-              counters={counters}
-              limits={limits}
-            />
+            <div key={metric} className="py-2.5 first:pt-0 last:pb-0">
+              <UsageBar
+                metric={metric}
+                counters={counters}
+                limits={limits}
+              />
+            </div>
           ))}
 
           {!compact && (
@@ -673,7 +676,7 @@ export function SubscriptionStatus({
               ]
                 .filter(({ metric }) => counters[metric] > 0)
                 .map(({ metric, label }) => (
-                  <div key={metric} className="flex items-center justify-between text-xs font-sans text-muted-foreground">
+                  <div key={metric} className="flex items-center justify-between text-xs font-sans text-muted-foreground py-2.5 first:pt-0 last:pb-0">
                     <span>{label}</span>
                     <span className="tabular-nums text-foreground">
                       {counters[metric].toLocaleString()}
