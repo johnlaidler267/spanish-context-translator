@@ -294,8 +294,7 @@ function UsageBar({ metric, counters, limits, labelSuffix = "" }: UsageBarProps)
           "tabular-nums",
           isOver ? "text-destructive dark:text-red-400 font-medium" : isWarn ? "text-amber-600 dark:text-amber-400" : "text-foreground",
         )}>
-          {status.current.toLocaleString()}
-          <span className="text-muted-foreground">/{status.limit.toLocaleString()}</span>
+          {pct}% used
         </span>
       </div>
 
@@ -307,7 +306,7 @@ function UsageBar({ metric, counters, limits, labelSuffix = "" }: UsageBarProps)
           role="progressbar"
           aria-valuenow={status.current}
           aria-valuemax={status.limit}
-          aria-label={`${label}: ${status.current} of ${status.limit}`}
+          aria-label={`${label}: ${status.current.toLocaleString()} of ${status.limit.toLocaleString()} (${pct}%)`}
         />
       </div>
     </div>
