@@ -419,7 +419,21 @@ export function LandingScreen({
   return (
     <>
       <div
-        className="landing-page flex flex-col items-stretch md:items-center md:justify-start md:pt-16 md:pb-[clamp(2rem,7vh,5rem)] md:overflow-y-auto min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden px-3 md:px-8"
+        className="landing-page md:overflow-y-auto min-h-app max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden"
+      >
+      {/*
+        Background art lives in its own wrapper (rather than directly on .landing-page)
+        so its height comes from this wrapper's natural content size instead of
+        .landing-page's own box. .landing-page is the scroll container here (md:overflow-y-auto),
+        so its box height is capped to the visible viewport regardless of how tall the
+        content actually is -- an img sized off *that* box (height: 100% of .landing-page)
+        stops exactly at the fold and leaves the plain page background exposed once a
+        reader scrolls past it. This wrapper isn't a scroll container, so it grows to the
+        content's full height (matching .landing-page's scrollHeight), and the art's
+        height: 100% now tracks that instead.
+      */}
+      <div
+        className="landing-page-art-frame flex flex-col items-stretch md:items-center md:justify-start md:pt-16 md:pb-[clamp(2rem,7vh,5rem)] min-h-app px-3 md:px-8"
         style={{ position: "relative" }}
       >
         <img
@@ -647,6 +661,7 @@ export function LandingScreen({
           }
         />
         </div>
+      </div>
       </div>
       {learnError && (
         <AppErrorModal

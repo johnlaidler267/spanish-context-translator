@@ -879,7 +879,13 @@ article span {
   filter: brightness(1.2) saturate(0.92);
 }
 
-/* Landing page background image — faded behind content */
+/* Landing page background image — faded behind content. The art itself is anchored to
+   .landing-page-art-frame (see landing-screen.tsx), not .landing-page: .landing-page is
+   the scroll container on md+ (md:overflow-y-auto), so its own box is capped to the
+   visible viewport no matter how tall the content is, and an element sized off that box
+   (height: 100%) would stop at the fold instead of covering the full scrollable height.
+   The frame isn't a scroll container, so it grows with its content and the art's
+   height: 100% tracks that instead. */
 .landing-page {
   position: relative;
 }
@@ -899,21 +905,6 @@ article span {
     rgba(0, 0, 0, 0.55) 68%,
     #000 100%
   );
-}
-.landing-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  opacity: 0.22;
-  pointer-events: none;
-  z-index: 0;
-}
-.landing-page > *:not(.landing-bg) {
-  position: relative;
-  z-index: 1;
 }
 
 /* Hero — no backdrop blur (removed: slow on mobile, visible during theme transitions) */
