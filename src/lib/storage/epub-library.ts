@@ -1,5 +1,7 @@
 import type { User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
+import { clearReadingProgress } from "@/lib/storage/reading-progress-storage"
+import { clearCachedTranslation } from "@/lib/storage/translation-cache-storage"
 
 /**
  * Personal EPUB library: lets a signed-in (including anonymous/guest) user come back to books
@@ -154,7 +156,15 @@ export async function getUserEpubText(
   return { title: data.title, text: data.body_text }
 }
 
-/** Removes a saved book. Returns false if nothing was deleted (already gone, not this user's). */
+/**
+ * Removes a saved book. Returns false if nothing was deleted (already gone, not this user's).
+ *
+ * Also clears this book's reading-progress and translation-cache localStorage entries -- both
+ * are keyed by this table's row id (same `content_id`/`cacheKey` convention as a Discover catalog
+ * item, see this module's docstring), so left alone they'd just sit there as dead weight for a
+ * book that no longer exists. Best-effort, same as everything else here: neither store throws
+ * on a missing/already-clear key, so this can't turn a successful DB delete into a failed one.
+ */
 export async function deleteUserEpub(user: User | null, id: string): Promise<boolean> {
   if (!user) return false
   const { data, error } = await supabase
@@ -167,5 +177,10 @@ export async function deleteUserEpub(user: User | null, id: string): Promise<boo
     console.warn("[epub-library] delete failed:", error.message)
     return false
   }
-  return (data?.length ?? 0) > 0
+  const deleted = (data?.length ?? 0) > 0
+  if (deleted) {
+    clearReadingProgress(user, id)
+    clearCachedTranslation(user, id)
+  }
+  return deleted
 }

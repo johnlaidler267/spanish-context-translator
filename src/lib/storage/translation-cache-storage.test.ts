@@ -91,6 +91,23 @@ describe("translation-cache-storage", () => {
     expect(getCachedTranslationPage(user, "newest-book", 0, big("d"))).toEqual(items(big("d")))
   })
 
+  it("clearCachedTranslation removes only the named content's pages", async () => {
+    const { getCachedTranslationPage, setCachedTranslationPage, clearCachedTranslation } =
+      await import("@/lib/storage/translation-cache-storage")
+    setCachedTranslationPage(user, "book-1", 0, "hola", items("hola"))
+    setCachedTranslationPage(user, "book-2", 0, "adios", items("adios"))
+
+    clearCachedTranslation(user, "book-1")
+
+    expect(getCachedTranslationPage(user, "book-1", 0, "hola")).toBeNull()
+    expect(getCachedTranslationPage(user, "book-2", 0, "adios")).toEqual(items("adios"))
+  })
+
+  it("clearCachedTranslation is a no-op when nothing was cached for that key", async () => {
+    const { clearCachedTranslation } = await import("@/lib/storage/translation-cache-storage")
+    expect(() => clearCachedTranslation(user, "never-cached")).not.toThrow()
+  })
+
   it("produces the same pasted-text cache key for identical text and a different one otherwise", async () => {
     const { cacheKeyForPastedText } = await import("@/lib/storage/translation-cache-storage")
     expect(cacheKeyForPastedText("hola mundo")).toBe(cacheKeyForPastedText("hola mundo"))

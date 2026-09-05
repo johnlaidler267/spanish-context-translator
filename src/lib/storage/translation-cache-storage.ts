@@ -103,6 +103,20 @@ function evictUntilUnderBudget(scoped: ScopedCache): void {
   }
 }
 
+/** Removes every cached page for `cacheKey` (e.g. when the underlying content is deleted, such
+ *  as a library book) -- a no-op if nothing was cached for it. Mirrors `clearReadingProgress`
+ *  in reading-progress-storage.ts, which is keyed the same way for the same content. */
+export function clearCachedTranslation(user: User | null, cacheKey: string): void {
+  const all = readAll()
+  const scope = scopeKeyFor(user)
+  const scoped = all[scope]
+  if (!scoped || !(cacheKey in scoped)) return
+  const next = { ...scoped }
+  delete next[cacheKey]
+  all[scope] = next
+  writeAll(all)
+}
+
 /**
  * Returns the cached translation for `cacheKey`'s page `pageIndex` if one is stored AND its
  * stamped text hash still matches `pageText` -- null otherwise (never cached, evicted, or the

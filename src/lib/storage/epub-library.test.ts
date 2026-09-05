@@ -1,5 +1,21 @@
-import { describe, it, expect, beforeEach, vi } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import type { User } from "@supabase/supabase-js"
+
+// Same in-memory localStorage stub as reading-progress-storage.test.ts / translation-cache-
+// storage.test.ts -- needed here too now that deleteUserEpub reaches into both of those stores.
+function makeMemoryStorage(): Storage {
+  const store = new Map<string, string>()
+  return {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+    clear: () => store.clear(),
+    key: (i: number) => Array.from(store.keys())[i] ?? null,
+    get length() {
+      return store.size
+    },
+  }
+}
 
 /**
  * Generic fluent mock for a `supabase.from(table)...` chain: every builder method just
@@ -47,7 +63,11 @@ describe("epub-library", () => {
     nextResult = { data: null, error: null }
     lastBuilder = null
     fromMock.mockClear()
+    vi.stubGlobal("window", {})
+    vi.stubGlobal("localStorage", makeMemoryStorage())
   })
+
+  afterEach(() => vi.unstubAllGlobals())
 
   describe("listUserEpubs", () => {
     it("returns [] without hitting the network for a signed-out user", async () => {
@@ -192,6 +212,45 @@ describe("epub-library", () => {
       nextResult = { data: null, error: { message: "boom" } }
       const { deleteUserEpub } = await import("@/lib/storage/epub-library")
       expect(await deleteUserEpub(user, "epub-1")).toBe(false)
+    })
+
+    it("clears the book's reading-progress and translation-cache entries on a real delete", async () => {
+      const { deleteUserEpub } = await import("@/lib/storage/epub-library")
+      const { setReadingProgress, getReadingProgress } = await import(
+        "@/lib/storage/reading-progress-storage"
+      )
+      const { setCachedTranslationPage, getCachedTranslationPage } = await import(
+        "@/lib/storage/translation-cache-storage"
+      )
+
+      // Seed both stores for this book, keyed by its id -- same content_id/cacheKey convention
+      // deleteUserEpub itself now relies on.
+      setReadingProgress(user, "epub-1", 3, 10)
+      setCachedTranslationPage(user, "epub-1", 0, "hola", [
+        { type: "text", source: "hola", translation: "hello" } as never,
+      ])
+      // A different book's entries should survive.
+      setReadingProgress(user, "epub-2", 1, 5)
+
+      nextResult = { data: [{ id: "epub-1" }], error: null }
+      expect(await deleteUserEpub(user, "epub-1")).toBe(true)
+
+      expect(getReadingProgress(user, "epub-1")).toBeNull()
+      expect(getCachedTranslationPage(user, "epub-1", 0, "hola")).toBeNull()
+      expect(getReadingProgress(user, "epub-2")).toBe(1)
+    })
+
+    it("leaves reading-progress and translation-cache entries alone when nothing was deleted", async () => {
+      const { deleteUserEpub } = await import("@/lib/storage/epub-library")
+      const { setReadingProgress, getReadingProgress } = await import(
+        "@/lib/storage/reading-progress-storage"
+      )
+
+      setReadingProgress(user, "epub-1", 3, 10)
+      nextResult = { data: [], error: null }
+      expect(await deleteUserEpub(user, "epub-1")).toBe(false)
+
+      expect(getReadingProgress(user, "epub-1")).toBe(3)
     })
   })
 })
