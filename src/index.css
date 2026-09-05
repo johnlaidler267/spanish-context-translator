@@ -422,6 +422,26 @@ html.lector-reading-session .global-corner-letter {
     min-height: 100svh;
     min-height: 100dvh;
   }
+  /*
+   * .discover-scroll-surface (Discover and Library both render this as their
+   * page body -- see each page's own top-of-file comment) keeps its own
+   * `overflow-y-auto` class unconditionally, from the JSX, since that's the
+   * box that actually scrolls on *desktop*. Nothing above neutralizes that on
+   * mobile, so despite the "html is the one true scroll container" comment
+   * above, this element was *also* independently scrollable on mobile -- two
+   * nested scroll containers, one directly inside the other. On a real
+   * touchscreen (not exercised by this repo's Playwright taps, which never
+   * jitter mid-gesture the way a finger does), a tap with any perceptible
+   * movement is ambiguous between "tap" and "start scrolling the inner box",
+   * and the browser can resolve that by cancelling the click rather than
+   * firing it -- which reads as the tap not registering, with a second,
+   * stiller tap "finally" working. Forcing this back to overflow:visible on
+   * mobile removes the inner scroll container entirely, leaving html as the
+   * only one, matching the comment's actual intent.
+   */
+  html.mobile-scroll-discover .discover-scroll-surface {
+    overflow: visible !important;
+  }
 
   /*
    * Route transitions / landing enter: temporarily allow overflow so
