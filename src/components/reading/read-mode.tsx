@@ -589,6 +589,7 @@ export function ReadMode({
           size="icon"
           onClick={goToPrevious}
           disabled={prevDisabled}
+          data-page-nav
           className="h-12 w-12 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30"
         >
           {showPrevPageLoading ? (
@@ -608,6 +609,7 @@ export function ReadMode({
           size="icon"
           onClick={goToNext}
           disabled={nextDisabled}
+          data-page-nav
           className="h-12 w-12 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30"
         >
           {atLastStep && nextPageLoading && canGoNextArticle ? (

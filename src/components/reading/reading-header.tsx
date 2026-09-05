@@ -17,6 +17,12 @@ interface ReadingHeaderProps {
   /** Read Spanish chunk text aloud when the pointer explores chunks (Web Speech API). */
   hoverTtsEnabled: boolean
   onHoverTtsChange: (enabled: boolean) => void
+  /**
+   * False fades the whole toolbar out and disables its hit area (see App.tsx's idle
+   * timer) — tapping the reading surface elsewhere brings it back. Defaults to true
+   * so callers that don't manage this (none currently) get the always-on look.
+   */
+  visible?: boolean
 }
 
 /** Mobile band height — inline minHeight on the mobile gradient/img so rem tweaks always apply (Tailwind var() on children was unreliable). */
@@ -30,9 +36,14 @@ export function ReadingHeader({
   onThemeChange,
   hoverTtsEnabled,
   onHoverTtsChange,
+  visible = true,
 }: ReadingHeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
+    <header
+      className="reading-toolbar fixed top-0 left-0 right-0 z-40 pointer-events-none"
+      style={{ opacity: visible ? 1 : 0 }}
+      aria-hidden={!visible}
+    >
       {/* Mobile: gradient height = HEADER_BAND_MOBILE (inline). Desktop: short bar only. */}
       <div
         className="absolute inset-x-0 top-0 z-[1] bg-gradient-to-b from-background/80 via-background/40 to-transparent md:hidden"
@@ -44,7 +55,11 @@ export function ReadingHeader({
         <Link
           to="/"
           onClick={onBack}
-          className="back-nav-control pointer-events-auto flex h-9 w-9 max-md:h-11 max-md:w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/35"
+          tabIndex={visible ? undefined : -1}
+          className={cn(
+            "back-nav-control flex h-9 w-9 max-md:h-11 max-md:w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/35",
+            visible ? "pointer-events-auto" : "pointer-events-none",
+          )}
           aria-label="Back to home"
         >
           <ChevronLeft className="h-5 w-5 max-md:h-[1.35rem] max-md:w-[1.35rem]" strokeWidth={2.25} aria-hidden />
@@ -53,9 +68,10 @@ export function ReadingHeader({
         {/* Right side: one quiet control rail so mode + reader actions feel like a single toolset. */}
         <div
           className={cn(
-            "pointer-events-auto flex items-center gap-0.5 rounded-[0.85rem] border px-1 py-0.5",
+            "flex items-center gap-0.5 rounded-[0.85rem] border px-1 py-0.5",
             "border-border/45 bg-background/62 shadow-[0_4px_16px_rgba(58,51,46,0.05)] backdrop-blur-sm",
             "dark:border-white/8 dark:bg-[rgba(26,26,26,0.58)] dark:shadow-[0_6px_18px_rgba(0,0,0,0.16)]",
+            visible ? "pointer-events-auto" : "pointer-events-none",
           )}
         >
           <ModeToggle mode={mode} onModeChange={onModeChange} />

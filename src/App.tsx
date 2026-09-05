@@ -99,6 +99,8 @@ const DISCOVER_PREFETCH_DELAY_MS = 2000
  * normal reading pace has the next page ready before Next is tapped.
  */
 const ARTICLE_NEXT_PAGE_PREFETCH_DELAY_MS = 4000
+/** Reading toolbar (back arrow + mode/theme/settings rail): idle time before it fades out. */
+const TOOLBAR_IDLE_HIDE_MS = 3000
 
 type UsagePreflightSnapshot = {
   counters: UsageCounters
@@ -131,6 +133,15 @@ export default function App() {
   }, [landingDraft])
   const [viewMode, setViewMode] = useState<ViewMode>("article")
   const [hoverTtsEnabled, setHoverTtsEnabled] = useState(false)
+  /**
+   * Reading toolbar (back arrow + mode/theme/settings rail): fades out after a short
+   * idle period so it doesn't sit over the text, and reappears on a tap on the reading
+   * surface. Taps that land on a word (its own translation popup) or a page-turn arrow
+   * (`data-page-nav`) are excluded — see `handleReadingSurfaceTap` below — so this never
+   * competes with those gestures.
+   */
+  const [toolbarVisible, setToolbarVisible] = useState(true)
+  const toolbarHideTimerRef = useRef<number | null>(null)
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [displayName, setDisplayName] = useState(() =>
     getEffectiveDisplayName(null),
@@ -177,6 +188,60 @@ export default function App() {
     document.documentElement.classList.toggle("lector-reading-session", appState === "reading")
     return () => document.documentElement.classList.remove("lector-reading-session")
   }, [appState])
+
+  const clearToolbarHideTimer = useCallback(() => {
+    if (toolbarHideTimerRef.current != null) {
+      window.clearTimeout(toolbarHideTimerRef.current)
+      toolbarHideTimerRef.current = null
+    }
+  }, [])
+
+  const scheduleToolbarHide = useCallback(() => {
+    clearToolbarHideTimer()
+    toolbarHideTimerRef.current = window.setTimeout(() => {
+      toolbarHideTimerRef.current = null
+      setToolbarVisible(false)
+    }, TOOLBAR_IDLE_HIDE_MS)
+  }, [clearToolbarHideTimer])
+
+  /** Show the toolbar again and restart the idle-hide countdown. */
+  const revealToolbar = useCallback(() => {
+    setToolbarVisible(true)
+    scheduleToolbarHide()
+  }, [scheduleToolbarHide])
+
+  /** Fresh reading session: start visible, and start the idle countdown right away. */
+  useEffect(() => {
+    if (appState !== "reading") {
+      clearToolbarHideTimer()
+      return
+    }
+    setToolbarVisible(true)
+    scheduleToolbarHide()
+    return clearToolbarHideTimer
+  }, [appState, clearToolbarHideTimer, scheduleToolbarHide])
+
+  /**
+   * Tap-to-reveal for the reading surface (article body / read-mode sentence). Skips taps that
+   * are already spoken for: a word (`data-chunk`, plus its `data-popup`/`data-details-box` UI)
+   * keeps opening its own translation popup, and a page-turn control (`data-page-nav`, the
+   * Previous/Next buttons in both modes) keeps turning pages — neither should also toggle the
+   * toolbar. Anything else on the surface (blank margin, plain text, background) reveals it.
+   */
+  const handleReadingSurfaceTap = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (
+        target.closest(
+          "[data-chunk],[data-popup],[data-details-box],[data-app-error-modal],[data-page-nav]",
+        )
+      ) {
+        return
+      }
+      revealToolbar()
+    },
+    [revealToolbar],
+  )
 
   const cacheRef = useRef(new TranslationCache())
   /**
@@ -966,9 +1031,14 @@ export default function App() {
             onThemeChange={setReadingTheme}
             hoverTtsEnabled={hoverTtsEnabled}
             onHoverTtsChange={setHoverTtsEnabled}
+            visible={toolbarVisible}
           />
         </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden animate-fade-in-up max-md:overflow-hidden md:overflow-y-auto">
+        <div
+          data-testid="reading-surface"
+          className="flex min-h-0 flex-1 flex-col overflow-x-hidden animate-fade-in-up max-md:overflow-hidden md:overflow-y-auto"
+          onClick={handleReadingSurfaceTap}
+        >
           {viewMode === "article" && totalPages > 0 ? (
             <div className="flex w-full min-h-0 flex-1 flex-col">
               <ArticleContent

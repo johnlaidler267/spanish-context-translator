@@ -532,6 +532,7 @@ export function ArticleContent({
             disabled={pagination.pageIndex <= 0}
             onClick={pagination.onPrevious}
             aria-label="Previous page"
+            data-page-nav
           >
             {pagination.prevPageLoading ? (
               <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
@@ -572,6 +573,7 @@ export function ArticleContent({
               }
               onClick={pagination.onNext}
               aria-label="Next page"
+              data-page-nav
             >
               {pagination.nextPageLoading ? (
                 <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
