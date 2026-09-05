@@ -36,6 +36,7 @@ import {
   type ReconciledItem,
 } from "@/lib/translate"
 import { TranslationCache } from "@/lib/translation-cache"
+import { cacheKeyForPastedText } from "@/lib/storage/translation-cache-storage"
 import type { ViewMode } from "@/components/reading/mode-toggle"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
 import { getStoredLandingDraft, setStoredLandingDraft } from "@/lib/storage/landing-draft-storage"
@@ -542,7 +543,13 @@ export default function App() {
         const initialPageIndex =
           savedPageIndex != null ? Math.min(Math.max(savedPageIndex, 0), pages.length - 1) : 0
 
-        cacheRef.current = new TranslationCache()
+        // Keys the localStorage-persisted translation cache (see translation-cache-storage.ts):
+        // a Discover item / Library book reuses its stable id so reopening it later can skip
+        // re-translating pages already done; a plain pasted/landing submission has no id, so it
+        // falls back to a hash of the text itself -- re-pasting the exact same text still hits
+        // the cache, anything else is treated as different content.
+        const translationCacheKey = contentId ?? cacheKeyForPastedText(trimmed)
+        cacheRef.current = new TranslationCache({ user, cacheKey: translationCacheKey })
         setSourcePages(pages)
         setArticlePageIndex(initialPageIndex)
         setActiveReadingContentId(contentId ?? null)

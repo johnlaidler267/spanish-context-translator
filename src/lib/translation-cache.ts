@@ -1,5 +1,10 @@
+import type { User } from "@supabase/supabase-js"
 import { isRetryableTranslationFailure } from "@/lib/api-errors"
 import type { ReconciledItem } from "@/lib/translate"
+import {
+  getCachedTranslationPage,
+  setCachedTranslationPage,
+} from "@/lib/storage/translation-cache-storage"
 
 const AUTO_RETRY_DELAYS_MS = [0, 900, 2200, 4500] as const
 const AUTO_RETRY_MAX_ATTEMPTS = AUTO_RETRY_DELAYS_MS.length
@@ -28,14 +33,33 @@ async function translateWithAutoRetries(
   throw lastErr
 }
 
+/** Identifies which localStorage-backed cache entry (see translation-cache-storage.ts) this
+ *  in-memory TranslationCache should read from / write through to, if any. Omitted entirely
+ *  (no persistence) for a session with nothing stable to key by. */
+export interface TranslationCachePersistOptions {
+  user: User | null
+  cacheKey: string
+}
+
 /**
  * Per-page translation cache shared by Article and Read modes.
  * Failed pages are not stored as data — use getError + clearPage to retry.
+ *
+ * Optionally backed by a localStorage-persisted L2 cache (see translation-cache-storage.ts):
+ * pass `persist` and a page that isn't in memory yet is checked there before falling back to
+ * translating it, and a freshly-translated page is written there so it survives this
+ * TranslationCache instance being thrown away (every `handleTextSubmit` in App.tsx creates a
+ * new one) and a full page reload / new browser session on top of that.
  */
 export class TranslationCache {
   private resolved = new Map<number, ReconciledItem[]>()
   private errors = new Map<number, string>()
   private inFlight = new Map<number, Promise<ReconciledItem[]>>()
+  private readonly persist: TranslationCachePersistOptions | null
+
+  constructor(persist: TranslationCachePersistOptions | null = null) {
+    this.persist = persist
+  }
 
   getPage(index: number): ReconciledItem[] | null {
     return this.resolved.get(index) ?? null
@@ -77,11 +101,26 @@ export class TranslationCache {
     const existing = this.inFlight.get(index)
     if (existing) return existing
 
+    // L2 cache: a page translated in an earlier session for the same content. Only used when
+    // its stored text hash still matches this exact page's source text (page-splitting can
+    // shift page boundaries between sessions, e.g. a different viewport) -- a mismatch just
+    // falls through to translating it fresh rather than showing the wrong text.
+    if (this.persist) {
+      const persisted = getCachedTranslationPage(this.persist.user, this.persist.cacheKey, index, pageText)
+      if (persisted) {
+        this.resolved.set(index, persisted)
+        return Promise.resolve(persisted)
+      }
+    }
+
     const p = translateWithAutoRetries(() => translateFn(pageText))
       .then((items) => {
         this.resolved.set(index, items)
         this.errors.delete(index)
         this.inFlight.delete(index)
+        if (this.persist) {
+          setCachedTranslationPage(this.persist.user, this.persist.cacheKey, index, pageText, items)
+        }
         return items
       })
       .catch((e) => {
