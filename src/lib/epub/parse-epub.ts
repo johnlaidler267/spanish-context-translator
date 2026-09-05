@@ -32,6 +32,12 @@ export interface ParsedEpub {
   text: string
   /** Book title from the OPF's <dc:title>, if present. */
   title: string | null
+  /**
+   * The book's cover image, as a `data:` URL, if one was found and small enough to keep --
+   * see `extractCoverImage`'s docstring. `null` for an EPUB with no cover, an unrecognized
+   * image type, or a cover over `MAX_COVER_SOURCE_BYTES`.
+   */
+  coverImage: string | null
 }
 
 function parseXml(xml: string, sourceLabel: string): Document {
@@ -80,10 +86,25 @@ interface SpineEntry {
   path: string
 }
 
+interface ManifestItem {
+  id: string
+  /** Href exactly as written in the manifest -- resolve with `resolveRelativePath` before use. */
+  href: string
+  mediaType: string | null
+  /** EPUB3 `properties` attribute, e.g. "cover-image nav" -- space-separated, so check with a
+   *  word match rather than equality. */
+  properties: string | null
+}
+
 async function readManifestAndSpine(
   zip: EpubZip,
   opfPath: string,
-): Promise<{ spine: SpineEntry[]; title: string | null }> {
+): Promise<{
+  spine: SpineEntry[]
+  title: string | null
+  manifestItems: ManifestItem[]
+  metaCoverId: string | null
+}> {
   const opfFile = zip.file(opfPath)
   if (!opfFile) {
     throw new EpubParseError("This doesn't look like a valid EPUB file (OPF file referenced but missing).")
@@ -91,11 +112,20 @@ async function readManifestAndSpine(
   const opfXml = await opfFile.async("text")
   const doc = parseXml(opfXml, "the OPF package document")
 
+  const manifestItems: ManifestItem[] = []
   const manifestById = new Map<string, string>() // id -> href
   for (const item of Array.from(doc.getElementsByTagName("item"))) {
     const id = item.getAttribute("id")
     const href = item.getAttribute("href")
-    if (id && href) manifestById.set(id, href)
+    if (id && href) {
+      manifestById.set(id, href)
+      manifestItems.push({
+        id,
+        href,
+        mediaType: item.getAttribute("media-type"),
+        properties: item.getAttribute("properties"),
+      })
+    }
   }
 
   const spine: SpineEntry[] = []
@@ -110,7 +140,104 @@ async function readManifestAndSpine(
   const titleEl = doc.getElementsByTagName("dc:title")[0] ?? doc.getElementsByTagName("title")[0]
   const title = titleEl?.textContent?.trim() || null
 
-  return { spine, title }
+  // EPUB2's way of pointing at the cover: <meta name="cover" content="<manifest id>"/>, as
+  // opposed to EPUB3's `properties="cover-image"` on the manifest item itself (read in
+  // findCoverItem below).
+  let metaCoverId: string | null = null
+  for (const meta of Array.from(doc.getElementsByTagName("meta"))) {
+    if (meta.getAttribute("name") === "cover") {
+      metaCoverId = meta.getAttribute("content")
+      break
+    }
+  }
+
+  return { spine, title, manifestItems, metaCoverId }
+}
+
+/**
+ * Locates the manifest item for the book's cover image, trying (in order) the ways real-world
+ * EPUBs actually mark one:
+ *   1. EPUB3: the manifest item with `properties="cover-image"` (possibly among other
+ *      space-separated properties).
+ *   2. EPUB2: `<meta name="cover" content="some-id">` in the OPF metadata, pointing at a
+ *      manifest item by id.
+ *   3. A manifest item whose id or href looks like "cover" (e.g. id="cover-image",
+ *      href="images/cover.jpg") and whose media-type is an image -- some EPUBs skip both of
+ *      the above and just rely on this convention.
+ * Returns null (no error) when none of these match -- most EPUBs *do* have a cover, but not
+ * having one is a normal, unremarkable case, not something worth failing the whole parse over.
+ */
+function findCoverItem(manifestItems: ManifestItem[], metaCoverId: string | null): ManifestItem | null {
+  const isImage = (item: ManifestItem) =>
+    item.mediaType?.startsWith("image/") ?? /\.(jpe?g|png|gif|webp|svg)$/i.test(item.href)
+
+  const byProperties = manifestItems.find((item) => item.properties?.split(/\s+/).includes("cover-image"))
+  if (byProperties) return byProperties
+
+  if (metaCoverId) {
+    const byMetaId = manifestItems.find((item) => item.id === metaCoverId)
+    if (byMetaId && isImage(byMetaId)) return byMetaId
+  }
+
+  const byConvention = manifestItems.find((item) => isImage(item) && /cover/i.test(`${item.id} ${item.href}`))
+  return byConvention ?? null
+}
+
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+}
+
+function guessMimeType(mediaType: string | null, path: string): string | null {
+  if (mediaType) return mediaType
+  const ext = path.split(".").pop()?.toLowerCase()
+  return (ext && MIME_BY_EXTENSION[ext]) || null
+}
+
+/** Above this many raw (pre-base64) bytes, a cover is skipped rather than stored -- keeps
+ *  `user_epubs.cover_image` rows small; see supabase/migrations for the matching column cap. */
+export const MAX_COVER_SOURCE_BYTES = 300_000
+
+/** btoa() only accepts a "binary string", and spreading a large Uint8Array into
+ *  String.fromCharCode blows the call stack -- chunk it instead. */
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const CHUNK_SIZE = 0x8000
+  let binary = ""
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK_SIZE))
+  }
+  return btoa(binary)
+}
+
+/**
+ * Extracts the book's cover image as a `data:` URL, if the EPUB has one, it's a recognizable
+ * image type, and it's small enough to be worth storing (see `MAX_COVER_SOURCE_BYTES`). Never
+ * throws -- a missing/oversized/unreadable cover just means no image, not a parse failure.
+ */
+async function extractCoverImage(
+  zip: EpubZip,
+  opfPath: string,
+  manifestItems: ManifestItem[],
+  metaCoverId: string | null,
+): Promise<string | null> {
+  const coverItem = findCoverItem(manifestItems, metaCoverId)
+  if (!coverItem) return null
+
+  const coverPath = resolveRelativePath(opfPath, coverItem.href)
+  const coverFile = zip.file(coverPath)
+  if (!coverFile) return null
+
+  const mimeType = guessMimeType(coverItem.mediaType, coverPath)
+  if (!mimeType) return null
+
+  const bytes = await coverFile.async("uint8array").catch(() => null)
+  if (!bytes || bytes.byteLength === 0 || bytes.byteLength > MAX_COVER_SOURCE_BYTES) return null
+
+  return `data:${mimeType};base64,${uint8ArrayToBase64(bytes)}`
 }
 
 const BLOCK_SELECTOR = "p, div, h1, h2, h3, h4, h5, h6, li, blockquote, td, br"
@@ -154,7 +281,7 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
   })
 
   const opfPath = await findOpfPath(zip)
-  const { spine, title } = await readManifestAndSpine(zip, opfPath)
+  const { spine, title, manifestItems, metaCoverId } = await readManifestAndSpine(zip, opfPath)
   if (spine.length === 0) {
     throw new EpubParseError("This EPUB doesn't have any readable chapters.")
   }
@@ -173,7 +300,9 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
     throw new EpubParseError("Couldn't find any readable text in this EPUB.")
   }
 
-  return { text, title }
+  const coverImage = await extractCoverImage(zip, opfPath, manifestItems, metaCoverId)
+
+  return { text, title, coverImage }
 }
 
 /**

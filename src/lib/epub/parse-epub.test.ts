@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from "vitest"
 import JSZip from "jszip"
-import { parseEpub, EpubParseError, truncateForPreview } from "@/lib/epub/parse-epub"
+import { parseEpub, EpubParseError, truncateForPreview, MAX_COVER_SOURCE_BYTES } from "@/lib/epub/parse-epub"
 
 const CONTAINER_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -103,6 +103,101 @@ describe("parseEpub", () => {
     zip.file("OEBPS/chapter2.xhtml", chapterXhtml([]))
     const blob = await zip.generateAsync({ type: "blob" })
     await expect(parseEpub(blob)).rejects.toBeInstanceOf(EpubParseError)
+  })
+})
+
+// A real (tiny, 1x1 transparent) PNG -- needs to be actual valid image bytes so this exercises
+// the same base64-encoding path a real cover would, not just an arbitrary byte string.
+const TINY_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+
+function opfWithCover(coverMarkup: {
+  metadataExtra?: string
+  manifestExtra?: string
+}): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>Libro con Portada</dc:title>
+    ${coverMarkup.metadataExtra ?? ""}
+  </metadata>
+  <manifest>
+    <item id="chap1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+    ${coverMarkup.manifestExtra ?? ""}
+  </manifest>
+  <spine>
+    <itemref idref="chap1"/>
+  </spine>
+</package>`
+}
+
+async function buildEpubWithCover(opts: {
+  metadataExtra?: string
+  manifestExtra?: string
+  coverPath?: string
+  coverBase64?: string
+}): Promise<Blob> {
+  const zip = new JSZip()
+  zip.file("mimetype", "application/epub+zip")
+  zip.file("META-INF/container.xml", CONTAINER_XML)
+  zip.file("OEBPS/content.opf", opfWithCover(opts))
+  zip.file("OEBPS/chapter1.xhtml", chapterXhtml(["Texto de prueba."]))
+  if (opts.coverPath) {
+    zip.file(opts.coverPath, opts.coverBase64 ?? TINY_PNG_BASE64, { base64: true })
+  }
+  return zip.generateAsync({ type: "blob" })
+}
+
+describe("parseEpub cover extraction", () => {
+  it("extracts the cover from an EPUB3 manifest item marked properties=cover-image", async () => {
+    const epub = await buildEpubWithCover({
+      manifestExtra: `<item id="cover-img" href="cover.png" media-type="image/png" properties="cover-image"/>`,
+      coverPath: "OEBPS/cover.png",
+    })
+    const { coverImage } = await parseEpub(epub)
+    expect(coverImage).toBe(`data:image/png;base64,${TINY_PNG_BASE64}`)
+  })
+
+  it("extracts the cover via an EPUB2 <meta name=cover> pointing at a manifest id", async () => {
+    const epub = await buildEpubWithCover({
+      metadataExtra: `<meta name="cover" content="my-cover-id"/>`,
+      manifestExtra: `<item id="my-cover-id" href="images/front.jpg" media-type="image/jpeg"/>`,
+      coverPath: "OEBPS/images/front.jpg",
+    })
+    const { coverImage } = await parseEpub(epub)
+    expect(coverImage).toBe(`data:image/jpeg;base64,${TINY_PNG_BASE64}`)
+  })
+
+  it("falls back to a manifest item conventionally named for the cover", async () => {
+    const epub = await buildEpubWithCover({
+      manifestExtra: `<item id="cover" href="cover.jpg" media-type="image/jpeg"/>`,
+      coverPath: "OEBPS/cover.jpg",
+    })
+    const { coverImage } = await parseEpub(epub)
+    expect(coverImage).toBe(`data:image/jpeg;base64,${TINY_PNG_BASE64}`)
+  })
+
+  it("returns null (not an error) for an EPUB with no cover", async () => {
+    const epub = await buildEpubWithCover({})
+    const { coverImage, text } = await parseEpub(epub)
+    expect(coverImage).toBeNull()
+    expect(text).toBe("Texto de prueba.")
+  })
+
+  it("skips a cover over the size cap rather than storing it", async () => {
+    // JSZip's `{ base64: true }` file() option decodes this back to raw bytes for us -- doesn't
+    // matter that it isn't a real PNG, since the size cap check happens before any image
+    // decoding.
+    const oversizedBytes = new Uint8Array(MAX_COVER_SOURCE_BYTES + 1).fill(1)
+    let binary = ""
+    for (const byte of oversizedBytes) binary += String.fromCharCode(byte)
+    const epub = await buildEpubWithCover({
+      manifestExtra: `<item id="cover-img" href="cover.png" media-type="image/png" properties="cover-image"/>`,
+      coverPath: "OEBPS/cover.png",
+      coverBase64: btoa(binary),
+    })
+    const { coverImage } = await parseEpub(epub)
+    expect(coverImage).toBeNull()
   })
 })
 

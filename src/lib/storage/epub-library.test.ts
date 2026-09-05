@@ -56,6 +56,7 @@ const LIST_ROW = {
   char_count: 850000,
   created_at: "2024-01-01T00:00:00.000Z",
   updated_at: "2024-01-02T00:00:00.000Z",
+  cover_image: "data:image/jpeg;base64,AAAA",
 }
 
 describe("epub-library", () => {
@@ -89,6 +90,7 @@ describe("epub-library", () => {
           charCount: 850000,
           createdAt: new Date("2024-01-01T00:00:00.000Z").getTime(),
           updatedAt: new Date("2024-01-02T00:00:00.000Z").getTime(),
+          coverImage: "data:image/jpeg;base64,AAAA",
         },
       ])
     })
@@ -135,7 +137,35 @@ describe("epub-library", () => {
         file_name: "el-principito.epub",
         body_text: "Había una vez...",
         char_count: "Había una vez...".length,
+        cover_image: null,
       })
+    })
+
+    it("passes through a cover image within the size cap", async () => {
+      nextResult = { data: { id: "new-epub-id" }, error: null }
+      const { saveEpubToLibrary } = await import("@/lib/storage/epub-library")
+      const coverImage = "data:image/jpeg;base64,AAAA"
+      await saveEpubToLibrary(user, {
+        title: "El Principito",
+        fileName: "el-principito.epub",
+        text: "Había una vez...",
+        coverImage,
+      })
+      expect(lastBuilder!.insert).toHaveBeenCalledWith(expect.objectContaining({ cover_image: coverImage }))
+    })
+
+    it("drops a cover image over the size cap instead of failing the save", async () => {
+      nextResult = { data: { id: "new-epub-id" }, error: null }
+      const { saveEpubToLibrary, MAX_COVER_IMAGE_CHARS } = await import("@/lib/storage/epub-library")
+      const oversizedCover = "data:image/jpeg;base64," + "A".repeat(MAX_COVER_IMAGE_CHARS)
+      const result = await saveEpubToLibrary(user, {
+        title: "El Principito",
+        fileName: "el-principito.epub",
+        text: "Había una vez...",
+        coverImage: oversizedCover,
+      })
+      expect(result).toEqual({ id: "new-epub-id" })
+      expect(lastBuilder!.insert).toHaveBeenCalledWith(expect.objectContaining({ cover_image: null }))
     })
 
     it("falls back to the filename (extension stripped) when the EPUB had no title", async () => {

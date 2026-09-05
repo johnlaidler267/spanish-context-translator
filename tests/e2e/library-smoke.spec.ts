@@ -108,6 +108,59 @@ test("shows reading progress on a saved book and resumes it on click", async ({ 
   await expect(page.getByText(/Había una vez un zorro/)).toBeVisible({ timeout: 10_000 })
 })
 
+// A real (tiny, 1x1 transparent) PNG, base64-encoded -- same fixture parse-epub.test.ts uses for
+// its own cover-extraction unit tests. Doesn't need to look like anything; just needs to be
+// bytes a browser can actually decode as an <img src="data:...">, so a broken-image fallback
+// can't accidentally make this test pass for the wrong reason.
+const TINY_PNG_DATA_URL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+
+test("shows a real cover image when the saved book has one, and the placeholder when it doesn't", async ({
+  page,
+}) => {
+  await setupMocks(page, {
+    restTables: {
+      user_epubs: [
+        {
+          id: "mock-epub-cover",
+          title: "Libro Con Portada",
+          file_name: "con-portada.epub",
+          char_count: 10,
+          body_text: "Texto.",
+          cover_image: TINY_PNG_DATA_URL,
+          created_at: "2024-01-01T00:00:00.000Z",
+          updated_at: "2024-01-01T00:00:00.000Z",
+        },
+        {
+          id: "mock-epub-no-cover",
+          title: "Libro Sin Portada",
+          file_name: "sin-portada.epub",
+          char_count: 10,
+          body_text: "Texto.",
+          cover_image: null,
+          created_at: "2024-01-01T00:00:00.000Z",
+          updated_at: "2024-01-01T00:00:00.000Z",
+        },
+      ],
+    },
+  })
+
+  await page.goto("/library")
+
+  const cardWithCover = page.locator(".discover-card").filter({ hasText: "Libro Con Portada" })
+  await expect(cardWithCover).toBeVisible()
+  const coverImg = cardWithCover.locator("img.discover-cover__img")
+  await expect(coverImg).toBeVisible()
+  await expect(coverImg).toHaveAttribute("src", TINY_PNG_DATA_URL)
+  // No generated placeholder plate title when a real cover is showing.
+  await expect(cardWithCover.locator(".discover-cover__plate-title")).toHaveCount(0)
+
+  const cardWithoutCover = page.locator(".discover-card").filter({ hasText: "Libro Sin Portada" })
+  await expect(cardWithoutCover).toBeVisible()
+  await expect(cardWithoutCover.locator("img.discover-cover__img")).toHaveCount(0)
+  await expect(cardWithoutCover.locator(".discover-cover--plate")).toBeVisible()
+})
+
 test("removing a saved book takes it out of the list", async ({ page }) => {
   await setupMocks(page, {
     restTables: {

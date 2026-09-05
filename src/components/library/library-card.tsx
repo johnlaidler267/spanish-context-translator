@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import type { CSSProperties, KeyboardEvent } from "react"
 import { BookOpen, Loader2, Trash2 } from "lucide-react"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
@@ -11,6 +12,12 @@ import { cn } from "@/lib/utils"
  * force a saved EPUB into the full `ContentItem` shape -- there's no real difficulty/language/
  * word-count for a user's own upload, and showing a made-up "Beginner" badge on every book
  * would just be wrong information.
+ *
+ * Cover art: when the upload had a real cover (see parse-epub.ts's `extractCoverImage`), that
+ * image is shown -- same `.discover-cover__img`/`.discover-cover__vignette` markup as
+ * DiscoverCoverArt uses for a Discover item's real cover, including its `onError` fallback for
+ * a `data:` URL that somehow fails to decode. Otherwise (no cover, or the image failed to load)
+ * this falls back to the same generated placeholder plate as before.
  */
 
 const COVER_PALETTE = [
@@ -52,6 +59,10 @@ export function LibraryCard({
   isOpening = false,
   disabled = false,
 }: LibraryCardProps) {
+  const [coverBroken, setCoverBroken] = useState(false)
+  const coverImage = book.coverImage
+  const showCoverImage = Boolean(coverImage) && !coverBroken
+
   const palette = COVER_PALETTE[hashString(book.title) % COVER_PALETTE.length]!
   const coverStyle = {
     "--cover-accent": palette.accent,
@@ -81,14 +92,38 @@ export function LibraryCard({
       className={cn("discover-card", disabled && "pointer-events-none opacity-60")}
     >
       <div className="discover-card__frame">
-        <div className="discover-cover discover-cover--plate" style={coverStyle}>
-          <span className="discover-cover__rule" aria-hidden />
-          {isOpening ? (
-            <Loader2 className="discover-cover__motif animate-spin" aria-hidden />
+        <div
+          className={cn("discover-cover", !showCoverImage && "discover-cover--plate")}
+          style={showCoverImage ? undefined : coverStyle}
+        >
+          {showCoverImage ? (
+            <>
+              <img
+                src={coverImage!}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="discover-cover__img"
+                onError={() => setCoverBroken(true)}
+              />
+              <div className="discover-cover__vignette" aria-hidden />
+              {isOpening && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                  <Loader2 className="discover-cover__motif animate-spin text-white" aria-hidden />
+                </div>
+              )}
+            </>
           ) : (
-            <BookOpen className="discover-cover__motif" aria-hidden />
+            <>
+              <span className="discover-cover__rule" aria-hidden />
+              {isOpening ? (
+                <Loader2 className="discover-cover__motif animate-spin" aria-hidden />
+              ) : (
+                <BookOpen className="discover-cover__motif" aria-hidden />
+              )}
+              <p className="discover-cover__plate-title">{book.title}</p>
+            </>
           )}
-          <p className="discover-cover__plate-title">{book.title}</p>
         </div>
         <span className="discover-card__type">Book</span>
         {progressPercent != null && (

@@ -26,6 +26,13 @@ import { clearCachedTranslation } from "@/lib/storage/translation-cache-storage"
  *  an oversized upload with a clear message instead of a raw Postgres error. */
 export const MAX_EPUB_LIBRARY_CHARS = 2_000_000
 
+/** Mirrors the CHECK constraint on `user_epubs.cover_image` (see
+ *  supabase/migrations/0018_user_epub_cover_image.sql). Unlike `MAX_EPUB_LIBRARY_CHARS`, going
+ *  over this isn't a reason to reject the whole save -- a cover is a nice-to-have, so
+ *  `saveEpubToLibrary` just drops it and saves the book without one. In practice parse-epub.ts's
+ *  own `MAX_COVER_SOURCE_BYTES` cap keeps a real cover well under this anyway; this is a backstop. */
+export const MAX_COVER_IMAGE_CHARS = 450_000
+
 /** Mirrors the per-user row cap enforced by the `trg_user_epubs_limit` trigger. */
 export const MAX_EPUBS_PER_LIBRARY = 50
 
@@ -45,6 +52,9 @@ export interface LibraryEpub {
   charCount: number
   createdAt: number
   updatedAt: number
+  /** `data:` URL of the book's cover, or null when it has none -- see LibraryCard, which falls
+   *  back to a generated placeholder cover in that case. */
+  coverImage: string | null
 }
 
 interface UserEpubListRow {
@@ -54,6 +64,7 @@ interface UserEpubListRow {
   char_count: number
   created_at: string
   updated_at: string
+  cover_image: string | null
 }
 
 function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
@@ -64,6 +75,7 @@ function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
     charCount: row.char_count,
     createdAt: new Date(row.created_at).getTime(),
     updatedAt: new Date(row.updated_at).getTime(),
+    coverImage: row.cover_image,
   }
 }
 
@@ -73,7 +85,7 @@ export async function listUserEpubs(user: User | null): Promise<LibraryEpub[]> {
   if (!user) return []
   const { data, error } = await supabase
     .from("user_epubs")
-    .select("id, title, file_name, char_count, created_at, updated_at")
+    .select("id, title, file_name, char_count, created_at, updated_at, cover_image")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
   if (error || !data) {
@@ -96,7 +108,7 @@ export async function listUserEpubs(user: User | null): Promise<LibraryEpub[]> {
  */
 export async function saveEpubToLibrary(
   user: User | null,
-  epub: { title: string | null; fileName: string; text: string },
+  epub: { title: string | null; fileName: string; text: string; coverImage?: string | null },
 ): Promise<{ id: string } | null> {
   if (!user) return null
 
@@ -111,6 +123,12 @@ export async function saveEpubToLibrary(
   const fallbackTitle = epub.fileName.replace(/\.epub$/i, "").trim() || "Untitled"
   const title = epub.title?.trim() || fallbackTitle
 
+  // A cover is a nice-to-have, not something worth failing (or blocking) the save over -- if it
+  // somehow exceeds the DB's own cap (parse-epub.ts's own cap already keeps a real cover well
+  // under this), just save the book without one instead of throwing.
+  const coverImage =
+    epub.coverImage && epub.coverImage.length <= MAX_COVER_IMAGE_CHARS ? epub.coverImage : null
+
   const { data, error } = await supabase
     .from("user_epubs")
     .insert({
@@ -119,6 +137,7 @@ export async function saveEpubToLibrary(
       file_name: epub.fileName,
       body_text: text,
       char_count: text.length,
+      cover_image: coverImage,
     })
     .select("id")
     .single()
