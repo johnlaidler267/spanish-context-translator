@@ -23,8 +23,10 @@ import { cn } from "@/lib/utils"
 
 type LibraryPageProps = {
   /** Opens a saved book straight into reading, resuming at its saved page if any (same
-   *  pipeline Discover's "Start reading" uses -- see handleLibraryStartReading in App.tsx). */
-  onStartReading: (book: LibraryEpub) => void
+   *  pipeline Discover's "Start reading" uses -- see handleLibraryStartReading in App.tsx).
+   *  Returns once the book's text has been fetched and handed to the reading pipeline (or has
+   *  failed) -- this page awaits it to know when to clear the per-card "opening" spinner below. */
+  onStartReading: (book: LibraryEpub) => Promise<void> | void
 }
 
 function LibrarySkeletonGrid() {
@@ -56,6 +58,15 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Which book (if any) is mid-open: getUserEpubText/handleLibraryStartReading (App.tsx) fetch
+  // the saved book's full text -- and re-check auth -- over the network before the reading UI
+  // ever appears, and until now that ran with zero visible feedback. On a slow connection that
+  // read as the tap having done nothing at all (the reported "doesn't register on the first
+  // tap" bug) -- a second tap felt like what finally worked, when really the first one was
+  // just still loading. Also doubles as a guard against a second tap (this card or another)
+  // kicking off a second concurrent open while one is already in flight.
+  const [openingBookId, setOpeningBookId] = useState<string | null>(null)
 
   // Bumped once cloud-synced reading progress (reading-progress-sync.ts) has been merged into
   // the localStorage cache getReadingProgressPercent reads from -- same pattern as Discover's
@@ -166,6 +177,18 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
     }
   }
 
+  const handleOpenBook = async (book: LibraryEpub) => {
+    if (openingBookId) return
+    setOpeningBookId(book.id)
+    try {
+      await onStartReading(book)
+    } finally {
+      // A successful open navigates away (this page unmounts), so this only visibly matters
+      // on failure -- clears the spinner so the card is tappable again instead of stuck.
+      setOpeningBookId(null)
+    }
+  }
+
   const handleDelete = async (id: string) => {
     const previous = books
     setBooks((prev) => prev.filter((b) => b.id !== id))
@@ -250,8 +273,10 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
                 key={book.id}
                 book={book}
                 progressPercent={getReadingProgressPercent(user, book.id)}
-                onOpen={() => onStartReading(book)}
+                onOpen={() => void handleOpenBook(book)}
                 onDelete={() => void handleDelete(book.id)}
+                isOpening={openingBookId === book.id}
+                disabled={openingBookId != null && openingBookId !== book.id}
               />
             ))}
           </div>

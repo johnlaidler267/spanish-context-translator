@@ -1,8 +1,9 @@
 "use client"
 
 import type { CSSProperties, KeyboardEvent } from "react"
-import { BookOpen, Trash2 } from "lucide-react"
+import { BookOpen, Loader2, Trash2 } from "lucide-react"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
+import { cn } from "@/lib/utils"
 
 /**
  * Visually a sibling of Discover's ContentCard/DiscoverCoverArt (reuses the same `.discover-*`
@@ -33,9 +34,24 @@ interface LibraryCardProps {
   progressPercent: number | null
   onOpen: () => void
   onDelete: () => void
+  /** True while this card's own tap is still resolving -- fetching the saved book's text (and
+   *  re-checking auth) before the reader can open, see LibraryPage's handleOpenBook. Swaps the
+   *  cover icon for a spinner so a tap on a slow connection reads as "working", not "nothing
+   *  happened". */
+  isOpening?: boolean
+  /** True while a *different* card is opening -- dims this one and ignores taps so a second
+   *  tap can't kick off a second concurrent open. */
+  disabled?: boolean
 }
 
-export function LibraryCard({ book, progressPercent, onOpen, onDelete }: LibraryCardProps) {
+export function LibraryCard({
+  book,
+  progressPercent,
+  onOpen,
+  onDelete,
+  isOpening = false,
+  disabled = false,
+}: LibraryCardProps) {
   const palette = COVER_PALETTE[hashString(book.title) % COVER_PALETTE.length]!
   const coverStyle = {
     "--cover-accent": palette.accent,
@@ -44,6 +60,7 @@ export function LibraryCard({ book, progressPercent, onOpen, onDelete }: Library
   } as CSSProperties
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return
     if (event.key !== "Enter" && event.key !== " ") return
     event.preventDefault()
     onOpen()
@@ -52,20 +69,25 @@ export function LibraryCard({ book, progressPercent, onOpen, onDelete }: Library
   return (
     <div
       role="button"
-      tabIndex={0}
-      onClick={onOpen}
+      tabIndex={disabled ? -1 : 0}
+      onClick={disabled ? undefined : onOpen}
       onKeyDown={handleKeyDown}
+      aria-busy={isOpening || undefined}
       aria-label={
         progressPercent != null
           ? `Continue reading ${book.title}, ${progressPercent}% read`
           : `Start reading ${book.title}`
       }
-      className="discover-card"
+      className={cn("discover-card", disabled && "pointer-events-none opacity-60")}
     >
       <div className="discover-card__frame">
         <div className="discover-cover discover-cover--plate" style={coverStyle}>
           <span className="discover-cover__rule" aria-hidden />
-          <BookOpen className="discover-cover__motif" aria-hidden />
+          {isOpening ? (
+            <Loader2 className="discover-cover__motif animate-spin" aria-hidden />
+          ) : (
+            <BookOpen className="discover-cover__motif" aria-hidden />
+          )}
           <p className="discover-cover__plate-title">{book.title}</p>
         </div>
         <span className="discover-card__type">Book</span>
