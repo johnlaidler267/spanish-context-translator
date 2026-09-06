@@ -703,7 +703,12 @@ export default function App() {
         // so the loading overlay that follows sat on top of the landing page instead of
         // whatever screen (e.g. Discover) the translation was actually started from.
         if (location.pathname === "/") {
-          // Landing's own composer submit -- already home, flip straight into reading.
+          // Landing's own composer submit -- already home, flip straight into reading. Still
+          // push a fresh history entry (same "/" path, just a new one) even though the URL
+          // isn't changing: the back arrow (handleBack) pops exactly one history entry to
+          // return to wherever reading was entered from, and without this push there'd be no
+          // entry here to pop -- back would skip past Home entirely to whatever came before it.
+          navigate(".", { state: { readingEntry: Date.now() } })
           setAppState("reading")
         } else {
           // Discover (or any other screen): navigate home and let the
@@ -809,7 +814,20 @@ export default function App() {
     rateLimitModalSuppressedRef.current = false
     setViewMode("article")
     bump()
-  }, [bump])
+    // Return to wherever reading was actually entered from (Home, Discover, Library, ...)
+    // rather than a fixed destination -- every entry into reading mode pushes a fresh history
+    // entry for exactly this (see handleTextSubmit and handleDiscoverStartReading/
+    // handleLibraryStartReading, which all funnel through it), so a real history-back always
+    // lands on the right page. `history.state.idx` (react-router's own position counter) is 0
+    // only when this tab has no earlier entry to return to -- e.g. reading was somehow entered
+    // as the very first navigation of the session -- in which case Home is the only sane target.
+    const historyIdx = (window.history.state as { idx?: number } | null)?.idx
+    if (typeof historyIdx === "number" && historyIdx > 0) {
+      navigate(-1)
+    } else {
+      navigate("/")
+    }
+  }, [bump, navigate])
 
   const totalPages = sourcePages.length
 

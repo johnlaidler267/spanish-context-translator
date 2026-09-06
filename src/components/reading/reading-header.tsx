@@ -7,6 +7,8 @@ import { type ReadingTheme } from "@/components/reading/theme-toggle"
 import { READING_HEADER_BAND_REM } from "@/lib/reading/reading-layout"
 import { cn } from "@/lib/utils"
 import { primeSpeechSynthesisFromUserGesture } from "@/lib/reading/hover-tts"
+import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 interface ReadingHeaderProps {
   mode: ViewMode
@@ -38,10 +40,24 @@ export function ReadingHeader({
   onHoverTtsChange,
   visible = true,
 }: ReadingHeaderProps) {
+  // The persistent landing sidebar (see landing-shell-layout.tsx) isn't hidden during reading
+  // (readingActive only changes its nav highlighting) and sits on top of this fixed header
+  // (z-50 vs. this header's z-40) -- with no inset, the back arrow rendered at the raw left
+  // edge lands directly underneath the sidebar's own rail and is entirely unclickable/
+  // invisible on desktop. main-header.tsx solves this exact overlap with the same
+  // sidebarInsetPx value (see its `contentInsetLeftPx`); mirror that here instead of
+  // reaching for a z-index bump, which would fight the sidebar for the same screen space
+  // rather than simply not occupying it.
+  const { sidebarInsetPx } = useLandingShellNewChat()
+  const isMdUp = useMediaQuery("(min-width: 768px)")
+  const fixedInset =
+    isMdUp && sidebarInsetPx > 0
+      ? { left: sidebarInsetPx, right: 0, width: "auto" as const }
+      : undefined
   return (
     <header
       className="reading-toolbar fixed top-0 left-0 right-0 z-40 pointer-events-none"
-      style={{ opacity: visible ? 1 : 0 }}
+      style={{ opacity: visible ? 1 : 0, ...fixedInset }}
       aria-hidden={!visible}
     >
       {/* Mobile: gradient height = HEADER_BAND_MOBILE (inline). Desktop: short bar only. */}
@@ -52,18 +68,18 @@ export function ReadingHeader({
       <div className="absolute inset-x-0 top-0 z-[1] hidden md:block h-24 min-h-24 bg-gradient-to-b from-background/80 via-background/40 to-transparent" />
 
       <div className="relative z-[2] flex items-center justify-between px-4 md:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))]">
-        <Link
-          to="/"
+        <button
+          type="button"
           onClick={onBack}
           tabIndex={visible ? undefined : -1}
           className={cn(
             "back-nav-control flex h-9 w-9 max-md:h-11 max-md:w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors duration-200 ease-in-out hover:bg-muted/35",
             visible ? "pointer-events-auto" : "pointer-events-none",
           )}
-          aria-label="Back to home"
+          aria-label="Back"
         >
           <ChevronLeft className="h-5 w-5 max-md:h-[1.35rem] max-md:w-[1.35rem]" strokeWidth={2.25} aria-hidden />
-        </Link>
+        </button>
 
         {/* Right side: one quiet control rail so mode + reader actions feel like a single toolset. */}
         <div

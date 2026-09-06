@@ -37,7 +37,7 @@ test.describe("mobile", () => {
     await page.getByRole("button", { name: "Start reading" }).click()
 
     const header = page.locator("header.reading-toolbar")
-    await expect(page.getByRole("link", { name: "Back to home" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Back" })).toBeVisible()
     await expect(header).toHaveCSS("opacity", "1")
 
     // Switch to Read mode so a real, always-rendered "Next sentence" arrow is available
@@ -95,7 +95,7 @@ test.describe("desktop", () => {
     await page.getByRole("button", { name: "Start reading" }).click()
 
     const header = page.locator("header.reading-toolbar")
-    await expect(page.getByRole("link", { name: "Back to home" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Back" })).toBeVisible()
     await expect(header).toHaveCSS("opacity", "1")
 
     await page.getByRole("button", { name: "Read", exact: true }).click()
