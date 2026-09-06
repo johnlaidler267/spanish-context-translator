@@ -478,13 +478,15 @@ export function LandingScreen({
             fetchPriority="high"
           />
           <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl" style={{ lineHeight: "1.15" }}>
-            <em>{heroGreeting}</em>
-            {displayName ? (
-              <>
-                {" "}
-                <em>{displayName}</em>
-              </>
-            ) : null}
+            <span className="hero-greeting-gradient">
+              <em>{heroGreeting}</em>
+              {displayName ? (
+                <>
+                  {" "}
+                  <em>{displayName}</em>
+                </>
+              ) : null}
+            </span>
             ,{" "}
             <span className="wordmark-ink">{heroTailPhrase}</span>
           </h1>

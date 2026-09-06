@@ -963,6 +963,18 @@ article span {
   z-index: 0;
 }
 
+/* Hero greeting ("Hola <name>") — same ink→terracotta wash as the LexaLens
+   wordmark (--brand-wordmark), so the greeting reads as the same brand
+   system rather than a plain heading. Kept as its own class (not reused
+   .wordmark-gradient) since that class assumes an inline-flex logo lockup;
+   this one wraps two loose <em> children inside a heading. */
+.hero-greeting-gradient {
+  background-image: var(--brand-wordmark);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* Ink swipe under the tail phrase only (e.g. “ready to read?”), not the full hero line */
 .wordmark-ink {
   position: relative;
