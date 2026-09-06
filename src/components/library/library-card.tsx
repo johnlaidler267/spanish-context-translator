@@ -40,7 +40,10 @@ interface LibraryCardProps {
    *  no page-count recorded). */
   progressPercent: number | null
   onOpen: () => void
-  onDelete: () => void
+  /** Omitted on the landing page's Continue Reading row -- deleting a book isn't an action that
+   *  row offers, so no trash icon is rendered there (see ContentCard's own onDelete, which is
+   *  optional for the same reason). */
+  onDelete?: () => void
   /** True while this card's own tap is still resolving -- fetching the saved book's text (and
    *  re-checking auth) before the reader can open, see LibraryPage's handleOpenBook. Swaps the
    *  cover icon for a spinner so a tap on a slow connection reads as "working", not "nothing
@@ -130,18 +133,20 @@ export function LibraryCard({
           <span className="discover-card__progress">{progressPercent}% read</span>
         )}
 
-        <div className="discover-card__tools">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              onDelete()
-            }}
-            aria-label={`Remove ${book.title} from your library`}
-          >
-            <Trash2 className="size-3.5" aria-hidden />
-          </button>
-        </div>
+        {onDelete && (
+          <div className="discover-card__tools">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                onDelete()
+              }}
+              aria-label={`Remove ${book.title} from your library`}
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="discover-card__body">

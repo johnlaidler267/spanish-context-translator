@@ -22,6 +22,7 @@ import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscrip
 import { LandingContentPills } from "@/components/landing/landing-content-pills"
 import { LandingContinueReading } from "@/components/landing/landing-continue-reading"
 import type { ContentItem } from "@/lib/discover/content-data"
+import type { LibraryEpub } from "@/lib/storage/epub-library"
 import {
   appendTranscriptToField,
   fetchLearnRandomParagraph,
@@ -48,6 +49,9 @@ interface LandingScreenProps {
   displayName: string
   /** Opens a Discover item straight into reading (desktop Continue Reading row). */
   onContinueReading: (content: ContentItem) => void
+  /** Resumes a personal upload from the same row -- same pipeline as the Library page's own
+   *  "start reading" (see handleLibraryStartReading in App.tsx). */
+  onContinueLibraryBook: (book: LibraryEpub) => Promise<void> | void
 }
 
 const LANDING_SUB_ROW_CACHE = "lexa.landingSubRow.v1"
@@ -112,6 +116,7 @@ export function LandingScreen({
   theme,
   displayName,
   onContinueReading,
+  onContinueLibraryBook,
 }: LandingScreenProps) {
   const { user } = useAuth()
   const { status: subscriptionStatus, isLapsed } = useSubscription()
@@ -645,6 +650,7 @@ export function LandingScreen({
         <LandingContinueReading
           user={user}
           onContinue={onContinueReading}
+          onOpenLibraryBook={onContinueLibraryBook}
           fallback={
             <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
               <p className="sample-excerpt-label text-center">Sample text</p>

@@ -891,6 +891,7 @@ export default function App() {
           theme={appTheme}
           displayName={displayName}
           onContinueReading={handleDiscoverStartReading}
+          onContinueLibraryBook={handleLibraryStartReading}
         />
       </div>
     </main>
