@@ -11,6 +11,7 @@ import {
 import type { User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import { clearGuestUses } from "@/lib/subscription/guest-usage"
+import { invalidateLibraryCache } from "@/lib/storage/library-catalog"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,6 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Signed-in session (initial restore, OAuth return, or sign-in) — clear guest tries, close modal
           clearGuestUses()
           setAuthModalOpen(false)
+        } else {
+          // No session (explicit sign-out, or one that expired/was revoked elsewhere) — drop
+          // the in-memory library cache (library-catalog.ts) so a next sign-in on this same
+          // device/browser, by this user or a different one, never briefly shows the prior
+          // session's cached books before its own fetch resolves.
+          invalidateLibraryCache()
         }
       },
     )

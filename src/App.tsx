@@ -70,6 +70,7 @@ import {
 import type { ContentItem } from "@/lib/discover/content-data"
 import { fetchDiscoverCatalog } from "@/lib/discover/discover-catalog"
 import { getUserEpubText, type LibraryEpub } from "@/lib/storage/epub-library"
+import { fetchLibraryCatalog } from "@/lib/storage/library-catalog"
 import { supabase } from "@/lib/supabase"
 import { getTier } from "@/lib/subscription/tiers"
 
@@ -93,6 +94,14 @@ const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.95
  * landing page's own first paint / auth resolution.
  */
 const DISCOVER_PREFETCH_DELAY_MS = 2000
+/**
+ * Library prefetch: same idea as the Discover prefetch above, for the personal EPUB library
+ * (`user_epubs`) instead of the public catalog -- warm it while the user is sitting on the
+ * landing page so /library paints from cache instead of blocking on its own fetch the moment
+ * the route mounts. Slightly longer than Discover's delay since it's user-specific data (only
+ * worth fetching once we know who's asking) and less likely to be the very next click.
+ */
+const LIBRARY_PREFETCH_DELAY_MS = 2500
 /**
  * Article next-page prefetch: how long the user must sit on a page before the next one
  * starts translating in the background. Long enough that flipping through several pages
@@ -306,6 +315,14 @@ export default function App() {
   const usagePreflightInFlightRef = useRef<Promise<void> | null>(null)
   /** Guards the Discover prefetch below from refiring every time the landing page mounts. */
   const discoverPrefetchedRef = useRef(false)
+  /**
+   * Guards the Library prefetch below the same way, but keyed to a user id rather than a
+   * plain boolean: unlike the Discover catalog, this data is per-user, so if the signed-in
+   * user changes within the same tab session (sign out, then a different account signs in)
+   * the next landing-page visit should prefetch again for the new user instead of staying
+   * latched from the first one.
+   */
+  const libraryPrefetchedForUserRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (user) setGuestSignupOpen(false)
@@ -439,6 +456,27 @@ export default function App() {
     }, DISCOVER_PREFETCH_DELAY_MS)
     return () => window.clearTimeout(timer)
   }, [authLoading, appState, location.pathname])
+
+  /**
+   * Library prefetch: same idea and gating as the Discover prefetch above, but only once we
+   * actually know who's signed in -- there's no per-user data to warm for a signed-out visitor
+   * (fetchLibraryCatalog itself also no-ops for a null user, this just avoids scheduling a
+   * pointless timer). Calls the exact same `fetchLibraryCatalog()` the Library page's own
+   * mount effect calls (same in-memory cache, same in-flight-request dedup), so this just
+   * kicks that fetch off earlier -- it isn't a second, parallel cache.
+   */
+  useEffect(() => {
+    if (authLoading) return
+    if (appState !== "landing") return
+    if (location.pathname !== "/") return
+    if (!user) return
+    if (libraryPrefetchedForUserRef.current === user.id) return
+    const timer = window.setTimeout(() => {
+      libraryPrefetchedForUserRef.current = user.id
+      void fetchLibraryCatalog(user)
+    }, LIBRARY_PREFETCH_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [authLoading, appState, location.pathname, user])
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)")

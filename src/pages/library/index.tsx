@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { BookOpen, Plus, Upload } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
@@ -13,11 +13,15 @@ import { LibraryCard } from "@/components/library/library-card"
 import { LibraryPreviewModal } from "@/components/library/library-preview-modal"
 import {
   deleteUserEpub,
-  listUserEpubs,
   saveEpubToLibrary,
   EpubLibraryError,
   type LibraryEpub,
 } from "@/lib/storage/epub-library"
+import {
+  fetchLibraryCatalog,
+  readCachedLibraryEpubs,
+  writeCachedLibraryEpubs,
+} from "@/lib/storage/library-catalog"
 import { getReadingProgressPercent } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import { cn } from "@/lib/utils"
@@ -52,9 +56,14 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
   const navigate = useNavigate()
   const { registerNewChat } = useLandingShellNewChat()
   const { user } = useAuth()
+  // Cache-first paint: if App.tsx's landing-page background prefetch (or a previous visit
+  // this session) already warmed this user's library, render it immediately instead of a
+  // skeleton -- see library-catalog.ts's docstring for why this replaced a plain
+  // `listUserEpubs` call directly in the effect below.
+  const cachedBooks = useMemo(() => (user ? readCachedLibraryEpubs(user.id) : null), [user])
 
-  const [books, setBooks] = useState<LibraryEpub[]>([])
-  const [listLoading, setListLoading] = useState(true)
+  const [books, setBooks] = useState<LibraryEpub[]>(() => cachedBooks ?? [])
+  const [listLoading, setListLoading] = useState(() => cachedBooks == null)
   const [listError, setListError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -111,9 +120,16 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      setListLoading(true)
+      // Must match the initial `listLoading` state's condition (cachedBooks == null), not
+      // "cache is falsy or empty" -- a legitimately empty cached library (0 books) is still a
+      // cache hit and shouldn't flip the skeleton back on for this background refetch.
+      if (cachedBooks == null) setListLoading(true)
       setListError(null)
-      const items = await listUserEpubs(user)
+      // Same fetchLibraryCatalog() the landing-page background prefetch calls (see App.tsx) --
+      // if that prefetch is still in flight when this page mounts, this joins that same
+      // request/promise instead of firing a second one; if it already finished, this paints
+      // instantly from the cache it already wrote and just revalidates in the background.
+      const items = await fetchLibraryCatalog(user)
       if (cancelled) return
       setBooks(items)
       setListLoading(false)
@@ -121,7 +137,7 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, cachedBooks])
 
   const handleUploadClick = () => {
     if (uploading) return
@@ -167,7 +183,11 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
         coverImage,
         author: author?.trim() || null,
       }
-      setBooks((prev) => [newBook, ...prev])
+      setBooks((prev) => {
+        const next = [newBook, ...prev]
+        if (freshUser) writeCachedLibraryEpubs(freshUser.id, next)
+        return next
+      })
       onStartReading(newBook)
     } catch (err) {
       setUploadError(
@@ -201,10 +221,13 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
 
   const handleDelete = async (id: string) => {
     const previous = books
-    setBooks((prev) => prev.filter((b) => b.id !== id))
+    const next = previous.filter((b) => b.id !== id)
+    setBooks(next)
+    if (user) writeCachedLibraryEpubs(user.id, next)
     const ok = await deleteUserEpub(user, id)
     if (!ok) {
       setBooks(previous)
+      if (user) writeCachedLibraryEpubs(user.id, previous)
       setListError("Could not remove that book. Check your connection and try again.")
     }
   }
