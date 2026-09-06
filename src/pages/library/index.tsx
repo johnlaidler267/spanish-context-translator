@@ -140,7 +140,7 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
       // Lazy: pulls in jszip, only needed once someone actually uploads a book -- see the same
       // reasoning on the landing page's own upload (landing-screen.tsx).
       const { parseEpub } = await import("@/lib/epub/parse-epub")
-      const { text, title, coverImage } = await parseEpub(file)
+      const { text, title, author, coverImage } = await parseEpub(file)
 
       // Guests browsing straight to /library may not have a Supabase session yet at all (one
       // is normally created as a side effect of a first translate -- see ensureSessionForGroq's
@@ -151,7 +151,7 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
         data: { user: freshUser },
       } = await supabase.auth.getUser()
 
-      const saved = await saveEpubToLibrary(freshUser, { title, fileName: file.name, text, coverImage })
+      const saved = await saveEpubToLibrary(freshUser, { title, fileName: file.name, text, coverImage, author })
       if (!saved) {
         setUploadError("Could not save this book to your library. Check your connection and try again.")
         return
@@ -165,6 +165,7 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         coverImage,
+        author: author?.trim() || null,
       }
       setBooks((prev) => [newBook, ...prev])
       onStartReading(newBook)

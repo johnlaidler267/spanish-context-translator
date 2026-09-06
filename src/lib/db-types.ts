@@ -175,6 +175,9 @@ export type UserEpubRow = {
   /** `data:` URL of the book's cover, or null if it has none -- see
    *  supabase/migrations/0018_user_epub_cover_image.sql. */
   cover_image: string | null
+  /** Author from the EPUB's OPF `<dc:creator>`, or null when parse-epub.ts couldn't find one --
+   *  see supabase/migrations/0019_user_epub_author.sql. */
+  author: string | null
 }
 
 // ─── Insert types (omit server-generated fields) ──────────────────────────────

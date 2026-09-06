@@ -15,12 +15,13 @@ const CONTAINER_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </rootfiles>
 </container>`
 
-function buildOpf(title: string): string {
+function buildOpf(title: string, metadataExtra = ""): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
     <dc:title>${title}</dc:title>
     <dc:language>es</dc:language>
+    ${metadataExtra}
   </metadata>
   <manifest>
     <item id="chap1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
@@ -44,13 +45,14 @@ function chapterXhtml(paragraphs: string[]): string {
 
 async function buildMinimalEpub(opts: {
   title?: string
+  metadataExtra?: string
   chapter1?: string[]
   chapter2?: string[]
 } = {}): Promise<Blob> {
   const zip = new JSZip()
   zip.file("mimetype", "application/epub+zip")
   zip.file("META-INF/container.xml", CONTAINER_XML)
-  zip.file("OEBPS/content.opf", buildOpf(opts.title ?? "Mi Libro de Prueba"))
+  zip.file("OEBPS/content.opf", buildOpf(opts.title ?? "Mi Libro de Prueba", opts.metadataExtra ?? ""))
   zip.file(
     "OEBPS/chapter1.xhtml",
     chapterXhtml(opts.chapter1 ?? ["Había una vez un zorro.", "El zorro corría por el bosque."]),
@@ -81,6 +83,43 @@ describe("parseEpub", () => {
     )
     // Spine order: chapter 1's content must precede chapter 2's.
     expect(text.indexOf("zorro")).toBeLessThan(text.indexOf("Capítulo dos"))
+  })
+
+  it("returns null author when the OPF has no dc:creator", async () => {
+    const epub = await buildMinimalEpub()
+    const { author } = await parseEpub(epub)
+    expect(author).toBeNull()
+  })
+
+  it("extracts the author from a single dc:creator", async () => {
+    const epub = await buildMinimalEpub({
+      metadataExtra: `<dc:creator>Gabriel García Márquez</dc:creator>`,
+    })
+    const { author } = await parseEpub(epub)
+    expect(author).toBe("Gabriel García Márquez")
+  })
+
+  it("prefers the dc:creator marked opf:role=aut over an illustrator/translator", async () => {
+    const epub = await buildMinimalEpub({
+      metadataExtra: `
+        <dc:creator opf:role="ill">Some Illustrator</dc:creator>
+        <dc:creator opf:role="aut">Isabel Allende</dc:creator>
+        <dc:creator opf:role="trl">Some Translator</dc:creator>
+      `,
+    })
+    const { author } = await parseEpub(epub)
+    expect(author).toBe("Isabel Allende")
+  })
+
+  it("falls back to the first dc:creator when none is marked opf:role=aut", async () => {
+    const epub = await buildMinimalEpub({
+      metadataExtra: `
+        <dc:creator>Julio Cortázar</dc:creator>
+        <dc:creator opf:role="ill">Some Illustrator</dc:creator>
+      `,
+    })
+    const { author } = await parseEpub(epub)
+    expect(author).toBe("Julio Cortázar")
   })
 
   it("rejects a file that isn't a zip at all", async () => {

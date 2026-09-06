@@ -150,6 +150,7 @@ export function LibraryCard({
       </div>
 
       <div className="discover-card__body">
+        {book.author && <p className="discover-card__author">{book.author}</p>}
         <h3 className="discover-card__title">{book.title}</h3>
         <div className="discover-card__meta">
           <span className="discover-card__time">

@@ -32,6 +32,9 @@ export interface ParsedEpub {
   text: string
   /** Book title from the OPF's <dc:title>, if present. */
   title: string | null
+  /** Book author from the OPF's <dc:creator>, if present -- see `pickAuthor`'s docstring for
+   *  how a multi-creator (author + illustrator + translator, etc.) OPF is disambiguated. */
+  author: string | null
   /**
    * The book's cover image, as a `data:` URL, if one was found and small enough to keep --
    * see `extractCoverImage`'s docstring. `null` for an EPUB with no cover, an unrecognized
@@ -96,12 +99,41 @@ interface ManifestItem {
   properties: string | null
 }
 
+/**
+ * Picks the book's primary author out of an OPF's `<dc:creator>` elements. An OPF can list
+ * several -- author, illustrator, translator, etc. -- each as its own `<dc:creator>`, with the
+ * role distinguished by an `opf:role` attribute (OPF2) or a plain `role` attribute (seen in the
+ * wild on some EPUB2 files that skip the `opf:` namespace prefix). Prefers one explicitly marked
+ * `role="aut"`; falls back to the first `<dc:creator>` when none is marked (the common case: a
+ * single-author book has exactly one, unmarked). Returns null when there's no `<dc:creator>` at
+ * all -- same "absent, not an error" treatment as a missing title.
+ */
+function pickAuthor(creators: Element[]): string | null {
+  const textOf = (el: Element) => el.textContent?.trim() || null
+
+  const primary = creators.find((el) => {
+    const role = el.getAttribute("opf:role") ?? el.getAttribute("role")
+    return role === "aut"
+  })
+  if (primary) {
+    const text = textOf(primary)
+    if (text) return text
+  }
+
+  for (const creator of creators) {
+    const text = textOf(creator)
+    if (text) return text
+  }
+  return null
+}
+
 async function readManifestAndSpine(
   zip: EpubZip,
   opfPath: string,
 ): Promise<{
   spine: SpineEntry[]
   title: string | null
+  author: string | null
   manifestItems: ManifestItem[]
   metaCoverId: string | null
 }> {
@@ -140,6 +172,12 @@ async function readManifestAndSpine(
   const titleEl = doc.getElementsByTagName("dc:title")[0] ?? doc.getElementsByTagName("title")[0]
   const title = titleEl?.textContent?.trim() || null
 
+  const creatorEls =
+    doc.getElementsByTagName("dc:creator").length > 0
+      ? Array.from(doc.getElementsByTagName("dc:creator"))
+      : Array.from(doc.getElementsByTagName("creator"))
+  const author = pickAuthor(creatorEls)
+
   // EPUB2's way of pointing at the cover: <meta name="cover" content="<manifest id>"/>, as
   // opposed to EPUB3's `properties="cover-image"` on the manifest item itself (read in
   // findCoverItem below).
@@ -151,7 +189,7 @@ async function readManifestAndSpine(
     }
   }
 
-  return { spine, title, manifestItems, metaCoverId }
+  return { spine, title, author, manifestItems, metaCoverId }
 }
 
 /**
@@ -281,7 +319,7 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
   })
 
   const opfPath = await findOpfPath(zip)
-  const { spine, title, manifestItems, metaCoverId } = await readManifestAndSpine(zip, opfPath)
+  const { spine, title, author, manifestItems, metaCoverId } = await readManifestAndSpine(zip, opfPath)
   if (spine.length === 0) {
     throw new EpubParseError("This EPUB doesn't have any readable chapters.")
   }
@@ -302,7 +340,7 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
 
   const coverImage = await extractCoverImage(zip, opfPath, manifestItems, metaCoverId)
 
-  return { text, title, coverImage }
+  return { text, title, author, coverImage }
 }
 
 /**

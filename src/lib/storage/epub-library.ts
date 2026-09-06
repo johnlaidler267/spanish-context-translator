@@ -55,6 +55,9 @@ export interface LibraryEpub {
   /** `data:` URL of the book's cover, or null when it has none -- see LibraryCard, which falls
    *  back to a generated placeholder cover in that case. */
   coverImage: string | null
+  /** Author from the EPUB's OPF `<dc:creator>` (see parse-epub.ts's `pickAuthor`), or null when
+   *  the EPUB had none or this book was saved before author extraction existed. */
+  author: string | null
 }
 
 interface UserEpubListRow {
@@ -65,6 +68,7 @@ interface UserEpubListRow {
   created_at: string
   updated_at: string
   cover_image: string | null
+  author: string | null
 }
 
 function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
@@ -76,6 +80,7 @@ function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
     createdAt: new Date(row.created_at).getTime(),
     updatedAt: new Date(row.updated_at).getTime(),
     coverImage: row.cover_image,
+    author: row.author,
   }
 }
 
@@ -85,7 +90,7 @@ export async function listUserEpubs(user: User | null): Promise<LibraryEpub[]> {
   if (!user) return []
   const { data, error } = await supabase
     .from("user_epubs")
-    .select("id, title, file_name, char_count, created_at, updated_at, cover_image")
+    .select("id, title, file_name, char_count, created_at, updated_at, cover_image, author")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
   if (error || !data) {
@@ -108,7 +113,13 @@ export async function listUserEpubs(user: User | null): Promise<LibraryEpub[]> {
  */
 export async function saveEpubToLibrary(
   user: User | null,
-  epub: { title: string | null; fileName: string; text: string; coverImage?: string | null },
+  epub: {
+    title: string | null
+    fileName: string
+    text: string
+    coverImage?: string | null
+    author?: string | null
+  },
 ): Promise<{ id: string } | null> {
   if (!user) return null
 
@@ -138,6 +149,7 @@ export async function saveEpubToLibrary(
       body_text: text,
       char_count: text.length,
       cover_image: coverImage,
+      author: epub.author?.trim() || null,
     })
     .select("id")
     .single()
