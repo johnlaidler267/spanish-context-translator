@@ -53,6 +53,7 @@ import { RateLimitModal } from "@/components/subscription/rate-limit-modal"
 import { isRateLimitApiMessage } from "@/lib/api-errors"
 import { useAuth } from "@/contexts/auth-context"
 import { useArticlePageSplitLimits } from "@/hooks/use-article-page-split-limits"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { GuestSignupModal } from "@/components/auth/guest-signup-modal"
 import { hasReachedGuestLimit, incrementGuestUses } from "@/lib/subscription/guest-usage"
 import { checkLimits } from "@/lib/subscription/enforce"
@@ -134,14 +135,18 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("article")
   const [hoverTtsEnabled, setHoverTtsEnabled] = useState(false)
   /**
-   * Reading toolbar (back arrow + mode/theme/settings rail): fades out after a short
-   * idle period so it doesn't sit over the text, and reappears on a tap on the reading
-   * surface. Taps that land on a word (its own translation popup) or a page-turn arrow
-   * (`data-page-nav`) are excluded — see `handleReadingSurfaceTap` below — so this never
-   * competes with those gestures.
+   * Reading toolbar (back arrow + mode/theme/settings rail): on mobile it fades out after
+   * a short idle period so it doesn't sit over the text, and a tap on the reading surface
+   * toggles it back on (or off again if already visible). On desktop it just stays visible
+   * the whole time — no idle-hide, no tap-to-toggle — since there's no cramped-viewport
+   * reason to tuck it away there. Taps that land on a word (its own translation popup) or
+   * a page-turn arrow (`data-page-nav`) are excluded either way — see
+   * `handleReadingSurfaceTap` below — so this never competes with those gestures.
    */
   const [toolbarVisible, setToolbarVisible] = useState(true)
   const toolbarHideTimerRef = useRef<number | null>(null)
+  /** Same breakpoint as the rest of the reading UI (see `readLayoutMobile` below). */
+  const isMobileToolbar = useMediaQuery("(max-width: 767px)")
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
   const [displayName, setDisplayName] = useState(() =>
     getEffectiveDisplayName(null),
@@ -196,21 +201,29 @@ export default function App() {
     }
   }, [])
 
+  /** Desktop: never auto-hide — see `isMobileToolbar` above. */
   const scheduleToolbarHide = useCallback(() => {
     clearToolbarHideTimer()
+    if (!isMobileToolbar) return
     toolbarHideTimerRef.current = window.setTimeout(() => {
       toolbarHideTimerRef.current = null
       setToolbarVisible(false)
     }, TOOLBAR_IDLE_HIDE_MS)
-  }, [clearToolbarHideTimer])
+  }, [clearToolbarHideTimer, isMobileToolbar])
 
-  /** Show the toolbar again and restart the idle-hide countdown. */
+  /** Show the toolbar again and restart the idle-hide countdown (mobile only — see above). */
   const revealToolbar = useCallback(() => {
     setToolbarVisible(true)
     scheduleToolbarHide()
   }, [scheduleToolbarHide])
 
-  /** Fresh reading session: start visible, and start the idle countdown right away. */
+  /**
+   * Fresh reading session: start visible, and start the idle countdown right away. Also
+   * reruns on a mobile↔desktop crossing mid-session (`scheduleToolbarHide`'s identity
+   * changes with `isMobileToolbar`, which is in this effect's deps via that callback) —
+   * landing on desktop re-forces the toolbar visible with no timer scheduled, since
+   * `scheduleToolbarHide` no-ops there.
+   */
   useEffect(() => {
     if (appState !== "reading") {
       clearToolbarHideTimer()
@@ -222,11 +235,14 @@ export default function App() {
   }, [appState, clearToolbarHideTimer, scheduleToolbarHide])
 
   /**
-   * Tap-to-reveal for the reading surface (article body / read-mode sentence). Skips taps that
-   * are already spoken for: a word (`data-chunk`, plus its `data-popup`/`data-details-box` UI)
-   * keeps opening its own translation popup, and a page-turn control (`data-page-nav`, the
-   * Previous/Next buttons in both modes) keeps turning pages — neither should also toggle the
-   * toolbar. Anything else on the surface (blank margin, plain text, background) reveals it.
+   * Tap-to-toggle for the reading surface (article body / read-mode sentence) — mobile only;
+   * on desktop the toolbar just stays visible, so a surface tap has nothing to do here. Skips
+   * taps that are already spoken for: a word (`data-chunk`, plus its `data-popup`/
+   * `data-details-box` UI) keeps opening its own translation popup, and a page-turn control
+   * (`data-page-nav`, the Previous/Next buttons in both modes) keeps turning pages — neither
+   * should also toggle the toolbar. Anything else on the surface (blank margin, plain text,
+   * background) toggles it: brings it back if hidden, or dismisses it if already showing —
+   * so a deliberate tap can put it away without waiting out the idle timer.
    */
   const handleReadingSurfaceTap = useCallback(
     (e: React.MouseEvent) => {
@@ -238,9 +254,15 @@ export default function App() {
       ) {
         return
       }
+      if (!isMobileToolbar) return
+      if (toolbarVisible) {
+        clearToolbarHideTimer()
+        setToolbarVisible(false)
+        return
+      }
       revealToolbar()
     },
-    [revealToolbar],
+    [isMobileToolbar, toolbarVisible, clearToolbarHideTimer, revealToolbar],
   )
 
   const cacheRef = useRef(new TranslationCache())

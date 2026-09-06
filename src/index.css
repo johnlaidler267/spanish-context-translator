@@ -190,6 +190,19 @@
   }
 }
 
+/* Page-turn arrows (Previous/Next in both article and read mode — see `data-page-nav`).
+   Tapping Next often lands on a page that still needs translating, which swaps the
+   chevron icon for a spinner (and can flip the button to `disabled`) while the finger
+   is still on it. Mobile Safari/Chrome tie their default tap-highlight overlay to that
+   same element, and mutating/disabling it mid-touch means the browser never gets a
+   clean touchend to clear the highlight — it's left stuck as a gray circle over the
+   arrow. Previous rarely hits this (going back is almost always already-cached content,
+   so the icon never swaps) which is why only Next was reported. Suppressing the default
+   tap-highlight here removes the effect outright rather than racing its cleanup. */
+[data-page-nav] {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Shell height: CSS viewport units only — do NOT bind to visualViewport.height (keyboard shrinks it and creates a gap below). */
 @layer utilities {
   .min-h-app {
