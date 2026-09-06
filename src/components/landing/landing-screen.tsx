@@ -19,7 +19,7 @@ import { useSubscription } from "@/contexts/subscription-context"
 import { supabase } from "@/lib/supabase"
 import { getTier, type TierId } from "@/lib/subscription/tiers"
 import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscription/subscription-display"
-import { LandingContentPills } from "@/components/landing/landing-content-pills"
+import { LandingQuickFillControls } from "@/components/landing/landing-quick-fill-controls"
 import { LandingContinueReading } from "@/components/landing/landing-continue-reading"
 import type { ContentItem } from "@/lib/discover/content-data"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
@@ -37,7 +37,6 @@ import {
 } from "@/lib/storage/language-learning-preferences"
 import { VoiceInputButton } from "@/components/reading/voice-input-button"
 import { AppErrorModal } from "@/components/app-error-modal"
-import { Button } from "@/components/ui/button"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
 
 interface LandingScreenProps {
@@ -119,7 +118,7 @@ export function LandingScreen({
   onContinueLibraryBook,
 }: LandingScreenProps) {
   const { user } = useAuth()
-  const { status: subscriptionStatus, isLapsed } = useSubscription()
+  const { status: subscriptionStatus } = useSubscription()
   const cachedSubscriptionRow = useMemo(
     () => (user?.id ? readCachedSubscriptionRow(user.id) : undefined),
     [user?.id],
@@ -235,16 +234,6 @@ export function LandingScreen({
   const [placeholderVisible, setPlaceholderVisible] = useState(true)
   const [focused, setFocused] = useState(false)
 
-  const epubFileInputRef = useRef<HTMLInputElement>(null)
-  const [isParsingEpub, setIsParsingEpub] = useState(false)
-  const [epubError, setEpubError] = useState<string | null>(null)
-  /** Set only when the parsed book had to be cut down for a free-plan preview -- confirmed before submitting. */
-  const [epubPreviewConfirm, setEpubPreviewConfirm] = useState<{
-    truncatedText: string
-    limit: number
-    bookTitle: string | null
-  } | null>(null)
-
   /* Extend overflow unlock while landing enter animation runs (mobile shell clips transforms otherwise). */
   useEffect(() => {
     beginRouteTransition(560)
@@ -300,59 +289,6 @@ export function LandingScreen({
   }
 
   const sampleText = `El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles. Ella pensaba en su abuela, quien siempre le contaba historias de este lugar mágico.`
-
-  const handleUploadPillClick = () => {
-    if (isLoading || isParsingEpub) return
-    epubFileInputRef.current?.click()
-  }
-
-  const handleEpubFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    // Reset the input so selecting the same file again still fires a change event.
-    e.target.value = ""
-    if (!file) return
-
-    setEpubError(null)
-    setIsParsingEpub(true)
-    try {
-      // Lazy: pulls in jszip, only needed once someone actually uploads a book -- keeps
-      // that weight out of the landing page's main bundle (see lazyRoute for the same
-      // reasoning applied to whole routes, in src/lib/lazy-route.ts).
-      const { parseEpub, truncateForPreview } = await import("@/lib/epub/parse-epub")
-      const { text: fullText, title } = await parseEpub(file)
-
-      // Mirrors the "is this user effectively on the free plan" check in handleTextSubmit
-      // (src/App.tsx) -- same criteria, so an upload is previewed exactly when a paste of
-      // the same length would otherwise be hard-rejected there.
-      const freeCharLimit = getTier("free").limits.charsPerSubmission
-      const isEffectivelyFreeUser =
-        user != null && (subscriptionStatus == null || subscriptionStatus === "free" || isLapsed)
-
-      if (isEffectivelyFreeUser && freeCharLimit != null && fullText.length > freeCharLimit) {
-        const truncatedText = truncateForPreview(fullText, freeCharLimit)
-        setText(truncatedText)
-        setEpubPreviewConfirm({ truncatedText, limit: freeCharLimit, bookTitle: title })
-      } else {
-        setText(fullText)
-        onSubmit(fullText)
-      }
-    } catch (err) {
-      setEpubError(
-        err instanceof Error && err.name === "EpubParseError"
-          ? err.message
-          : "Couldn't read this EPUB file. Make sure it's a valid .epub and try again.",
-      )
-    } finally {
-      setIsParsingEpub(false)
-    }
-  }
-
-  const confirmEpubPreviewAndSubmit = () => {
-    if (!epubPreviewConfirm) return
-    const { truncatedText } = epubPreviewConfirm
-    setEpubPreviewConfirm(null)
-    onSubmit(truncatedText)
-  }
 
   const handleComposerSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -500,27 +436,7 @@ export function LandingScreen({
             className="filigree-divider order-1 md:order-2 mx-auto shrink-0"
             aria-hidden
           />
-          <div className="entry-2 order-2 md:order-1 flex flex-col gap-3 w-full">
-            <LandingContentPills
-              className="order-1 md:order-2"
-              onRandom={handleRandomPill}
-              onLearn={handleLearnPill}
-              onUpload={handleUploadPillClick}
-              randomPending={isRolling}
-              learnPending={isLearning}
-              uploadPending={isParsingEpub}
-              disabled={isLoading}
-            />
-            <input
-              ref={epubFileInputRef}
-              type="file"
-              accept=".epub,application/epub+zip"
-              className="sr-only"
-              tabIndex={-1}
-              aria-hidden="true"
-              onChange={(e) => void handleEpubFileSelected(e)}
-            />
-            <div className="order-2 md:order-1 flex flex-col gap-2 w-full">
+          <div className="entry-2 order-2 md:order-1 flex flex-col gap-2 w-full">
             <form
               ref={composerFormRef}
               className="contents"
@@ -553,6 +469,13 @@ export function LandingScreen({
                 )}
               </div>
               <div className="textarea-toolbar" aria-label="Composer actions">
+                <LandingQuickFillControls
+                  onRandom={handleRandomPill}
+                  onLearn={handleLearnPill}
+                  randomPending={isRolling}
+                  learnPending={isLearning}
+                  disabled={isLoading}
+                />
                 {showCharLimitCounter && (
                   <div
                     className="textarea-toolbar-left"
@@ -643,7 +566,6 @@ export function LandingScreen({
               </div>
             </div>
             </form>
-            </div>
           </div>
         </div>
 
@@ -688,52 +610,6 @@ export function LandingScreen({
           }}
           retryLabel="Try again"
         />
-      )}
-      {epubError && (
-        <AppErrorModal
-          title="Couldn’t read this EPUB"
-          message={epubError}
-          onDismiss={() => setEpubError(null)}
-        />
-      )}
-      {epubPreviewConfirm && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-background/90 backdrop-blur-sm"
-            aria-hidden
-            onClick={() => setEpubPreviewConfirm(null)}
-          />
-          <div
-            className="relative w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-lg"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="epub-preview-title"
-          >
-            <h2 id="epub-preview-title" className="font-serif text-2xl font-medium text-foreground mb-2">
-              Here’s a free preview
-            </h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              {epubPreviewConfirm.bookTitle ? <>“{epubPreviewConfirm.bookTitle}” is</> : "This book is"} longer
-              than the free plan’s {epubPreviewConfirm.limit.toLocaleString()}-character limit per submission, so
-              we’ll read the first part as a preview. Upgrade to Pro to translate the whole book.
-            </p>
-            <div className="mt-5 flex flex-col gap-2">
-              <Button type="button" className="w-full" onClick={confirmEpubPreviewAndSubmit}>
-                Continue with preview
-              </Button>
-              <Link
-                to="/upgrade"
-                className="text-center text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                onClick={() => setEpubPreviewConfirm(null)}
-              >
-                View plans
-              </Link>
-              <Button type="button" variant="outline" className="w-full" onClick={() => setEpubPreviewConfirm(null)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
       )}
     </>
   )

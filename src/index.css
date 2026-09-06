@@ -1270,6 +1270,78 @@ article span {
   max-width: min(160px, 45vw);
 }
 
+/* Random / Learn quick-fill — docked bottom-left inside the textarea, mirroring the
+   icon-only mic/translate controls already docked bottom-right. No button chrome
+   (background/border) of their own, just icon (+ label on desktop). */
+.quick-fill-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.quick-fill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(58, 51, 46, 0.55);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+.quick-fill-btn:hover:not(:disabled) {
+  color: #c97a5a;
+  background: rgba(201, 122, 90, 0.07);
+}
+.quick-fill-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(201, 122, 90, 0.25);
+}
+.quick-fill-btn:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+.quick-fill-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.quick-fill-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 1px;
+  background: rgba(58, 51, 46, 0.14);
+  flex-shrink: 0;
+}
+.dark .quick-fill-btn {
+  color: rgba(234, 224, 213, 0.5);
+}
+.dark .quick-fill-btn:hover:not(:disabled) {
+  color: #d18a6a;
+  background: rgba(201, 122, 90, 0.14);
+}
+.dark .quick-fill-divider {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Mobile: icon-only, sized/spaced to match the mic + translate icons on the right */
+@media (max-width: 767px) {
+  .quick-fill-label {
+    display: none;
+  }
+  .quick-fill-btn {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 767px) {
   .textarea-wrapper {
     display: flex;
