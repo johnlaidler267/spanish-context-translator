@@ -52,6 +52,16 @@ export function isAuthCallbackInUrl(): boolean {
   )
 }
 
+/**
+ * Where Supabase should send the browser back to once a sign-in (OAuth or magic-link)
+ * completes: the current page's path + query, not just the site origin. Without this,
+ * a user who opens sign-in mid-checkout (e.g. from `/upgrade`) gets dropped back on the
+ * home page instead of staying in the flow they started.
+ */
+export function currentPageRedirectUrl(): string {
+  return window.location.origin + window.location.pathname + window.location.search
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -107,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: currentPageRedirectUrl(),
           shouldCreateUser: true,
         },
       })
@@ -120,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithOAuth = useCallback(async (provider: "google") => {
     await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: currentPageRedirectUrl() },
     })
   }, [])
 
