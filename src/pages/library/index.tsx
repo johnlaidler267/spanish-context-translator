@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase"
 import { ensureSessionForGroq } from "@/lib/groq-edge"
 import { Button } from "@/components/ui/button"
 import { LibraryCard } from "@/components/library/library-card"
+import { LibraryPreviewModal } from "@/components/library/library-preview-modal"
 import {
   deleteUserEpub,
   listUserEpubs,
@@ -67,6 +68,10 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
   // just still loading. Also doubles as a guard against a second tap (this card or another)
   // kicking off a second concurrent open while one is already in flight.
   const [openingBookId, setOpeningBookId] = useState<string | null>(null)
+
+  // A tap on a card now stops here first, per the user's request for a confirm step before
+  // actually opening a book -- see LibraryPreviewModal.
+  const [previewBook, setPreviewBook] = useState<LibraryEpub | null>(null)
 
   // Bumped once cloud-synced reading progress (reading-progress-sync.ts) has been merged into
   // the localStorage cache getReadingProgressPercent reads from -- same pattern as Discover's
@@ -185,8 +190,11 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
       await onStartReading(book)
     } finally {
       // A successful open navigates away (this page unmounts), so this only visibly matters
-      // on failure -- clears the spinner so the card is tappable again instead of stuck.
+      // on failure -- clears the spinner so the card is tappable again instead of stuck, and
+      // closes the preview modal so App.tsx's own error modal (e.g. "Couldn't load this book")
+      // isn't left stacked behind it.
       setOpeningBookId(null)
+      setPreviewBook(null)
     }
   }
 
@@ -274,7 +282,7 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
                 key={book.id}
                 book={book}
                 progressPercent={getReadingProgressPercent(user, book.id)}
-                onOpen={() => void handleOpenBook(book)}
+                onOpen={() => setPreviewBook(book)}
                 onDelete={() => void handleDelete(book.id)}
                 isOpening={openingBookId === book.id}
                 disabled={openingBookId != null && openingBookId !== book.id}
@@ -283,6 +291,15 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
           </div>
         )}
       </main>
+
+      <LibraryPreviewModal
+        book={previewBook}
+        open={previewBook != null}
+        onClose={() => setPreviewBook(null)}
+        onStartReading={(book) => void handleOpenBook(book)}
+        progressPercent={previewBook ? getReadingProgressPercent(user, previewBook.id) : null}
+        isOpening={previewBook != null && openingBookId === previewBook.id}
+      />
     </div>
   )
 }
