@@ -546,7 +546,21 @@ export default function App() {
         populateLandingDraft = true,
         contentId = null,
         contentTitle = null,
-      }: { populateLandingDraft?: boolean; contentId?: string | null; contentTitle?: string | null } = {},
+        initialPageRatio = null,
+      }: {
+        populateLandingDraft?: boolean
+        contentId?: string | null
+        contentTitle?: string | null
+        /**
+         * Roughly how far through the paginated source (0-1) to open on, when there's no saved
+         * reading position yet for `contentId` -- a default *landing page*, not a hard start:
+         * paging back to page 0 always reaches whatever came before it. Used by
+         * handleLibraryStartReading to skip a saved book's detected front matter (see
+         * parse-epub.ts's `storyStartOffset`) on a first-ever open. A fraction rather than an
+         * exact page index because pagination itself is viewport-dependent (see `pages` below).
+         */
+        initialPageRatio?: number | null
+      } = {},
     ) => {
       if (!text.trim()) return
 
@@ -709,17 +723,27 @@ export default function App() {
         // reflects where the reader actually left off, not just what this browser remembers.
         if (contentId) await ensureCloudReadingProgressPulled(user)
         const savedPageIndex = contentId ? getReadingProgress(user, contentId) : null
+        // No saved position yet (a book's first-ever open): land on whichever page
+        // `initialPageRatio` falls in instead of page 0 — e.g. a Library book's detected story
+        // start (see initialPageRatio's own docstring). Genuine resume always wins when both
+        // are present; there's no real saved position to prefer a guess over.
         const initialPageIndex =
-          savedPageIndex != null ? Math.min(Math.max(savedPageIndex, 0), pages.length - 1) : 0
+          savedPageIndex != null
+            ? Math.min(Math.max(savedPageIndex, 0), pages.length - 1)
+            : initialPageRatio != null && pages.length > 0
+              ? Math.min(Math.max(Math.floor(initialPageRatio * pages.length), 0), pages.length - 1)
+              : 0
 
-        // "Where you left off" modal: only for a real resume past the first page — reopening
-        // fresh (or a saved position that clamped back to page 0) has nothing to remind anyone
-        // of. `summary` is read from the local cache only (see reading-recap-storage.ts) — zero
+        // "Where you left off" modal: only for a genuine resume past the first page —
+        // reopening fresh (including a fresh open that landed past page 0 via
+        // `initialPageRatio` — e.g. a Library book's detected story start — or a saved
+        // position that clamped back to page 0) has nothing to remind anyone of.
+        // `summary` is read from the local cache only (see reading-recap-storage.ts) — zero
         // network calls here; it was generated once, the *last* time this book was left (see
         // maybeSummarizePreviousPageOnLeave below). `excerpt` is the free verbatim fallback for
         // when there's no cached summary yet (or it's stale — see getCachedPageRecap).
         setWhereLeftOff(
-          initialPageIndex > 0
+          savedPageIndex != null && initialPageIndex > 0
             ? {
                 title: contentTitle ?? null,
                 summary: contentId ? getCachedPageRecap(user, contentId, initialPageIndex - 1) : null,
@@ -862,10 +886,22 @@ export default function App() {
       // inside its already-open ContentPreviewModal) -- handleTextSubmit already blocks and
       // shows the plan-limit modal itself for a free-tier user opening an oversized book, same
       // as pasting the same text directly would.
+      //
+      // Skip the detected front matter (see parse-epub.ts's storyStartOffset) on a first-ever
+      // open only -- handleTextSubmit itself prefers a real saved reading position over this
+      // whenever one exists. Expressed as a fraction of `book.charCount` (the length
+      // storyStartOffset was measured against at parse/save time), not the raw offset -- the
+      // text handleTextSubmit actually paginates has since been through
+      // dedupeConsecutiveDuplicateLines, which can shift absolute character positions.
+      const initialPageRatio =
+        book.storyStartOffset > 0 && book.charCount > 0
+          ? Math.min(1, book.storyStartOffset / book.charCount)
+          : null
       await handleTextSubmit(sourceText, {
         populateLandingDraft: false,
         contentId: book.id,
         contentTitle: book.title,
+        initialPageRatio,
       })
     },
     [handleTextSubmit],

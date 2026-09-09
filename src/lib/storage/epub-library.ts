@@ -62,6 +62,12 @@ export interface LibraryEpub {
    *  book was saved before description extraction existed -- LibraryPreviewModal simply omits
    *  that section of the popup in either case. */
   description: string | null
+  /** Character offset into the book's text where the story actually starts, as detected by
+   *  parse-epub.ts (`0` = no front matter detected, or a book saved before this field existed).
+   *  Consulted by App.tsx's handleLibraryStartReading as the default landing page on a
+   *  first-ever open (i.e. only when there's no saved reading position yet) -- see
+   *  supabase/migrations/0021_user_epub_story_start_offset.sql. */
+  storyStartOffset: number
 }
 
 interface UserEpubListRow {
@@ -74,6 +80,7 @@ interface UserEpubListRow {
   cover_image: string | null
   author: string | null
   description: string | null
+  story_start_offset: number
 }
 
 function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
@@ -87,6 +94,7 @@ function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
     coverImage: row.cover_image,
     author: row.author,
     description: row.description,
+    storyStartOffset: row.story_start_offset,
   }
 }
 
@@ -96,7 +104,9 @@ export async function listUserEpubs(user: User | null): Promise<LibraryEpub[]> {
   if (!user) return []
   const { data, error } = await supabase
     .from("user_epubs")
-    .select("id, title, file_name, char_count, created_at, updated_at, cover_image, author, description")
+    .select(
+      "id, title, file_name, char_count, created_at, updated_at, cover_image, author, description, story_start_offset",
+    )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
   if (error || !data) {
@@ -126,6 +136,8 @@ export async function saveEpubToLibrary(
     coverImage?: string | null
     author?: string | null
     description?: string | null
+    /** See parse-epub.ts's `ParsedEpub.storyStartOffset`. Defaults to 0 (no skip). */
+    storyStartOffset?: number
   },
 ): Promise<{ id: string } | null> {
   if (!user) return null
@@ -147,6 +159,11 @@ export async function saveEpubToLibrary(
   const coverImage =
     epub.coverImage && epub.coverImage.length <= MAX_COVER_IMAGE_CHARS ? epub.coverImage : null
 
+  // Defensive clamp, not just trust the caller -- matches the DB's own CHECK constraint
+  // (0021_user_epub_story_start_offset.sql) so a bad value fails soft (saved as 0/no skip)
+  // rather than rejecting the whole save.
+  const storyStartOffset = Math.min(Math.max(epub.storyStartOffset ?? 0, 0), text.length)
+
   const { data, error } = await supabase
     .from("user_epubs")
     .insert({
@@ -158,6 +175,7 @@ export async function saveEpubToLibrary(
       cover_image: coverImage,
       author: epub.author?.trim() || null,
       description: epub.description?.trim() || null,
+      story_start_offset: storyStartOffset,
     })
     .select("id")
     .single()

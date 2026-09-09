@@ -10,6 +10,7 @@ import {
   parseEpub,
   EpubParseError,
   truncateForPreview,
+  detectStoryStartIndex,
   MAX_COVER_SOURCE_BYTES,
   MAX_DESCRIPTION_CHARS,
 } from "@/lib/epub/parse-epub"
@@ -200,6 +201,146 @@ describe("parseEpub", () => {
     zip.file("OEBPS/chapter2.xhtml", chapterXhtml([]))
     const blob = await zip.generateAsync({ type: "blob" })
     await expect(parseEpub(blob)).rejects.toBeInstanceOf(EpubParseError)
+  })
+
+})
+
+// A paragraph of ~130 words -- comfortably over FRONT_MATTER_MAX_WORDS (120), so a chapter
+// built from it reads as "real content" to the heuristic regardless of its filename.
+const LONG_CHAPTER_PARAGRAPH = Array(130).fill("palabra").join(" ")
+
+function opfWithChapters(chapters: { id: string; path: string }[], guideHref?: string): string {
+  const manifest = chapters
+    .map((c) => `<item id="${c.id}" href="${c.path}" media-type="application/xhtml+xml"/>`)
+    .join("\n    ")
+  const spine = chapters.map((c) => `<itemref idref="${c.id}"/>`).join("\n    ")
+  const guide = guideHref ? `<guide><reference type="text" href="${guideHref}"/></guide>` : ""
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>Libro con Preámbulo</dc:title>
+  </metadata>
+  <manifest>
+    ${manifest}
+  </manifest>
+  <spine>
+    ${spine}
+  </spine>
+  ${guide}
+</package>`
+}
+
+async function buildEpubWithChapters(opts: {
+  chapters: { id: string; path: string; paragraphs: string[] }[]
+  guideHref?: string
+}): Promise<Blob> {
+  const zip = new JSZip()
+  zip.file("mimetype", "application/epub+zip")
+  zip.file("META-INF/container.xml", CONTAINER_XML)
+  zip.file("OEBPS/content.opf", opfWithChapters(opts.chapters, opts.guideHref))
+  for (const c of opts.chapters) {
+    zip.file(`OEBPS/${c.path}`, chapterXhtml(c.paragraphs))
+  }
+  return zip.generateAsync({ type: "blob" })
+}
+
+describe("parseEpub story start detection", () => {
+  it("returns storyStartOffset 0 for a normal book with no front matter", async () => {
+    // A realistically-sized chapter, not buildMinimalEpub()'s toy 2-sentence fixture -- a real
+    // chapter's word count is what keeps the heuristic from mistaking it for front matter.
+    const epub = await buildEpubWithChapters({
+      chapters: [{ id: "chap1", path: "chapter1.xhtml", paragraphs: [LONG_CHAPTER_PARAGRAPH] }],
+    })
+    const { storyStartOffset } = await parseEpub(epub)
+    expect(storyStartOffset).toBe(0)
+  })
+
+  it("skips straight to the OPF guide's type=text reference when present", async () => {
+    const epub = await buildEpubWithChapters({
+      chapters: [
+        { id: "cover", path: "cover.xhtml", paragraphs: ["Portada."] },
+        { id: "title", path: "titlepage.xhtml", paragraphs: ["Título del libro."] },
+        { id: "chap1", path: "chapter1.xhtml", paragraphs: [LONG_CHAPTER_PARAGRAPH] },
+      ],
+      guideHref: "chapter1.xhtml",
+    })
+    const { text, storyStartOffset } = await parseEpub(epub)
+    expect(text.slice(storyStartOffset)).toBe(LONG_CHAPTER_PARAGRAPH)
+  })
+
+  it("falls back to the front-matter heuristic when the EPUB has no guide", async () => {
+    const epub = await buildEpubWithChapters({
+      chapters: [
+        { id: "title", path: "titlepage.xhtml", paragraphs: ["Mi Novela"] },
+        { id: "copyright", path: "copyright.xhtml", paragraphs: ["Todos los derechos reservados."] },
+        { id: "chap1", path: "chapter1.xhtml", paragraphs: [LONG_CHAPTER_PARAGRAPH] },
+      ],
+    })
+    const { text, storyStartOffset } = await parseEpub(epub)
+    expect(text.slice(storyStartOffset)).toBe(LONG_CHAPTER_PARAGRAPH)
+  })
+
+  it("never skips a book's only chapter, however short", async () => {
+    const epub = await buildEpubWithChapters({
+      chapters: [{ id: "chap1", path: "chapter1.xhtml", paragraphs: ["Corto."] }],
+    })
+    const { text, storyStartOffset } = await parseEpub(epub)
+    expect(storyStartOffset).toBe(0)
+    expect(text).toBe("Corto.")
+  })
+})
+
+describe("detectStoryStartIndex", () => {
+  const real = { path: "chapter1.xhtml", text: LONG_CHAPTER_PARAGRAPH }
+
+  it("returns 0 when the first entry already looks like real content", () => {
+    expect(detectStoryStartIndex([real, real], null)).toBe(0)
+  })
+
+  it("skips entries that look like front matter by filename, stopping at real content", () => {
+    const titlePage = { path: "titlepage.xhtml", text: "Mi Novela" }
+    const copyright = { path: "copyright.xhtml", text: "Todos los derechos reservados." }
+    expect(detectStoryStartIndex([titlePage, copyright, real], null)).toBe(2)
+  })
+
+  it("skips a short entry even with an unremarkable filename", () => {
+    const shortIntro = { path: "section1.xhtml", text: "Uno." }
+    expect(detectStoryStartIndex([shortIntro, real], null)).toBe(1)
+  })
+
+  it("never skips the last entry, even if it also looks like front matter", () => {
+    const titlePage = { path: "titlepage.xhtml", text: "Mi Novela" }
+    expect(detectStoryStartIndex([titlePage], null)).toBe(0)
+  })
+
+  it("caps how many entries the heuristic can skip", () => {
+    // 10 short "looks like front matter" entries followed by real content -- MAX_HEURISTIC_SKIP_
+    // ENTRIES (8) and MAX_HEURISTIC_SKIP_FRACTION (0.25 of 11 ≈ 2) both cap this well short of 10.
+    const shortEntries = Array.from({ length: 10 }, (_, i) => ({
+      path: `section${i}.xhtml`,
+      text: "Uno.",
+    }))
+    expect(detectStoryStartIndex([...shortEntries, real], null)).toBe(2)
+  })
+
+  it("trusts a guide reference that resolves to one of the entries", () => {
+    const titlePage = { path: "titlepage.xhtml", text: "Mi Novela" }
+    expect(detectStoryStartIndex([titlePage, real], "chapter1.xhtml")).toBe(1)
+  })
+
+  it("falls back to the heuristic when the guide reference doesn't match any entry", () => {
+    const titlePage = { path: "titlepage.xhtml", text: "Mi Novela" }
+    expect(detectStoryStartIndex([titlePage, real], "missing.xhtml")).toBe(1)
+  })
+
+  it("bounds a guide reference pointing past the middle of the book", () => {
+    // Guide (mistakenly, or corruptly) points at the very last of 10 entries -- trusting it
+    // outright would skip 90% of the book, so it's clamped to the first-half sanity bound.
+    const entries = Array.from({ length: 10 }, (_, i) => ({
+      path: `section${i}.xhtml`,
+      text: LONG_CHAPTER_PARAGRAPH,
+    }))
+    expect(detectStoryStartIndex(entries, "section9.xhtml")).toBe(5)
   })
 })
 

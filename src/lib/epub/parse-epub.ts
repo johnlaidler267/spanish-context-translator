@@ -45,6 +45,15 @@ export interface ParsedEpub {
    * image type, or a cover over `MAX_COVER_SOURCE_BYTES`.
    */
   coverImage: string | null
+  /**
+   * Character offset into `text` where the actual story appears to start -- `0` when no
+   * front matter was detected (or the book has none). See `detectStoryStartOffset`'s
+   * docstring for how this is derived. Consumed by the reading pipeline (App.tsx's
+   * handleLibraryStartReading) as a *default* landing page for a book with no saved reading
+   * position yet -- it never removes or hides anything; paging back to the very first page
+   * always reaches the front matter.
+   */
+  storyStartOffset: number
 }
 
 function parseXml(xml: string, sourceLabel: string): Document {
@@ -169,6 +178,9 @@ async function readManifestAndSpine(
   description: string | null
   manifestItems: ManifestItem[]
   metaCoverId: string | null
+  /** Resolved path of the OPF `<guide>`'s type="text" reference, if present -- see
+   *  `detectStoryStartOffset`'s docstring. */
+  guideTextPath: string | null
 }> {
   const opfFile = zip.file(opfPath)
   if (!opfFile) {
@@ -233,7 +245,20 @@ async function readManifestAndSpine(
     }
   }
 
-  return { spine, title, author, description, manifestItems, metaCoverId }
+  // OPF2's `<guide>` -- the standard, publisher-authored way of marking "here's the actual
+  // first page of reading content" (as opposed to the cover, title page, etc.). Still widely
+  // emitted even by EPUB3 tooling (Calibre, Vellum, ...) for backward compatibility with EPUB2
+  // readers, so this alone covers most professionally-produced books that mark it at all.
+  let guideTextPath: string | null = null
+  for (const reference of Array.from(doc.getElementsByTagName("reference"))) {
+    if (reference.getAttribute("type") === "text") {
+      const href = reference.getAttribute("href")
+      if (href) guideTextPath = resolveRelativePath(opfPath, href)
+      break
+    }
+  }
+
+  return { spine, title, author, description, manifestItems, metaCoverId, guideTextPath }
 }
 
 /**
@@ -359,6 +384,102 @@ function extractChapterText(xhtml: string): string {
   return paragraphs.join("\n\n")
 }
 
+/** Below this many words, a chapter file is almost certainly non-narrative front matter (a
+ *  title page, copyright block, or a one-line dedication), regardless of its filename. */
+const FRONT_MATTER_MAX_WORDS = 120
+
+/**
+ * Filenames that conventionally mark administrative front matter across real-world EPUB
+ * generators (Calibre, Vellum, Draft2Digital, Sigil, ...) -- "titlepage.xhtml",
+ * "copyright.xhtml", "toc.xhtml", and the like are common enough to be a useful signal on
+ * their own, even for a chapter a little over `FRONT_MATTER_MAX_WORDS`. Deliberately excludes
+ * "prologue"/"foreword"/"introduction" (and Spanish equivalents) -- those are narrative
+ * content some readers specifically want, not filler to skip past.
+ */
+const FRONT_MATTER_PATH_RE =
+  /cover|half.?title|title.?page|copyright|colophon|imprint|dedicat|epigraph|toc\b|table.?of.?contents|^contents\b|also.?by|praise.?for|acknowledg|portada|dedicatoria|agradecimient/i
+
+/** Fallback heuristic can never skip more than this many chapter files, however long a streak
+ *  of "looks like front matter" entries runs -- a safety net against a false-positive streak
+ *  (e.g. a very long book that happens to open with many short chapters) skipping real content.
+ *  See `detectStoryStartIndex`'s `fractionCap` for how this and the fraction below combine. */
+const MAX_HEURISTIC_SKIP_ENTRIES = 8
+/** ...or more than this fraction of the book -- meaningful once a book is long enough that the
+ *  fraction exceeds the fixed cap above; see `fractionCap`. */
+const MAX_HEURISTIC_SKIP_FRACTION = 0.25
+
+/** A publisher-provided `<guide>` reference is trusted directly (see `readManifestAndSpine`),
+ *  but still bounded to roughly the first half of the book -- a sanity backstop against a
+ *  mistaken or corrupt reference pointing deep into it; see `fractionCap`. */
+const MAX_TRUSTED_GUIDE_FRACTION = 0.5
+
+function countWords(s: string): number {
+  return (s.match(/\p{L}+/gu) ?? []).length
+}
+
+function looksLikeFrontMatterEntry(path: string, wordCount: number): boolean {
+  return wordCount < FRONT_MATTER_MAX_WORDS || FRONT_MATTER_PATH_RE.test(path)
+}
+
+/**
+ * Where, among `entries` (one per chapter file that actually produced text, in spine order),
+ * the real story appears to start -- an index to skip to, not remove. Two strategies, in order:
+ *
+ * 1. Trust the OPF `<guide>`'s type="text" reference when the EPUB has one (`guideTextPath`,
+ *    resolved to a path already) -- a publisher explicitly marking this is far more reliable
+ *    than guessing, so the fallback heuristic below is skipped entirely when this resolves to
+ *    one of `entries`.
+ * 2. Otherwise, walk forward from the first entry while it "looks like front matter" (very
+ *    short, and/or a conventionally-named front-matter file -- see `looksLikeFrontMatterEntry`),
+ *    stopping at the first one that doesn't, and never skipping the last entry or past the caps
+ *    above -- a book needs somewhere to land, and a long streak of false positives shouldn't be
+ *    able to skip real content.
+ *
+ * Returns `0` (no skip) when neither strategy finds anywhere better to start -- most EPUBs
+ * (no guide, and real content from the first chapter file) hit this, same as before this
+ * function existed.
+ */
+export function detectStoryStartIndex(
+  entries: { path: string; text: string }[],
+  guideTextPath: string | null,
+): number {
+  if (entries.length <= 1) return 0
+
+  // Shared shape for both caps below: a plain fraction-of-the-book rounds to 0 (or otherwise
+  // too small to be a meaningful signal) for a short book, wrongly refusing an obvious skip --
+  // e.g. 50% of 3 entries is 1, which would clamp a guide correctly pointing at index 2 (the
+  // real chapter after two short front-matter pages) down to index 1. Math.max(2, ...) keeps
+  // the fraction meaningful at small sizes; Math.min(entries.length - 1, ...) keeps it from
+  // ever exceeding what the book actually has.
+  const fractionCap = (fraction: number) =>
+    Math.min(entries.length - 1, Math.max(2, Math.floor(entries.length * fraction)))
+
+  if (guideTextPath) {
+    const guideIndex = entries.findIndex((e) => e.path === guideTextPath)
+    if (guideIndex >= 0) {
+      return Math.min(guideIndex, fractionCap(MAX_TRUSTED_GUIDE_FRACTION))
+    }
+  }
+
+  const maxSkip = Math.min(MAX_HEURISTIC_SKIP_ENTRIES, fractionCap(MAX_HEURISTIC_SKIP_FRACTION))
+  let index = 0
+  while (
+    index < maxSkip &&
+    index < entries.length - 1 &&
+    looksLikeFrontMatterEntry(entries[index]!.path, countWords(entries[index]!.text))
+  ) {
+    index++
+  }
+  return index
+}
+
+/** Character offset of `entries[index]` within `entries.map(e => e.text).join("\n\n")`. */
+function offsetForEntryIndex(entries: { text: string }[], index: number): number {
+  let offset = 0
+  for (let i = 0; i < index; i++) offset += entries[i]!.text.length + 2 // +2 for the "\n\n" join
+  return offset
+}
+
 /**
  * Parses an EPUB file (as given by a browser file input) into plain text plus,
  * when easily available, its title. Throws `EpubParseError` for anything that
@@ -370,27 +491,30 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
   })
 
   const opfPath = await findOpfPath(zip)
-  const { spine, title, author, description, manifestItems, metaCoverId } = await readManifestAndSpine(
-    zip,
-    opfPath,
-  )
+  const { spine, title, author, description, manifestItems, metaCoverId, guideTextPath } =
+    await readManifestAndSpine(zip, opfPath)
   if (spine.length === 0) {
     throw new EpubParseError("This EPUB doesn't have any readable chapters.")
   }
 
-  const chapterTexts: string[] = []
+  // Paired with `path` (not just a flat text[]) so story-start detection below can match the
+  // OPF guide's href and use conventional front-matter filenames -- see detectStoryStartIndex.
+  const chapterEntries: { path: string; text: string }[] = []
   for (const entry of spine) {
     const chapterFile = zip.file(entry.path)
     if (!chapterFile) continue
     const xhtml = await chapterFile.async("text")
     const chapterText = extractChapterText(xhtml)
-    if (chapterText) chapterTexts.push(chapterText)
+    if (chapterText) chapterEntries.push({ path: entry.path, text: chapterText })
   }
 
-  const text = chapterTexts.join("\n\n").trim()
+  const text = chapterEntries.map((e) => e.text).join("\n\n").trim()
   if (!text) {
     throw new EpubParseError("Couldn't find any readable text in this EPUB.")
   }
+
+  const storyStartIndex = detectStoryStartIndex(chapterEntries, guideTextPath)
+  const storyStartOffset = Math.min(offsetForEntryIndex(chapterEntries, storyStartIndex), text.length)
 
   const coverImage = await extractCoverImage(zip, opfPath, manifestItems, metaCoverId)
 
@@ -400,6 +524,7 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
     author,
     description: description ? truncateForPreview(description, MAX_DESCRIPTION_CHARS) : null,
     coverImage,
+    storyStartOffset,
   }
 }
 

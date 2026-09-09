@@ -59,6 +59,7 @@ const LIST_ROW = {
   cover_image: "data:image/jpeg;base64,AAAA",
   author: "Gabriel García Márquez",
   description: "Una saga familiar en el Macondo mítico.",
+  story_start_offset: 4200,
 }
 
 describe("epub-library", () => {
@@ -95,6 +96,7 @@ describe("epub-library", () => {
           coverImage: "data:image/jpeg;base64,AAAA",
           author: "Gabriel García Márquez",
           description: "Una saga familiar en el Macondo mítico.",
+          storyStartOffset: 4200,
         },
       ])
     })
@@ -144,6 +146,7 @@ describe("epub-library", () => {
         cover_image: null,
         author: null,
         description: null,
+        story_start_offset: 0,
       })
     })
 
@@ -172,6 +175,33 @@ describe("epub-library", () => {
       })
       expect(lastBuilder!.insert).toHaveBeenCalledWith(
         expect.objectContaining({ description: "Un aviador conoce a un pequeño príncipe de otro planeta." }),
+      )
+    })
+
+    it("passes through a detected story start offset", async () => {
+      nextResult = { data: { id: "new-epub-id" }, error: null }
+      const { saveEpubToLibrary } = await import("@/lib/storage/epub-library")
+      await saveEpubToLibrary(user, {
+        title: "El Principito",
+        fileName: "el-principito.epub",
+        text: "Había una vez...",
+        storyStartOffset: 6,
+      })
+      expect(lastBuilder!.insert).toHaveBeenCalledWith(expect.objectContaining({ story_start_offset: 6 }))
+    })
+
+    it("clamps an out-of-range story start offset instead of failing the save", async () => {
+      nextResult = { data: { id: "new-epub-id" }, error: null }
+      const { saveEpubToLibrary } = await import("@/lib/storage/epub-library")
+      const text = "Había una vez..."
+      await saveEpubToLibrary(user, {
+        title: "El Principito",
+        fileName: "el-principito.epub",
+        text,
+        storyStartOffset: text.length + 500,
+      })
+      expect(lastBuilder!.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ story_start_offset: text.length }),
       )
     })
 

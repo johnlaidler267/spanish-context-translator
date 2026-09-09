@@ -21,6 +21,7 @@ const BOOK: LibraryEpub = {
   coverImage: null,
   author: "Antoine de Saint-Exupéry",
   description: null,
+  storyStartOffset: 0,
 }
 
 describe("library-catalog", () => {

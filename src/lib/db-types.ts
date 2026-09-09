@@ -181,6 +181,11 @@ export type UserEpubRow = {
   /** Synopsis from the EPUB's OPF `<dc:description>`, or null when parse-epub.ts couldn't find
    *  one -- see supabase/migrations/0020_user_epub_description.sql. */
   description: string | null
+  /** Character offset into `body_text` where the story actually starts, as detected by
+   *  parse-epub.ts's `detectStoryStartIndex` (`0` = no front matter detected, or a row from
+   *  before this column existed) -- see
+   *  supabase/migrations/0021_user_epub_story_start_offset.sql. */
+  story_start_offset: number
 }
 
 // ─── Insert types (omit server-generated fields) ──────────────────────────────
