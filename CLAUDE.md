@@ -24,3 +24,18 @@ These apply whether you're working directly in a conversation with me or picking
 - **Commit messages explain the root cause**, not just what changed — what was actually broken and why, in plain terms. Match the style of recent commits on `main`.
 - **Clean up after yourself**: delete temporary test/harness files, `.env.local`, and scratch scripts before finishing. Never commit them.
 - **If a task is genuinely ambiguous or architecturally significant** (not a routine fix), don't guess — flag it instead of shipping something speculative.
+
+# Backlog subagent dispatch
+
+When working the LexaLens board, classify each card/batch before dispatching — this determines which template below to use. Subagents should be told to read this file rather than having these rules re-pasted into the dispatch prompt.
+
+**Mechanical** — an exact, well-scoped copy/value/config/single-string change where "correct" isn't in question (a color value, a label, a constant, a one-line config flag). Dispatch a short, direct prompt: the card verbatim, the exact change (or where to find it, e.g. a string to grep for), and "make the change, run lint/typecheck/build, commit, push." No repro step, no e2e harness, no cost-saving boilerplate needed — there's nothing to investigate.
+
+**Investigative** — anything needing repro, cross-file logic, or behavior verification (bugs, features, anything touching state/data). Full flow applies:
+- Cap reproduction at 2 approaches. If it doesn't reproduce, stop trying new strategies.
+- Prefer a plain Vitest/RTL test over Playwright when the bug is about component logic/state rather than visual/cross-page behavior.
+- For a browser repro, use `tests/e2e-mocks/` (see its README) instead of hand-rolling mocks.
+- If a bug won't reproduce, ship a best-effort fix anyway when it's low-risk and reversible (CSS/layout/UI glitch, state-cleanup) — label it clearly as unverified in the report. Never do this for security/billing/auth/data-integrity — report those as a blocking question instead.
+- Verification should be proportionate to the card — one repro-then-confirm by default, not a full theme/viewport matrix unless the card is specifically about that.
+
+When unsure which bucket a card falls into, treat it as investigative.
