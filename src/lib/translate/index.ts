@@ -34,6 +34,7 @@ export {
   pageCharCapForWordLimit,
   pageSourceText,
   resolvePageSplitLimits,
+  resumeExcerptFromPageSource,
   splitSegmentIntoPageParts,
   splitSourceIntoSentences,
 } from "@/lib/translate/page-split"

@@ -29,6 +29,7 @@ import {
   mergeReconciledPagesToSentences,
   pageSourceText,
   READ_MODE_CHARS_PER_STEP_MOBILE,
+  resumeExcerptFromPageSource,
   splitSourceIntoSentences,
   subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
@@ -49,6 +50,7 @@ import {
 import { getEffectiveDisplayName } from "@/lib/storage/display-name-storage"
 import { Button } from "@/components/ui/button"
 import { AppErrorModal } from "@/components/app-error-modal"
+import { WhereYouLeftOffModal } from "@/components/reading/where-you-left-off-modal"
 import { RateLimitModal } from "@/components/subscription/rate-limit-modal"
 import { isRateLimitApiMessage } from "@/lib/api-errors"
 import { useAuth } from "@/contexts/auth-context"
@@ -301,6 +303,12 @@ export default function App() {
   /** Title of the book/piece currently being read (Discover item or Library book title), or null
    * for a plain landing-page paste with no title — shown at the top of article mode. */
   const [activeReadingTitle, setActiveReadingTitle] = useState<string | null>(null)
+  /**
+   * Set when a book/article is reopened with real saved progress (resuming past its first
+   * page) — shows the "Where you left off" modal with a verbatim excerpt of the resumed page.
+   * Null hides it; a resume to page 0 (nothing meaningfully read yet) never sets this.
+   */
+  const [whereLeftOff, setWhereLeftOff] = useState<{ title: string | null; excerpt: string } | null>(null)
   const [readingSessionId, setReadingSessionId] = useState(0)
   /** Increment when Read mode goes to previous article page from first step (land on last read step). */
   const [readEnterLastStepNonce, setReadEnterLastStepNonce] = useState(0)
@@ -684,6 +692,20 @@ export default function App() {
         const initialPageIndex =
           savedPageIndex != null ? Math.min(Math.max(savedPageIndex, 0), pages.length - 1) : 0
 
+        // "Where you left off" modal: only for a real resume past the first page — reopening
+        // fresh (or a saved position that clamped back to page 0) has nothing to remind anyone
+        // of. Excerpt is a verbatim snippet of the resumed page's own source text (already
+        // computed above with zero network calls), not an LLM summary — see
+        // resumeExcerptFromPageSource's docstring for why.
+        setWhereLeftOff(
+          initialPageIndex > 0
+            ? {
+                title: contentTitle ?? null,
+                excerpt: resumeExcerptFromPageSource(pages[initialPageIndex]!),
+              }
+            : null,
+        )
+
         // Keys the localStorage-persisted translation cache (see translation-cache-storage.ts):
         // a Discover item / Library book reuses its stable id so reopening it later can skip
         // re-translating pages already done; a plain pasted/landing submission has no id, so it
@@ -834,6 +856,7 @@ export default function App() {
     setArticlePageIndex(0)
     setActiveReadingContentId(null)
     setActiveReadingTitle(null)
+    setWhereLeftOff(null)
     setError("")
     setRateLimitMessage(null)
     setPlanLimitModal(null)
@@ -1218,6 +1241,13 @@ export default function App() {
         // initiated from a non-landing screen (e.g. Discover) without having navigated away,
         // so this needs to surface no matter which screen is current.
         <AppErrorModal message={error} onDismiss={() => setError("")} />
+      )}
+      {appState === "reading" && whereLeftOff && (
+        <WhereYouLeftOffModal
+          bookTitle={whereLeftOff.title}
+          excerpt={whereLeftOff.excerpt}
+          onDismiss={() => setWhereLeftOff(null)}
+        />
       )}
       {!IS_LOCAL_DEV && isLapsed && !popupDismissed && (
         <SubscriptionLapsedModal

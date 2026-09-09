@@ -278,6 +278,26 @@ function pagePieceJoinGapChars(prev: string, next: string): number {
   return 1
 }
 
+/** Words shown in the "Where you left off" resume excerpt — see {@link resumeExcerptFromPageSource}. */
+const RESUME_EXCERPT_MAX_WORDS = 16
+
+/**
+ * First ~16 words of a resumed page's own raw source text — the snippet shown in the
+ * "Where you left off" modal (see where-you-left-off-modal.tsx) when a book is reopened partway
+ * through. Deliberately a verbatim excerpt rather than an LLM-generated summary: the page this
+ * pulls from is already split out client-side with zero network calls the moment a book is
+ * opened (see `pages`/`initialPageIndex` in App.tsx's `handleTextSubmit`), so this reuses text
+ * the app already has in hand instead of paying for a summarization call every time a book is
+ * reopened.
+ */
+export function resumeExcerptFromPageSource(pageSentences: string[]): string {
+  const text = collapseHorizontalWsOnly(pageSourceText(pageSentences)).replace(/\s+/g, " ").trim()
+  if (!text) return ""
+  const words = text.split(" ").filter(Boolean)
+  if (words.length <= RESUME_EXCERPT_MAX_WORDS) return words.join(" ")
+  return `${words.slice(0, RESUME_EXCERPT_MAX_WORDS).join(" ")}…`
+}
+
 /**
  * Rejoin page fragments in order. Uses a space only when the boundary would otherwise
  * glue two words (prose); skips extra spaces across newlines or existing whitespace.

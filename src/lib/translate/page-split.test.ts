@@ -8,6 +8,7 @@ import {
   buildSentencePages,
   splitSegmentIntoPageParts,
   mergeArticlePagesIfWholeTextFitsLimits,
+  resumeExcerptFromPageSource,
   PAGE_SIZE_WORDS_MOBILE,
   PAGE_SIZE_WORDS_DESKTOP,
 } from "@/lib/translate/page-split"
@@ -153,5 +154,30 @@ describe("mergeArticlePagesIfWholeTextFitsLimits", () => {
 
   it("returns an empty page when both the pages and the full text are empty", () => {
     expect(mergeArticlePagesIfWholeTextFitsLimits([], limits, "")).toEqual([[]])
+  })
+})
+
+describe("resumeExcerptFromPageSource", () => {
+  it("returns the page verbatim when it's already within the word cap", () => {
+    expect(resumeExcerptFromPageSource(["Había una vez un principito.", "Vivía en un asteroide."])).toBe(
+      "Había una vez un principito. Vivía en un asteroide.",
+    )
+  })
+
+  it("truncates to the first 16 words with a trailing ellipsis when the page is longer", () => {
+    const words = Array.from({ length: 40 }, (_, i) => `palabra${i}`)
+    const result = resumeExcerptFromPageSource([words.join(" ")])
+    expect(result).toBe(`${words.slice(0, 16).join(" ")}…`)
+  })
+
+  it("collapses newlines/whitespace so the excerpt reads as one line", () => {
+    expect(resumeExcerptFromPageSource(["Primera línea.\n\nSegunda   línea."])).toBe(
+      "Primera línea. Segunda línea.",
+    )
+  })
+
+  it("returns an empty string for an empty/blank page", () => {
+    expect(resumeExcerptFromPageSource([])).toBe("")
+    expect(resumeExcerptFromPageSource(["   "])).toBe("")
   })
 })
