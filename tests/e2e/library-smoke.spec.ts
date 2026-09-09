@@ -97,9 +97,13 @@ test("shows reading progress on a saved book and resumes it on click", async ({ 
   await expect(page.getByText("Mi Libro Guardado").first()).toBeVisible()
   await expect(page.getByText("50% read")).toBeVisible()
 
+  // Clicking a card opens a preview modal first (mirroring Discover's own preview-before-read
+  // flow) rather than jumping straight into reading -- this book already has progress, so the
+  // modal's CTA reads "Continue reading" rather than "Start reading".
   await page.getByText("Mi Libro Guardado").first().click()
+  await page.getByRole("button", { name: "Continue reading" }).click()
 
-  // Clicking hands the saved body_text to the same translate/reading pipeline Discover's
+  // That click hands the saved body_text to the same translate/reading pipeline Discover's
   // "Start reading" uses -- the reading UI rendering the *saved book's own* source text on
   // "/" (translations show on tap/hover, not inline, so this -- not the mocked "Hello" --
   // is the reliable signal) confirms the click actually reached
