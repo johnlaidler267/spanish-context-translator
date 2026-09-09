@@ -58,6 +58,7 @@ const LIST_ROW = {
   updated_at: "2024-01-02T00:00:00.000Z",
   cover_image: "data:image/jpeg;base64,AAAA",
   author: "Gabriel García Márquez",
+  description: "Una saga familiar en el Macondo mítico.",
 }
 
 describe("epub-library", () => {
@@ -93,6 +94,7 @@ describe("epub-library", () => {
           updatedAt: new Date("2024-01-02T00:00:00.000Z").getTime(),
           coverImage: "data:image/jpeg;base64,AAAA",
           author: "Gabriel García Márquez",
+          description: "Una saga familiar en el Macondo mítico.",
         },
       ])
     })
@@ -141,6 +143,7 @@ describe("epub-library", () => {
         char_count: "Había una vez...".length,
         cover_image: null,
         author: null,
+        description: null,
       })
     })
 
@@ -155,6 +158,20 @@ describe("epub-library", () => {
       })
       expect(lastBuilder!.insert).toHaveBeenCalledWith(
         expect.objectContaining({ author: "Antoine de Saint-Exupéry" }),
+      )
+    })
+
+    it("passes through an extracted description", async () => {
+      nextResult = { data: { id: "new-epub-id" }, error: null }
+      const { saveEpubToLibrary } = await import("@/lib/storage/epub-library")
+      await saveEpubToLibrary(user, {
+        title: "El Principito",
+        fileName: "el-principito.epub",
+        text: "Había una vez...",
+        description: "Un aviador conoce a un pequeño príncipe de otro planeta.",
+      })
+      expect(lastBuilder!.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "Un aviador conoce a un pequeño príncipe de otro planeta." }),
       )
     })
 

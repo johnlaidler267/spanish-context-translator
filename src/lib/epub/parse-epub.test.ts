@@ -6,7 +6,13 @@
 
 import { describe, it, expect } from "vitest"
 import JSZip from "jszip"
-import { parseEpub, EpubParseError, truncateForPreview, MAX_COVER_SOURCE_BYTES } from "@/lib/epub/parse-epub"
+import {
+  parseEpub,
+  EpubParseError,
+  truncateForPreview,
+  MAX_COVER_SOURCE_BYTES,
+  MAX_DESCRIPTION_CHARS,
+} from "@/lib/epub/parse-epub"
 
 const CONTAINER_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -120,6 +126,30 @@ describe("parseEpub", () => {
     })
     const { author } = await parseEpub(epub)
     expect(author).toBe("Julio Cortázar")
+  })
+
+  it("returns null description when the OPF has no dc:description", async () => {
+    const epub = await buildMinimalEpub()
+    const { description } = await parseEpub(epub)
+    expect(description).toBeNull()
+  })
+
+  it("extracts the description from dc:description", async () => {
+    const epub = await buildMinimalEpub({
+      metadataExtra: `<dc:description>Una historia de amor y guerra en Macondo.</dc:description>`,
+    })
+    const { description } = await parseEpub(epub)
+    expect(description).toBe("Una historia de amor y guerra en Macondo.")
+  })
+
+  it("truncates an overlong description to MAX_DESCRIPTION_CHARS", async () => {
+    const longDescription = "Una palabra larga. ".repeat(300) // well over MAX_DESCRIPTION_CHARS
+    const epub = await buildMinimalEpub({
+      metadataExtra: `<dc:description>${longDescription}</dc:description>`,
+    })
+    const { description } = await parseEpub(epub)
+    expect(description).not.toBeNull()
+    expect(description!.length).toBeLessThanOrEqual(MAX_DESCRIPTION_CHARS)
   })
 
   it("rejects a file that isn't a zip at all", async () => {

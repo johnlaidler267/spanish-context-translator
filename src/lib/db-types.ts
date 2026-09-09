@@ -178,6 +178,9 @@ export type UserEpubRow = {
   /** Author from the EPUB's OPF `<dc:creator>`, or null when parse-epub.ts couldn't find one --
    *  see supabase/migrations/0019_user_epub_author.sql. */
   author: string | null
+  /** Synopsis from the EPUB's OPF `<dc:description>`, or null when parse-epub.ts couldn't find
+   *  one -- see supabase/migrations/0020_user_epub_description.sql. */
+  description: string | null
 }
 
 // ─── Insert types (omit server-generated fields) ──────────────────────────────

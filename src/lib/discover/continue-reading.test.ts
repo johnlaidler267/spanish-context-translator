@@ -34,6 +34,7 @@ function libraryBook(id: string): LibraryEpub {
     updatedAt: 0,
     coverImage: null,
     author: null,
+    description: null,
   }
 }
 

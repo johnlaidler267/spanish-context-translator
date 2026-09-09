@@ -8,9 +8,14 @@ import type { LibraryEpub } from "@/lib/storage/epub-library"
 
 /**
  * A tap on a library book now pauses on this before actually opening it -- reuses Discover's
- * ContentPreviewModal shell/CSS (`.discover-modal*`) for visual consistency, but deliberately
- * skips everything that modal shows that a personal upload doesn't have (author, difficulty,
- * word count, tags, preview excerpt): just the cover, the title, and how far in you are.
+ * ContentPreviewModal shell/CSS (`.discover-modal*`) for visual consistency, but skips what
+ * that modal shows that a personal upload still genuinely doesn't have (difficulty, word
+ * count, tags): just the cover, the title, the author and description when the EPUB's OPF
+ * had them (see parse-epub.ts), and how far in you are.
+ *
+ * `discover-modal--compact` on the dialog gives the cover a bottom margin -- see that class's
+ * own comment in index.css -- which the shared shell doesn't need for Discover's own modal,
+ * where a preview section always follows the head.
  */
 interface LibraryPreviewModalProps {
   book: LibraryEpub | null
@@ -44,7 +49,7 @@ export function LibraryPreviewModal({
         if (!nextOpen) onClose()
       }}
     >
-      <DialogContent className="discover-modal">
+      <DialogContent className="discover-modal discover-modal--compact">
         <button type="button" onClick={onClose} className="discover-modal__close" aria-label="Close">
           <X className="size-4" aria-hidden />
         </button>
@@ -68,6 +73,7 @@ export function LibraryPreviewModal({
 
             <DialogHeader className="discover-modal__intro">
               <DialogTitle className="discover-modal__title mt-0">{book.title}</DialogTitle>
+              {book.author && <p className="discover-modal__author">by {book.author}</p>}
               <p className="discover-modal__meta">
                 <span>
                   {progressPercent != null
@@ -77,6 +83,18 @@ export function LibraryPreviewModal({
               </p>
             </DialogHeader>
           </div>
+
+          {book.description && (
+            <div className="discover-modal__preview">
+              <div className="discover-heading">
+                <h4 className="discover-heading__label">Description</h4>
+                <span className="discover-heading__rule" aria-hidden />
+              </div>
+              <div className="discover-modal__excerpt">
+                <p>{book.description}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="discover-modal__actions">

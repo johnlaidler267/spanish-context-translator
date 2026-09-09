@@ -3149,6 +3149,15 @@ article span {
   margin-top: 1.5rem;
 }
 
+/* library-preview-modal.tsx has no Preview/tags section under the head the way Discover's
+   ContentPreviewModal does, so its cover -- the tallest element in the head row -- would
+   otherwise sit flush against the actions bar's top border (see that modal's docstring).
+   The `:last-child` guard makes this a no-op once a description section (below) *is* present,
+   since its own margin-top already provides the gap in that case. */
+.discover-modal--compact .discover-modal__scroll > .discover-modal__head:last-child .discover-modal__cover {
+  margin-bottom: 1.5rem;
+}
+
 .discover-modal__excerpt {
   max-height: 34vh;
   overflow-y: auto;

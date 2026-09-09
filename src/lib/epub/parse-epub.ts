@@ -35,6 +35,10 @@ export interface ParsedEpub {
   /** Book author from the OPF's <dc:creator>, if present -- see `pickAuthor`'s docstring for
    *  how a multi-creator (author + illustrator + translator, etc.) OPF is disambiguated. */
   author: string | null
+  /** Book synopsis/description from the OPF's optional <dc:description>, if present, cut to
+   *  `MAX_DESCRIPTION_CHARS` (see `truncateForPreview`) -- most EPUBs don't carry this field
+   *  at all, which is a normal "nothing to show", not an error. */
+  description: string | null
   /**
    * The book's cover image, as a `data:` URL, if one was found and small enough to keep --
    * see `extractCoverImage`'s docstring. `null` for an EPUB with no cover, an unrecognized
@@ -134,6 +138,7 @@ async function readManifestAndSpine(
   spine: SpineEntry[]
   title: string | null
   author: string | null
+  description: string | null
   manifestItems: ManifestItem[]
   metaCoverId: string | null
 }> {
@@ -178,6 +183,12 @@ async function readManifestAndSpine(
       : Array.from(doc.getElementsByTagName("creator"))
   const author = pickAuthor(creatorEls)
 
+  // Unlike dc:creator, a well-formed OPF has at most one dc:description -- no role
+  // disambiguation needed, just take it (or its unprefixed EPUB2 form) if present.
+  const descriptionEl =
+    doc.getElementsByTagName("dc:description")[0] ?? doc.getElementsByTagName("description")[0]
+  const description = descriptionEl?.textContent?.trim() || null
+
   // EPUB2's way of pointing at the cover: <meta name="cover" content="<manifest id>"/>, as
   // opposed to EPUB3's `properties="cover-image"` on the manifest item itself (read in
   // findCoverItem below).
@@ -189,7 +200,7 @@ async function readManifestAndSpine(
     }
   }
 
-  return { spine, title, author, manifestItems, metaCoverId }
+  return { spine, title, author, description, manifestItems, metaCoverId }
 }
 
 /**
@@ -239,6 +250,13 @@ function guessMimeType(mediaType: string | null, path: string): string | null {
 /** Above this many raw (pre-base64) bytes, a cover is skipped rather than stored -- keeps
  *  `user_epubs.cover_image` rows small; see supabase/migrations for the matching column cap. */
 export const MAX_COVER_SOURCE_BYTES = 300_000
+
+/** Above this many characters, a `<dc:description>` is cut down (via `truncateForPreview`,
+ *  at a sentence boundary where possible) rather than stored whole -- a synopsis this modal
+ *  shows in a small box has no business being thousands of characters, and this doubles as a
+ *  client-side backstop against a pathological OPF; see the matching CHECK constraint in
+ *  supabase/migrations for the server-side one. */
+export const MAX_DESCRIPTION_CHARS = 2_000
 
 /** btoa() only accepts a "binary string", and spreading a large Uint8Array into
  *  String.fromCharCode blows the call stack -- chunk it instead. */
@@ -319,7 +337,10 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
   })
 
   const opfPath = await findOpfPath(zip)
-  const { spine, title, author, manifestItems, metaCoverId } = await readManifestAndSpine(zip, opfPath)
+  const { spine, title, author, description, manifestItems, metaCoverId } = await readManifestAndSpine(
+    zip,
+    opfPath,
+  )
   if (spine.length === 0) {
     throw new EpubParseError("This EPUB doesn't have any readable chapters.")
   }
@@ -340,7 +361,13 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
 
   const coverImage = await extractCoverImage(zip, opfPath, manifestItems, metaCoverId)
 
-  return { text, title, author, coverImage }
+  return {
+    text,
+    title,
+    author,
+    description: description ? truncateForPreview(description, MAX_DESCRIPTION_CHARS) : null,
+    coverImage,
+  }
 }
 
 /**

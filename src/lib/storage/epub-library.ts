@@ -58,6 +58,10 @@ export interface LibraryEpub {
   /** Author from the EPUB's OPF `<dc:creator>` (see parse-epub.ts's `pickAuthor`), or null when
    *  the EPUB had none or this book was saved before author extraction existed. */
   author: string | null
+  /** Synopsis from the EPUB's OPF `<dc:description>`, or null when the EPUB had none or this
+   *  book was saved before description extraction existed -- LibraryPreviewModal simply omits
+   *  that section of the popup in either case. */
+  description: string | null
 }
 
 interface UserEpubListRow {
@@ -69,6 +73,7 @@ interface UserEpubListRow {
   updated_at: string
   cover_image: string | null
   author: string | null
+  description: string | null
 }
 
 function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
@@ -81,6 +86,7 @@ function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
     updatedAt: new Date(row.updated_at).getTime(),
     coverImage: row.cover_image,
     author: row.author,
+    description: row.description,
   }
 }
 
@@ -90,7 +96,7 @@ export async function listUserEpubs(user: User | null): Promise<LibraryEpub[]> {
   if (!user) return []
   const { data, error } = await supabase
     .from("user_epubs")
-    .select("id, title, file_name, char_count, created_at, updated_at, cover_image, author")
+    .select("id, title, file_name, char_count, created_at, updated_at, cover_image, author, description")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
   if (error || !data) {
@@ -119,6 +125,7 @@ export async function saveEpubToLibrary(
     text: string
     coverImage?: string | null
     author?: string | null
+    description?: string | null
   },
 ): Promise<{ id: string } | null> {
   if (!user) return null
@@ -150,6 +157,7 @@ export async function saveEpubToLibrary(
       char_count: text.length,
       cover_image: coverImage,
       author: epub.author?.trim() || null,
+      description: epub.description?.trim() || null,
     })
     .select("id")
     .single()
