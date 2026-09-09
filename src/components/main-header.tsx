@@ -110,7 +110,7 @@ function PlanBadgeLoading() {
  * user in this browser session (e.g. a fresh mobile login) -- distinct from a cached
  * `null`, which means we already confirmed there's no row (free plan). Collapsing
  * both to `null` before calling `planPillFromRow` would optimistically render "Free
- * Plan · Upgrade" for a still-unknown plan, which then flashes and disappears once
+ * · Upgrade" for a still-unknown plan, which then flashes and disappears once
  * the real (e.g. Pro) row loads. Only render optimistically when we actually have a
  * cached answer; otherwise treat the plan as not-yet-known.
  */
@@ -215,7 +215,7 @@ function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "up
   if (!user) {
     const guest =
       guestMode === "upgrade"
-        ? { mode: "link" as const, to: "/upgrade", primary: "Free plan", secondary: "Upgrade" }
+        ? { mode: "link" as const, to: "/upgrade", primary: "Free", secondary: "Upgrade" }
         : GUEST_PLAN_PILL
     const inner = (
       <>

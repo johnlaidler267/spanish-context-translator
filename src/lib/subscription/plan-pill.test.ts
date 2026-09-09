@@ -51,7 +51,7 @@ describe("planPillFromRow", () => {
     expect(planPillFromRow(null, false)).toEqual({
       mode: "link",
       to: "/upgrade",
-      primary: "Free Plan",
+      primary: "Free",
       secondary: "Upgrade",
     })
   })
@@ -82,7 +82,7 @@ describe("planPillFromRow", () => {
       mode: "link",
       to: "/settings?tab=billing",
       primary: "Pro",
-      secondary: "Plan",
+      secondary: "",
     })
   })
 
@@ -91,7 +91,7 @@ describe("planPillFromRow", () => {
       {
         mode: "link",
         to: "/settings?tab=billing",
-        primary: "Pro Plan",
+        primary: "Pro",
         secondary: "Payment Failed",
       },
     )
@@ -103,7 +103,7 @@ describe("planPillFromRow", () => {
     ).toEqual({
       mode: "link",
       to: "/upgrade",
-      primary: "Free Plan",
+      primary: "Free",
       secondary: "Upgrade",
     })
   })

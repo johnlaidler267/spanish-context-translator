@@ -31,7 +31,7 @@ export function planPillFromRow(
   const authenticatedFreePill: LinkPlanPill = {
     mode: "link",
     to: toUpgrade,
-    primary: isAnonymous ? "Free · Guest" : "Free Plan",
+    primary: isAnonymous ? "Free · Guest" : "Free",
     secondary: "Upgrade",
   }
 
@@ -57,14 +57,14 @@ export function planPillFromRow(
   }
 
   if (status === "active" && row.plan_id !== "free") {
-    return { mode: "link", to: toSettingsBilling, primary: name, secondary: "Plan" }
+    return { mode: "link", to: toSettingsBilling, primary: name, secondary: "" }
   }
 
   if (status === "past_due" && row.plan_id !== "free") {
     return {
       mode: "link",
       to: toSettingsBilling,
-      primary: `${name} Plan`,
+      primary: name,
       secondary: "Payment Failed",
     }
   }
