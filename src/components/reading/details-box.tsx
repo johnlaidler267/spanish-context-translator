@@ -4,10 +4,11 @@
  * DetailsBox — fixed bottom sheet for grammar details (no dimmed backdrop).
  *
  * Portals to `document.body` so `position:fixed` isn’t warped by a transformed
- * ancestor. Dismiss: X button or tap/click outside (`[data-details-box]` in parents).
+ * ancestor. Dismiss: X button, tap/click outside (`[data-details-box]` in parents),
+ * or (touch) dragging the sheet down past a threshold — same effect as `onClose`.
  */
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { GiBrain } from "react-icons/gi"
@@ -27,6 +28,11 @@ const DURATION_IN_S = 0.24
 const DURATION_OUT_S = 0.18
 const SLIDE_IN_PX = 14
 const SLIDE_OUT_PX = 12
+
+/** Drag-down-to-dismiss (touch only) — distance past which lifting the finger closes the sheet. */
+const DRAG_DISMISS_DISTANCE_PX = 90
+/** Real-device jitter during a still tap can register a few px of touchmove — ignore below this. */
+const DRAG_TAP_SLOP_PX = 8
 
 export interface DetailsBoxProps {
   activeChunk: string | null
@@ -67,6 +73,87 @@ export function DetailsBox({
       ? { duration: 0 }
       : { duration: DURATION_OUT_S, ease: EASE_IN_DISMISS }
 
+  // Keep the latest onClose without re-attaching touch listeners every render.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  const sheetRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * Touch drag-down-to-dismiss: past `DRAG_DISMISS_DISTANCE_PX`, lifting the finger has the
+   * same effect as `onClose` (X button / tap outside). Manipulates `transform` imperatively
+   * (not React state) so touchmove doesn't re-render on every frame; native listeners (not
+   * React's passive synthetic ones) so touchmove can `preventDefault` while dragging.
+   */
+  useLayoutEffect(() => {
+    if (!open) return
+    const el = sheetRef.current
+    if (!el) return
+
+    let startY: number | null = null
+    let dragging = false
+
+    const setOffset = (y: number) => {
+      el.style.transform = y > 0 ? `translateY(${y}px)` : ""
+    }
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return
+      startY = e.touches[0]!.clientY
+      dragging = false
+      el.style.transition = "none"
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (startY == null || e.touches.length !== 1) return
+      const delta = e.touches[0]!.clientY - startY
+      if (!dragging && Math.abs(delta) < DRAG_TAP_SLOP_PX) return
+      dragging = true
+      if (delta <= 0) {
+        setOffset(0)
+        return
+      }
+      // Dragging the sheet, not scrolling the page behind it.
+      e.preventDefault()
+      setOffset(delta)
+    }
+
+    const endDrag = (dismiss: boolean) => {
+      if (startY == null) return
+      const wasDragging = dragging
+      startY = null
+      dragging = false
+      el.style.transition = ""
+      setOffset(0)
+      if (wasDragging && dismiss) onCloseRef.current()
+    }
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (startY == null) return
+      const t = e.changedTouches[0]
+      const delta = t ? t.clientY - startY : 0
+      endDrag(delta > DRAG_DISMISS_DISTANCE_PX)
+    }
+
+    const onTouchCancel = () => endDrag(false)
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true })
+    el.addEventListener("touchmove", onTouchMove, { passive: false })
+    el.addEventListener("touchend", onTouchEnd)
+    el.addEventListener("touchcancel", onTouchCancel)
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart)
+      el.removeEventListener("touchmove", onTouchMove)
+      el.removeEventListener("touchend", onTouchEnd)
+      el.removeEventListener("touchcancel", onTouchCancel)
+      el.style.transform = ""
+      el.style.transition = ""
+    }
+  }, [open])
+
   if (typeof document === "undefined") return null
 
   return createPortal(
@@ -90,8 +177,9 @@ export function DetailsBox({
           }}
         >
           <div
+            ref={sheetRef}
             className={cn(
-              "pointer-events-auto w-full max-w-[700px] rounded-t-xl",
+              "pointer-events-auto w-full max-w-[700px] rounded-t-xl touch-none",
               "bg-reading-surface",
               "border border-b-0 border-[rgba(201,122,90,0.22)] dark:border-[rgba(201,122,90,0.15)]",
               "shadow-[0_-4px_24px_rgba(0,0,0,0.10)]",
