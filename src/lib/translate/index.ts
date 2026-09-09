@@ -42,6 +42,11 @@ export {
 export { translatePageText } from "@/lib/translate/translate-page"
 
 export {
+  maybeSummarizePreviousPageOnLeave,
+  summarizePreviousPageForRecap,
+} from "@/lib/translate/page-recap"
+
+export {
   READ_MODE_CHARS_PER_STEP_DESKTOP,
   READ_MODE_CHARS_PER_STEP_MOBILE,
   countConsecutiveLoadedPages,

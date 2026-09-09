@@ -26,6 +26,7 @@ import {
   clampPageLimitsForLlmBatching,
   dedupeConsecutiveDuplicateLines,
   mergeArticlePagesIfWholeTextFitsLimits,
+  maybeSummarizePreviousPageOnLeave,
   mergeReconciledPagesToSentences,
   pageSourceText,
   READ_MODE_CHARS_PER_STEP_MOBILE,
@@ -47,6 +48,7 @@ import {
   ensureCloudReadingProgressPulled,
   pushReadingProgress,
 } from "@/lib/storage/reading-progress-sync"
+import { getCachedPageRecap } from "@/lib/storage/reading-recap-storage"
 import { getEffectiveDisplayName } from "@/lib/storage/display-name-storage"
 import { Button } from "@/components/ui/button"
 import { AppErrorModal } from "@/components/app-error-modal"
@@ -287,6 +289,18 @@ export default function App() {
 
   const cacheRef = useRef(new TranslationCache())
   /**
+   * Latest "which book, which page, which user" as of the last page turn — kept fresh by the
+   * progress-persisting effect below, and read by the leave-triggered recap effect right after
+   * it (see there for why this needs to be a ref rather than a plain closure). Null before any
+   * reading session has started.
+   */
+  const latestReadingSnapshotRef = useRef<{
+    contentId: string
+    pageIndex: number
+    pages: string[][]
+    user: typeof user
+  } | null>(null)
+  /**
    * LLM batching only: same sentence-boundary pages for Article and Read mode
    * (LLM page size from DOM-measured article column; see useArticlePageSplitLimits.)
    * Read mode shows subdivided steps for the current article page only; no extra LLM preload.
@@ -305,10 +319,16 @@ export default function App() {
   const [activeReadingTitle, setActiveReadingTitle] = useState<string | null>(null)
   /**
    * Set when a book/article is reopened with real saved progress (resuming past its first
-   * page) — shows the "Where you left off" modal with a verbatim excerpt of the resumed page.
-   * Null hides it; a resume to page 0 (nothing meaningfully read yet) never sets this.
+   * page) — shows the "Where you left off" modal. `summary` is a cached Gemini recap of the
+   * page before the resume point (see maybeSummarizePreviousPageOnLeave), shown when available;
+   * `excerpt` is the free verbatim fallback. Null hides the modal; a resume to page 0 (nothing
+   * meaningfully read yet) never sets this.
    */
-  const [whereLeftOff, setWhereLeftOff] = useState<{ title: string | null; excerpt: string } | null>(null)
+  const [whereLeftOff, setWhereLeftOff] = useState<{
+    title: string | null
+    summary: string | null
+    excerpt: string
+  } | null>(null)
   const [readingSessionId, setReadingSessionId] = useState(0)
   /** Increment when Read mode goes to previous article page from first step (land on last read step). */
   const [readEnterLastStepNonce, setReadEnterLastStepNonce] = useState(0)
@@ -694,13 +714,15 @@ export default function App() {
 
         // "Where you left off" modal: only for a real resume past the first page — reopening
         // fresh (or a saved position that clamped back to page 0) has nothing to remind anyone
-        // of. Excerpt is a verbatim snippet of the resumed page's own source text (already
-        // computed above with zero network calls), not an LLM summary — see
-        // resumeExcerptFromPageSource's docstring for why.
+        // of. `summary` is read from the local cache only (see reading-recap-storage.ts) — zero
+        // network calls here; it was generated once, the *last* time this book was left (see
+        // maybeSummarizePreviousPageOnLeave below). `excerpt` is the free verbatim fallback for
+        // when there's no cached summary yet (or it's stale — see getCachedPageRecap).
         setWhereLeftOff(
           initialPageIndex > 0
             ? {
                 title: contentTitle ?? null,
+                summary: contentId ? getCachedPageRecap(user, contentId, initialPageIndex - 1) : null,
                 excerpt: resumeExcerptFromPageSource(pages[initialPageIndex]!),
               }
             : null,
@@ -892,7 +914,42 @@ export default function App() {
     // Cross-device sync (debounced) on top of the localStorage write above -- see
     // reading-progress-sync.ts. No-ops for a null user.
     pushReadingProgress(user, activeReadingContentId, articlePageIndex, totalPages)
-  }, [appState, activeReadingContentId, articlePageIndex, totalPages, user])
+    // Keep the "as of the last page turn" snapshot fresh for the leave-triggered recap effect
+    // below, which reads it from a ref rather than closing over these values directly -- that
+    // effect only wants to fire once, on the actual leave, not on every page turn like this one.
+    latestReadingSnapshotRef.current = {
+      contentId: activeReadingContentId,
+      pageIndex: articlePageIndex,
+      pages: sourcePages,
+      user,
+    }
+  }, [appState, activeReadingContentId, articlePageIndex, totalPages, user, sourcePages])
+
+  /**
+   * "Where you left off" recap: once, right when the reader leaves a book (back arrow, or
+   * navigating elsewhere mid-session — both flip `appState` away from "reading", which is what
+   * this effect's cleanup fires on), summarize the page *before* wherever they're leaving off
+   * (their next resume point) with one cheap Gemini Flash Lite call and cache it — see
+   * maybeSummarizePreviousPageOnLeave (src/lib/translate/page-recap.ts) and
+   * reading-recap-storage.ts. Deliberately keyed only on `appState`, not on
+   * activePageIndex/activeReadingContentId: those change on every page turn / book switch, and
+   * this must fire only on the actual leave, not per page. The effect body reads the *latest*
+   * position from `latestReadingSnapshotRef` (kept current by the effect above) rather than
+   * closing over page/content values from whenever this effect itself last ran.
+   */
+  useEffect(() => {
+    if (appState !== "reading") return
+    return () => {
+      const snapshot = latestReadingSnapshotRef.current
+      if (!snapshot) return
+      void maybeSummarizePreviousPageOnLeave({
+        user: snapshot.user,
+        contentId: snapshot.contentId,
+        leavingAtPageIndex: snapshot.pageIndex,
+        pages: snapshot.pages,
+      })
+    }
+  }, [appState])
 
   /**
    * Article next-page prefetch: a few seconds after the current page becomes visible, start
@@ -1245,6 +1302,7 @@ export default function App() {
       {appState === "reading" && whereLeftOff && (
         <WhereYouLeftOffModal
           bookTitle={whereLeftOff.title}
+          summary={whereLeftOff.summary}
           excerpt={whereLeftOff.excerpt}
           onDismiss={() => setWhereLeftOff(null)}
         />

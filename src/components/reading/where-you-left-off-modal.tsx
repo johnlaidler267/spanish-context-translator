@@ -9,10 +9,19 @@ export interface WhereYouLeftOffModalProps {
   /** Title of the book/piece being resumed — shown in the heading when present. */
   bookTitle?: string | null
   /**
+   * Cached one-sentence English recap of the page right *before* the resumed page — generated
+   * once by Gemini Flash Lite when the reader left the book last time (see
+   * `maybeSummarizePreviousPageOnLeave` in src/lib/translate/page-recap.ts) and read here from
+   * the local cache (reading-recap-storage.ts) with no network call. Primary content when
+   * present; null/undefined when there's no cached recap yet (summarization failed, there was
+   * no previous page to summarize, or this progress predates this feature) — the modal falls
+   * back to `excerpt` in that case.
+   */
+  summary?: string | null
+  /**
    * Verbatim excerpt (first ~16 words) of the page the reader is being resumed to — see
-   * `resumeExcerptFromPageSource` (src/lib/translate/page-split.ts). Not an LLM-generated
-   * summary: the reader is already opened to the right page by the time this shows, so this
-   * is just a recognizable snippet of that page's own text, computed for free client-side.
+   * `resumeExcerptFromPageSource` (src/lib/translate/page-split.ts). Computed for free
+   * client-side; shown only as a fallback when `summary` isn't available.
    */
   excerpt: string
   onDismiss: () => void
@@ -24,7 +33,12 @@ export interface WhereYouLeftOffModalProps {
  * top to get oriented. Purely informational: the reader is already on the resumed page
  * underneath this, so the only action is dismissing it.
  */
-export function WhereYouLeftOffModal({ bookTitle, excerpt, onDismiss }: WhereYouLeftOffModalProps) {
+export function WhereYouLeftOffModal({
+  bookTitle,
+  summary,
+  excerpt,
+  onDismiss,
+}: WhereYouLeftOffModalProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -32,6 +46,8 @@ export function WhereYouLeftOffModal({ bookTitle, excerpt, onDismiss }: WhereYou
   }, [])
 
   if (!mounted || typeof document === "undefined") return null
+
+  const hasSummary = Boolean(summary?.trim())
 
   return createPortal(
     <div
@@ -60,10 +76,10 @@ export function WhereYouLeftOffModal({ bookTitle, excerpt, onDismiss }: WhereYou
           Welcome back{bookTitle ? ` to ${bookTitle}` : ""}
         </h2>
         <p id="where-left-off-desc" className="mt-3 text-sm text-muted-foreground">
-          You left off around:
+          {hasSummary ? "Previously:" : "You left off around:"}
         </p>
         <p className="mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5 font-reading text-base italic leading-relaxed text-foreground">
-          “{excerpt}”
+          “{hasSummary ? summary : excerpt}”
         </p>
 
         <div className="mt-6">
