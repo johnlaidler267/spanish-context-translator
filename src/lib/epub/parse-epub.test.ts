@@ -142,6 +142,34 @@ describe("parseEpub", () => {
     expect(description).toBe("Una historia de amor y guerra en Macondo.")
   })
 
+  it("strips entity-encoded HTML tags out of the description", async () => {
+    const epub = await buildMinimalEpub({
+      metadataExtra: `<dc:description>&lt;div&gt;&lt;p&gt;Una novela sobre los límites del pensamiento.&lt;/p&gt;&lt;p&gt;Un tríptico inquietante.&lt;/p&gt;&lt;/div&gt;</dc:description>`,
+    })
+    const { description } = await parseEpub(epub)
+    expect(description).not.toBeNull()
+    expect(description).not.toMatch(/[<>]/)
+    expect(description).toBe(
+      "Una novela sobre los límites del pensamiento.\n\nUn tríptico inquietante.",
+    )
+  })
+
+  it("decodes HTML entities in the description without leaving raw markup", async () => {
+    const epub = await buildMinimalEpub({
+      metadataExtra: `<dc:description>&lt;b&gt;Ciencia&lt;/b&gt; &amp;amp; ficción, con &lt;br/&gt;saltos de línea.</dc:description>`,
+    })
+    const { description } = await parseEpub(epub)
+    expect(description).toBe("Ciencia & ficción, con\nsaltos de línea.")
+  })
+
+  it("leaves a plain-text description with no markup unchanged", async () => {
+    const epub = await buildMinimalEpub({
+      metadataExtra: `<dc:description>Una historia sencilla, sin etiquetas.</dc:description>`,
+    })
+    const { description } = await parseEpub(epub)
+    expect(description).toBe("Una historia sencilla, sin etiquetas.")
+  })
+
   it("truncates an overlong description to MAX_DESCRIPTION_CHARS", async () => {
     const longDescription = "Una palabra larga. ".repeat(300) // well over MAX_DESCRIPTION_CHARS
     const epub = await buildMinimalEpub({

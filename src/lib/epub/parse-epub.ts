@@ -131,6 +131,34 @@ function pickAuthor(creators: Element[]): string | null {
   return null
 }
 
+/**
+ * Strips HTML markup out of a `<dc:description>` value and decodes any entities (e.g.
+ * `&amp;` -> `&`), so a description that embeds simple HTML -- legal, and common, in OPF
+ * metadata -- renders as clean plain text instead of leaking tags into the library preview
+ * modal. Never returns markup: the result is plain text only, safe to render directly (never
+ * via `dangerouslySetInnerHTML`, which this deliberately avoids needing).
+ *
+ * Parses `raw` as HTML (lenient -- unlike the OPF's own XML parse, a stray "<" or unclosed tag
+ * won't throw) and reads back `textContent`, which both drops every tag and decodes entities.
+ * Block-level tags get a trailing blank line first so "<p>A</p><p>B</p>" reads as two
+ * paragraphs rather than running together as "AB".
+ */
+function stripDescriptionHtml(raw: string): string {
+  const doc = new DOMParser().parseFromString(raw, "text/html")
+  doc.querySelectorAll("script, style").forEach((el) => el.remove())
+  doc.querySelectorAll("br").forEach((el) => el.replaceWith("\n"))
+  doc
+    .querySelectorAll("p, div, li, h1, h2, h3, h4, h5, h6, blockquote, tr")
+    .forEach((el) => el.append("\n\n"))
+
+  const text = doc.body?.textContent ?? ""
+  return text
+    .replace(/[ \t]+/g, " ")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+}
+
 async function readManifestAndSpine(
   zip: EpubZip,
   opfPath: string,
@@ -187,7 +215,12 @@ async function readManifestAndSpine(
   // disambiguation needed, just take it (or its unprefixed EPUB2 form) if present.
   const descriptionEl =
     doc.getElementsByTagName("dc:description")[0] ?? doc.getElementsByTagName("description")[0]
-  const description = descriptionEl?.textContent?.trim() || null
+  const rawDescription = descriptionEl?.textContent?.trim() || null
+  // Publishers commonly embed simple HTML (<p>, <br/>, <b>, ...) in dc:description, often
+  // entity-encoded (e.g. "&lt;p&gt;") so it survives the OPF's own XML parse as literal text
+  // rather than nested elements -- `textContent` above then hands back that markup as plain
+  // characters. Strip it back down to plain text so it never leaks into the UI as raw tags.
+  const description = rawDescription ? stripDescriptionHtml(rawDescription) || null : null
 
   // EPUB2's way of pointing at the cover: <meta name="cover" content="<manifest id>"/>, as
   // opposed to EPUB3's `properties="cover-image"` on the manifest item itself (read in
