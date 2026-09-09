@@ -55,8 +55,16 @@ export function WhereYouLeftOffModal({
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ isolation: "isolate" }}
     >
+      {/*
+        `left` is pinned to the persistent desktop sidebar's current rail width (a CSS var kept
+        in sync by LandingSidebar — see its "--landing-sidebar-rail-px" effect) instead of
+        `inset-0`, so the sidebar reads as still-live navigation rather than getting swept into
+        the same blur/dim as the reading content behind this modal. The var is 0 on mobile,
+        where the sidebar is an off-screen drawer with nothing on-screen to carve out.
+      */}
       <div
-        className="absolute inset-0 bg-background/90 backdrop-blur-sm"
+        className="absolute inset-y-0 right-0 bg-background/90 backdrop-blur-sm"
+        style={{ left: "var(--landing-sidebar-rail-px, 0px)" }}
         aria-hidden
         onClick={onDismiss}
       />

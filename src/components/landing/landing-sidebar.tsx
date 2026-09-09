@@ -140,6 +140,19 @@ export function LandingSidebar({
     })
   }, [isMdUp, desktopExpanded, onLayoutChange])
 
+  // Mirrors the same rail width as a CSS var on the document root so full-viewport overlays
+  // portaled outside this layout tree (e.g. WhereYouLeftOffModal's backdrop) can carve the
+  // persistent sidebar out of their blur/dim region without needing sidebar layout wired
+  // through props. 0 on mobile, where the sidebar is a hidden-by-default drawer with nothing
+  // on-screen to protect.
+  useEffect(() => {
+    const railPx = isMdUp ? (desktopExpanded ? SIDEBAR_EXPANDED_PX : SIDEBAR_COLLAPSED_PX) : 0
+    document.documentElement.style.setProperty("--landing-sidebar-rail-px", `${railPx}px`)
+    return () => {
+      document.documentElement.style.setProperty("--landing-sidebar-rail-px", "0px")
+    }
+  }, [isMdUp, desktopExpanded])
+
   useEffect(() => {
     if (!isMdUp && mobileOpen) {
       const prev = document.body.style.overflow
