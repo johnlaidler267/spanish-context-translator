@@ -92,7 +92,11 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     return () => cancelRouteTransition()
   }, [])
 
-  useEffect(() => {
+  // useLayoutEffect, not useEffect -- see the identical effect in library/index.tsx for why:
+  // a plain useEffect leaves a window, right after a cold/first load, where cards are already
+  // visible and tappable but this class (which neutralizes a nested scroll container that
+  // otherwise makes a real finger's tap scroll-vs-click ambiguous) hasn't landed on <html> yet.
+  useLayoutEffect(() => {
     document.documentElement.classList.add("mobile-scroll-discover")
     return () => document.documentElement.classList.remove("mobile-scroll-discover")
   }, [])

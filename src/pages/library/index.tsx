@@ -96,7 +96,18 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
   // Same mobile document-scroll unlock Discover uses (this page shares its
   // `.discover-scroll-surface` shell/CSS -- see index.css's `mobile-scroll-discover` rules,
   // which key off this class name, not the route).
-  useEffect(() => {
+  //
+  // useLayoutEffect, not useEffect: this class is what neutralizes .discover-scroll-surface's
+  // own overflow-y-auto on mobile (see that CSS rule's docstring) -- without it, the surface
+  // is briefly its own independent scroll container nested inside html, and a real finger's
+  // tap on a card (which is never perfectly still) reads as scroll-vs-tap ambiguous, which the
+  // browser can resolve by cancelling the click ("first tap doesn't register" -- see b1c67aa,
+  // which fixed the CSS side of this same bug). A plain useEffect only adds this class *after*
+  // the browser has already painted this page's first frame, so on a slow/cold load (this
+  // route is itself lazy-loaded) there's a real window where the cards are visible and
+  // tappable but the class isn't on <html> yet -- exactly a first-tap-after-refresh case.
+  // useLayoutEffect runs in the same commit as the content becoming visible, closing that gap.
+  useLayoutEffect(() => {
     document.documentElement.classList.add("mobile-scroll-discover")
     return () => document.documentElement.classList.remove("mobile-scroll-discover")
   }, [])
