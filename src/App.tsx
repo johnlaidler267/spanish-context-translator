@@ -92,8 +92,17 @@ const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.95
  * warming the Discover cache in the background. Short enough that most people have it
  * ready by the time they navigate there; long enough to stay out of the way of the
  * landing page's own first paint / auth resolution.
+ *
+ * Was 2000ms, which on mobile was long enough that a user who tapped through to Discover
+ * quickly (a common mobile pattern -- and mobile's slower network makes the fetch itself
+ * take longer too) would arrive before this had even started, let alone finished: Discover's
+ * own mount effect (see discover-catalog.ts) then ran the fetch itself, so its full
+ * network round-trip was visible as the loading skeleton -- a "split second" flash on a
+ * fast connection, longer on a slow mobile one. Desktop's faster, more consistent network
+ * made the same cold-cache case easy to miss. Trimmed to start the warm-up sooner without
+ * cutting into first paint (which resolves well under this on any device).
  */
-const DISCOVER_PREFETCH_DELAY_MS = 2000
+const DISCOVER_PREFETCH_DELAY_MS = 500
 /**
  * Library prefetch: same idea as the Discover prefetch above, for the personal EPUB library
  * (`user_epubs`) instead of the public catalog -- warm it while the user is sitting on the
