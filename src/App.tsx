@@ -298,6 +298,9 @@ export default function App() {
    * the page position as the reader moves through it (see the effect below).
    */
   const [activeReadingContentId, setActiveReadingContentId] = useState<string | null>(null)
+  /** Title of the book/piece currently being read (Discover item or Library book title), or null
+   * for a plain landing-page paste with no title — shown at the top of article mode. */
+  const [activeReadingTitle, setActiveReadingTitle] = useState<string | null>(null)
   const [readingSessionId, setReadingSessionId] = useState(0)
   /** Increment when Read mode goes to previous article page from first step (land on last read step). */
   const [readEnterLastStepNonce, setReadEnterLastStepNonce] = useState(0)
@@ -511,7 +514,11 @@ export default function App() {
     // reader moves through the piece; see `activeReadingContentId`.
     async (
       text: string,
-      { populateLandingDraft = true, contentId = null }: { populateLandingDraft?: boolean; contentId?: string | null } = {},
+      {
+        populateLandingDraft = true,
+        contentId = null,
+        contentTitle = null,
+      }: { populateLandingDraft?: boolean; contentId?: string | null; contentTitle?: string | null } = {},
     ) => {
       if (!text.trim()) return
 
@@ -687,6 +694,7 @@ export default function App() {
         setSourcePages(pages)
         setArticlePageIndex(initialPageIndex)
         setActiveReadingContentId(contentId ?? null)
+        setActiveReadingTitle(contentTitle ?? null)
         setReadingSessionId((k) => k + 1)
         setReadEnterLastStepNonce(0)
         setReadLastConsumedEnterNonce(0)
@@ -783,7 +791,11 @@ export default function App() {
       // renders fine on top of whatever screen is current) so the overlay's blurred backdrop
       // shows Discover, not the landing page. handleTextSubmit navigates home itself once the
       // translation is ready, right before switching into the reading UI.
-      await handleTextSubmit(sourceText, { populateLandingDraft: false, contentId: content.id })
+      await handleTextSubmit(sourceText, {
+        populateLandingDraft: false,
+        contentId: content.id,
+        contentTitle: content.title,
+      })
     },
     [handleTextSubmit, subscriptionStatus, isLapsed, user],
   )
@@ -806,7 +818,11 @@ export default function App() {
       // inside its already-open ContentPreviewModal) -- handleTextSubmit already blocks and
       // shows the plan-limit modal itself for a free-tier user opening an oversized book, same
       // as pasting the same text directly would.
-      await handleTextSubmit(sourceText, { populateLandingDraft: false, contentId: book.id })
+      await handleTextSubmit(sourceText, {
+        populateLandingDraft: false,
+        contentId: book.id,
+        contentTitle: book.title,
+      })
     },
     [handleTextSubmit],
   )
@@ -817,6 +833,7 @@ export default function App() {
     cacheRef.current = new TranslationCache()
     setArticlePageIndex(0)
     setActiveReadingContentId(null)
+    setActiveReadingTitle(null)
     setError("")
     setRateLimitMessage(null)
     setPlanLimitModal(null)
@@ -1136,6 +1153,7 @@ export default function App() {
                 onRetry={articleErr ? retryArticlePage : undefined}
                 pageKey={articlePageIndex}
                 hoverTtsEnabled={hoverTtsEnabled}
+                bookTitle={activeReadingTitle}
                 pagination={
                   totalPages > 1
                     ? {
@@ -1182,6 +1200,7 @@ export default function App() {
                 onRetry={articleErr ? retryArticlePage : undefined}
                 pageKey={articlePageIndex}
                 hoverTtsEnabled={hoverTtsEnabled}
+                bookTitle={activeReadingTitle}
                 pagination={null}
               />
             </div>

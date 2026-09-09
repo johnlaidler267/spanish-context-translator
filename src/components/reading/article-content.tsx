@@ -55,6 +55,9 @@ interface ArticleContentProps {
   pageKey?: number
   /** When true, speak the Spanish chunk under the pointer (Web Speech API). */
   hoverTtsEnabled?: boolean
+  /** Title of the book/piece being read (Discover item or Library book) — shown at the top of
+   * the page in article mode. Null/omitted for a plain pasted-text reading, which has no title. */
+  bookTitle?: string | null
 }
 
 const CHUNK_HOVER_GAP_CLEAR_MS = 90
@@ -80,6 +83,7 @@ export function ArticleContent({
   pagination = null,
   pageKey = 0,
   hoverTtsEnabled = false,
+  bookTitle = null,
 }: ArticleContentProps) {
   const [errorModalDismissed, setErrorModalDismissed] = useState(false)
   useEffect(() => {
@@ -393,6 +397,11 @@ export function ArticleContent({
         ["--reading-content-top" as string]: `${READING_CONTENT_TOP_MOBILE_REM}rem`,
       }}
     >
+      {bookTitle && (
+        <p className="mb-4 md:mb-6 text-center font-sans text-sm md:text-base font-bold text-muted-foreground">
+          {bookTitle}
+        </p>
+      )}
       <article
         ref={touchSurfaceRef}
         style={pageEnterStyle}
