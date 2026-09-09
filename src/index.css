@@ -2868,11 +2868,16 @@ article span {
    A grid with auto-fill/auto-fit tracks (like .discover-grid above) wraps to as many rows
    as it takes to lay out every item -- fine for a full shelf, but this row is capped at
    MAX_CONTINUE_READING_ITEMS (4) and is meant to read as a single strip, so it's a
-   non-wrapping flex row with horizontal scroll instead: each card gets a fixed basis (via
-   .discover-card below) and overflow scrolls sideways rather than dropping extra cards to
-   a second row. Deliberately smaller/terser than a Discover shelf card (shorter cover
-   crop, no difficulty/time line) -- this row sits above the fold with the composer, so it
-   needs to stay compact enough that both fit in one viewport without scrolling. */
+   non-wrapping flex row with horizontal scroll instead: cards flex-grow to fill the row
+   (via .discover-card below) and overflow only kicks in once they've hit their min-width,
+   rather than dropping extra cards to a second row. Growing to fill (instead of a fixed
+   basis) matters here because .continue-reading is the same `w-full max-w-[800px]`
+   container the composer textbox sits in (see landing-screen.tsx) -- with a fixed card
+   width, 4 cards fall well short of that container's width and the row reads as
+   misaligned/narrower than the textbox above it. Deliberately smaller/terser than a
+   Discover shelf card (shorter cover crop, no difficulty/time line) -- this row sits above
+   the fold with the composer, so it needs to stay compact enough that both fit in one
+   viewport without scrolling. */
 .continue-reading__row {
   display: flex;
   flex-wrap: nowrap;
@@ -2883,12 +2888,13 @@ article span {
   scroll-snap-type: x proximity;
 }
 .continue-reading__row .discover-card {
-  flex: 0 0 9rem;
+  flex: 1 1 0;
+  min-width: 9rem;
   scroll-snap-align: start;
 }
 @media (min-width: 64rem) {
   .continue-reading__row .discover-card {
-    flex: 0 0 10rem;
+    min-width: 10rem;
   }
 }
 .continue-reading .sample-excerpt-label {
