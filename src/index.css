@@ -2066,7 +2066,10 @@ article span {
 
 .discover-card__frame {
   position: relative;
-  aspect-ratio: 3 / 4;
+  /* Matches the ~2:3 trim size most EPUB cover images ship at (a 3:4 box, closer to
+     square, made object-fit: cover crop noticeably more off the top/bottom than the
+     publisher's actual cover art intended). */
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   border-bottom: 1px solid rgba(58, 51, 46, 0.08);
   background: #ece5da;
@@ -3075,7 +3078,8 @@ article span {
 .discover-modal__cover {
   position: relative;
   flex: 0 0 8rem;
-  aspect-ratio: 3 / 4;
+  /* Same ~2:3 book-cover ratio as .discover-card__frame -- see its comment. */
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   border: 1px solid rgba(58, 51, 46, 0.12);
   border-radius: 0.6rem;
