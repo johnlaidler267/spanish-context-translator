@@ -695,13 +695,17 @@ export function TextChunk({
         <span
           className={cn(
             /* Keep underline in the tree so decoration-color can fade (snap-off feels harsh) */
-            "rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[3px]",
+            "rounded-sm px-0.5 -mx-0.5 underline underline-offset-2 decoration-[3px] text-foreground",
             "transition-[text-decoration-color,background-color] duration-700 ease-out md:duration-500",
+            /* Subtle tint whenever this chunk is active (tapped-open details, hover/explore, or
+               pinned) — same condition that drives the underline color below, so the highlight
+               tracks it exactly, in addition to (not instead of) the underline. */
+            isPinned || isTouchHighlight ? "bg-primary/10" : "bg-transparent",
             isPinned
-              ? "bg-primary/10 text-foreground decoration-[#c97a5a]/75"
+              ? "decoration-[#c97a5a]/75"
               : isTouchHighlight
-                ? "text-foreground decoration-[#c97a5a]/60 bg-transparent"
-                : "text-foreground decoration-transparent",
+                ? "decoration-[#c97a5a]/60"
+                : "decoration-transparent",
           )}
         >
           {underlineText}
