@@ -11,14 +11,15 @@ import { getRecentlyViewedProgress } from "@/lib/storage/reading-progress-storag
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import type { ContentItem } from "@/lib/discover/content-data"
 
-/** "Last 4-5 pieces of content" per the feature request. */
-const MAX_CONTINUE_READING_ITEMS = 5
+/** Capped at 4 so the row never overflows into a horizontal scrollbar at typical widths --
+ *  see .continue-reading__row in index.css for the card-width math this relies on. */
+const MAX_CONTINUE_READING_ITEMS = 4
 
 /**
  * How many raw "recently viewed" entries to pull before matching them against the Discover
  * catalog / library listing and capping at MAX_CONTINUE_READING_ITEMS -- wider than the cap so
  * an entry for since-removed Discover content or a deleted library book (skipped by
- * buildContinueReadingItems) doesn't shrink the row below 5 when older, still-valid entries
+ * buildContinueReadingItems) doesn't shrink the row below 4 when older, still-valid entries
  * exist further back.
  */
 const RECENT_LOOKBACK_ITEMS = 25

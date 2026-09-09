@@ -2867,7 +2867,7 @@ article span {
    the same "book" object as Discover instead of a one-off tile style.
    A grid with auto-fill/auto-fit tracks (like .discover-grid above) wraps to as many rows
    as it takes to lay out every item -- fine for a full shelf, but this row is capped at
-   MAX_CONTINUE_READING_ITEMS (5) and is meant to read as a single strip, so it's a
+   MAX_CONTINUE_READING_ITEMS (4) and is meant to read as a single strip, so it's a
    non-wrapping flex row with horizontal scroll instead: each card gets a fixed basis (via
    .discover-card below) and overflow scrolls sideways rather than dropping extra cards to
    a second row. Deliberately smaller/terser than a Discover shelf card (shorter cover
