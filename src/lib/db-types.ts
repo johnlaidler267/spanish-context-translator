@@ -19,7 +19,7 @@
 
 import type { TierId } from "@/lib/subscription/tiers"
 
-// ─── Enum mirrors ─────────────────────────────────────────────────────────────
+// ─── Enum mirrors ─────────────────────────────────────────
 
 /** Mirrors the `billing_interval` SQL enum. */
 export type DbBillingInterval = "monthly" | "annual"
@@ -44,7 +44,7 @@ export type DiscoverContentType = "book" | "article" | "song" | "poem"
 /** Mirrors `discover_difficulty`. */
 export type DiscoverDifficulty = "beginner" | "intermediate" | "advanced"
 
-// ─── Row types ────────────────────────────────────────────────────────────────
+// ─── Row types ───────────────────────────────────────────────
 
 /**
  * Full database row from `public.user_subscriptions`.
@@ -125,6 +125,11 @@ export type BillingInvoiceRow = {
   updated_at: string
 }
 
+/** Full database row from `public.discover_curators` — an allowlist gating discover_items writes (see 0023_restore_discover_curators.sql). Read-only from the client: RLS only lets a user see their own row. */
+export type DiscoverCuratorRow = {
+  user_id: string
+}
+
 /** Full database row from `public.discover_items`. See UserSubscriptionRow for why `type`, not `interface`. */
 export type DiscoverItemRow = {
   id: string
@@ -192,7 +197,7 @@ export type UserEpubRow = {
   story_start_offset: number
 }
 
-// ─── Insert types (omit server-generated fields) ──────────────────────────────
+// ─── Insert types (omit server-generated fields) ────────────────────────────
 
 export type UserSubscriptionInsert = Omit<
   UserSubscriptionRow,
@@ -225,7 +230,7 @@ export type UserEpubInsert = Omit<
   "id" | "created_at" | "updated_at"
 > & { id?: string }
 
-// ─── Update types (all fields optional except id) ────────────────────────────
+// ─── Update types (all fields optional except id) ──────────────────────────
 
 export type UserSubscriptionUpdate = Partial<UserSubscriptionInsert>
 export type UsageRecordUpdate      = Partial<UsageRecordInsert>
@@ -234,7 +239,7 @@ export type DiscoverItemUpdate     = Partial<Omit<DiscoverItemInsert, "id">>
 export type ReadingProgressUpdate  = Partial<Omit<ReadingProgressInsert, "id">>
 export type UserEpubUpdate         = Partial<Omit<UserEpubInsert, "id">>
 
-// ─── Supabase Database shape (pass to createClient<Database>) ────────────────
+// ─── Supabase Database shape (pass to createClient<Database>) ─────────────────
 
 export interface Database {
   public: {
@@ -255,6 +260,12 @@ export interface Database {
         Row:    BillingInvoiceRow
         Insert: BillingInvoiceInsert
         Update: BillingInvoiceUpdate
+        Relationships: []
+      }
+      discover_curators: {
+        Row:    DiscoverCuratorRow
+        Insert: DiscoverCuratorRow
+        Update: Partial<DiscoverCuratorRow>
         Relationships: []
       }
       discover_items: {
@@ -296,7 +307,7 @@ export interface Database {
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────
 
 /** True when the subscription grants active access (not past-due, canceled, etc.). */
 export function isAccessActive(status: SubscriptionStatus): boolean {

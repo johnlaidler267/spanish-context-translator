@@ -26,6 +26,7 @@ import {
   readCachedDiscoverItems,
   writeCachedDiscoverItems,
 } from "@/lib/discover/discover-catalog"
+import { checkIsDiscoverCurator } from "@/lib/discover/discover-curator"
 import type { DiscoverItemInsert } from "@/lib/db-types"
 import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 
@@ -70,7 +71,23 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<ContentItem | null>(null)
 
-  const canManageCatalog = DISCOVER_DEV_EDIT
+  // Local dev always sees the admin UI; production shows it only for a real curator (see
+  // discover_curators / supabase/migrations/0023_restore_discover_curators.sql) -- the RLS
+  // policies on discover_items are what actually enforce this, this is just avoiding showing
+  // controls that would fail for everyone else.
+  const [isCurator, setIsCurator] = useState(false)
+  useEffect(() => {
+    if (DISCOVER_DEV_EDIT) return
+    let cancelled = false
+    void checkIsDiscoverCurator().then((curator) => {
+      if (!cancelled) setIsCurator(curator)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  const canManageCatalog = DISCOVER_DEV_EDIT || isCurator
 
   // Pulls this user's cloud-synced reading progress (see reading-progress-sync.ts) into the
   // localStorage cache that `hasReadingProgress` below reads from, then forces one re-render
