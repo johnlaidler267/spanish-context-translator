@@ -39,7 +39,7 @@ import {
   translatePageText,
   type ReconciledItem,
 } from "@/lib/translate"
-import { measurePageTopFillPaddingPx, reflowPagesForRealFit } from "@/lib/reading/reading-page-measure"
+import { reflowPagesForRealFit } from "@/lib/reading/reading-page-measure"
 import { TranslationCache } from "@/lib/translation-cache"
 import { cacheKeyForPastedText } from "@/lib/storage/translation-cache-storage"
 import type { ViewMode } from "@/components/reading/mode-toggle"
@@ -651,8 +651,12 @@ export default function App() {
         // (calibrated against generic filler text, not this book's own words) -- this pass
         // measures the real rendered box and moves anything that wouldn't actually fit onto the
         // next page instead, so a page can end a little early but never overflows, scrolls, or
-        // drops content. See reflowPagesForRealFit's docstring for the full root cause.
-        pages = await reflowPagesForRealFit(pages, isMobile)
+        // drops content. Also returns the desktop fill-padding polish computed from the same
+        // measurements, instead of a separate second full-book pass. See reflowPagesForRealFit's
+        // docstring for the full root cause.
+        const reflowed = await reflowPagesForRealFit(pages, isMobile)
+        pages = reflowed.pages
+        setPageTopFillPaddingPx(reflowed.topFillPaddingPx)
         // Cross-device resume anchor -- a sentence index means the same spot in the book on
         // every device, unlike a raw page index (see computePageStartSentenceIndices). Skipped
         // (left empty) when the source segmented into only one "sentence": an unusual
@@ -666,7 +670,6 @@ export default function App() {
         // fall back to today's page-index behavior for that rare case.
         pageStartSentenceIndicesRef.current =
           sents.length > 1 ? computePageStartSentenceIndices(sents, pages) : []
-        setPageTopFillPaddingPx(measurePageTopFillPaddingPx(pages, isMobile))
 
         if (user) {
           try {

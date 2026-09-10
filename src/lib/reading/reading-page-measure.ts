@@ -227,28 +227,43 @@ function setRealFitProbeText(probe: HTMLDivElement, text: string): void {
   probe.textContent = text
 }
 
+type FitProbe = (pieces: string[]) => boolean
+
 /**
  * Binary-searches the longest word-count prefix of `piece` that fits an otherwise-empty page,
  * per `fits`. Used only when a single page-split piece is, by itself, too tall for the real box
  * (an unusually long sentence/run) — splits it at a word boundary rather than dropping anything;
  * the remainder is carried forward onto the next page by the caller.
+ *
+ * Also returns the accepted prefix's real measured height (via `heightBox`, updated by `fits` on
+ * every call — see `reflowPagesForRealFit`) so the caller can reuse it for desktop fill-padding
+ * instead of re-measuring the same content in a second pass.
  */
-function splitPieceForRealFit(piece: string, fits: (pieces: string[]) => boolean): [string, string] {
+function splitPieceForRealFit(
+  piece: string,
+  fits: FitProbe,
+  heightBox: { value: number },
+): [string, string, number] {
   const words = piece.split(/\s+/).filter(Boolean)
-  if (words.length <= 1) return [piece, ""]
+  if (words.length <= 1) {
+    fits([piece])
+    return [piece, "", heightBox.value]
+  }
   let lo = 1
   let hi = words.length
   let best = 1
+  let bestHeight = 0
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
     if (fits([words.slice(0, mid).join(" ")])) {
       best = mid
+      bestHeight = heightBox.value
       lo = mid + 1
     } else {
       hi = mid - 1
     }
   }
-  return [words.slice(0, best).join(" "), words.slice(best).join(" ")]
+  return [words.slice(0, best).join(" "), words.slice(best).join(" "), bestHeight]
 }
 
 /**
@@ -259,36 +274,66 @@ function splitPieceForRealFit(piece: string, fits: (pieces: string[]) => boolean
  * page's worth of short sentences can be dozens of pieces; popping one at a time meant dozens of
  * forced layouts per overflowing page, and a systematic estimate/real mismatch across a whole
  * novel can mean *most* pages need this, not a rare few).
+ *
+ * Also returns the accepted prefix's real measured height, for the same reuse reason as
+ * `splitPieceForRealFit` above.
  */
-function findFittingPrefixLength(current: string[], fits: (pieces: string[]) => boolean): number {
+function findFittingPrefixLength(
+  current: string[],
+  fits: FitProbe,
+  heightBox: { value: number },
+): { length: number; height: number } {
   let lo = 1
   let hi = current.length
   let best = 0
+  let bestHeight = 0
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
     if (fits(current.slice(0, mid))) {
       best = mid
+      bestHeight = heightBox.value
       lo = mid + 1
     } else {
       hi = mid - 1
     }
   }
-  return best
+  return { length: best, height: bestHeight }
 }
 
-/** Yield to the browser between batches of forced-layout measurements so a long reflow (a full
- *  novel can be hundreds of pages) never blocks the main thread continuously -- without this the
- *  tab can go fully unresponsive for the whole pass with no visible progress, indistinguishable
- *  from a crash, even though the work itself eventually finishes. */
+/**
+ * Yield to the browser between batches of forced-layout measurements so a long reflow (a full
+ * novel can be hundreds of pages) never blocks the main thread continuously -- without this the
+ * tab can go fully unresponsive for the whole pass with no visible progress, indistinguishable
+ * from a crash, even though the work itself eventually finishes.
+ *
+ * Deliberately `setTimeout`, not `requestAnimationFrame`: rAF only fires on an actual paint tick,
+ * which browsers throttle or fully pause for a backgrounded/non-visible tab (switching tabs
+ * mid-load, an inactive window) -- silently stalling this entire pass for as long as the tab stays
+ * backgrounded, which read exactly like the original hang this was meant to fix. `setTimeout`
+ * doesn't depend on painting at all, so it keeps yielding (and this pass keeps making progress)
+ * whether or not the tab is currently visible.
+ */
 function yieldToMainThread(): Promise<void> {
-  return new Promise((resolve) => {
-    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve())
-    else setTimeout(resolve, 0)
-  })
+  return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 /** How many real-DOM `fits()` measurements to run before yielding a frame back to the browser. */
 const YIELD_EVERY_FITS_CALLS = 40
+
+/**
+ * Starting lookahead window size (in pieces) for `packOnePage`. Comfortably above a typical real
+ * page's piece count for ordinary prose (a page usually holds somewhere around 4-12 sentences),
+ * so the common case resolves in one or two `fits()` calls without needing to grow the window at
+ * all.
+ */
+const INITIAL_LOOKAHEAD_PIECES = 16
+/**
+ * Hard cap on how far `packOnePage` will grow its lookahead window. Bounds the worst case (an
+ * unusually short-sentence-heavy stretch, e.g. rapid-fire dialogue) to a small, constant number of
+ * `fits()` calls per page regardless of book length — a page that could technically hold more than
+ * this many short pieces just ends a little early instead, which is the accepted tradeoff.
+ */
+const MAX_LOOKAHEAD_PIECES = 128
 
 /**
  * Authoritative real-DOM correction pass over `pages` (already produced by the fast word/char
@@ -314,9 +359,21 @@ const YIELD_EVERY_FITS_CALLS = 40
  * own safety margin) this costs exactly one DOM measurement per page. Only pages that actually
  * overflow cost a few extra measurements, so pagination stays fast even for 1000+ page books —
  * this still runs once, up front, not per page-turn.
+ *
+ * Also returns `topFillPaddingPx` (see its own doc below) computed from the exact same
+ * measurements this pass already takes, rather than a separate full second pass over every page —
+ * that second pass used to double the total real-DOM measurement cost for no reason, since the
+ * height this function measures to decide whether a page fits *is* the height the fill-padding
+ * calculation needs too (line-wrapping only depends on width, which is identical between the two
+ * probes, so a page's measured `scrollHeight` here is valid for both purposes).
  */
-export async function reflowPagesForRealFit(pages: string[][], isMobile: boolean): Promise<string[][]> {
-  if (typeof document === "undefined" || pages.length === 0) return pages
+export async function reflowPagesForRealFit(
+  pages: string[][],
+  isMobile: boolean,
+): Promise<{ pages: string[][]; topFillPaddingPx: number[] }> {
+  if (typeof document === "undefined" || pages.length === 0) {
+    return { pages, topFillPaddingPx: pages.map(() => 0) }
+  }
 
   // Real Spanish serif metrics, not the fallback font's -- matches measureArticlePageSplitLimitsWhenReady's
   // own wait. Without this, a submit right after first paint (before the reading webfont has
@@ -332,53 +389,127 @@ export async function reflowPagesForRealFit(pages: string[][], isMobile: boolean
 
   const width = articleContentWidthPx(isMobile)
   const height = articleBodyHeightPx(isMobile) * REAL_FIT_HEIGHT_SAFETY
-  if (width < 80 || height < 80) return pages
+  if (width < 80 || height < 80) return { pages, topFillPaddingPx: pages.map(() => 0) }
+
+  // Flatten to one ordered piece stream and repack from scratch against the real box, ignoring
+  // the estimate's own page boundaries entirely. Earlier this instead walked the *estimated*
+  // pages one at a time, carrying forward whatever didn't fit onto the next estimated page's
+  // content. That works fine when the estimate is only occasionally wrong, but the estimate here
+  // is calibrated against generic filler text (see measureArticlePageSplitLimits), not this
+  // book's real prose -- it's systematically a little generous or a little stingy for real text,
+  // by a roughly constant amount per page. Carried forward across an entire book, that small
+  // per-page bias compounds: the backlog grows page after page instead of averaging out, so
+  // `current` (carry + next estimated page) got larger and larger the further into the book you
+  // got, and every real-DOM measurement's cost scales with how much text it's measuring -- turning
+  // total reflow cost roughly quadratic in book length. Fine for a short article, but a real
+  // 500-600k-character novel could take minutes and never visibly progress (read by a reader as a
+  // crash, not just "slow"). Packing from a flat, bounded lookahead window instead means a single
+  // page never has to swallow another page's entire backlog, so cost per page -- and total cost --
+  // stays roughly linear in book length regardless of how the estimate was biased.
+  const flatPieces = pages.flat().filter((p) => p.length > 0)
+  if (flatPieces.length === 0) return { pages, topFillPaddingPx: pages.map(() => 0) }
 
   const probe = createRealFitProbe(isMobile, width, height)
   let fitsCallCount = 0
-  const fits = (pieces: string[]): boolean => {
+  // Updated by `fits` on every call to the just-measured real height — lets callers below reuse
+  // the measurement that decided a page fits for the fill-padding calculation too, instead of
+  // re-measuring the same content again in a separate pass.
+  const heightBox = { value: 0 }
+  const fits: FitProbe = (pieces) => {
     fitsCallCount++
     setRealFitProbeText(probe, pageSourceText(pieces))
-    return probe.scrollHeight <= probe.clientHeight + 1
+    heightBox.value = probe.scrollHeight
+    return heightBox.value <= probe.clientHeight + 1
+  }
+
+  // One packed page's content: `usedWholePieces` counts how many entries from `flatPieces`
+  // starting at `start` are fully consumed. When the very first piece alone didn't fit and had to
+  // be split by words, `usedWholePieces` is 0 and `splitRemainder` carries the leftover words of
+  // that same piece (still unconsumed) for the caller to put back before the next page.
+  type PackedPage = {
+    pieces: string[]
+    height: number
+    usedWholePieces: number
+    splitRemainder: string | null
+  }
+
+  // Grows the lookahead window geometrically from `start` until it either overflows the real box
+  // or would reach the end of the book, then (on overflow) binary-searches the true fitting
+  // prefix within that window. Bounds each page's cost to O(log MAX_LOOKAHEAD_PIECES) measurements
+  // over at most MAX_LOOKAHEAD_PIECES pieces of text, regardless of how far into the book this
+  // page starts or how the original per-page estimate was biased.
+  const packOnePage = (start: number, flatPieces: readonly string[]): PackedPage => {
+    let windowSize = INITIAL_LOOKAHEAD_PIECES
+    while (true) {
+      const end = Math.min(flatPieces.length, start + windowSize)
+      const windowPieces = flatPieces.slice(start, end)
+      const wholeWindowFits = fits(windowPieces)
+      const reachedEnd = end === flatPieces.length
+      if (wholeWindowFits && (reachedEnd || windowSize >= MAX_LOOKAHEAD_PIECES)) {
+        // Either the whole rest of the book fits, or we hit the lookahead cap while everything so
+        // far still fits (an unusually short-sentence-heavy stretch) -- take it as-is. A page
+        // ending at the cap instead of wherever the box would truly stop filling is the accepted
+        // tradeoff for bounding cost.
+        return {
+          pieces: windowPieces,
+          height: heightBox.value,
+          usedWholePieces: windowPieces.length,
+          splitRemainder: null,
+        }
+      }
+      if (wholeWindowFits) {
+        windowSize *= 2
+        continue
+      }
+      // Window overflows — binary-search the longest prefix that actually fits.
+      const found = findFittingPrefixLength(windowPieces, fits, heightBox)
+      if (found.length > 0) {
+        return {
+          pieces: windowPieces.slice(0, found.length),
+          height: found.height,
+          usedWholePieces: found.length,
+          splitRemainder: null,
+        }
+      }
+      // A single piece alone still overflows an empty box — split it at a word boundary.
+      const [prefix, remainder, prefixHeight] = splitPieceForRealFit(windowPieces[0]!, fits, heightBox)
+      return {
+        pieces: [prefix],
+        height: prefixHeight,
+        usedWholePieces: 0,
+        splitRemainder: remainder || null,
+      }
+    }
   }
 
   try {
-    const result: string[][] = []
-    let carry: string[] = []
-    let qi = 0
+    const flatPieces = pages.flat().filter((p) => p.length > 0)
+    if (flatPieces.length === 0) return { pages, topFillPaddingPx: pages.map(() => 0) }
 
-    // Safety valve only — a real bug elsewhere must never hang the tab forever. Counts every
-    // real-DOM measurement (not just outer-loop passes: `findFittingPrefixLength` and
-    // `splitPieceForRealFit` each cost their own O(log n) measurements per overflowing page), so
-    // it actually bounds the work rather than just the page count. Generous relative to total
-    // content, since a systematic estimate/real mismatch can mean most pages need correcting.
-    const totalPieces = pages.reduce((n, p) => n + p.length, 0)
-    const maxFitsCalls = (totalPieces + pages.length) * 20 + 2000
+    const result: string[][] = []
+    const resultHeights: number[] = []
+    let startIdx = 0
+
+    // Safety valve only — a real bug elsewhere must never hang the tab forever. Bounded by piece
+    // count (not page count): each page now costs at most ~(window-growth doublings + one binary
+    // search) measurements, a small constant, so this is generous headroom rather than the tight
+    // bound it has to actually do the work of enforcing.
+    const maxFitsCalls = flatPieces.length * 20 + 4000
     let fitsCallCountAtLastYield = 0
 
-    while (qi < pages.length || carry.length > 0) {
-      if (fitsCallCount >= maxFitsCalls) break
-      const current = qi < pages.length ? carry.concat(pages[qi]!) : carry
-      carry = []
-      qi++
-      if (current.length === 0) continue
-
-      if (fits(current)) {
-        result.push(current)
+    while (startIdx < flatPieces.length && fitsCallCount < maxFitsCalls) {
+      const packed = packOnePage(startIdx, flatPieces)
+      result.push(packed.pieces)
+      resultHeights.push(packed.height)
+      if (packed.usedWholePieces > 0) {
+        startIdx += packed.usedWholePieces
+      } else if (packed.splitRemainder) {
+        // The piece at startIdx was replaced by its (shorter) word-split prefix — put the rest of
+        // that same piece's words back so the next page's window picks up exactly where this one
+        // left off, instead of skipping or duplicating any of it.
+        flatPieces[startIdx] = packed.splitRemainder
       } else {
-        // Binary-search the longest prefix that fits instead of popping pieces off the end one
-        // at a time — O(log n) real-DOM measurements per overflowing page instead of O(n). See
-        // findFittingPrefixLength's docstring for why this matters on a real book.
-        const k = findFittingPrefixLength(current, fits)
-        if (k > 0) {
-          result.push(current.slice(0, k))
-          carry = current.slice(k)
-        } else {
-          // A single piece alone still overflows an empty box — split it at a word boundary.
-          const [prefix, remainder] = splitPieceForRealFit(current[0]!, fits)
-          result.push([prefix])
-          carry = remainder ? [remainder, ...current.slice(1)] : current.slice(1)
-        }
+        startIdx += 1
       }
 
       if (fitsCallCount >= maxFitsCalls) break
@@ -391,10 +522,16 @@ export async function reflowPagesForRealFit(pages: string[][], isMobile: boolean
     }
 
     // Safety-valve cap hit (should not happen) — keep whatever's left rather than losing it.
-    if (carry.length > 0) result.push(carry)
-    for (; qi < pages.length; qi++) result.push(pages[qi]!)
+    if (startIdx < flatPieces.length) {
+      result.push(flatPieces.slice(startIdx))
+      resultHeights.push(Number.POSITIVE_INFINITY)
+    }
 
-    return result.filter((p) => p.length > 0)
+    const topFillPaddingPx = isMobile
+      ? result.map(() => 0)
+      : computeTopFillPaddingFromHeights(resultHeights, articleBodyHeightPx(isMobile))
+
+    return { pages: result, topFillPaddingPx }
   } finally {
     document.body.removeChild(probe)
   }
@@ -412,27 +549,17 @@ const FILL_POLISH_SLACK_FRACTION = 0.3
 /**
  * Desktop-only vertical-fill polish: for each (already real-fit-corrected) page, how much extra
  * top padding (px) to add so a page whose content doesn't fill the box isn't always anchored
- * flush to the top with a large empty gap below it. Purely cosmetic and always 0 on mobile
- * (the screen's tight enough already that top-anchoring reads fine, and the padding would eat
- * into an already-small content area) — never consulted for pagination correctness, which
- * `reflowPagesForRealFit` already guarantees on its own. Reuses that same real-DOM measurement,
- * so a page's padding can never contradict what's already been verified to fit.
+ * flush to the top with a large empty gap below it. Purely cosmetic (always 0 on mobile, and
+ * always 0 for a page whose height came back non-finite — see `reflowPagesForRealFit`) — never
+ * consulted for pagination correctness, which `reflowPagesForRealFit` already guarantees on its
+ * own by construction. Takes each page's already-measured real height directly rather than
+ * re-measuring, so a page's padding can never contradict what's already been verified to fit.
  */
-export function measurePageTopFillPaddingPx(pages: string[][], isMobile: boolean): number[] {
-  if (isMobile || typeof document === "undefined" || pages.length === 0) return pages.map(() => 0)
-  const width = articleContentWidthPx(isMobile)
-  const height = articleBodyHeightPx(isMobile)
-  if (width < 80 || height < 80) return pages.map(() => 0)
-
-  const probe = createRealFitProbe(isMobile, width, height)
-  try {
-    return pages.map((page) => {
-      setRealFitProbeText(probe, pageSourceText(page))
-      const slack = Math.max(0, height - probe.scrollHeight)
-      if (slack < FILL_POLISH_MIN_SLACK_PX) return 0
-      return Math.min(FILL_POLISH_MAX_PADDING_PX, Math.floor(slack * FILL_POLISH_SLACK_FRACTION))
-    })
-  } finally {
-    document.body.removeChild(probe)
-  }
+function computeTopFillPaddingFromHeights(heights: number[], fullHeightPx: number): number[] {
+  return heights.map((measuredHeight) => {
+    if (!Number.isFinite(measuredHeight)) return 0
+    const slack = Math.max(0, fullHeightPx - measuredHeight)
+    if (slack < FILL_POLISH_MIN_SLACK_PX) return 0
+    return Math.min(FILL_POLISH_MAX_PADDING_PX, Math.floor(slack * FILL_POLISH_SLACK_FRACTION))
+  })
 }
