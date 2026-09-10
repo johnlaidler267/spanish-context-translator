@@ -252,6 +252,45 @@ function splitPieceForRealFit(piece: string, fits: (pieces: string[]) => boolean
 }
 
 /**
+ * Binary-searches the longest piece-count prefix of `current` (at least 1) that fits, per `fits`.
+ * `current` is already known not to fit whole. Used instead of popping pieces off the end one at
+ * a time so an overflowing page costs O(log n) real-DOM measurements instead of O(n) — the
+ * difference between a snappy real-fit pass and one that hangs the tab on a real book (a long
+ * page's worth of short sentences can be dozens of pieces; popping one at a time meant dozens of
+ * forced layouts per overflowing page, and a systematic estimate/real mismatch across a whole
+ * novel can mean *most* pages need this, not a rare few).
+ */
+function findFittingPrefixLength(current: string[], fits: (pieces: string[]) => boolean): number {
+  let lo = 1
+  let hi = current.length
+  let best = 0
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (fits(current.slice(0, mid))) {
+      best = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  return best
+}
+
+/** Yield to the browser between batches of forced-layout measurements so a long reflow (a full
+ *  novel can be hundreds of pages) never blocks the main thread continuously -- without this the
+ *  tab can go fully unresponsive for the whole pass with no visible progress, indistinguishable
+ *  from a crash, even though the work itself eventually finishes. */
+function yieldToMainThread(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve())
+    else setTimeout(resolve, 0)
+  })
+}
+
+/** How many real-DOM `fits()` measurements to run before yielding a frame back to the browser. */
+const YIELD_EVERY_FITS_CALLS = 40
+
+/**
  * Authoritative real-DOM correction pass over `pages` (already produced by the fast word/char
  * estimate in `buildSentencePages`) that guarantees every page's content actually fits the real,
  * non-scrolling reading box — the fix for both the mobile content-loss bug and the desktop
@@ -296,7 +335,9 @@ export async function reflowPagesForRealFit(pages: string[][], isMobile: boolean
   if (width < 80 || height < 80) return pages
 
   const probe = createRealFitProbe(isMobile, width, height)
+  let fitsCallCount = 0
   const fits = (pieces: string[]): boolean => {
+    fitsCallCount++
     setRealFitProbeText(probe, pageSourceText(pieces))
     return probe.scrollHeight <= probe.clientHeight + 1
   }
@@ -306,14 +347,17 @@ export async function reflowPagesForRealFit(pages: string[][], isMobile: boolean
     let carry: string[] = []
     let qi = 0
 
-    // Safety valve only — a real bug elsewhere must never hang the tab. Generous relative to
-    // total content, since a cascading overflow can, in the worst case, touch every piece once.
+    // Safety valve only — a real bug elsewhere must never hang the tab forever. Counts every
+    // real-DOM measurement (not just outer-loop passes: `findFittingPrefixLength` and
+    // `splitPieceForRealFit` each cost their own O(log n) measurements per overflowing page), so
+    // it actually bounds the work rather than just the page count. Generous relative to total
+    // content, since a systematic estimate/real mismatch can mean most pages need correcting.
     const totalPieces = pages.reduce((n, p) => n + p.length, 0)
-    const maxIterations = totalPieces * 4 + pages.length + 1000
-    let iterations = 0
+    const maxFitsCalls = (totalPieces + pages.length) * 20 + 2000
+    let fitsCallCountAtLastYield = 0
 
-    while ((qi < pages.length || carry.length > 0) && iterations < maxIterations) {
-      iterations++
+    while (qi < pages.length || carry.length > 0) {
+      if (fitsCallCount >= maxFitsCalls) break
       const current = qi < pages.length ? carry.concat(pages[qi]!) : carry
       carry = []
       qi++
@@ -321,26 +365,32 @@ export async function reflowPagesForRealFit(pages: string[][], isMobile: boolean
 
       if (fits(current)) {
         result.push(current)
-        continue
+      } else {
+        // Binary-search the longest prefix that fits instead of popping pieces off the end one
+        // at a time — O(log n) real-DOM measurements per overflowing page instead of O(n). See
+        // findFittingPrefixLength's docstring for why this matters on a real book.
+        const k = findFittingPrefixLength(current, fits)
+        if (k > 0) {
+          result.push(current.slice(0, k))
+          carry = current.slice(k)
+        } else {
+          // A single piece alone still overflows an empty box — split it at a word boundary.
+          const [prefix, remainder] = splitPieceForRealFit(current[0]!, fits)
+          result.push([prefix])
+          carry = remainder ? [remainder, ...current.slice(1)] : current.slice(1)
+        }
       }
 
-      // Shrink from the end until what's left fits, carrying the removed tail forward.
-      while (current.length > 1 && !fits(current)) {
-        carry.unshift(current.pop()!)
+      if (fitsCallCount >= maxFitsCalls) break
+      // Keep the tab responsive across a long reflow (a full novel can be hundreds of pages) —
+      // without this the whole pass blocks the main thread continuously with no visible progress.
+      if (fitsCallCount - fitsCallCountAtLastYield >= YIELD_EVERY_FITS_CALLS) {
+        fitsCallCountAtLastYield = fitsCallCount
+        await yieldToMainThread()
       }
-
-      if (fits(current)) {
-        result.push(current)
-        continue
-      }
-
-      // A single piece alone still overflows an empty box — split it at a word boundary.
-      const [prefix, remainder] = splitPieceForRealFit(current[0]!, fits)
-      result.push([prefix])
-      if (remainder) carry.unshift(remainder)
     }
 
-    // Iteration cap hit (should not happen) — keep whatever's left rather than losing it.
+    // Safety-valve cap hit (should not happen) — keep whatever's left rather than losing it.
     if (carry.length > 0) result.push(carry)
     for (; qi < pages.length; qi++) result.push(pages[qi]!)
 
