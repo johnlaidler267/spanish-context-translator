@@ -1218,42 +1218,39 @@ export default function App() {
       cache.getPage(prevIdx) == null &&
       cache.getError(prevIdx) == null
 
-    const goArticlePrev = () => {
-      if (articlePageIndex <= 0) return
-      if (cache.getPage(prevIdx) != null || cache.getError(prevIdx) != null) {
-        setArticlePageIndex((p) => p - 1)
+    // Shared on-demand jump used by Previous, Next, and the "Page X" pager input (see
+    // article-content.tsx): load the target page's translation if it isn't cached yet — same
+    // pattern the resume-at-saved-page path already uses in handleTextSubmit — then advance.
+    // Deliberately does not pre-load anything in between; a jump straight to page 40 costs
+    // exactly one page translation, same as any other on-demand page load.
+    const goToArticlePage = (target: number) => {
+      if (target < 0 || target >= totalPages || target === articlePageIndex) return
+      if (cache.getPage(target) != null || cache.getError(target) != null) {
+        setArticlePageIndex(target)
         return
       }
       bump()
       void cache
-        .loadPage(prevIdx, pageSourceText(sourcePages[prevIdx]!), translatePageWithUsage)
+        .loadPage(target, pageSourceText(sourcePages[target]!), translatePageWithUsage)
         .then(() => {
-          setArticlePageIndex((p) => p - 1)
+          setArticlePageIndex(target)
           bump()
         })
         .catch(bump)
     }
 
+    const goArticlePrev = () => {
+      if (articlePageIndex <= 0) return
+      goToArticlePage(articlePageIndex - 1)
+    }
+
     const goArticleNext = () => {
       if (articlePageIndex >= totalPages - 1 || articleLoading) return
-      const idx = articlePageIndex + 1
-      if (cache.getPage(idx) != null || cache.getError(idx) != null) {
-        setArticlePageIndex((p) => p + 1)
-        return
-      }
-      // Not cached yet — may already be an in-flight prefetch. loadPage dedupes by index
-      // (returns the same promise rather than firing a second call), so this is exactly the
-      // on-demand path whether or not a background prefetch already kicked it off: stay on
-      // this page (Next button shows its own loading spinner via nextPageLoading) and advance
-      // once the shared promise settles.
-      bump()
-      void cache
-        .loadPage(idx, pageSourceText(sourcePages[idx]!), translatePageWithUsage)
-        .then(() => {
-          setArticlePageIndex((p) => p + 1)
-          bump()
-        })
-        .catch(bump)
+      goToArticlePage(articlePageIndex + 1)
+    }
+
+    const goToArticlePageInput = (page1Based: number) => {
+      goToArticlePage(page1Based - 1)
     }
 
     const goReadPrevArticlePage = () => {
@@ -1333,6 +1330,7 @@ export default function App() {
                         pageCount: totalPages,
                         onPrevious: goArticlePrev,
                         onNext: goArticleNext,
+                        onJumpToPage: goToArticlePageInput,
                         nextPageLoading,
                         nextPageOpen,
                         prevPageLoading,

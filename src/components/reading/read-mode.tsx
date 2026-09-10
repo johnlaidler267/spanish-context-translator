@@ -600,8 +600,16 @@ export function ReadMode({
           <span className="sr-only">Previous sentence</span>
         </Button>
 
+        {/*
+         * Shows the same page number as article mode for the same content (see App.tsx, which
+         * passes the same `articlePageIndex`/`totalPages` used by ArticleContent's own pager) —
+         * not a read-step count. Read mode fits far fewer words per step than article mode fits
+         * per page, so this number is expected to stay put across several Previous/Next taps
+         * before incrementing, then jump forward once the reader crosses into the next article
+         * page's steps.
+         */}
         <span className="text-sm font-sans text-muted-foreground tabular-nums">
-          {readStepOffset + currentSentenceIndex + 1} of {readStepOffset + totalSentences}
+          Page {articlePageIndex + 1} of {totalPages}
         </span>
 
         <Button

@@ -21,6 +21,7 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
+import { resolvePageJumpTarget } from "@/lib/reading/page-jump"
 import { DetailsBoxLazy } from "@/components/reading/details-box-lazy"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
@@ -44,6 +45,8 @@ export type ArticlePaginationState = {
   nextPageOpen: boolean
   /** Previous page is in flight after user chose Previous (uncached — e.g. paging back on resumed content). */
   prevPageLoading?: boolean
+  /** Jump straight to a 1-based page number (see the "Page X" input below) — same on-demand load as Previous/Next. */
+  onJumpToPage: (page1Based: number) => void
 }
 
 interface ArticleContentProps {
@@ -96,6 +99,27 @@ export function ArticleContent({
   useEffect(() => {
     setErrorModalDismissed(false)
   }, [pageKey, errorMessage])
+
+  /** "Page X" pager label doubles as a jump-to-page input — see the footer below. */
+  const [pageJumpEditing, setPageJumpEditing] = useState(false)
+  const [pageJumpValue, setPageJumpValue] = useState("")
+  const pageJumpInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    // Leaving edit mode whenever the page actually changes covers both a successful jump and
+    // Previous/Next while editing — always land back on the plain "Page X" label.
+    setPageJumpEditing(false)
+  }, [pageKey])
+  useEffect(() => {
+    if (!pageJumpEditing) return
+    pageJumpInputRef.current?.focus()
+    pageJumpInputRef.current?.select()
+  }, [pageJumpEditing])
+  const commitPageJump = useCallback(() => {
+    setPageJumpEditing(false)
+    if (!pagination) return
+    const target = resolvePageJumpTarget(pageJumpValue, pagination.pageCount)
+    if (target != null && target !== pagination.pageIndex + 1) pagination.onJumpToPage(target)
+  }, [pageJumpValue, pagination])
 
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
@@ -576,7 +600,40 @@ export function ArticleContent({
             </span>
             <span className="text-sm font-sans text-muted-foreground tabular-nums max-md:font-serif max-md:text-ui-lg max-md:text-reading-folio">
               <span className="max-md:text-reading-folio-label max-md:italic">Page</span>{" "}
-              {pagination.pageIndex + 1}{" "}
+              {pageJumpEditing ? (
+                <input
+                  ref={pageJumpInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={pageJumpValue}
+                  onChange={(e) => setPageJumpValue(e.target.value.replace(/[^0-9]/g, ""))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      commitPageJump()
+                    } else if (e.key === "Escape") {
+                      e.preventDefault()
+                      setPageJumpEditing(false)
+                    }
+                  }}
+                  onBlur={commitPageJump}
+                  aria-label={`Go to page, 1 to ${pagination.pageCount}`}
+                  className="w-9 rounded border border-border bg-transparent text-center tabular-nums text-foreground outline-none focus-visible:border-primary"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPageJumpValue(String(pagination.pageIndex + 1))
+                    setPageJumpEditing(true)
+                  }}
+                  aria-label={`Go to page, currently page ${pagination.pageIndex + 1} of ${pagination.pageCount}`}
+                  className="rounded px-0.5 tabular-nums hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  {pagination.pageIndex + 1}
+                </button>
+              )}{" "}
               <span className="max-md:text-reading-folio-dim">of</span>{" "}
               {pagination.pageCount}
             </span>
