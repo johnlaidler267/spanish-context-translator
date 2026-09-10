@@ -49,10 +49,11 @@ interface TextChunkProps {
    */
   variant?: "article" | "read"
   /**
-   * Touch device (coarse pointer): always place the tooltip above the word instead of the
-   * space-aware above/below choice — below gets covered by the finger/hand still resting on
-   * the word. Computed once by the parent (`matchMedia("(pointer: coarse)")`) and passed down
-   * rather than queried per chunk — a page can render hundreds of these.
+   * Touch device (coarse pointer): prefer the tooltip above the word — below gets covered by
+   * the finger/hand still resting on the word — flipping below only when there isn't room
+   * above (e.g. a word near the top of the screen). Computed once by the parent
+   * (`matchMedia("(pointer: coarse)")`) and passed down rather than queried per chunk — a page
+   * can render hundreds of these.
    */
   isCoarsePointer?: boolean
   /**
@@ -298,11 +299,17 @@ export function TextChunk({
 
       const spaceAbove = union.top
       const spaceBelow = window.innerHeight - union.bottom
-      // Touch (coarse pointer): always above the word — a tooltip below gets covered by the
-      // finger/hand that's still resting on the word that opened it. Desktop hover keeps the
-      // space-aware placement (flips below only when there's no room above).
+      // Touch (coarse pointer): prefer above the word — a tooltip below gets covered by the
+      // finger/hand that's still resting on the word that opened it. But when there isn't
+      // enough room above (a word near the top of the screen), flip below instead of clamping
+      // the card against the viewport edge, where it barely fits above the word at all. The
+      // "below" gap (GAP_FROM_WORD) is already the same larger touch offset used above, so the
+      // flipped card still clears a thumb resting on the word. Desktop hover keeps its own
+      // space-aware placement (flips below only when there's no room above there either).
       const placement = isCoarsePointer
-        ? "above"
+        ? spaceAbove < tooltipHeightEst + edgeClearance
+          ? "below"
+          : "above"
         : spaceAbove < tooltipHeightEst + edgeClearance &&
             spaceBelow >= tooltipHeightEst + edgeClearance
           ? "below"
