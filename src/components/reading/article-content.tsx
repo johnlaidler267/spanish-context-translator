@@ -58,6 +58,12 @@ interface ArticleContentProps {
   /** Title of the book/piece being read (Discover item or Library book) — shown at the top of
    * the page in article mode. Null/omitted for a plain pasted-text reading, which has no title. */
   bookTitle?: string | null
+  /** Desktop vertical-fill polish (see measurePageTopFillPaddingPx): extra top padding, in px,
+   * for a page whose content doesn't fill the box — nudges it down a little instead of always
+   * sitting flush against the top with a large empty gap below. 0/undefined on mobile and for a
+   * page that already mostly fills the box. Purely cosmetic; never affects whether content fits
+   * (pagination already guarantees that by construction). */
+  topFillPaddingPx?: number
 }
 
 const CHUNK_HOVER_GAP_CLEAR_MS = 90
@@ -84,6 +90,7 @@ export function ArticleContent({
   pageKey = 0,
   hoverTtsEnabled = false,
   bookTitle = null,
+  topFillPaddingPx = 0,
 }: ArticleContentProps) {
   const [errorModalDismissed, setErrorModalDismissed] = useState(false)
   useEffect(() => {
@@ -404,7 +411,12 @@ export function ArticleContent({
       )}
       <article
         ref={touchSurfaceRef}
-        style={pageEnterStyle}
+        style={{
+          ...pageEnterStyle,
+          // Desktop vertical-fill polish only (see measurePageTopFillPaddingPx) — always 0 on
+          // mobile, so this never touches the mobile top offset (--reading-content-top above).
+          ...(topFillPaddingPx > 0 ? { paddingTop: `${topFillPaddingPx}px` } : null),
+        }}
         className={cn(
           "font-reading text-[1.6875rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
           // Verse (lyrics/poems): respect the line breaks the pipeline already preserves in the
@@ -413,7 +425,12 @@ export function ArticleContent({
           // cap (prose only) already marks where the text starts, so skip the indent there too.
           isVerseLike ? "whitespace-pre-line" : !showDropCap && "indent-5 md:indent-7",
           showDropCap && "article-drop-cap",
-          "min-h-0 flex-1 md:mb-8 max-md:overflow-y-auto max-md:overscroll-y-contain",
+          // No scrolling, ever: pagination (see reflowPagesForRealFit) already guarantees a
+          // page's content fits this box by construction, so overflow-hidden here is a defensive
+          // backstop, not the correctness mechanism — it used to be `overflow-y-auto` on mobile,
+          // which let a cut-off sentence's remainder scroll out of reach instead of ever being
+          // shown, the root cause of real content silently going missing when a page turned.
+          "min-h-0 flex-1 md:mb-8 overflow-hidden",
           touchExploring && "touch-none select-none",
         )}
       >

@@ -24,7 +24,9 @@ import { useSubscription } from "@/contexts/subscription-context"
 import {
   buildSentencePages,
   clampPageLimitsForLlmBatching,
+  computePageStartSentenceIndices,
   dedupeConsecutiveDuplicateLines,
+  findPageIndexForSentenceIndex,
   mergeArticlePagesIfWholeTextFitsLimits,
   maybeSummarizePreviousPageOnLeave,
   mergeReconciledPagesToSentences,
@@ -37,13 +39,14 @@ import {
   translatePageText,
   type ReconciledItem,
 } from "@/lib/translate"
+import { measurePageTopFillPaddingPx, reflowPagesForRealFit } from "@/lib/reading/reading-page-measure"
 import { TranslationCache } from "@/lib/translation-cache"
 import { cacheKeyForPastedText } from "@/lib/storage/translation-cache-storage"
 import type { ViewMode } from "@/components/reading/mode-toggle"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
 import { getStoredLandingDraft, setStoredLandingDraft } from "@/lib/storage/landing-draft-storage"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
-import { getReadingProgress, setReadingProgress } from "@/lib/storage/reading-progress-storage"
+import { getReadingProgressEntry, setReadingProgress } from "@/lib/storage/reading-progress-storage"
 import {
   ensureCloudReadingProgressPulled,
   pushReadingProgress,
@@ -307,6 +310,21 @@ export default function App() {
    */
   const [sourcePages, setSourcePages] = useState<string[][]>([])
   const [articlePageIndex, setArticlePageIndex] = useState(0)
+  /**
+   * Per-page sentence-index anchors for `sourcePages` (see computePageStartSentenceIndices) and
+   * per-page desktop top-padding polish (see measurePageTopFillPaddingPx) -- both computed once,
+   * right after pagination, in handleTextSubmit. Refs rather than state: nothing needs to re-render when
+   * these are (re)computed, they're only read by the progress-persisting effect below and by
+   * ArticleContent's vertical-fill polish.
+   */
+  const pageStartSentenceIndicesRef = useRef<number[]>([])
+  /**
+   * Same idea, but state rather than a ref: this one IS read during render (as an ArticleContent
+   * prop), so it has to be reactive rather than a ref (reading a ref's `.current` during render
+   * is unsafe -- it wouldn't trigger a re-render when it changes, and React explicitly disallows
+   * it). Set at the same time as `sourcePages`, right after pagination.
+   */
+  const [pageTopFillPaddingPx, setPageTopFillPaddingPx] = useState<number[]>([])
   /**
    * Discover catalog id for the piece currently being read, or null for a plain landing-page
    * submission (which has no saved-progress identity). Set on a Discover "start/continue
@@ -629,6 +647,26 @@ export default function App() {
           trimmed,
           isMobile,
         )
+        // Authoritative real-DOM correction: the estimate above is only ever a starting guess
+        // (calibrated against generic filler text, not this book's own words) -- this pass
+        // measures the real rendered box and moves anything that wouldn't actually fit onto the
+        // next page instead, so a page can end a little early but never overflows, scrolls, or
+        // drops content. See reflowPagesForRealFit's docstring for the full root cause.
+        pages = await reflowPagesForRealFit(pages, isMobile)
+        // Cross-device resume anchor -- a sentence index means the same spot in the book on
+        // every device, unlike a raw page index (see computePageStartSentenceIndices). Skipped
+        // (left empty) when the source segmented into only one "sentence": an unusual
+        // punctuation pattern (e.g. a parenthetical note glued directly onto a period, with no
+        // following capital letter) can occasionally make Intl.Segmenter treat a whole long text
+        // as one sentence, which would make every page's anchor collapse to the same value 0 --
+        // worse than the plain page-index fallback below, since it would always resume at page 0
+        // regardless of real progress instead of at least landing near the right spot on the
+        // *same* device. `setReadingProgress`/`pushReadingProgress` already omit `sentenceIndex`
+        // when this is empty (see the persisting effect), so leaving it empty here is enough to
+        // fall back to today's page-index behavior for that rare case.
+        pageStartSentenceIndicesRef.current =
+          sents.length > 1 ? computePageStartSentenceIndices(sents, pages) : []
+        setPageTopFillPaddingPx(measurePageTopFillPaddingPx(pages, isMobile))
 
         if (user) {
           try {
@@ -722,17 +760,25 @@ export default function App() {
         // call this session/user — see ensureCloudReadingProgressPulled) so a book resumed here
         // reflects where the reader actually left off, not just what this browser remembers.
         if (contentId) await ensureCloudReadingProgressPulled(user)
-        const savedPageIndex = contentId ? getReadingProgress(user, contentId) : null
+        const savedProgress = contentId ? getReadingProgressEntry(user, contentId) : null
         // No saved position yet (a book's first-ever open): land on whichever page
         // `initialPageRatio` falls in instead of page 0 — e.g. a Library book's detected story
         // start (see initialPageRatio's own docstring). Genuine resume always wins when both
         // are present; there's no real saved position to prefer a guess over.
+        //
+        // A saved `sentenceIndex` (cross-device anchor -- see computePageStartSentenceIndices)
+        // takes priority over the raw `pageIndex` whenever it's present: it means the same spot
+        // in the book on this device's own freshly-built pages, whereas `pageIndex` only ever
+        // meant something on whichever device originally saved it. Older rows (saved before this
+        // anchor existed) have no `sentenceIndex` and fall back to the page-index behavior below.
         const initialPageIndex =
-          savedPageIndex != null
-            ? Math.min(Math.max(savedPageIndex, 0), pages.length - 1)
-            : initialPageRatio != null && pages.length > 0
-              ? Math.min(Math.max(Math.floor(initialPageRatio * pages.length), 0), pages.length - 1)
-              : 0
+          savedProgress?.sentenceIndex != null
+            ? findPageIndexForSentenceIndex(pageStartSentenceIndicesRef.current, savedProgress.sentenceIndex)
+            : savedProgress != null
+              ? Math.min(Math.max(savedProgress.pageIndex, 0), pages.length - 1)
+              : initialPageRatio != null && pages.length > 0
+                ? Math.min(Math.max(Math.floor(initialPageRatio * pages.length), 0), pages.length - 1)
+                : 0
 
         // "Where you left off" modal: only for a genuine resume past the first page —
         // reopening fresh (including a fresh open that landed past page 0 via
@@ -743,7 +789,7 @@ export default function App() {
         // maybeSummarizePreviousPageOnLeave below). `excerpt` is the free verbatim fallback for
         // when there's no cached summary yet (or it's stale — see getCachedPageRecap).
         setWhereLeftOff(
-          savedPageIndex != null && initialPageIndex > 0
+          savedProgress != null && initialPageIndex > 0
             ? {
                 title: contentTitle ?? null,
                 summary: contentId ? getCachedPageRecap(user, contentId, initialPageIndex - 1) : null,
@@ -915,6 +961,8 @@ export default function App() {
     setActiveReadingContentId(null)
     setActiveReadingTitle(null)
     setWhereLeftOff(null)
+    pageStartSentenceIndicesRef.current = []
+    setPageTopFillPaddingPx([])
     setError("")
     setRateLimitMessage(null)
     setPlanLimitModal(null)
@@ -946,10 +994,14 @@ export default function App() {
    */
   useEffect(() => {
     if (appState !== "reading" || !activeReadingContentId) return
-    setReadingProgress(user, activeReadingContentId, articlePageIndex, totalPages)
+    // Sentence-index anchor for cross-device resume (see computePageStartSentenceIndices) --
+    // undefined only if this page index is somehow out of range, which setReadingProgress /
+    // pushReadingProgress both already treat as "no anchor, fall back to pageIndex."
+    const sentenceIndex = pageStartSentenceIndicesRef.current[articlePageIndex]
+    setReadingProgress(user, activeReadingContentId, articlePageIndex, totalPages, sentenceIndex)
     // Cross-device sync (debounced) on top of the localStorage write above -- see
     // reading-progress-sync.ts. No-ops for a null user.
-    pushReadingProgress(user, activeReadingContentId, articlePageIndex, totalPages)
+    pushReadingProgress(user, activeReadingContentId, articlePageIndex, totalPages, sentenceIndex)
     // Keep the "as of the last page turn" snapshot fresh for the leave-triggered recap effect
     // below, which reads it from a ref rather than closing over these values directly -- that
     // effect only wants to fire once, on the actual leave, not on every page turn like this one.
@@ -1270,6 +1322,7 @@ export default function App() {
                 pageKey={articlePageIndex}
                 hoverTtsEnabled={hoverTtsEnabled}
                 bookTitle={activeReadingTitle}
+                topFillPaddingPx={pageTopFillPaddingPx[articlePageIndex]}
                 pagination={
                   totalPages > 1
                     ? {
@@ -1317,6 +1370,7 @@ export default function App() {
                 pageKey={articlePageIndex}
                 hoverTtsEnabled={hoverTtsEnabled}
                 bookTitle={activeReadingTitle}
+                topFillPaddingPx={pageTopFillPaddingPx[articlePageIndex]}
                 pagination={null}
               />
             </div>

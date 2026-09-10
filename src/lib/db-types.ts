@@ -1,6 +1,6 @@
 /**
  * TypeScript types mirroring the Supabase database schema.
- * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql).
+ * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql).
  *
  * Usage with the Supabase client:
  *   import { createClient } from '@supabase/supabase-js'
@@ -154,6 +154,10 @@ export type ReadingProgressRow = {
   content_id: string
   page_index: number
   total_pages: number | null
+  /** Viewport-independent resume anchor -- 0-based index into the content's sentence array
+   *  (see splitSourceIntoSentences). Null for rows written before this column existed -- see
+   *  supabase/migrations/0022_reading_progress_sentence_index.sql. */
+  sentence_index: number | null
   created_at: string
   updated_at: string
 }

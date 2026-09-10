@@ -27,6 +27,9 @@ interface ReadingProgressSyncRow {
   page_index: number
   total_pages: number | null
   updated_at: string
+  /** Absent on rows from a Supabase project that hasn't run the sentence-index migration yet,
+   *  and null for rows written before this column existed -- both fall back to page_index. */
+  sentence_index?: number | null
 }
 
 /** Debounce so rapid page turns push one write per item, not one per page. */
@@ -44,6 +47,7 @@ export function pushReadingProgress(
   contentId: string,
   pageIndex: number,
   totalPages?: number,
+  sentenceIndex?: number,
 ): void {
   if (!user || !Number.isFinite(pageIndex) || pageIndex < 0) return
   const key = `${user.id}:${contentId}`
@@ -61,6 +65,10 @@ export function pushReadingProgress(
           page_index: pageIndex,
           total_pages:
             Number.isFinite(totalPages) && (totalPages as number) > 0 ? (totalPages as number) : null,
+          sentence_index:
+            Number.isFinite(sentenceIndex) && (sentenceIndex as number) >= 0
+              ? (sentenceIndex as number)
+              : null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,content_id" },
@@ -96,7 +104,7 @@ export function ensureCloudReadingProgressPulled(user: User | null): Promise<voi
     try {
       const { data, error } = await supabase
         .from("reading_progress")
-        .select("content_id, page_index, total_pages, updated_at")
+        .select("content_id, page_index, total_pages, sentence_index, updated_at")
         .eq("user_id", userKey)
       if (error || !data) {
         if (error) console.warn("[reading-progress] cloud pull failed:", error.message)
@@ -106,6 +114,7 @@ export function ensureCloudReadingProgressPulled(user: User | null): Promise<voi
         contentId: row.content_id,
         pageIndex: row.page_index,
         totalPages: row.total_pages,
+        sentenceIndex: row.sentence_index ?? null,
         updatedAt: new Date(row.updated_at).getTime(),
       }))
       mergeCloudProgress(user, rows)

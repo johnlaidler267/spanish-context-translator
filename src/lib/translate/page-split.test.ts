@@ -9,6 +9,8 @@ import {
   splitSegmentIntoPageParts,
   mergeArticlePagesIfWholeTextFitsLimits,
   resumeExcerptFromPageSource,
+  computePageStartSentenceIndices,
+  findPageIndexForSentenceIndex,
   PAGE_SIZE_WORDS_MOBILE,
   PAGE_SIZE_WORDS_DESKTOP,
 } from "@/lib/translate/page-split"
@@ -179,5 +181,90 @@ describe("resumeExcerptFromPageSource", () => {
   it("returns an empty string for an empty/blank page", () => {
     expect(resumeExcerptFromPageSource([])).toBe("")
     expect(resumeExcerptFromPageSource(["   "])).toBe("")
+  })
+})
+
+describe("computePageStartSentenceIndices / findPageIndexForSentenceIndex", () => {
+  it("maps each page to the sentence its content starts in, one sentence per page", () => {
+    const sentences = ["Uno dos tres.", "Cuatro cinco seis.", "Siete ocho nueve."]
+    const pages = [["Uno dos tres."], ["Cuatro cinco seis."], ["Siete ocho nueve."]]
+    expect(computePageStartSentenceIndices(sentences, pages)).toEqual([0, 1, 2])
+  })
+
+  it("maps a page holding multiple whole sentences to the first of them", () => {
+    const sentences = ["Uno.", "Dos.", "Tres.", "Cuatro."]
+    // Two sentences per page.
+    const pages = [
+      ["Uno.", "Dos."],
+      ["Tres.", "Cuatro."],
+    ]
+    expect(computePageStartSentenceIndices(sentences, pages)).toEqual([0, 2])
+  })
+
+  it("attributes a page starting mid-sentence (a long sentence split across pages) to that sentence", () => {
+    const longSentence = Array.from({ length: 20 }, (_, i) => `palabra${i}`).join(" ") + "."
+    const sentences = ["Corta.", longSentence, "Final."]
+    // Simulate splitSegmentIntoPageParts breaking the long sentence into two pieces across pages.
+    const words = longSentence.replace(/\.$/, "").split(" ")
+    const firstHalf = words.slice(0, 10).join(" ")
+    const secondHalf = words.slice(10).join(" ") + "."
+    const pages = [["Corta.", firstHalf], [secondHalf], ["Final."]]
+    // All three pages fall within sentence index 1 (the long one) except the first and last.
+    expect(computePageStartSentenceIndices(sentences, pages)).toEqual([0, 1, 2])
+  })
+
+  it("is stable when a real-fit reflow pass moves content between pages (order preserved)", () => {
+    const sentences = ["Uno dos.", "Tres cuatro cinco.", "Seis siete ocho nueve."]
+    // Suppose the char/word estimate originally put all three on one page, but a real-fit pass
+    // later moved the last sentence forward onto its own page.
+    const pages = [["Uno dos.", "Tres cuatro cinco."], ["Seis siete ocho nueve."]]
+    expect(computePageStartSentenceIndices(sentences, pages)).toEqual([0, 2])
+  })
+
+  it("returns one entry per page, all 0, for an empty sentence array", () => {
+    expect(computePageStartSentenceIndices([], [["a"], ["b"]])).toEqual([0, 0])
+  })
+
+  it("returns an empty array for no pages", () => {
+    expect(computePageStartSentenceIndices(["Uno."], [])).toEqual([])
+  })
+
+  it("finds the last page whose start is at or before the target sentence index", () => {
+    const starts = [0, 2, 5, 9]
+    expect(findPageIndexForSentenceIndex(starts, 0)).toBe(0)
+    expect(findPageIndexForSentenceIndex(starts, 1)).toBe(0)
+    expect(findPageIndexForSentenceIndex(starts, 2)).toBe(1)
+    expect(findPageIndexForSentenceIndex(starts, 4)).toBe(1)
+    expect(findPageIndexForSentenceIndex(starts, 5)).toBe(2)
+    expect(findPageIndexForSentenceIndex(starts, 100)).toBe(3)
+  })
+
+  it("clamps below the first page's start to page 0", () => {
+    expect(findPageIndexForSentenceIndex([3, 7], 0)).toBe(0)
+  })
+
+  it("returns 0 for an empty starts array", () => {
+    expect(findPageIndexForSentenceIndex([], 5)).toBe(0)
+  })
+
+  it("round-trips through buildSentencePages: every page's real content maps back to itself", () => {
+    const sentences = [
+      "El sol brillaba sobre el valle.",
+      "Los pájaros cantaban una melodía suave.",
+      "María caminaba despacio por el sendero.",
+      "El viento movía las hojas de los árboles.",
+      "Al final del camino había una pequeña casa.",
+    ]
+    const pages = buildSentencePages(sentences, { maxWords: 8, maxChars: 200 })
+    const starts = computePageStartSentenceIndices(sentences, pages)
+    expect(starts.length).toBe(pages.length)
+    // Monotonically non-decreasing -- reading order is never reversed.
+    for (let i = 1; i < starts.length; i++) {
+      expect(starts[i]).toBeGreaterThanOrEqual(starts[i - 1]!)
+    }
+    // Resuming at each page's own start sentence must land back on that same page.
+    for (let i = 0; i < starts.length; i++) {
+      expect(findPageIndexForSentenceIndex(starts, starts[i]!)).toBe(i)
+    }
   })
 })

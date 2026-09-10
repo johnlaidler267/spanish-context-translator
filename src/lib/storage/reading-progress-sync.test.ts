@@ -95,6 +95,22 @@ describe("reading-progress-sync", () => {
       await vi.advanceTimersByTimeAsync(2000)
       expect(upsertMock).not.toHaveBeenCalled()
     })
+
+    it("includes the sentence-index anchor when given", async () => {
+      const { pushReadingProgress } = await import("@/lib/storage/reading-progress-sync")
+      pushReadingProgress(user, "book-1", 3, 10, 42)
+      await vi.advanceTimersByTimeAsync(2000)
+      const [row] = upsertMock.mock.calls[0] as [Record<string, unknown>]
+      expect(row).toMatchObject({ page_index: 3, total_pages: 10, sentence_index: 42 })
+    })
+
+    it("sends a null sentence_index when no anchor is given (older call sites)", async () => {
+      const { pushReadingProgress } = await import("@/lib/storage/reading-progress-sync")
+      pushReadingProgress(user, "book-1", 3, 10)
+      await vi.advanceTimersByTimeAsync(2000)
+      const [row] = upsertMock.mock.calls[0] as [Record<string, unknown>]
+      expect(row).toMatchObject({ sentence_index: null })
+    })
   })
 
   describe("ensureCloudReadingProgressPulled", () => {
@@ -153,6 +169,38 @@ describe("reading-progress-sync", () => {
       eqMock.mockResolvedValue({ data: null, error: { message: "boom" } })
       const { ensureCloudReadingProgressPulled } = await import("@/lib/storage/reading-progress-sync")
       await expect(ensureCloudReadingProgressPulled(user)).resolves.toBeUndefined()
+    })
+
+    it("pulls the sentence-index anchor down into the local cache", async () => {
+      eqMock.mockResolvedValue({
+        data: [
+          {
+            content_id: "book-1",
+            page_index: 7,
+            total_pages: 20,
+            sentence_index: 123,
+            updated_at: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+        error: null,
+      })
+      const { ensureCloudReadingProgressPulled } = await import("@/lib/storage/reading-progress-sync")
+      const { getReadingProgressEntry } = await import("@/lib/storage/reading-progress-storage")
+
+      await ensureCloudReadingProgressPulled(user)
+      expect(getReadingProgressEntry(user, "book-1")).toEqual({ pageIndex: 7, sentenceIndex: 123 })
+    })
+
+    it("falls back cleanly (no sentenceIndex) for a row from before the column existed", async () => {
+      eqMock.mockResolvedValue({
+        data: [{ content_id: "book-1", page_index: 7, total_pages: 20, updated_at: "2026-01-01T00:00:00.000Z" }],
+        error: null,
+      })
+      const { ensureCloudReadingProgressPulled } = await import("@/lib/storage/reading-progress-sync")
+      const { getReadingProgressEntry } = await import("@/lib/storage/reading-progress-storage")
+
+      await ensureCloudReadingProgressPulled(user)
+      expect(getReadingProgressEntry(user, "book-1")).toEqual({ pageIndex: 7 })
     })
   })
 })

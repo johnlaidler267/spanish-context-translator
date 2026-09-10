@@ -25,6 +25,15 @@ interface ProgressEntry {
    *  entries written before this field existed. Paging is viewport-dependent (see App.tsx),
    *  so this is only ever a rough "how far in" estimate, not an exact page count. */
   totalPages?: number
+  /**
+   * Viewport-independent resume anchor: 0-based index into the sentence array
+   * `splitSourceIntoSentences` produces for this content (see page-split.ts). Unlike
+   * `pageIndex`, this means the same spot in the book regardless of which device's viewport
+   * did the paginating -- see `computePageStartSentenceIndices` / `findPageIndexForSentenceIndex`
+   * and the resume logic in App.tsx. Omitted for entries written before this field existed;
+   * those fall back to `pageIndex`-based resume (see `getReadingProgressEntry`).
+   */
+  sentenceIndex?: number
 }
 
 /** One recently-viewed item, newest first -- see `getRecentlyViewedProgress`. */
@@ -73,6 +82,23 @@ export function hasReadingProgress(user: User | null, contentId: string): boolea
   return getReadingProgress(user, contentId) != null
 }
 
+/** Full saved position for `contentId`, or null if never started -- see `getReadingProgress`
+ *  for the plain page-index-only accessor most callers want. `sentenceIndex` is undefined for
+ *  progress saved before the cross-device sentence anchor existed (see `ProgressEntry`); callers
+ *  resuming a session should fall back to `pageIndex`-based behavior in that case. */
+export function getReadingProgressEntry(
+  user: User | null,
+  contentId: string,
+): { pageIndex: number; sentenceIndex?: number } | null {
+  const scoped = readAll()[scopeKeyFor(user)]
+  const entry = scoped?.[contentId]
+  if (!entry || !Number.isFinite(entry.pageIndex)) return null
+  return {
+    pageIndex: entry.pageIndex,
+    ...(Number.isFinite(entry.sentenceIndex) ? { sentenceIndex: entry.sentenceIndex } : {}),
+  }
+}
+
 /**
  * "X% through" for `contentId`, or null if never started or no `totalPages` was ever recorded
  * for it (older entries, or a source that hasn't been paged through yet). Same rounding/clamp
@@ -97,6 +123,7 @@ export function setReadingProgress(
   contentId: string,
   pageIndex: number,
   totalPages?: number,
+  sentenceIndex?: number,
 ): void {
   if (!Number.isFinite(pageIndex) || pageIndex < 0) return
   const all = readAll()
@@ -106,6 +133,7 @@ export function setReadingProgress(
     pageIndex,
     updatedAt: Date.now(),
     ...(Number.isFinite(totalPages) && (totalPages as number) > 0 ? { totalPages } : {}),
+    ...(Number.isFinite(sentenceIndex) && (sentenceIndex as number) >= 0 ? { sentenceIndex } : {}),
   }
 
   const entries = Object.entries(scoped)
@@ -156,6 +184,8 @@ export interface CloudProgressRow {
   pageIndex: number
   totalPages: number | null
   updatedAt: number
+  /** Null for rows written before the sentence-index column existed -- see `ProgressEntry`. */
+  sentenceIndex: number | null
 }
 
 /**
@@ -178,6 +208,9 @@ export function mergeCloudProgress(user: User | null, rows: CloudProgressRow[]):
       pageIndex: row.pageIndex,
       updatedAt: row.updatedAt,
       ...(row.totalPages != null && row.totalPages > 0 ? { totalPages: row.totalPages } : {}),
+      ...(row.sentenceIndex != null && row.sentenceIndex >= 0
+        ? { sentenceIndex: row.sentenceIndex }
+        : {}),
     }
     changed = true
   }

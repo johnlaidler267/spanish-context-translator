@@ -314,6 +314,76 @@ export function pageSourceText(pageSentences: string[]): string {
 }
 
 /**
+ * For each page, the index into `sentences` (the original, viewport-independent array from
+ * {@link splitSourceIntoSentences}) that the page's content starts in or continues from.
+ *
+ * This is the cross-device resume anchor (see reading-progress-storage.ts): a raw page index
+ * means a different spot in the book on every device, since pagination is driven by how much
+ * text fits that device's viewport (see reading-page-measure.ts) — mobile fits far fewer words
+ * per page than desktop. A sentence index means the same thing everywhere, because it's derived
+ * only from the source text.
+ *
+ * Matches pages to sentences by cumulative **word count** rather than character offset: pages
+ * are built from `sentences` via {@link splitSegmentIntoPageParts}, which collapses horizontal
+ * whitespace and can reflow line breaks, so page text isn't always byte-identical to the source
+ * sentences it came from — but no step in this module ever adds or drops a word, so word counts
+ * stay exactly aligned no matter how a real-DOM-fit pass (see reading-page-measure.ts) later
+ * reshuffles content between pages.
+ */
+export function computePageStartSentenceIndices(sentences: string[], pages: string[][]): number[] {
+  if (pages.length === 0) return []
+  if (sentences.length === 0) return pages.map(() => 0)
+
+  const sentenceStartWords: number[] = []
+  let sentenceWordTotal = 0
+  for (const s of sentences) {
+    sentenceStartWords.push(sentenceWordTotal)
+    sentenceWordTotal += countWordsInSentence(s)
+  }
+
+  const result: number[] = []
+  let pageStartWord = 0
+  let searchFrom = 0
+  for (const page of pages) {
+    // Last sentence whose own start-word-offset is at or before this page's start.
+    while (
+      searchFrom + 1 < sentenceStartWords.length &&
+      sentenceStartWords[searchFrom + 1]! <= pageStartWord
+    ) {
+      searchFrom++
+    }
+    result.push(searchFrom)
+    for (const piece of page) pageStartWord += countWordsInSentence(piece)
+  }
+  return result
+}
+
+/**
+ * Which page (0-based, clamped) contains `targetSentenceIndex`, given the per-page starts from
+ * {@link computePageStartSentenceIndices} — the last page whose start is at or before the
+ * target, since a page covers every sentence up to (not including) the next page's start.
+ */
+export function findPageIndexForSentenceIndex(
+  pageStartSentenceIndices: number[],
+  targetSentenceIndex: number,
+): number {
+  if (pageStartSentenceIndices.length === 0) return 0
+  let lo = 0
+  let hi = pageStartSentenceIndices.length - 1
+  let best = 0
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (pageStartSentenceIndices[mid]! <= targetSentenceIndex) {
+      best = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  return best
+}
+
+/**
  * Normalize {@link buildSentencePages} output (drop empty pages; if everything was empty, one page of trimmed text).
  *
  * We no longer collapse multiple pages into one batch on desktop: the old check (`fullText.length` vs

@@ -74,3 +74,34 @@ describe("getReadingProgressPercent", () => {
     expect(getReadingProgressPercent(otherUser, "book-1")).toBeNull()
   })
 })
+
+describe("getReadingProgressEntry", () => {
+  beforeEach(() => {
+    vi.stubGlobal("window", {})
+    vi.stubGlobal("localStorage", makeMemoryStorage())
+    vi.resetModules()
+  })
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("is null when the book has never been opened", async () => {
+    const { getReadingProgressEntry } = await import("@/lib/storage/reading-progress-storage")
+    expect(getReadingProgressEntry(user, "book-1")).toBeNull()
+  })
+
+  it("carries the sentence-index anchor alongside the page index when saved", async () => {
+    const { setReadingProgress, getReadingProgressEntry } = await import(
+      "@/lib/storage/reading-progress-storage"
+    )
+    setReadingProgress(user, "book-1", 3, 10, 42)
+    expect(getReadingProgressEntry(user, "book-1")).toEqual({ pageIndex: 3, sentenceIndex: 42 })
+  })
+
+  it("omits sentenceIndex for progress saved before the anchor existed (no crash)", async () => {
+    const { setReadingProgress, getReadingProgressEntry } = await import(
+      "@/lib/storage/reading-progress-storage"
+    )
+    setReadingProgress(user, "book-1", 3, 10) // no sentenceIndex, as older callers did
+    expect(getReadingProgressEntry(user, "book-1")).toEqual({ pageIndex: 3 })
+  })
+})
