@@ -1169,7 +1169,16 @@ export default function App() {
   }
 
   const landingIndexElement = (
-    <main className={`min-h-app bg-transparent ${viewportMain}`}>
+    // maxHeight (not just min-h-app's min-height) matches readingHome's <main> below --
+    // without a definite height here, mobile's #root/.app-viewport chain only ever sets
+    // min-height, so this <main> and everything under it (including LandingScreen's
+    // hero/composer column) sizes to its own content instead of the viewport. That left
+    // .landing-column's flex-1/min-h-0 shrink rules inert (nothing above them was ever
+    // actually shorter than its content), so a tall Continue Reading row + composer could
+    // push the composer's toolbar below the fold on a short phone with no way to shrink or
+    // scroll to it. A definite height here gives the whole chain something real to shrink
+    // against, so the hero can give up space first instead.
+    <main className={`min-h-app bg-transparent ${viewportMain}`} style={{ maxHeight: "100dvh" }}>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <LandingScreen
           draftText={typeof landingDraft === "string" ? landingDraft : ""}

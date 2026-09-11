@@ -1364,7 +1364,10 @@ article span {
   }
   .textarea-input-area {
     flex: 1 1 auto;
-    min-height: min(28dvh, 10rem);
+    /* 10rem was a flat floor regardless of viewport -- on a short phone (iPhone SE
+       and similar, ~667px tall) that alone can push the toolbar below the fold. Scale
+       the floor down with viewport height so very short screens ask for less. */
+    min-height: min(22dvh, 10rem);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -2939,7 +2942,11 @@ article span {
   margin-bottom: 0.5rem;
 }
 .continue-reading-mobile__row .discover-card__frame {
-  aspect-ratio: 1.6 / 1;
+  /* aspect-ratio is width/height, so a *larger* ratio is a *shorter* frame -- the
+     previous 1.6/1 here had this backwards (it was meant to shrink the frame vs. the
+     desktop row's 4/3, but 1.6/1 is taller than even that). 2.4/1 restores the actual
+     "short, landscape-like" proportion the row was designed around. */
+  aspect-ratio: 2.4 / 1;
 }
 /* Type badge (BOOK/ARTICLE/...) is redundant at this size and crowds the corner opposite the
    progress pill -- drop it so the shorter frame reads as cover art, not a cluttered label. */

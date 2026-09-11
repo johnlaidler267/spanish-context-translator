@@ -396,9 +396,17 @@ export function LandingScreen({
         reader scrolls past it. This wrapper isn't a scroll container, so it grows to the
         content's full height (matching .landing-page's scrollHeight), and the art's
         height: 100% now tracks that instead.
+
+        Mobile is the opposite on purpose (max-md:h-full/min-h-0 below): there's no
+        scrolling there (.landing-page is overflow-hidden, not a scroll container), so this
+        wrapper needs to be capped to .landing-page's own (viewport-bounded, see the
+        landingIndexElement <main> in App.tsx) box instead of growing with content --
+        otherwise .landing-column's hero/composer flex-shrink never has a real ceiling to
+        shrink against, and a tall Continue Reading row can push the composer off-screen
+        with no way to reach it.
       */}
       <div
-        className="landing-page-art-frame flex flex-col items-stretch md:items-center md:justify-start md:pt-16 md:pb-[clamp(2rem,7vh,5rem)] min-h-app px-3 md:px-8"
+        className="landing-page-art-frame flex flex-col items-stretch md:items-center md:justify-start md:pt-16 md:pb-[clamp(2rem,7vh,5rem)] min-h-app max-md:h-full max-md:min-h-0 px-3 md:px-8"
         style={{ position: "relative" }}
       >
         <img
