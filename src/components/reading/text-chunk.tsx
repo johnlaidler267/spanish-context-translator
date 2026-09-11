@@ -49,11 +49,12 @@ interface TextChunkProps {
    */
   variant?: "article" | "read"
   /**
-   * Touch device (coarse pointer): prefer the tooltip above the word — below gets covered by
-   * the finger/hand still resting on the word — flipping below only when there isn't room
-   * above (e.g. a word near the top of the screen). Computed once by the parent
-   * (`matchMedia("(pointer: coarse)")`) and passed down rather than queried per chunk — a page
-   * can render hundreds of these.
+   * Touch device (coarse pointer): always place the tooltip above the word instead of the
+   * space-aware above/below choice — below gets covered by the finger/hand still resting on
+   * the word. The tooltip is kept short (see POPUP_MIN_HEIGHT / the trimmed padding below) so
+   * it still fits above a word near the top of the screen instead of needing to flip.
+   * Computed once by the parent (`matchMedia("(pointer: coarse)")`) and passed down rather
+   * than queried per chunk — a page can render hundreds of these.
    */
   isCoarsePointer?: boolean
   /**
@@ -96,7 +97,10 @@ interface PopupCoords {
 
 const POPUP_MIN_WIDTH = 112
 const POPUP_MAX_WIDTH = 220
-const POPUP_MIN_HEIGHT = 120
+/** Kept short (not just a rough estimate — see the trimmed padding/spacing further down) so
+ *  a mobile tooltip, which always places itself above the word, still fits above one near the
+ *  top of the screen instead of needing to flip below and risk a resting thumb covering it. */
+const POPUP_MIN_HEIGHT = 96
 const POPUP_MAX_HEIGHT = 360
 /** Hover meaning card — quick fade out (ms) */
 const TOOLTIP_FADE_OUT_MS = 0
@@ -299,17 +303,15 @@ export function TextChunk({
 
       const spaceAbove = union.top
       const spaceBelow = window.innerHeight - union.bottom
-      // Touch (coarse pointer): prefer above the word — a tooltip below gets covered by the
-      // finger/hand that's still resting on the word that opened it. But when there isn't
-      // enough room above (a word near the top of the screen), flip below instead of clamping
-      // the card against the viewport edge, where it barely fits above the word at all. The
-      // "below" gap (GAP_FROM_WORD) is already the same larger touch offset used above, so the
-      // flipped card still clears a thumb resting on the word. Desktop hover keeps its own
-      // space-aware placement (flips below only when there's no room above there either).
+      // Touch (coarse pointer): always above the word — a tooltip below gets covered by the
+      // finger/hand that's still resting on the word that opened it, even near the top of the
+      // screen where there's little room above. The card is kept short (see the trimmed
+      // padding/spacing below) so it still fits there without needing to flip; the viewport-edge
+      // clamp a few lines down is the last-resort backstop for the rare word close enough to the
+      // very top that even the short card can't fully clear it. Desktop hover keeps the
+      // space-aware placement (flips below only when there's no room above).
       const placement = isCoarsePointer
-        ? spaceAbove < tooltipHeightEst + edgeClearance
-          ? "below"
-          : "above"
+        ? "above"
         : spaceAbove < tooltipHeightEst + edgeClearance &&
             spaceBelow >= tooltipHeightEst + edgeClearance
           ? "below"
@@ -547,7 +549,10 @@ export function TextChunk({
    */
   // Reserve only a small inset for the arrow so top whitespace stays tight.
   const tailInset = Math.round(arrowSize * 0.45) + 2
-  const pad = 9
+  // Trimmed from 9: mobile tooltips always sit above the word (never flip below), so keeping
+  // this card's own footprint small is what lets it still fit above a word near the top of the
+  // screen — see POPUP_MIN_HEIGHT and the literal/grammar section spacing below.
+  const pad = 7
   const padX = 11
 
   const showTooltip = coords !== null
@@ -650,14 +655,14 @@ export function TextChunk({
           wordBreak: "break-word",
         }}
       >
-        <p style={{ fontSize: "1.14rem", fontFamily: "var(--font-reading)", fontWeight: 600, color: "#3a332e", lineHeight: 1.28, margin: 0 }}>
+        <p style={{ fontSize: "1.14rem", fontFamily: "var(--font-reading)", fontWeight: 600, color: "#3a332e", lineHeight: 1.22, margin: 0 }}>
           {chunk.meaning}
         </p>
 
         {(showLiteral || chunk.grammar) && (
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(201,122,90,0.16)" }}>
+          <div style={{ marginTop: 7, paddingTop: 7, borderTop: "1px solid rgba(201,122,90,0.16)" }}>
             {showLiteral && (
-              <p style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "#454039" }}>
+              <p style={{ margin: "0 0 3px", fontSize: "0.8rem", color: "#454039" }}>
                 <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Literal</span>
                 <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
                 {chunk.literal}
