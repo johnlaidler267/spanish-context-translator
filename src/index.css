@@ -2920,6 +2920,71 @@ article span {
   display: none;
 }
 
+/* Continue Reading — landing page, mobile only. Same content/handlers as .continue-reading
+   above (see landing-continue-reading.tsx, which renders both from one data fetch) but a
+   shorter, two-up layout: two reduced-height rectangle cards side by side, sized to the
+   .landing-column's own width so they line up with the composer below them, instead of the
+   desktop row's taller portrait covers and horizontal-scroll strip -- there's no room to
+   scroll a strip above the fold on a phone, and only ever 2 cards are shown here (see
+   MAX_MOBILE_CONTINUE_READING_ITEMS) so there's nothing to scroll to anyway. */
+.continue-reading-mobile__row {
+  display: flex;
+  gap: 0.6rem;
+}
+.continue-reading-mobile__row .discover-card {
+  min-width: 0;
+  flex: 1 1 0;
+}
+.continue-reading-mobile .sample-excerpt-label {
+  margin-bottom: 0.5rem;
+}
+.continue-reading-mobile__row .discover-card__frame {
+  aspect-ratio: 2.4 / 1;
+}
+/* Type badge (BOOK/ARTICLE/...) is redundant at this size and crowds the corner opposite the
+   progress pill -- drop it so the shorter frame reads as cover art, not a cluttered label. */
+.continue-reading-mobile__row .discover-card__type {
+  display: none;
+}
+.continue-reading-mobile__row .discover-card__progress {
+  right: 0.5rem;
+  bottom: 0.5rem;
+  padding: 0.15rem 0.48rem;
+}
+.continue-reading-mobile__row .discover-cover--plate {
+  padding: 0.5rem 0.6rem;
+}
+.continue-reading-mobile__row .discover-cover__rule {
+  inset: 0.35rem;
+}
+.continue-reading-mobile__row .discover-cover__motif {
+  width: 1rem;
+  height: 1rem;
+  margin-bottom: 0.25rem;
+}
+.continue-reading-mobile__row .discover-cover__plate-title {
+  font-size: var(--text-ui-sm);
+  -webkit-line-clamp: 2;
+}
+.continue-reading-mobile__row .discover-cover__plate-author {
+  margin-top: 0.1rem;
+  font-size: var(--text-label-2xs);
+}
+.continue-reading-mobile__row .discover-card__body {
+  padding: 0.5rem 0.6rem 0.55rem;
+}
+.continue-reading-mobile__row .discover-card__author {
+  font-size: var(--text-label-2xs);
+}
+.continue-reading-mobile__row .discover-card__title {
+  margin-top: 0.1rem;
+  font-size: var(--text-ui-sm);
+  -webkit-line-clamp: 1;
+}
+.continue-reading-mobile__row .discover-card__meta {
+  display: none;
+}
+
 /** Details sheet — “How do I remember this?” loading dots (matches prototype bounce) */
 @keyframes details-memory-dot-bounce {
   0%,

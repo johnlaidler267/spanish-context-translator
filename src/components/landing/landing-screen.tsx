@@ -428,8 +428,10 @@ export function LandingScreen({
           </h1>
         </div>
 
-        {/* Filigree sits directly above the textbox (mobile); desktop: below textarea, above sample (flex order inside group) */}
-        <div className="order-2 md:order-2 flex flex-col gap-2 w-full shrink-0 md:mt-0 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))] md:pb-0">
+        {/* Filigree sits directly above the textbox (mobile); desktop: below textarea, above sample (flex order inside group).
+            order-3 on mobile (md:order-2 on desktop) so the mobile Continue Reading row --
+            order-2, see LandingContinueReading -- lands above this instead of below it. */}
+        <div className="order-3 md:order-2 flex flex-col gap-2 w-full shrink-0 md:mt-0 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))] md:pb-0">
           <img
             src="/filigree-divider.svg"
             alt=""

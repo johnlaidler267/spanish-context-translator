@@ -15,6 +15,11 @@ import type { ContentItem } from "@/lib/discover/content-data"
  *  see .continue-reading__row in index.css for the card-width math this relies on. */
 const MAX_CONTINUE_READING_ITEMS = 4
 
+/** Mobile row shows two reduced-height cards side by side -- see .continue-reading-mobile__row
+ *  in index.css. Takes the first two of the same (already recency-ordered) list the desktop
+ *  row uses rather than fetching/ordering separately. */
+const MAX_MOBILE_CONTINUE_READING_ITEMS = 2
+
 /**
  * How many raw "recently viewed" entries to pull before matching them against the Discover
  * catalog / library listing and capping at MAX_CONTINUE_READING_ITEMS -- wider than the cap so
@@ -41,11 +46,17 @@ interface LandingContinueReadingProps {
 }
 
 /**
- * Desktop-only "Continue Reading" row — sits where the sample excerpt normally does (see
- * landing-screen.tsx), showing the reader's most recently-viewed content with a rough "how far
- * in" indicator. Sources from both the Discover catalog and the reader's own uploaded library
- * (src/lib/storage/epub-library.ts), interleaved by actual last-read recency rather than always
- * showing Discover items first -- see buildContinueReadingItems.
+ * "Continue Reading" section — one data fetch, two renderings so mobile and desktop don't each
+ * fire their own catalog/library/progress calls. Shows the reader's most recently-viewed content
+ * with a rough "how far in" indicator. Sources from both the Discover catalog and the reader's
+ * own uploaded library (src/lib/storage/epub-library.ts), interleaved by actual last-read
+ * recency rather than always showing Discover items first -- see buildContinueReadingItems.
+ *
+ * Renders two sibling top-level elements (a mobile row and a desktop row), each responsible for
+ * its own visibility via Tailwind's `md:` breakpoint, so each can also carry its own flex
+ * `order` within `.landing-column` (see landing-screen.tsx) -- the mobile row sits above the
+ * composer (order-2, ahead of the composer's order-3 on mobile) while the desktop row sits
+ * below it, matching the two designs' different placement.
  */
 export function LandingContinueReading({
   user,
@@ -105,28 +116,58 @@ export function LandingContinueReading({
 
   if (items.length === 0) return <>{fallback}</>
 
+  const mobileItems = items.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS)
+
   return (
-    <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
-      <p className="sample-excerpt-label text-center">Continue reading</p>
-      <div className="continue-reading__row">
-        {items.map((item) =>
-          item.kind === "discover" ? (
-            <ContentCard
-              key={`discover-${item.content.id}`}
-              content={item.content}
-              onClick={() => onContinue(item.content)}
-              progressPercent={item.percent}
-            />
-          ) : (
-            <LibraryCard
-              key={`library-${item.book.id}`}
-              book={item.book}
-              progressPercent={item.percent}
-              onOpen={() => onOpenLibraryBook(item.book)}
-            />
-          ),
-        )}
+    <>
+      {/* Mobile: reduced-height cards, two side by side, above the composer (order-2 --
+          see landing-screen.tsx, whose composer group is order-3 on mobile). */}
+      <div className="continue-reading-mobile w-full entry-4 order-2 md:hidden">
+        <p className="sample-excerpt-label text-center">Continue reading</p>
+        <div className="continue-reading-mobile__row">
+          {mobileItems.map((item) =>
+            item.kind === "discover" ? (
+              <ContentCard
+                key={`mobile-discover-${item.content.id}`}
+                content={item.content}
+                onClick={() => onContinue(item.content)}
+                progressPercent={item.percent}
+              />
+            ) : (
+              <LibraryCard
+                key={`mobile-library-${item.book.id}`}
+                book={item.book}
+                progressPercent={item.percent}
+                onOpen={() => onOpenLibraryBook(item.book)}
+              />
+            ),
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Desktop: sits where the sample excerpt normally does, below the composer. */}
+      <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
+        <p className="sample-excerpt-label text-center">Continue reading</p>
+        <div className="continue-reading__row">
+          {items.map((item) =>
+            item.kind === "discover" ? (
+              <ContentCard
+                key={`discover-${item.content.id}`}
+                content={item.content}
+                onClick={() => onContinue(item.content)}
+                progressPercent={item.percent}
+              />
+            ) : (
+              <LibraryCard
+                key={`library-${item.book.id}`}
+                book={item.book}
+                progressPercent={item.percent}
+                onOpen={() => onOpenLibraryBook(item.book)}
+              />
+            ),
+          )}
+        </div>
+      </div>
+    </>
   )
 }
