@@ -120,10 +120,9 @@ export function LandingContinueReading({
 
   return (
     <>
-      {/* Mobile: reduced-height cards, two side by side, above the composer (order-2 --
-          see landing-screen.tsx, whose composer group is order-3 on mobile). */}
-      <div className="continue-reading-mobile w-full entry-4 order-2 md:hidden">
-        <p className="sample-excerpt-label text-center">Continue reading</p>
+      {/* Mobile: reduced-height cards, two side by side, below the composer (order-4 --
+          see landing-screen.tsx, whose composer group is order-3 on mobile). Label removed on mobile. */}
+      <div className="continue-reading-mobile w-full entry-4 order-4 md:hidden">
         <div className="continue-reading-mobile__row">
           {mobileItems.map((item) =>
             item.kind === "discover" ? (
