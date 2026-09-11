@@ -130,6 +130,27 @@ describe("page-recap", () => {
       expect(fetchGeminiChatViaEdge).toHaveBeenCalledTimes(1)
     })
 
+    it("tags the cached recap with the sentence-index anchor for the previous page, when given one", async () => {
+      fetchGeminiChatViaEdge.mockResolvedValue(
+        jsonResponse({ choices: [{ message: { role: "assistant", content: "Recap of page two." } }] }),
+      )
+      const { maybeSummarizePreviousPageOnLeave } = await import("@/lib/translate/page-recap")
+      const { getCachedPageRecap } = await import("@/lib/storage/reading-recap-storage")
+
+      // Anchors for pages [0, 1, 2] -- page 1 (the one being summarized) starts at sentence 7.
+      await maybeSummarizePreviousPageOnLeave({
+        user,
+        contentId: "book-1",
+        leavingAtPageIndex: 2,
+        pages,
+        pageStartSentenceIndices: [0, 7, 14],
+      })
+
+      // Simulates reopening on a device whose own page-split puts that same sentence-7 spot at
+      // a different raw page index (4, not 1) -- the recap should still be found by anchor.
+      expect(getCachedPageRecap(user, "book-1", 4, 7)).toBe("Recap of page two.")
+    })
+
     it("collapses two concurrent calls for the same leave into a single network request", async () => {
       let resolveFetch!: (v: Response) => void
       fetchGeminiChatViaEdge.mockReturnValue(

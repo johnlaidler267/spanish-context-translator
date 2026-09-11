@@ -85,22 +85,39 @@ export async function maybeSummarizePreviousPageOnLeave(params: {
   /** 0-based page the reader is on as they leave -- becomes the next resume point. */
   leavingAtPageIndex: number
   pages: string[][]
+  /**
+   * Per-page sentence-index anchors for `pages` (see computePageStartSentenceIndices in
+   * App.tsx) -- used to tag the cached recap with a device-independent position (see
+   * `forSentenceIndex` in reading-recap-storage.ts) so it still matches on reopen even if that
+   * happens on a different device, whose own page-split would otherwise disagree with this
+   * device's raw page index for the same spot. Empty when no anchor was computed for this
+   * session (see the ref's own docstring for when that happens); the recap still caches fine,
+   * just without the cross-device match.
+   */
+  pageStartSentenceIndices?: number[]
 }): Promise<void> {
-  const { user, contentId, leavingAtPageIndex, pages } = params
+  const { user, contentId, leavingAtPageIndex, pages, pageStartSentenceIndices } = params
   if (!contentId) return
   const previousPageIndex = leavingAtPageIndex - 1
   if (previousPageIndex < 0) return
   const previousPage = pages[previousPageIndex]
   if (!previousPage || previousPage.length === 0) return
+  const previousPageSentenceIndex = pageStartSentenceIndices?.[previousPageIndex] ?? null
 
-  if (getCachedPageRecap(user, contentId, previousPageIndex) != null) return
+  if (
+    getCachedPageRecap(user, contentId, previousPageIndex, previousPageSentenceIndex) != null
+  ) {
+    return
+  }
 
   const key = `${user?.id ?? "guest"}:${contentId}:${previousPageIndex}`
   if (recapInFlight.has(key)) return
   recapInFlight.add(key)
   try {
     const summary = await summarizePreviousPageForRecap(pageSourceText(previousPage))
-    if (summary) setCachedPageRecap(user, contentId, previousPageIndex, summary)
+    if (summary) {
+      setCachedPageRecap(user, contentId, previousPageIndex, summary, previousPageSentenceIndex)
+    }
   } finally {
     recapInFlight.delete(key)
   }

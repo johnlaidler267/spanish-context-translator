@@ -302,6 +302,7 @@ export default function App() {
     pageIndex: number
     pages: string[][]
     user: typeof user
+    pageStartSentenceIndices: number[]
   } | null>(null)
   /**
    * LLM batching only: same sentence-boundary pages for Article and Read mode
@@ -790,12 +791,22 @@ export default function App() {
         // `summary` is read from the local cache only (see reading-recap-storage.ts) — zero
         // network calls here; it was generated once, the *last* time this book was left (see
         // maybeSummarizePreviousPageOnLeave below). `excerpt` is the free verbatim fallback for
-        // when there's no cached summary yet (or it's stale — see getCachedPageRecap).
+        // when there's no cached summary yet (or it's stale — see getCachedPageRecap). The
+        // sentence-index anchor (when available) is what lets this still find a recap generated
+        // on a *different* device (e.g. desktop) whose own page-split put the same spot at a
+        // different raw page index than this device's own `initialPageIndex - 1`.
         setWhereLeftOff(
           savedProgress != null && initialPageIndex > 0
             ? {
                 title: contentTitle ?? null,
-                summary: contentId ? getCachedPageRecap(user, contentId, initialPageIndex - 1) : null,
+                summary: contentId
+                  ? getCachedPageRecap(
+                      user,
+                      contentId,
+                      initialPageIndex - 1,
+                      pageStartSentenceIndicesRef.current[initialPageIndex - 1] ?? null,
+                    )
+                  : null,
                 excerpt: resumeExcerptFromPageSource(pages[initialPageIndex]!),
               }
             : null,
@@ -1013,6 +1024,7 @@ export default function App() {
       pageIndex: articlePageIndex,
       pages: sourcePages,
       user,
+      pageStartSentenceIndices: pageStartSentenceIndicesRef.current,
     }
   }, [appState, activeReadingContentId, articlePageIndex, totalPages, user, sourcePages])
 
@@ -1038,6 +1050,7 @@ export default function App() {
         contentId: snapshot.contentId,
         leavingAtPageIndex: snapshot.pageIndex,
         pages: snapshot.pages,
+        pageStartSentenceIndices: snapshot.pageStartSentenceIndices,
       })
     }
   }, [appState])

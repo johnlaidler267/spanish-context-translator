@@ -20,12 +20,24 @@ interface RecapEntry {
   summary: string
   /**
    * 0-based index of the page this summary is *of* -- the page immediately before the resume
-   * point at the moment it was generated, not the resume page itself. Reopening only shows the
-   * cached summary when this still matches (resumePageIndex - 1); if progress moved on (e.g.
-   * synced from another device) since this was cached, the summary would describe the wrong
-   * page, so it's treated as stale and simply not shown (see getCachedPageRecap).
+   * point at the moment it was generated, not the resume page itself. Only a reliable staleness
+   * check on the *same device*: a page index is specific to whichever device's own page-split
+   * produced it (e.g. mobile and desktop paginate the same book differently -- see `isMobile` in
+   * App.tsx), so this alone would make the cache look stale every time reading continues on a
+   * different device than the one that generated it. See `forSentenceIndex` for the
+   * device-independent check; this field is only the fallback for entries that predate it.
    */
   forPageIndex: number
+  /**
+   * Sentence-index anchor (see computePageStartSentenceIndices) for the same page as
+   * `forPageIndex`, at the moment this was generated -- device-independent, unlike a raw page
+   * index, so this is what makes the cached recap still match after reading continues on a
+   * *different* device (e.g. desktop then mobile) whose own page-split puts that same spot at a
+   * different page index. Undefined when no anchor was available when this was generated (e.g.
+   * the whole text segmented into a single "sentence" -- see the pageStartSentenceIndicesRef
+   * comment in App.tsx); `forPageIndex` is the only check available then.
+   */
+  forSentenceIndex?: number
   updatedAt: number
 }
 
@@ -57,19 +69,31 @@ function writeAll(data: AllRecap): void {
 }
 
 /**
- * The cached recap for `contentId`, but only if it's still for `expectedPreviousPageIndex` --
- * i.e. still describes the page right before wherever the reader is resuming to now. Returns
- * null for "no cached recap" and for "cached, but stale" alike; either way the caller (the
- * modal) just falls back to the free verbatim excerpt instead of an LLM summary.
+ * The cached recap for `contentId`, but only if it's still for the page right before wherever
+ * the reader is resuming to now. Preferentially matched by `expectedPreviousPageSentenceIndex`
+ * (device-independent -- see `forSentenceIndex` above) when both the cached entry and this call
+ * have one; only falls back to the raw `expectedPreviousPageIndex` match when either side lacks
+ * a sentence anchor (older cached entries, or the rare text that segmented into a single
+ * sentence). This is what lets a recap generated when the reader left off on one device (e.g.
+ * desktop) still show up when they resume on another (e.g. mobile), whose own page-split would
+ * otherwise put that same spot at a different raw page index and make the cache look stale.
+ * Returns null for "no cached recap" and for "cached, but stale" alike; either way the caller
+ * (the modal) just falls back to the free verbatim excerpt instead of an LLM summary.
  */
 export function getCachedPageRecap(
   user: User | null,
   contentId: string,
   expectedPreviousPageIndex: number,
+  expectedPreviousPageSentenceIndex?: number | null,
 ): string | null {
   const scoped = readAll()[scopeKeyFor(user)]
   const entry = scoped?.[contentId]
-  if (!entry || entry.forPageIndex !== expectedPreviousPageIndex) return null
+  if (!entry) return null
+  const matches =
+    entry.forSentenceIndex != null && expectedPreviousPageSentenceIndex != null
+      ? entry.forSentenceIndex === expectedPreviousPageSentenceIndex
+      : entry.forPageIndex === expectedPreviousPageIndex
+  if (!matches) return null
   return entry.summary || null
 }
 
@@ -79,13 +103,19 @@ export function setCachedPageRecap(
   contentId: string,
   forPageIndex: number,
   summary: string,
+  forSentenceIndex?: number | null,
 ): void {
   const trimmed = summary.trim()
   if (!trimmed) return
   const all = readAll()
   const scope = scopeKeyFor(user)
   const scoped = { ...(all[scope] ?? {}) }
-  scoped[contentId] = { summary: trimmed, forPageIndex, updatedAt: Date.now() }
+  scoped[contentId] = {
+    summary: trimmed,
+    forPageIndex,
+    ...(forSentenceIndex != null ? { forSentenceIndex } : {}),
+    updatedAt: Date.now(),
+  }
 
   const entries = Object.entries(scoped)
   if (entries.length > MAX_TRACKED_ITEMS_PER_USER) {

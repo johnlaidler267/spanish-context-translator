@@ -77,4 +77,36 @@ describe("reading-recap-storage", () => {
     expect(getCachedPageRecap(user, "book-1", 2)).toBeNull()
     expect(getCachedPageRecap(user, "book-1", 6)).toBe("Second summary.")
   })
+
+  // Root cause of the mobile-vs-desktop bug: mobile and desktop paginate the same book
+  // differently, so "leave off at page N" means a different raw page index on each device.
+  // The sentence-index anchor is device-independent and takes priority over the raw page index
+  // whenever both are available, so a recap generated on desktop still matches on reopen from
+  // mobile even though the two devices disagree about which page number that is.
+  it("matches by sentence-index anchor even when the raw page index differs across devices", async () => {
+    const { setCachedPageRecap, getCachedPageRecap } = await import(
+      "@/lib/storage/reading-recap-storage"
+    )
+    // Cached while leaving on desktop: desktop's own page 2, sentence anchor 40.
+    setCachedPageRecap(user, "book-1", 2, "A duck learns to swim.", 40)
+    // Reopened on mobile: mobile's own page-split puts the same spot at page 5, not 2 -- but
+    // the sentence anchor still lines up, so the summary should still be found.
+    expect(getCachedPageRecap(user, "book-1", 5, 40)).toBe("A duck learns to swim.")
+  })
+
+  it("still treats it as stale when the sentence-index anchor itself has moved on", async () => {
+    const { setCachedPageRecap, getCachedPageRecap } = await import(
+      "@/lib/storage/reading-recap-storage"
+    )
+    setCachedPageRecap(user, "book-1", 2, "A duck learns to swim.", 40)
+    expect(getCachedPageRecap(user, "book-1", 2, 99)).toBeNull()
+  })
+
+  it("falls back to the raw page-index match when no sentence anchor is available on either side", async () => {
+    const { setCachedPageRecap, getCachedPageRecap } = await import(
+      "@/lib/storage/reading-recap-storage"
+    )
+    setCachedPageRecap(user, "book-1", 2, "A duck learns to swim.")
+    expect(getCachedPageRecap(user, "book-1", 2, null)).toBe("A duck learns to swim.")
+  })
 })
