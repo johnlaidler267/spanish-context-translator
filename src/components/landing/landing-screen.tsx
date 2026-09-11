@@ -20,7 +20,7 @@ import { supabase } from "@/lib/supabase"
 import { getTier, type TierId } from "@/lib/subscription/tiers"
 import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscription/subscription-display"
 import { LandingQuickFillControls } from "@/components/landing/landing-quick-fill-controls"
-import { LandingContinueReading } from "@/components/landing/landing-continue-reading"
+import { useLandingContinueReading } from "@/components/landing/landing-continue-reading"
 import type { ContentItem } from "@/lib/discover/content-data"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
 import {
@@ -349,6 +349,30 @@ export function LandingScreen({
     })
   }, [])
 
+  // Continue Reading: one data fetch, two placements in the tree below (mobileRow lands between
+  // the filigree divider and the composer form; desktopRow replaces the sample-excerpt fallback
+  // below the composer) -- see useLandingContinueReading for why this is a hook and not a
+  // component rendered directly where it's used.
+  const { mobileRow, desktopRow } = useLandingContinueReading({
+    user,
+    onContinue: onContinueReading,
+    onOpenLibraryBook: onContinueLibraryBook,
+    fallback: (
+      <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
+        <p className="sample-excerpt-label text-center">Sample text</p>
+        <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
+          <p className="sample-paragraph font-serif text-ui-base overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
+          <span className="mt-3 block text-center">
+            <span className="sample-link inline-flex items-center gap-2">
+              Try this sample
+              <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
+            </span>
+          </span>
+        </button>
+      </div>
+    ),
+  })
+
   const heroGreeting = landingGreetingWord(langPrefs.learning)
   const heroTailPhrase =
     langPrefs.learning === "english" && langPrefs.native === "spanish"
@@ -429,8 +453,12 @@ export function LandingScreen({
         </div>
 
         {/* Filigree sits directly above the textbox (mobile); desktop: below textarea, above sample (flex order inside group).
-            order-3 on mobile (md:order-2 on desktop) so the mobile Continue Reading row --
-            order-2, see LandingContinueReading -- lands above this instead of below it. */}
+            order-3 on mobile (md:order-2 on desktop) for this whole group relative to hero/
+            continue-reading-desktop. Within the group on mobile, the divider (order-1), the
+            mobile Continue Reading row (order-2, see useLandingContinueReading's `mobileRow`),
+            and the composer (order-3) render in that order -- divider, then cards, then the
+            text field, per the mobile design. Desktop doesn't render the mobile row at all
+            (it's md:hidden), so its local order-2 never competes with the composer there. */}
         <div className="order-3 md:order-2 flex flex-col gap-2 w-full shrink-0 md:mt-0 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))] md:pb-0">
           <img
             src="/filigree-divider.svg"
@@ -438,7 +466,8 @@ export function LandingScreen({
             className="filigree-divider order-1 md:order-2 mx-auto shrink-0"
             aria-hidden
           />
-          <div className="entry-2 order-2 md:order-1 flex flex-col gap-2 w-full">
+          {mobileRow}
+          <div className="entry-2 order-3 md:order-1 flex flex-col gap-2 w-full">
             <form
               ref={composerFormRef}
               className="contents"
@@ -572,26 +601,8 @@ export function LandingScreen({
         </div>
 
         {/* Continue Reading (desktop only) when there's history; otherwise the sample excerpt
-            it normally replaces — LandingContinueReading owns that fallback decision. */}
-        <LandingContinueReading
-          user={user}
-          onContinue={onContinueReading}
-          onOpenLibraryBook={onContinueLibraryBook}
-          fallback={
-            <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
-              <p className="sample-excerpt-label text-center">Sample text</p>
-              <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
-                <p className="sample-paragraph font-serif text-ui-base overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
-                <span className="mt-3 block text-center">
-                  <span className="sample-link inline-flex items-center gap-2">
-                    Try this sample
-                    <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
-                  </span>
-                </span>
-              </button>
-            </div>
-          }
-        />
+            it normally replaces — useLandingContinueReading owns that fallback decision. */}
+        {desktopRow}
         </div>
       </div>
       </div>

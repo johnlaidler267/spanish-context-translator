@@ -29,7 +29,7 @@ const MAX_MOBILE_CONTINUE_READING_ITEMS = 2
  */
 const RECENT_LOOKBACK_ITEMS = 25
 
-interface LandingContinueReadingProps {
+interface UseLandingContinueReadingOptions {
   user: User | null
   onContinue: (content: ContentItem) => void
   /** Resumes a personal upload -- same onStartReading/handleLibraryStartReading pipeline used by
@@ -52,18 +52,20 @@ interface LandingContinueReadingProps {
  * own uploaded library (src/lib/storage/epub-library.ts), interleaved by actual last-read
  * recency rather than always showing Discover items first -- see buildContinueReadingItems.
  *
- * Renders two sibling top-level elements (a mobile row and a desktop row), each responsible for
- * its own visibility via Tailwind's `md:` breakpoint, so each can also carry its own flex
- * `order` within `.landing-column` (see landing-screen.tsx) -- the mobile row sits above the
- * composer (order-2, ahead of the composer's order-3 on mobile) while the desktop row sits
- * below it, matching the two designs' different placement.
+ * Returns the mobile and desktop renderings as separate nodes (rather than one JSX element)
+ * because they don't sit next to each other in the tree: on mobile the row has to land
+ * *inside* landing-screen.tsx's filigree-divider/composer wrapper (between the divider and the
+ * composer form -- see the `mobileRow` placement there), while the desktop row stays where the
+ * sample-excerpt fallback normally goes, below the composer. A single JSX element can't be
+ * physically split across two unrelated spots in the parent's tree, so this is a hook instead of
+ * a component -- landing-screen.tsx calls it once and places each half itself.
  */
-export function LandingContinueReading({
+export function useLandingContinueReading({
   user,
   onContinue,
   onOpenLibraryBook,
   fallback,
-}: LandingContinueReadingProps) {
+}: UseLandingContinueReadingOptions): { mobileRow: ReactNode; desktopRow: ReactNode } {
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
   const [libraryBooks, setLibraryBooks] = useState<LibraryEpub[]>([])
   // Bumped once cloud-synced progress (see reading-progress-sync.ts) has been merged into the
@@ -114,15 +116,18 @@ export function LandingContinueReading({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, libraryBooks, user, syncVersion])
 
-  if (items.length === 0) return <>{fallback}</>
+  if (items.length === 0) return { mobileRow: null, desktopRow: fallback }
 
   const mobileItems = items.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS)
 
-  return (
-    <>
-      {/* Mobile: reduced-height cards, two side by side, below the composer (order-4 --
-          see landing-screen.tsx, whose composer group is order-3 on mobile). Label removed on mobile. */}
-      <div className="continue-reading-mobile w-full entry-4 order-4 md:hidden">
+  return {
+    // No label on mobile (removed per design) -- just the two cards. Caller renders this as a
+    // sibling of the filigree divider and composer form, inside their shared flex wrapper (see
+    // landing-screen.tsx) -- order-2 puts it between the divider (order-1) and the composer
+    // (bumped to order-3 there). md:hidden drops it out of the desktop flex layout entirely, so
+    // its lack of an explicit md:order doesn't matter there.
+    mobileRow: (
+      <div className="continue-reading-mobile w-full entry-4 order-2 md:hidden">
         <div className="continue-reading-mobile__row">
           {mobileItems.map((item) =>
             item.kind === "discover" ? (
@@ -143,8 +148,9 @@ export function LandingContinueReading({
           )}
         </div>
       </div>
-
-      {/* Desktop: sits where the sample excerpt normally does, below the composer. */}
+    ),
+    // Desktop: sits where the sample excerpt normally does, below the composer.
+    desktopRow: (
       <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
         <p className="sample-excerpt-label text-center">Continue reading</p>
         <div className="continue-reading__row">
@@ -167,6 +173,6 @@ export function LandingContinueReading({
           )}
         </div>
       </div>
-    </>
-  )
+    ),
+  }
 }
