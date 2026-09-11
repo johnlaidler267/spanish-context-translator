@@ -2939,7 +2939,7 @@ article span {
   margin-bottom: 0.5rem;
 }
 .continue-reading-mobile__row .discover-card__frame {
-  aspect-ratio: 2.4 / 1;
+  aspect-ratio: 1.6 / 1;
 }
 /* Type badge (BOOK/ARTICLE/...) is redundant at this size and crowds the corner opposite the
    progress pill -- drop it so the shorter frame reads as cover art, not a cluttered label. */
