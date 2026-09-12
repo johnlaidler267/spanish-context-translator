@@ -10,6 +10,12 @@ import type { User } from "@supabase/supabase-js"
  * synchronously (no network) the next time the same book is opened, so a reopen never pays
  * for a second call. Scoped by user id (falls back to a shared "guest" bucket pre-login),
  * same convention as reading-progress-storage.ts.
+ *
+ * Like reading-progress-storage.ts, this is a cache and not the only copy: a signed-in
+ * reader's recap is also written to their `reading_progress` row (the `recap_*` columns --
+ * see reading-progress-sync.ts and supabase/migrations/0024_reading_progress_recap.sql) and
+ * pulled back down into here on the next session (`mergeCloudRecaps`), so the recap travels
+ * with the position instead of being stranded in whichever browser generated it.
  */
 export const READING_RECAP_STORAGE_KEY = "lector-reading-recap"
 
@@ -125,6 +131,54 @@ export function setCachedPageRecap(
     for (let i = 0; i < overflow; i++) delete scoped[entries[i]![0]]
   }
 
+  all[scope] = scoped
+  writeAll(all)
+}
+
+/** One `reading_progress` row's recap half, as pulled from Supabase -- see reading-progress-sync.ts. */
+export interface CloudRecapRow {
+  contentId: string
+  summary: string
+  /** Null for rows whose recap predates / lacks a raw page index. */
+  forPageIndex: number | null
+  /** Null when the recap was generated without a sentence anchor -- see `forSentenceIndex`. */
+  forSentenceIndex: number | null
+  /** `recap_updated_at` (not the row's `updated_at`, which a plain page turn bumps). */
+  updatedAt: number
+}
+
+/**
+ * Merges recaps pulled from Supabase into this user's local cache, last-write-wins by
+ * `updatedAt` -- same shape and rules as `mergeCloudProgress` in reading-progress-storage.ts.
+ * A local entry that's newer than (or as new as) the cloud copy always wins, so a recap this
+ * browser generated moments ago can't be replaced by an older one from another device.
+ *
+ * This is what makes the recap survive a new browser/session: the modal's cache read
+ * (`getCachedPageRecap`) still happens synchronously with no network call, it just now has
+ * something to find on a device that never generated the recap itself.
+ */
+export function mergeCloudRecaps(user: User | null, rows: CloudRecapRow[]): void {
+  if (rows.length === 0) return
+  const all = readAll()
+  const scope = scopeKeyFor(user)
+  const scoped = { ...(all[scope] ?? {}) }
+  let changed = false
+  for (const row of rows) {
+    const summary = row.summary.trim()
+    if (!summary || !Number.isFinite(row.updatedAt)) continue
+    const existing = scoped[row.contentId]
+    if (existing && existing.updatedAt >= row.updatedAt) continue
+    scoped[row.contentId] = {
+      summary,
+      // A cloud recap with no page index of its own can only ever be matched by its sentence
+      // anchor; -1 is a page index no lookup ever asks for, so it simply never false-matches.
+      forPageIndex: row.forPageIndex ?? -1,
+      ...(row.forSentenceIndex != null ? { forSentenceIndex: row.forSentenceIndex } : {}),
+      updatedAt: row.updatedAt,
+    }
+    changed = true
+  }
+  if (!changed) return
   all[scope] = scoped
   writeAll(all)
 }

@@ -20,7 +20,12 @@ function makeMemoryStorage(): Storage {
 const upsertMock = vi.fn()
 const eqMock = vi.fn()
 const selectMock = vi.fn(() => ({ eq: eqMock }))
-const fromMock = vi.fn(() => ({ upsert: upsertMock, select: selectMock }))
+// `.update(...).eq("user_id", ...).eq("content_id", ...).select(...)` -- see pushPageRecap.
+const updateSelectMock = vi.fn()
+const updateEqContentMock = vi.fn(() => ({ select: updateSelectMock }))
+const updateEqUserMock = vi.fn(() => ({ eq: updateEqContentMock }))
+const updateMock = vi.fn(() => ({ eq: updateEqUserMock }))
+const fromMock = vi.fn(() => ({ upsert: upsertMock, select: selectMock, update: updateMock }))
 
 vi.mock("@/lib/supabase", () => ({
   supabase: { from: fromMock },
@@ -39,6 +44,8 @@ describe("reading-progress-sync", () => {
     vi.useFakeTimers()
     upsertMock.mockReset().mockResolvedValue({ error: null })
     eqMock.mockReset().mockResolvedValue({ data: [], error: null })
+    updateMock.mockClear()
+    updateSelectMock.mockReset().mockResolvedValue({ data: [{ content_id: "book-1" }], error: null })
     fromMock.mockClear()
     const { resetReadingProgressSyncCache } = await import("@/lib/storage/reading-progress-sync")
     resetReadingProgressSyncCache()
@@ -201,6 +208,124 @@ describe("reading-progress-sync", () => {
 
       await ensureCloudReadingProgressPulled(user)
       expect(getReadingProgressEntry(user, "book-1")).toEqual({ pageIndex: 7 })
+    })
+    it("pulls a recap written on another device into the local recap cache", async () => {
+      eqMock.mockResolvedValue({
+        data: [
+          {
+            content_id: "book-1",
+            page_index: 7,
+            total_pages: 20,
+            sentence_index: 123,
+            updated_at: "2026-01-01T00:00:00.000Z",
+            recap_summary: "A duck learns to swim.",
+            recap_for_page_index: 6,
+            recap_for_sentence_index: 100,
+            recap_updated_at: "2026-01-02T00:00:00.000Z",
+          },
+        ],
+        error: null,
+      })
+      const { ensureCloudReadingProgressPulled } = await import("@/lib/storage/reading-progress-sync")
+      const { getCachedPageRecap } = await import("@/lib/storage/reading-recap-storage")
+
+      expect(getCachedPageRecap(user, "book-1", 6, 100)).toBeNull()
+      await ensureCloudReadingProgressPulled(user)
+      // Found by anchor even though this device's own page-split numbers that page differently.
+      expect(getCachedPageRecap(user, "book-1", 3, 100)).toBe("A duck learns to swim.")
+    })
+
+    it("leaves the recap cache alone for a row that has no recap yet", async () => {
+      eqMock.mockResolvedValue({
+        data: [
+          { content_id: "book-1", page_index: 7, total_pages: 20, updated_at: "2026-01-01T00:00:00.000Z", recap_summary: null },
+        ],
+        error: null,
+      })
+      const { ensureCloudReadingProgressPulled } = await import("@/lib/storage/reading-progress-sync")
+      const { getCachedPageRecap } = await import("@/lib/storage/reading-recap-storage")
+
+      await ensureCloudReadingProgressPulled(user)
+      expect(getCachedPageRecap(user, "book-1", 6)).toBeNull()
+    })
+
+    it("selects with `*` so a project missing a newer column still syncs", async () => {
+      const { ensureCloudReadingProgressPulled } = await import("@/lib/storage/reading-progress-sync")
+      await ensureCloudReadingProgressPulled(user)
+      expect(selectMock).toHaveBeenCalledWith("*")
+    })
+  })
+  describe("pushPageRecap", () => {
+    const recap = {
+      contentId: "book-1",
+      summary: "A duck learns to swim.",
+      forPageIndex: 1,
+      forSentenceIndex: 7,
+      position: { pageIndex: 2, totalPages: 9, sentenceIndex: 14 },
+    }
+
+    it("does nothing for a signed-out (null) user or an empty summary", async () => {
+      const { pushPageRecap } = await import("@/lib/storage/reading-progress-sync")
+      await pushPageRecap({ ...recap, user: null })
+      await pushPageRecap({ ...recap, user, summary: "   " })
+      expect(fromMock).not.toHaveBeenCalled()
+    })
+
+    it("writes the recap onto this user's existing row without touching their position", async () => {
+      const { pushPageRecap } = await import("@/lib/storage/reading-progress-sync")
+      await pushPageRecap({ ...recap, user })
+
+      expect(updateMock).toHaveBeenCalledTimes(1)
+      const [fields] = updateMock.mock.calls[0] as unknown as [Record<string, unknown>]
+      expect(fields).toMatchObject({
+        recap_summary: "A duck learns to swim.",
+        recap_for_page_index: 1,
+        recap_for_sentence_index: 7,
+      })
+      // An update, not an upsert -- a position written elsewhere while the LLM call was in
+      // flight must not be clobbered by this.
+      expect(Object.keys(fields)).not.toContain("page_index")
+      expect(upsertMock).not.toHaveBeenCalled()
+      expect(updateEqUserMock).toHaveBeenCalledWith("user_id", "user-1")
+      expect(updateEqContentMock).toHaveBeenCalledWith("content_id", "book-1")
+    })
+
+    it("creates the row (with the leave position) when the debounced position push hasn't landed yet", async () => {
+      updateSelectMock.mockResolvedValue({ data: [], error: null })
+      const { pushPageRecap } = await import("@/lib/storage/reading-progress-sync")
+      await pushPageRecap({ ...recap, user })
+
+      expect(upsertMock).toHaveBeenCalledTimes(1)
+      const [row] = upsertMock.mock.calls[0] as [Record<string, unknown>]
+      expect(row).toMatchObject({
+        user_id: "user-1",
+        content_id: "book-1",
+        page_index: 2,
+        total_pages: 9,
+        sentence_index: 14,
+        recap_summary: "A duck learns to swim.",
+      })
+    })
+
+    it("goes quiet for the session when the project hasn't applied the recap migration", async () => {
+      updateSelectMock.mockResolvedValue({
+        data: null,
+        error: { code: "PGRST204", message: "Could not find the 'recap_summary' column" },
+      })
+      const { pushPageRecap } = await import("@/lib/storage/reading-progress-sync")
+      await pushPageRecap({ ...recap, user })
+      await pushPageRecap({ ...recap, user, contentId: "book-2" })
+
+      // One doomed attempt, then nothing -- and no upsert fallback off the back of it.
+      expect(updateMock).toHaveBeenCalledTimes(1)
+      expect(upsertMock).not.toHaveBeenCalled()
+    })
+
+    it("swallows an ordinary write failure", async () => {
+      updateSelectMock.mockResolvedValue({ data: null, error: { message: "boom" } })
+      const { pushPageRecap } = await import("@/lib/storage/reading-progress-sync")
+      await expect(pushPageRecap({ ...recap, user })).resolves.toBeUndefined()
+      expect(upsertMock).not.toHaveBeenCalled()
     })
   })
 })

@@ -1,6 +1,6 @@
 /**
  * TypeScript types mirroring the Supabase database schema.
- * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql).
+ * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql, 0024_reading_progress_recap.sql).
  *
  * Usage with the Supabase client:
  *   import { createClient } from '@supabase/supabase-js'
@@ -163,6 +163,17 @@ export type ReadingProgressRow = {
    *  (see splitSourceIntoSentences). Null for rows written before this column existed -- see
    *  supabase/migrations/0022_reading_progress_sentence_index.sql. */
   sentence_index: number | null
+  /** One-sentence LLM recap of the page just before the resume point, so it survives a new
+   *  browser/device along with the position -- see
+   *  supabase/migrations/0024_reading_progress_recap.sql and src/lib/translate/page-recap.ts.
+   *  Null when none has been generated yet (the modal falls back to a verbatim excerpt). */
+  recap_summary: string | null
+  /** Page `recap_summary` is of -- device-specific, only the fallback staleness check. */
+  recap_for_page_index: number | null
+  /** Device-independent anchor for that same page (same space as `sentence_index`). */
+  recap_for_sentence_index: number | null
+  /** When `recap_summary` was last written -- distinct from `updated_at`, which page turns bump. */
+  recap_updated_at: string | null
   created_at: string
   updated_at: string
 }
@@ -220,10 +231,25 @@ export type DiscoverItemInsert = Omit<
 > & { id?: string }
 
 /** `updated_at` is left settable (not server-generated) — the client stamps it on every upsert. */
+/** The `recap_*` columns are written on their own (see pushPageRecap in
+ *  reading-progress-sync.ts), so a plain position upsert never has to name them. */
 export type ReadingProgressInsert = Omit<
   ReadingProgressRow,
-  "id" | "created_at" | "updated_at"
-> & { id?: string; updated_at?: string }
+  | "id"
+  | "created_at"
+  | "updated_at"
+  | "recap_summary"
+  | "recap_for_page_index"
+  | "recap_for_sentence_index"
+  | "recap_updated_at"
+> & {
+  id?: string
+  updated_at?: string
+  recap_summary?: string | null
+  recap_for_page_index?: number | null
+  recap_for_sentence_index?: number | null
+  recap_updated_at?: string | null
+}
 
 export type UserEpubInsert = Omit<
   UserEpubRow,

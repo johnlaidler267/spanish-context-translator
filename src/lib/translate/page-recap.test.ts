@@ -20,6 +20,12 @@ vi.mock("@/lib/groq-edge", () => ({
   fetchGeminiChatViaEdge: (...args: unknown[]) => fetchGeminiChatViaEdge(...args),
 }))
 
+/** The cloud half of the write (see pushPageRecap) -- mocked so these stay offline. */
+const pushPageRecap = vi.fn()
+vi.mock("@/lib/storage/reading-progress-sync", () => ({
+  pushPageRecap: (...args: unknown[]) => pushPageRecap(...args),
+}))
+
 const user = { id: "user-1" } as User
 
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
@@ -37,6 +43,7 @@ describe("page-recap", () => {
     vi.stubGlobal("localStorage", makeMemoryStorage())
     vi.resetModules()
     fetchGeminiChatViaEdge.mockReset()
+    pushPageRecap.mockReset().mockResolvedValue(undefined)
   })
 
   afterEach(() => vi.unstubAllGlobals())
@@ -149,6 +156,38 @@ describe("page-recap", () => {
       // Simulates reopening on a device whose own page-split puts that same sentence-7 spot at
       // a different raw page index (4, not 1) -- the recap should still be found by anchor.
       expect(getCachedPageRecap(user, "book-1", 4, 7)).toBe("Recap of page two.")
+    })
+
+    it("also pushes the recap to the cloud row so it survives a different browser/session", async () => {
+      fetchGeminiChatViaEdge.mockResolvedValue(
+        jsonResponse({ choices: [{ message: { role: "assistant", content: "Recap of page two." } }] }),
+      )
+      const { maybeSummarizePreviousPageOnLeave } = await import("@/lib/translate/page-recap")
+      await maybeSummarizePreviousPageOnLeave({
+        user,
+        contentId: "book-1",
+        leavingAtPageIndex: 2,
+        pages,
+        pageStartSentenceIndices: [0, 7, 14],
+      })
+
+      expect(pushPageRecap).toHaveBeenCalledTimes(1)
+      expect(pushPageRecap.mock.calls[0]![0]).toMatchObject({
+        contentId: "book-1",
+        summary: "Recap of page two.",
+        // The page summarized is the one *before* the leave point, with its own anchor...
+        forPageIndex: 1,
+        forSentenceIndex: 7,
+        // ...while the position is where the reader actually left off.
+        position: { pageIndex: 2, totalPages: 3, sentenceIndex: 14 },
+      })
+    })
+
+    it("does not push anything to the cloud when the summarization call fails", async () => {
+      fetchGeminiChatViaEdge.mockResolvedValue(jsonResponse({ error: "nope" }, false, 500))
+      const { maybeSummarizePreviousPageOnLeave } = await import("@/lib/translate/page-recap")
+      await maybeSummarizePreviousPageOnLeave({ user, contentId: "book-1", leavingAtPageIndex: 2, pages })
+      expect(pushPageRecap).not.toHaveBeenCalled()
     })
 
     it("collapses two concurrent calls for the same leave into a single network request", async () => {

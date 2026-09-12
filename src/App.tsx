@@ -797,7 +797,9 @@ export default function App() {
         // position that clamped back to page 0) has nothing to remind anyone of.
         // `summary` is read from the local cache only (see reading-recap-storage.ts) — zero
         // network calls here; it was generated once, the *last* time this book was left (see
-        // maybeSummarizePreviousPageOnLeave below). `excerpt` is the free verbatim fallback for
+        // maybeSummarizePreviousPageOnLeave below), on this device or on another one: the
+        // progress pull just above also merges the recap stored on the `reading_progress` row
+        // into that same cache, which is what makes it survive a new browser/session. `excerpt` is the free verbatim fallback for
         // when there's no cached summary yet (or it's stale — see getCachedPageRecap). The
         // sentence-index anchor (when available) is what lets this still find a recap generated
         // on a *different* device (e.g. desktop) whose own page-split put the same spot at a

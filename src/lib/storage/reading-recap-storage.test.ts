@@ -109,4 +109,60 @@ describe("reading-recap-storage", () => {
     setCachedPageRecap(user, "book-1", 2, "A duck learns to swim.")
     expect(getCachedPageRecap(user, "book-1", 2, null)).toBe("A duck learns to swim.")
   })
+  describe("mergeCloudRecaps", () => {
+    const cloudRow = {
+      contentId: "book-1",
+      summary: "A duck learns to swim.",
+      forPageIndex: 2,
+      forSentenceIndex: 40,
+      updatedAt: Date.parse("2026-01-01T00:00:00.000Z"),
+    }
+
+    it("makes a recap generated on another device visible to the modal's cache read", async () => {
+      const { mergeCloudRecaps, getCachedPageRecap } = await import(
+        "@/lib/storage/reading-recap-storage"
+      )
+      mergeCloudRecaps(user, [cloudRow])
+      // Matched by the device-independent anchor, not this device's own page numbering.
+      expect(getCachedPageRecap(user, "book-1", 9, 40)).toBe("A duck learns to swim.")
+    })
+
+    it("keeps a newer local recap rather than regressing to an older cloud one", async () => {
+      const { mergeCloudRecaps, setCachedPageRecap, getCachedPageRecap } = await import(
+        "@/lib/storage/reading-recap-storage"
+      )
+      setCachedPageRecap(user, "book-1", 2, "Fresh local recap.", 40)
+      mergeCloudRecaps(user, [{ ...cloudRow, updatedAt: Date.parse("2020-01-01T00:00:00.000Z") }])
+      expect(getCachedPageRecap(user, "book-1", 2, 40)).toBe("Fresh local recap.")
+    })
+
+    it("ignores rows with an empty summary or an unparseable timestamp", async () => {
+      const { mergeCloudRecaps, getCachedPageRecap } = await import(
+        "@/lib/storage/reading-recap-storage"
+      )
+      mergeCloudRecaps(user, [
+        { ...cloudRow, summary: "   " },
+        { ...cloudRow, contentId: "book-2", updatedAt: Number.NaN },
+      ])
+      expect(getCachedPageRecap(user, "book-1", 2, 40)).toBeNull()
+      expect(getCachedPageRecap(user, "book-2", 2, 40)).toBeNull()
+    })
+
+    it("never false-matches a row with no page index of its own on a page-index lookup", async () => {
+      const { mergeCloudRecaps, getCachedPageRecap } = await import(
+        "@/lib/storage/reading-recap-storage"
+      )
+      mergeCloudRecaps(user, [{ ...cloudRow, forPageIndex: null, forSentenceIndex: null }])
+      expect(getCachedPageRecap(user, "book-1", 0)).toBeNull()
+      expect(getCachedPageRecap(user, "book-1", 2)).toBeNull()
+    })
+
+    it("is scoped per user, like the rest of this cache", async () => {
+      const { mergeCloudRecaps, getCachedPageRecap } = await import(
+        "@/lib/storage/reading-recap-storage"
+      )
+      mergeCloudRecaps(user, [cloudRow])
+      expect(getCachedPageRecap({ id: "user-2" } as User, "book-1", 2, 40)).toBeNull()
+    })
+  })
 })

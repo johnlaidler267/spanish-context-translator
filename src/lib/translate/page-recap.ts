@@ -3,6 +3,7 @@ import { fetchGeminiChatViaEdge } from "@/lib/groq-edge"
 import { parseChatJsonErrorBody, stringifyMessageContent } from "@/lib/translate/chat-completion"
 import { pageSourceText } from "@/lib/translate/page-split"
 import { getCachedPageRecap, setCachedPageRecap } from "@/lib/storage/reading-recap-storage"
+import { pushPageRecap } from "@/lib/storage/reading-progress-sync"
 
 /**
  * Cheapest allowed `gemini-chat` model (see supabase/functions/gemini-chat/index.ts's
@@ -117,6 +118,23 @@ export async function maybeSummarizePreviousPageOnLeave(params: {
     const summary = await summarizePreviousPageForRecap(pageSourceText(previousPage))
     if (summary) {
       setCachedPageRecap(user, contentId, previousPageIndex, summary, previousPageSentenceIndex)
+      // ...and to this reader's `reading_progress` row, so the one call we just paid for is
+      // still there when they resume in a different browser/device -- otherwise the recap is
+      // stranded in this browser's localStorage while the position itself syncs fine, and the
+      // modal falls back to its verbatim excerpt over there. Best-effort and non-blocking:
+      // see pushPageRecap, which no-ops for guests and swallows every failure.
+      void pushPageRecap({
+        user,
+        contentId,
+        summary,
+        forPageIndex: previousPageIndex,
+        forSentenceIndex: previousPageSentenceIndex,
+        position: {
+          pageIndex: leavingAtPageIndex,
+          totalPages: pages.length,
+          sentenceIndex: pageStartSentenceIndices?.[leavingAtPageIndex] ?? null,
+        },
+      })
     }
   } finally {
     recapInFlight.delete(key)

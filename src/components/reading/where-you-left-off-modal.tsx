@@ -12,7 +12,9 @@ export interface WhereYouLeftOffModalProps {
    * Cached one-sentence English recap of the page right *before* the resumed page — generated
    * once by Gemini Flash Lite when the reader left the book last time (see
    * `maybeSummarizePreviousPageOnLeave` in src/lib/translate/page-recap.ts) and read here from
-   * the local cache (reading-recap-storage.ts) with no network call. Primary content when
+   * the local cache (reading-recap-storage.ts) with no network call -- including a recap
+   * generated in another browser/session, which the reading_progress pull merges into that
+   * same cache before this renders (see reading-progress-sync.ts). Primary content when
    * present; null/undefined when there's no cached recap yet (summarization failed, there was
    * no previous page to summarize, or this progress predates this feature) — the modal falls
    * back to `excerpt` in that case.
