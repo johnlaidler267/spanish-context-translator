@@ -420,7 +420,9 @@ export function ArticleContent({
           ? "max-md:pb-[max(5.5rem,env(safe-area-inset-bottom,0px)+4.5rem)]"
           : "max-md:pb-[max(2.5rem,env(safe-area-inset-bottom,0px)+1.5rem)]",
         "max-md:pt-[calc(env(safe-area-inset-top,0px)+var(--reading-content-top))]",
-        "flex w-full flex-1 flex-col min-h-0 max-md:overflow-hidden",
+        // `relative` is the positioning context for the mobile running head below, which sits
+        // inside that padding rather than in flow above the text.
+        "relative flex w-full flex-1 flex-col min-h-0 max-md:overflow-hidden",
         "md:min-h-[calc(100dvh-7.25rem)]",
       )}
       style={{
@@ -429,7 +431,26 @@ export function ArticleContent({
       }}
     >
       {bookTitle && (
-        <p className="mb-4 md:mb-6 text-center font-sans text-sm md:text-base font-bold text-muted-foreground">
+        /*
+          Mobile: the title is pulled out of flow and pinned near the top of the reserved band,
+          instead of sitting in the middle of it.
+
+          The band exists because a touch tooltip always places above the word it describes, so a
+          word on the first line needs room overhead (see READING_CONTENT_TOP_MOBILE_REM). With the
+          title in flow, the space landed *above* it and the title got a 16px margin below — so it
+          floated in a void and the whole thing read as broken spacing rather than a margin. Print
+          sets a running head near the top edge with the air beneath it; this does the same, and
+          because the title no longer occupies flow, the band's height is exactly
+          --reading-content-top -- which is also what reading-page-measure.ts assumes, so the text
+          block doesn't move and the page-height probe gets *more* accurate, not less.
+        */
+        <p
+          className={cn(
+            "text-center font-sans text-sm md:text-base font-bold text-muted-foreground",
+            "max-md:absolute max-md:inset-x-0 max-md:top-[calc(env(safe-area-inset-top,0px)+0.75rem)] max-md:mb-0",
+            "md:mb-6",
+          )}
+        >
           {bookTitle}
         </p>
       )}
