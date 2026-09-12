@@ -218,3 +218,31 @@ export function mergeCloudProgress(user: User | null, rows: CloudProgressRow[]):
   all[scope] = scoped
   writeAll(all)
 }
+
+/**
+ * Every content id with saved progress in this browser, newest-first, across *all* user
+ * scopes rather than one signed-in user's. Deliberately scope-agnostic: it exists purely so
+ * the first-paint cover warm-up (see discover-catalog.ts) can start fetching the images the
+ * Continue Reading row is about to need before the app knows who's signed in -- waiting for
+ * auth to resolve first is exactly the serial round trip that made those covers pop in on
+ * mobile. Safe to widen here because it returns nothing but ids into the *public* Discover
+ * catalog: a warm image cache reveals nothing, and the row itself is still built from the
+ * signed-in user's own scope via `getRecentlyViewedProgress`.
+ */
+export function getRecentlyViewedContentIdsAllScopes(limit: number): string[] {
+  const all = readAll()
+  const seen = new Map<string, number>()
+  for (const scoped of Object.values(all)) {
+    if (!scoped || typeof scoped !== "object") continue
+    for (const [contentId, entry] of Object.entries(scoped)) {
+      const updatedAt = entry?.updatedAt
+      if (!Number.isFinite(updatedAt)) continue
+      const previous = seen.get(contentId)
+      if (previous == null || updatedAt > previous) seen.set(contentId, updatedAt)
+    }
+  }
+  return [...seen.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([contentId]) => contentId)
+}

@@ -75,7 +75,6 @@ import {
   UsageError,
 } from "@/lib/subscription/usage"
 import type { ContentItem } from "@/lib/discover/content-data"
-import { fetchDiscoverCatalog } from "@/lib/discover/discover-catalog"
 import { getUserEpubText, type LibraryEpub } from "@/lib/storage/epub-library"
 import { fetchLibraryCatalog } from "@/lib/storage/library-catalog"
 import { supabase } from "@/lib/supabase"
@@ -493,16 +492,18 @@ export default function App() {
   )
 
   /**
-   * Discover catalog prefetch: while the user is sitting on the landing page (logged in
-   * or not -- the catalog isn't user-specific), warm it in the background so /discover
-   * paints instantly instead of showing its loading skeleton. Calls the exact same
-   * `fetchDiscoverCatalog()` DiscoverPage's own mount effect calls (same localStorage
-   * cache, same in-flight-request dedup), so this just kicks that fetch off earlier --
-   * it isn't a second, parallel cache. Gated on `!authLoading` so it doesn't compete with
-   * auth resolving, and on a ref (not just "once per mount") so revisiting the landing
-   * page later in the same session -- after this already fired once -- doesn't refire it;
-   * if the user leaves before the delay elapses, the ref is never set and the next landing
-   * visit tries again.
+   * Discover *route chunk* prefetch: while the user is sitting on the landing page, pull
+   * down the JS for /discover so tapping through renders from cache instead of stalling on
+   * the router's Suspense spinner.
+   *
+   * The catalog *data* is no longer warmed here -- src/main.jsx now starts that before React
+   * mounts at all, which is strictly earlier than this effect could manage and removes what
+   * was a duplicate second fetch on every landing load. What's left is the half the data
+   * cache never covered: cached rows still can't paint until the component that renders them
+   * exists. Gated on `!authLoading` so it doesn't compete with auth resolving, and on a ref
+   * (not just "once per mount") so revisiting the landing page later in the same session
+   * doesn't refire it; if the user leaves before the delay elapses the ref is never set, and
+   * the next landing visit tries again.
    */
   useEffect(() => {
     if (authLoading) return
@@ -511,7 +512,13 @@ export default function App() {
     if (discoverPrefetchedRef.current) return
     const timer = window.setTimeout(() => {
       discoverPrefetchedRef.current = true
-      void fetchDiscoverCatalog()
+      // The catalog data alone was never enough to make /discover paint instantly: its
+      // component lives in a lazily-loaded chunk, so until that JS arrives there is nothing
+      // to render the cached data into and the router shows its Suspense spinner instead.
+      // On a phone that download was the longest single step in opening Discover. Fetching
+      // it here, while the user is still reading the landing page, makes the navigation
+      // itself render straight from cache.
+      void DiscoverPage.preload()
     }, DISCOVER_PREFETCH_DELAY_MS)
     return () => window.clearTimeout(timer)
   }, [authLoading, appState, location.pathname])

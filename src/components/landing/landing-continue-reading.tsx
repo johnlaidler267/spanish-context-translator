@@ -136,6 +136,7 @@ export function useLandingContinueReading({
                 content={item.content}
                 onClick={() => onContinue(item.content)}
                 progressPercent={item.percent}
+                eagerCover
               />
             ) : (
               <LibraryCard
@@ -161,6 +162,7 @@ export function useLandingContinueReading({
                 content={item.content}
                 onClick={() => onContinue(item.content)}
                 progressPercent={item.percent}
+                eagerCover
               />
             ) : (
               <LibraryCard

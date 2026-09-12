@@ -105,3 +105,53 @@ describe("getReadingProgressEntry", () => {
     expect(getReadingProgressEntry(user, "book-1")).toEqual({ pageIndex: 3 })
   })
 })
+
+describe("getRecentlyViewedContentIdsAllScopes", () => {
+  beforeEach(() => {
+    vi.stubGlobal("window", {})
+    vi.stubGlobal("localStorage", makeMemoryStorage())
+    vi.resetModules()
+  })
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("is empty when nothing has ever been read", async () => {
+    const { getRecentlyViewedContentIdsAllScopes } = await import(
+      "@/lib/storage/reading-progress-storage"
+    )
+    expect(getRecentlyViewedContentIdsAllScopes(5)).toEqual([])
+  })
+
+  it("spans every user scope -- the cover warm-up runs before auth has resolved", async () => {
+    const { setReadingProgress, getRecentlyViewedContentIdsAllScopes } = await import(
+      "@/lib/storage/reading-progress-storage"
+    )
+    const other = { id: "user-2" } as User
+    setReadingProgress(null, "guest-book", 1, 10)
+    setReadingProgress(user, "book-1", 1, 10)
+    setReadingProgress(other, "book-2", 1, 10)
+    expect([...getRecentlyViewedContentIdsAllScopes(5)].sort()).toEqual([
+      "book-1",
+      "book-2",
+      "guest-book",
+    ])
+  })
+
+  it("reports an id read under two scopes once, not twice", async () => {
+    const { setReadingProgress, getRecentlyViewedContentIdsAllScopes } = await import(
+      "@/lib/storage/reading-progress-storage"
+    )
+    const other = { id: "user-2" } as User
+    setReadingProgress(user, "shared-book", 1, 10)
+    setReadingProgress(other, "shared-book", 4, 10)
+    expect(getRecentlyViewedContentIdsAllScopes(5)).toEqual(["shared-book"])
+  })
+
+  it("honours the limit", async () => {
+    const { setReadingProgress, getRecentlyViewedContentIdsAllScopes } = await import(
+      "@/lib/storage/reading-progress-storage"
+    )
+    for (const id of ["a", "b", "c", "d"]) setReadingProgress(user, id, 1, 10)
+    expect(getRecentlyViewedContentIdsAllScopes(2)).toHaveLength(2)
+  })
+})

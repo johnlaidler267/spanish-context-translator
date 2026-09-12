@@ -7,6 +7,31 @@ import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { AuthModal } from '@/components/auth/auth-modal'
 import { ErrorBoundary } from '@/components/error-boundary'
 import App from '@/App'
+import { warmDiscoverFirstPaint } from '@/lib/discover/discover-catalog'
+
+/*
+  Discover catalog first-paint warm-up, started before React mounts anything.
+
+  Both catalog-backed surfaces -- the landing page's Continue Reading row and the
+  Discover page -- used to begin their fetch from a component mount effect, so the
+  round trip ran strictly after the bundle parsed and React rendered. On a phone that
+  serial chain is long enough to be visible: the landing page painted without its
+  Continue Reading row for a beat, and Discover painted its skeleton, before the data
+  arrived. Kicking the same shared fetch off here overlaps it with React's boot.
+
+  Only on the two routes that actually render catalog content -- everywhere else this
+  would be a network request for data the page never shows. Landing is the default
+  route, so anything that isn't a known non-catalog path counts as landing.
+*/
+const CATALOG_ROUTES = ['/discover']
+const NON_CATALOG_PREFIXES = ['/settings', '/upgrade', '/terms', '/privacy', '/library']
+const path = window.location.pathname
+if (
+  CATALOG_ROUTES.includes(path) ||
+  !NON_CATALOG_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix + '/'))
+) {
+  warmDiscoverFirstPaint()
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

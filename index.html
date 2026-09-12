@@ -11,6 +11,12 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
+    <!-- Supabase is the origin the first catalog/auth requests go to; on mobile the DNS +
+         TLS handshake alone is a meaningful slice of how long the Discover content takes
+         to show up, and it used to start only once the bundle had parsed. Vite substitutes
+         %VITE_SUPABASE_URL% at build time; a build without it left unsubstituted is already
+         broken (src/lib/supabase.ts throws on startup), so the placeholder can't ship. -->
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Wordmark + headlines: Alegreya (Huerta Tipografica, drawn for long-form literature). Article/read body: EB Garamond (OFL). UI: Libre Franklin -->

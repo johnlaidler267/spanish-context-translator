@@ -1,5 +1,20 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react"
 
+/** A lazy route that can also be asked to fetch its chunk ahead of navigation. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches React.lazy's own signature
+export type PreloadableRoute<T extends ComponentType<any>> = LazyExoticComponent<T> & {
+  /**
+   * Starts downloading this route's chunk without rendering it. Safe to call repeatedly --
+   * the underlying dynamic import is memoized by the bundler, so extra calls are free.
+   *
+   * Route chunks are the part of a page the data cache can't help with: until the chunk
+   * arrives there is no component to paint the cached data *into*, so the router sits on its
+   * Suspense spinner. On a phone that download is the single longest step in opening Discover,
+   * which is why the catalog cache alone still left a blank beat there.
+   */
+  preload: () => Promise<unknown>
+}
+
 /**
  * Only set once we're actually recovering from a failed chunk fetch — never on a
  * normal first load — so a genuinely broken/offline chunk still surfaces as a real
@@ -56,8 +71,8 @@ function clearReloadMark() {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches React.lazy's own signature
 export function lazyRoute<T extends ComponentType<any>>(
   importer: () => Promise<{ default: T }>,
-): LazyExoticComponent<T> {
-  return lazy(async () => {
+): PreloadableRoute<T> {
+  const load = async () => {
     try {
       const mod = await importer()
       clearReloadMark()
@@ -72,5 +87,11 @@ export function lazyRoute<T extends ComponentType<any>>(
       }
       throw err
     }
-  })
+  }
+  const Route = lazy(load) as PreloadableRoute<T>
+  // Swallowed here rather than surfaced: a preload is an optimization, and a chunk that fails
+  // to arrive early still gets a real attempt (and real error handling) when the user actually
+  // navigates and React renders the lazy component.
+  Route.preload = () => load().catch(() => undefined)
+  return Route
 }

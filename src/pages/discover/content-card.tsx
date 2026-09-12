@@ -17,6 +17,13 @@ interface ContentCardProps {
   onEdit?: () => void
   /** 1-100. Shown as a small pill on the cover (landing page's Continue Reading row). */
   progressPercent?: number | null
+  /**
+   * Skip lazy loading for this card's cover. For the handful of cards that are reliably
+   * above the fold (the landing page's Continue Reading row), lazy loading only buys an
+   * extra intersection-observer pass before the request starts -- which is visible as the
+   * cover filling in a beat after the title.
+   */
+  eagerCover?: boolean
 }
 
 export function ContentCard({
@@ -26,6 +33,7 @@ export function ContentCard({
   onDelete,
   onEdit,
   progressPercent,
+  eagerCover = false,
 }: ContentCardProps) {
   const difficulty = normalizeDifficulty(content.difficulty)
 
@@ -45,7 +53,7 @@ export function ContentCard({
       className={cn("discover-card", featured && "discover-card--featured")}
     >
       <div className="discover-card__frame">
-        <DiscoverCoverArt content={content} className="discover-card__art" eager={featured} />
+        <DiscoverCoverArt content={content} className="discover-card__art" eager={featured || eagerCover} />
         <span className="discover-card__type">{contentTypeLabels[content.type]}</span>
         {progressPercent != null && (
           <span className="discover-card__progress">{progressPercent}% read</span>
