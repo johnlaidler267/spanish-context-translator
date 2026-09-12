@@ -267,6 +267,59 @@ function splitPieceForRealFit(
 }
 
 /**
+ * Whether `piece` may be cut mid-piece to top up a partly-filled page.
+ *
+ * Verse/lyrics keep their source line breaks all the way through the pipeline (see
+ * `looksLikeLineBreakHeavySource` / `splitSegmentIntoPageParts` in page-split.ts) and render with
+ * `whitespace-pre-line`, so a piece that carries newlines is a run of whole lines/stanzas — cutting
+ * it at an arbitrary word would break a verse line across a page turn. Prose sentences come out of
+ * `splitSourceIntoSentences` trimmed, with no newlines at all, so this is an exact test rather than
+ * a heuristic: newline present = line structure is meaningful = don't cut it.
+ */
+function pieceMayBeSplitMidPiece(piece: string): boolean {
+  return !/\n/.test(piece)
+}
+
+/**
+ * Binary-searches the longest word-count prefix of `piece` that still fits *after* the already
+ * accepted `accepted` pieces on the same page. Returns null when not even one word fits, or when
+ * the whole piece would be consumed (the caller only reaches here once the piece is known not to
+ * fit whole, but a probe rounding difference could still report that).
+ *
+ * This is what lets a page fill down to the line instead of down to the last whole sentence — see
+ * `packOnePage`.
+ */
+function splitTailPieceForRealFit(
+  accepted: readonly string[],
+  piece: string,
+  fits: FitProbe,
+  heightBox: { value: number },
+): { prefix: string; remainder: string; height: number } | null {
+  const words = piece.split(/\s+/).filter(Boolean)
+  if (words.length <= 1) return null
+  let lo = 1
+  let hi = words.length - 1
+  let best = 0
+  let bestHeight = 0
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (fits([...accepted, words.slice(0, mid).join(" ")])) {
+      best = mid
+      bestHeight = heightBox.value
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  if (best === 0) return null
+  return {
+    prefix: words.slice(0, best).join(" "),
+    remainder: words.slice(best).join(" "),
+    height: bestHeight,
+  }
+}
+
+/**
  * Binary-searches the longest piece-count prefix of `current` (at least 1) that fits, per `fits`.
  * `current` is already known not to fit whole. Used instead of popping pieces off the end one at
  * a time so an overflowing page costs O(log n) real-DOM measurements instead of O(n) — the
@@ -423,9 +476,11 @@ export async function reflowPagesForRealFit(
   }
 
   // One packed page's content: `usedWholePieces` counts how many entries from `flatPieces`
-  // starting at `start` are fully consumed. When the very first piece alone didn't fit and had to
-  // be split by words, `usedWholePieces` is 0 and `splitRemainder` carries the leftover words of
-  // that same piece (still unconsumed) for the caller to put back before the next page.
+  // starting at `start` are fully consumed. `splitRemainder`, when set, is the leftover words of
+  // the *next* piece after that (index `start + usedWholePieces`), which was cut mid-piece to fill
+  // the page down to the line — the caller puts it back in place of that piece so the next page
+  // resumes exactly where this one stopped. (`usedWholePieces === 0` with a remainder is the
+  // degenerate case: the very first piece alone was too tall for an empty page.)
   type PackedPage = {
     pieces: string[]
     height: number
@@ -464,8 +519,31 @@ export async function reflowPagesForRealFit(
       // Window overflows — binary-search the longest prefix that actually fits.
       const found = findFittingPrefixLength(windowPieces, fits, heightBox)
       if (found.length > 0) {
+        const accepted = windowPieces.slice(0, found.length)
+        // Top up the leftover lines with the start of the piece that didn't fit whole. Without
+        // this, a page stopped at the last *whole* sentence that fit, so whenever the next
+        // sentence was two or three lines long and only one line of room was left, those lines
+        // stayed blank — the visible "only part of the page is filled" bug, and the reason the
+        // amount of text per page swung around: how much was wasted depended entirely on how long
+        // the next sentence happened to be.
+        // `accepted` is checked too, not just the tail: once any newline is on the page,
+        // `setRealFitProbeText` measures the whole page as `pre-line`, and whether the heuristic
+        // trips can change as the tail prefix grows — which would make `fits` non-monotonic and
+        // break the binary search below. Pure prose (no newlines anywhere) has neither problem.
+        const tail = windowPieces[found.length]
+        if (tail != null && pieceMayBeSplitMidPiece(tail) && accepted.every(pieceMayBeSplitMidPiece)) {
+          const split = splitTailPieceForRealFit(accepted, tail, fits, heightBox)
+          if (split) {
+            return {
+              pieces: [...accepted, split.prefix],
+              height: split.height,
+              usedWholePieces: found.length,
+              splitRemainder: split.remainder,
+            }
+          }
+        }
         return {
-          pieces: windowPieces.slice(0, found.length),
+          pieces: accepted,
           height: found.height,
           usedWholePieces: found.length,
           splitRemainder: null,
@@ -483,9 +561,6 @@ export async function reflowPagesForRealFit(
   }
 
   try {
-    const flatPieces = pages.flat().filter((p) => p.length > 0)
-    if (flatPieces.length === 0) return { pages, topFillPaddingPx: pages.map(() => 0) }
-
     const result: string[][] = []
     const resultHeights: number[] = []
     let startIdx = 0
@@ -501,14 +576,15 @@ export async function reflowPagesForRealFit(
       const packed = packOnePage(startIdx, flatPieces)
       result.push(packed.pieces)
       resultHeights.push(packed.height)
-      if (packed.usedWholePieces > 0) {
-        startIdx += packed.usedWholePieces
-      } else if (packed.splitRemainder) {
-        // The piece at startIdx was replaced by its (shorter) word-split prefix — put the rest of
-        // that same piece's words back so the next page's window picks up exactly where this one
-        // left off, instead of skipping or duplicating any of it.
+      startIdx += packed.usedWholePieces
+      if (packed.splitRemainder) {
+        // One piece was cut mid-piece to fill this page down to the line — put the rest of that
+        // same piece's words back in its slot so the next page's window picks up exactly where
+        // this one left off, instead of skipping or duplicating any of it.
         flatPieces[startIdx] = packed.splitRemainder
-      } else {
+      } else if (packed.usedWholePieces === 0) {
+        // Defensive: a piece that couldn't be consumed or split at all (e.g. a single word taller
+        // than the box). Move past it rather than looping on it forever.
         startIdx += 1
       }
 
