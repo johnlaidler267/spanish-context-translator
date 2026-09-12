@@ -126,7 +126,10 @@ export function DetailsBox({
       startY = null
       dragging = false
       el.style.transition = ""
-      setOffset(0)
+      // When dismissing via drag past threshold, do NOT reset the transform.
+      // Let framer-motion animate the exit from the current drag position.
+      // Only snap back (reset transform) if the drag was released before threshold.
+      if (!dismiss) setOffset(0)
       if (wasDragging && dismiss) onCloseRef.current()
     }
 
