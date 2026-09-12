@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import type { CSSProperties, KeyboardEvent } from "react"
+import { useRef, useState } from "react"
+import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from "react"
 import { BookOpen, Loader2, Trash2 } from "lucide-react"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
 import { cn } from "@/lib/utils"
@@ -80,11 +80,71 @@ export function LibraryCard({
     onOpen()
   }
 
+  /**
+   * Touch fallback for the long-standing "first tap on a library book does nothing, the second
+   * one works" report (see fa4efac and b1c67aa, which each fixed a different contributing cause
+   * and neither of which closed it out).
+   *
+   * A `click` from a touchscreen is *derived*: the browser decides after the gesture finishes
+   * whether the touch was a tap at all, and can simply decline to fire `click` -- e.g. when the
+   * finger drifted enough to look like the start of a scroll, or when the gesture also moved the
+   * mobile URL bar. Nothing in React sees that; the tap just vanishes, and the next tap (with the
+   * page now settled) works. Rather than keep guessing at which specific heuristic is suppressing
+   * it, open on `pointerup` for touch pointers directly, with our own tap test: the pointer must
+   * not have travelled more than TAP_SLOP_PX, must not have been cancelled (`pointercancel` is
+   * how the browser says "this became a scroll"), and must have lasted less than TAP_MAX_MS.
+   *
+   * `suppressClickUntil` then swallows the synthetic `click` the browser may still deliver right
+   * after, so `onOpen` runs exactly once per tap. That matters here: on the Library page `onOpen`
+   * just shows the preview modal (idempotent), but the landing page's Continue Reading row wires
+   * the same card straight into opening a book.
+   */
+  const TAP_SLOP_PX = 10
+  const TAP_MAX_MS = 700
+  const CLICK_SUPPRESS_MS = 900
+  const touchStart = useRef<{ x: number; y: number; time: number } | null>(null)
+  const suppressClickUntil = useRef(0)
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch") return
+    touchStart.current = { x: event.clientX, y: event.clientY, time: Date.now() }
+  }
+
+  const handlePointerCancel = () => {
+    touchStart.current = null
+  }
+
+  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch") return
+    const start = touchStart.current
+    touchStart.current = null
+    if (disabled || !start) return
+    if (Date.now() - start.time > TAP_MAX_MS) return
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_SLOP_PX) return
+    // A tap on the delete button bubbles up here too -- that button stops the *click*, but
+    // pointer events reach us first, so check the real target before treating it as a card tap.
+    if (event.target instanceof Element && event.target.closest(".discover-card__tools")) return
+    suppressClickUntil.current = Date.now() + CLICK_SUPPRESS_MS
+    onOpen()
+  }
+
+  const handleClick = () => {
+    if (disabled) return
+    if (Date.now() < suppressClickUntil.current) {
+      suppressClickUntil.current = 0
+      return
+    }
+    onOpen()
+  }
+
   return (
     <div
       role="button"
       tabIndex={disabled ? -1 : 0}
-      onClick={disabled ? undefined : onOpen}
+      onClick={disabled ? undefined : handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       onKeyDown={handleKeyDown}
       aria-busy={isOpening || undefined}
       aria-label={
