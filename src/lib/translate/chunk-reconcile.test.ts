@@ -6,6 +6,7 @@ import {
   coalesceGlueablePunctuationChunks,
   coalesceGlueablePunctuationReconciledItems,
   reconcileChunks,
+  splitIntoSentences,
 } from "@/lib/translate/chunk-reconcile"
 import type { RawChunk, ReconciledChunk, ReconciledItem } from "@/lib/translate/types"
 
@@ -161,5 +162,29 @@ describe("coalesceGlueablePunctuationReconciledItems", () => {
       { type: "chapter", label: "I" },
       { type: "chunk", chunk: "mundo", meaning: "world", literal: undefined, note: undefined },
     ])
+  })
+})
+
+describe("splitIntoSentences - page boundary bug", () => {
+  it("should not prepend orphaned closing punctuation to the first chunk of a page", () => {
+    // Simulates a page break where the opening paren was on the previous page
+    // and the closing paren + rest of text is on this new page
+    const items: ReconciledItem[] = [
+      // Orphaned closing paren from sentence split across pages
+      { type: "text", text: ")" },
+      // First real chunk of this page
+      { type: "chunk", chunk: "durante", meaning: "during" },
+      { type: "text", text: " " },
+      { type: "chunk", chunk: "las", meaning: "the" },
+    ]
+
+    const result = splitIntoSentences(items)
+    expect(result.length).toBe(1) // One sentence
+    expect(result[0].chunks.length).toBe(2) // Two chunks: "durante" and "las"
+
+    // The first chunk should NOT have the orphaned ")" prefix
+    const firstChunk = result[0].chunks[0]
+    expect(firstChunk.text).toBe("durante")
+    expect(firstChunk.text).not.toMatch(/^\)/)
   })
 })

@@ -282,6 +282,17 @@ function isClosingPunctuationOnlyGap(s: string): boolean {
 }
 
 /**
+ * Strip orphaned closing punctuation from the start of text, which occurs when
+ * a page/sentence boundary splits mid-parenthetical or mid-quote.
+ */
+function stripLeadingOrphanedPunctuation(s: string): string {
+  // Orphaned punctuation includes ), }, commas, etc.
+  // Use regex to strip these from the start (and any leading spaces)
+  const re = /^[\s)};,`'”]+/u
+  return s.replace(re, '')
+}
+
+/**
  * Attach closing punctuation/symbol-only chunks to the previous chunk so read mode does not
  * show them as separate tappable tokens (also fixes desktop read steps that slice between word and `.`).
  */
@@ -420,9 +431,13 @@ export function splitIntoSentences(items: ReconciledItem[]) {
       continue
     }
 
+    // When starting a new sentence, strip orphaned closing punctuation that resulted
+    // from a page/sentence boundary split (e.g., ")" from a paren that opened on the previous page)
+    const prefixForFirstChunk = currentChunks.length === 0 ? stripLeadingOrphanedPunctuation(prefix) : prefix
+
     const chunkData = {
       id: chunkId++,
-      text: prefix + span,
+      text: prefixForFirstChunk + span,
       meaning: typeof item.meaning === "string" ? item.meaning : String(item.meaning ?? ""),
       literal: item.literal,
       grammar: item.note,
