@@ -93,10 +93,30 @@ interface PopupCoords {
   /** Tooltip-local X: horizontal center of the arrow (points at word center) */
   arrowCenterX: number
   placement: "above" | "below"
+  /**
+   * Widest the card may grow (px). Words near the top of the screen get the roomier cap so a
+   * long meaning wraps onto fewer lines — a shorter card is what lets it clear the word it
+   * describes instead of being pushed down onto it. Derived from the anchor line's Y only
+   * (never from the card's own measured size), so widening can't feed back into re-placement.
+   */
+  maxWidth: number
 }
 
 const POPUP_MIN_WIDTH = 112
 const POPUP_MAX_WIDTH = 220
+/**
+ * Anchor lines within this many px of the viewport top are short on room above, so the card
+ * there is capped by the viewport instead of POPUP_MAX_WIDTH: horizontal space is free (the
+ * screen is far wider than 220px) while vertical space above the word is the scarce thing, so
+ * trading width for fewer wrapped lines is pure gain. `width: max-content` still applies, so a
+ * short meaning stays narrow — only a card that would otherwise wrap actually widens.
+ *
+ * 150px ≈ the point below which a normal-width card stops reliably fitting above the word, so
+ * a word lower than this keeps the usual reading width.
+ */
+const TIGHT_TOP_ZONE_PX = 150
+/** Ceiling for that widened cap — keeps a tablet's top-of-screen card from spanning the screen. */
+const POPUP_MAX_WIDTH_TIGHT_TOP = 360
 /** Kept short (not just a rough estimate — see the trimmed padding/spacing further down) so
  *  a mobile tooltip, which always places itself above the word, still fits above one near the
  *  top of the screen instead of needing to flip below and risk a resting thumb covering it. */
@@ -109,6 +129,19 @@ const TOOLTIP_FOLLOW_POSITION_MS = 45
 /** Keep arrow diamond inside tooltip; min distance from edge to arrow center (px) */
 const ARROW_EDGE_INSET = 12
 const VIEWPORT_EDGE_PADDING = 8
+/**
+ * Touch tooltips may sit closer to the viewport's top edge than the general 8px inset. They
+ * always place above the word, so for a word on the first line every pixel reclaimed here is a
+ * pixel of clearance over that word — and the finger is on the word, well clear of the edge.
+ */
+const TOUCH_VIEWPORT_TOP_PADDING = 2
+/**
+ * Floor for the above-placement gap. The gap is finger clearance, but it is spent out of the
+ * same budget as the card itself: paying the full gap for a word near the top left no room for
+ * the card, which then clamped to the viewport edge and landed *on* the word — where the thumb
+ * that opened it covers it. Shrinking to this floor first keeps the card off the word.
+ */
+const MIN_GAP_ABOVE = 4
 
 /** Vertical gap from word to tooltip (article: farther so finger doesn’t cover the card) */
 const GAP_FROM_WORD: Record<"article" | "read", number> = { read: 10, article: 36 }
@@ -285,8 +318,9 @@ export function TextChunk({
       const tooltipHeightEst =
         measuredTooltipSizeRef.current?.height ?? estimateTooltipHeight(chunk)
       const gap = GAP_FROM_WORD[variant]
-      const gapForAbove = variant === "read" ? Math.max(4, gap - 2) : gap
+      const idealGapAbove = variant === "read" ? Math.max(4, gap - 2) : gap
       const edgeClearance = 16 + gap
+      const topEdgePadding = isCoarsePointer ? TOUCH_VIEWPORT_TOP_PADDING : VIEWPORT_EDGE_PADDING
 
       const anchorX = usePointer
         ? Math.max(anchorLine.left, Math.min(anchorLine.right, pointerX))
@@ -305,10 +339,10 @@ export function TextChunk({
       const spaceBelow = window.innerHeight - union.bottom
       // Touch (coarse pointer): always above the word — a tooltip below gets covered by the
       // finger/hand that's still resting on the word that opened it, even near the top of the
-      // screen where there's little room above. The card is kept short (see the trimmed
-      // padding/spacing below) so it still fits there without needing to flip; the viewport-edge
-      // clamp a few lines down is the last-resort backstop for the rare word close enough to the
-      // very top that even the short card can't fully clear it. Desktop hover keeps the
+      // screen where there's little room above. Fitting there is what the card's small footprint
+      // (trimmed padding/spacing below), the reclaimed top inset, the shrinking gap and the
+      // roomier top-zone width cap are all for; the viewport-edge clamp a few lines down is the
+      // last-resort backstop for a card so tall none of that is enough. Desktop hover keeps the
       // space-aware placement (flips below only when there's no room above).
       const placement = isCoarsePointer
         ? "above"
@@ -317,12 +351,19 @@ export function TextChunk({
           ? "below"
           : "above"
 
+      // Spend leftover space on the gap, don't reserve the gap up front. A fixed gap for a word
+      // near the top pushed the card past the viewport edge, where the clamp below dropped it
+      // back down on top of that word — under the thumb still resting there. Shrinking the gap
+      // toward MIN_GAP_ABOVE gives the card the room it needs to stay clear of the word.
+      const roomAbove = anchorLine.top - topEdgePadding - tooltipHeightEst
+      const gapForAbove = Math.max(MIN_GAP_ABOVE, Math.min(idealGapAbove, roomAbove))
+
       const tooltipTopUnclamped =
         placement === "above"
           ? anchorLine.top - gapForAbove - tooltipHeightEst
           : anchorLine.bottom + gap
       const tooltipTop = Math.max(
-        VIEWPORT_EDGE_PADDING,
+        topEdgePadding,
         Math.min(tooltipTopUnclamped, vh - VIEWPORT_EDGE_PADDING - tooltipHeightEst),
       )
 
@@ -333,6 +374,10 @@ export function TextChunk({
         tooltipLeft,
         arrowCenterX,
         placement,
+        maxWidth:
+          isCoarsePointer && anchorLine.top < TIGHT_TOP_ZONE_PX
+            ? Math.max(POPUP_MAX_WIDTH, Math.min(POPUP_MAX_WIDTH_TIGHT_TOP, vw - padding * 2))
+            : POPUP_MAX_WIDTH,
       }
       setCoords((prev) => {
         if (
@@ -342,6 +387,7 @@ export function TextChunk({
           prev.tooltipTop === next.tooltipTop &&
           prev.anchorTop === next.anchorTop &&
           prev.anchorBottom === next.anchorBottom &&
+          prev.maxWidth === next.maxWidth &&
           prev.arrowCenterX === next.arrowCenterX
         ) {
           return prev
@@ -589,7 +635,7 @@ export function TextChunk({
         left: coords.tooltipLeft,
         width: "max-content",
         minWidth: POPUP_MIN_WIDTH,
-        maxWidth: `min(${POPUP_MAX_WIDTH}px, calc(100vw - 32px))`,
+        maxWidth: `min(${coords.maxWidth}px, calc(100vw - 32px))`,
         boxSizing: "border-box",
         transform: "none",
         zIndex: 9999,
@@ -650,7 +696,7 @@ export function TextChunk({
         className="chunk-tooltip-body"
         key={chunk.id != null ? `c${chunk.id}-${chunk.meaning}` : `${chunk.text}-${chunk.meaning}`}
         style={{
-          maxWidth: POPUP_MAX_WIDTH - padX * 2,
+          maxWidth: coords.maxWidth - padX * 2,
           overflowWrap: "anywhere",
           wordBreak: "break-word",
         }}
@@ -659,17 +705,20 @@ export function TextChunk({
           {chunk.meaning}
         </p>
 
+        {/* Spacing here is deliberately tight, and `lineHeight` is set rather than inherited: these
+            rows are what makes a two-section card tall, and card height is the whole budget for
+            clearing a word on the first line of a mobile page (see placeTooltip). */}
         {(showLiteral || chunk.grammar) && (
-          <div style={{ marginTop: 7, paddingTop: 7, borderTop: "1px solid rgba(201,122,90,0.16)" }}>
+          <div style={{ marginTop: 5, paddingTop: 5, borderTop: "1px solid rgba(201,122,90,0.16)" }}>
             {showLiteral && (
-              <p style={{ margin: "0 0 3px", fontSize: "0.8rem", color: "#454039" }}>
+              <p style={{ margin: chunk.grammar ? "0 0 3px" : 0, fontSize: "0.8rem", lineHeight: 1.32, color: "#454039" }}>
                 <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Literal</span>
                 <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
                 {chunk.literal}
               </p>
             )}
             {chunk.grammar && (
-              <p style={{ margin: 0, fontSize: "0.8rem", fontStyle: "italic", color: "#454039" }}>
+              <p style={{ margin: 0, fontSize: "0.8rem", lineHeight: 1.32, fontStyle: "italic", color: "#454039" }}>
                 <span style={{ fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8a8278" }}>Note</span>
                 <span style={{ margin: "0 5px", color: "#c97a5a", opacity: 0.55 }}>·</span>
                 {chunk.grammar}

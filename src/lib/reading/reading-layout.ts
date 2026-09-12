@@ -17,9 +17,16 @@
  * itself fades out after a short idle period. Only a small top gap is reserved now (clears the
  * safe-area notch plus a little breathing room) so a page makes full use of the viewport; the
  * toolbar simply overlays the first line or two on the rare moments it's shown.
+ *
+ * Not quite the bare notch clearance, though: a word tooltip on touch always places itself
+ * above the word (below would sit under the finger — see text-chunk.tsx), so the gap above the
+ * first line is also the only room a first-line word's tooltip has. At the old 2rem there was
+ * none, and the card clamped to the viewport edge and landed on the word itself, where the
+ * thumb holding that word hid it. This buys a typical card enough room to clear the first line
+ * while still leaving the page most of the viewport.
  */
 export const READING_HEADER_BAND_REM = 10
-export const READING_CONTENT_TOP_MOBILE_REM = 2
+export const READING_CONTENT_TOP_MOBILE_REM = 4.75
 
 /** Slide texture bitmap up inside the band (px) — shows a lower slice of the asset, can extend past top (clipped). */
 export const READING_HEADER_TEXTURE_SHIFT_UP_PX = 25
