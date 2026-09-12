@@ -9,6 +9,7 @@ import { buildContinueReadingItems } from "@/lib/discover/continue-reading"
 import { listUserEpubs, type LibraryEpub } from "@/lib/storage/epub-library"
 import { getRecentlyViewedProgress } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
+import { useViewport } from "@/contexts/viewport-context"
 import type { ContentItem } from "@/lib/discover/content-data"
 
 /** Capped at 4 so the row never overflows into a horizontal scrollbar at typical widths --
@@ -52,13 +53,9 @@ interface UseLandingContinueReadingOptions {
  * own uploaded library (src/lib/storage/epub-library.ts), interleaved by actual last-read
  * recency rather than always showing Discover items first -- see buildContinueReadingItems.
  *
- * Returns the mobile and desktop renderings as separate nodes (rather than one JSX element)
- * because they don't sit next to each other in the tree: on mobile the row has to land
- * *inside* landing-screen.tsx's filigree-divider/composer wrapper (between the divider and the
- * composer form -- see the `mobileRow` placement there), while the desktop row stays where the
- * sample-excerpt fallback normally goes, below the composer. A single JSX element can't be
- * physically split across two unrelated spots in the parent's tree, so this is a hook instead of
- * a component -- landing-screen.tsx calls it once and places each half itself.
+ * Viewport detection happens in main.jsx (before React mounts) to determine which rendering to
+ * use on first paint without flicker. This replaces the previous approach of rendering both
+ * mobile and desktop rows in the DOM and hiding one with CSS.
  */
 export function useLandingContinueReading({
   user,
@@ -66,6 +63,7 @@ export function useLandingContinueReading({
   onOpenLibraryBook,
   fallback,
 }: UseLandingContinueReadingOptions): { mobileRow: ReactNode; desktopRow: ReactNode } {
+  const { isMobile } = useViewport()
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
   const [libraryBooks, setLibraryBooks] = useState<LibraryEpub[]>([])
   // Bumped once cloud-synced progress (see reading-progress-sync.ts) has been merged into the
@@ -120,39 +118,48 @@ export function useLandingContinueReading({
 
   const mobileItems = items.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS)
 
-  return {
-    // No label on mobile (removed per design) -- just the two cards. Caller renders this as a
-    // sibling of the filigree divider and composer form, inside their shared flex wrapper (see
-    // landing-screen.tsx) -- order-2 puts it between the divider (order-1) and the composer
-    // (bumped to order-3 there). md:hidden drops it out of the desktop flex layout entirely, so
-    // its lack of an explicit md:order doesn't matter there.
-    mobileRow: (
-      <div className="continue-reading-mobile w-full entry-4 order-2 md:hidden">
-        <div className="continue-reading-mobile__row">
-          {mobileItems.map((item) =>
-            item.kind === "discover" ? (
-              <ContentCard
-                key={`mobile-discover-${item.content.id}`}
-                content={item.content}
-                onClick={() => onContinue(item.content)}
-                progressPercent={item.percent}
-                eagerCover
-              />
-            ) : (
-              <LibraryCard
-                key={`mobile-library-${item.book.id}`}
-                book={item.book}
-                progressPercent={item.percent}
-                onOpen={() => onOpenLibraryBook(item.book)}
-              />
-            ),
-          )}
+  // On mobile, render only mobileRow; on desktop, render only desktopRow. Viewport is detected
+  // in main.jsx before React mounts to avoid first-paint flicker. This eliminates the
+  // duplication of rendering both rows in the DOM and hiding one with CSS.
+  if (isMobile) {
+    return {
+      // No label on mobile (removed per design) -- just the two cards. Caller renders this as a
+      // sibling of the filigree divider and composer form, inside their shared flex wrapper (see
+      // landing-screen.tsx) -- order-2 puts it between the divider (order-1) and the composer
+      // (bumped to order-3 there).
+      mobileRow: (
+        <div className="continue-reading-mobile w-full entry-4 order-2">
+          <div className="continue-reading-mobile__row">
+            {mobileItems.map((item) =>
+              item.kind === "discover" ? (
+                <ContentCard
+                  key={`mobile-discover-${item.content.id}`}
+                  content={item.content}
+                  onClick={() => onContinue(item.content)}
+                  progressPercent={item.percent}
+                  eagerCover
+                />
+              ) : (
+                <LibraryCard
+                  key={`mobile-library-${item.book.id}`}
+                  book={item.book}
+                  progressPercent={item.percent}
+                  onOpen={() => onOpenLibraryBook(item.book)}
+                />
+              ),
+            )}
+          </div>
         </div>
-      </div>
-    ),
+      ),
+      desktopRow: null,
+    }
+  }
+
+  return {
+    mobileRow: null,
     // Desktop: sits where the sample excerpt normally does, below the composer.
     desktopRow: (
-      <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
+      <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1">
         <p className="sample-excerpt-label text-center">Continue reading</p>
         <div className="continue-reading__row">
           {items.map((item) =>

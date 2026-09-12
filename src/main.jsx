@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import { AuthProvider } from '@/contexts/auth-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
+import { ViewportContext } from '@/contexts/viewport-context'
 import { AuthModal } from '@/components/auth/auth-modal'
 import { ErrorBoundary } from '@/components/error-boundary'
 import App from '@/App'
@@ -33,12 +34,18 @@ if (
   warmDiscoverFirstPaint()
 }
 
+/* Viewport detection before React mounts, so landing page's Continue Reading row can render
+   the correct layout (mobile vs desktop) on first paint without flicker. Uses the same
+   768px breakpoint as Tailwind's md: media queries. */
+const isMobileViewport = typeof window !== "undefined" && !window.matchMedia("(min-width: 768px)").matches
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
-        <AuthProvider>
-          <SubscriptionProvider>
+      <ViewportContext.Provider value={{ isMobileViewport }}>
+        <BrowserRouter>
+          <AuthProvider>
+            <SubscriptionProvider>
             <div className="app-viewport">
               {/*
                 Faded letter fragment — light / dark PNG swap; all viewports.
@@ -78,9 +85,10 @@ createRoot(document.getElementById('root')).render(
               {/* Global auth modal — triggered via useAuth().openAuthModal() */}
               <AuthModal />
             </div>
-          </SubscriptionProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </ErrorBoundary>
-  </StrictMode>,
-)
+            </SubscriptionProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </ViewportContext.Provider>
+      </ErrorBoundary>
+    </StrictMode>,
+  )
