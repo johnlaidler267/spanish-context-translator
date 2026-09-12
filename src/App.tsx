@@ -16,9 +16,13 @@ const PrivacyPage = lazyRoute(() => import("@/pages/privacy"))
 import { LandingShellLayout } from "@/components/landing/landing-shell-layout"
 import { LandingScreen } from "@/components/landing/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "@/components/loading-overlay"
-import { ReadingHeader } from "@/components/reading/reading-header"
-import { ArticleContent } from "@/components/reading/article-content"
-import { ReadMode } from "@/components/reading/read-mode"
+import {
+  ArticleContent,
+  ReadMode,
+  ReadingHeader,
+  WhereYouLeftOffModal,
+  preloadReadingSurface,
+} from "@/components/reading/reading-surface-lazy"
 import { SubscriptionLapsedModal } from "@/components/subscription/subscription-lapsed-modal"
 import { useSubscription } from "@/contexts/subscription-context"
 import {
@@ -55,7 +59,6 @@ import { getCachedPageRecap } from "@/lib/storage/reading-recap-storage"
 import { getEffectiveDisplayName } from "@/lib/storage/display-name-storage"
 import { Button } from "@/components/ui/button"
 import { AppErrorModal } from "@/components/app-error-modal"
-import { WhereYouLeftOffModal } from "@/components/reading/where-you-left-off-modal"
 import { RateLimitModal } from "@/components/subscription/rate-limit-modal"
 import { isRateLimitApiMessage } from "@/lib/api-errors"
 import { useAuth } from "@/contexts/auth-context"
@@ -135,7 +138,13 @@ type UsagePreflightSnapshot = {
 
 function RouteLoadingFallback() {
   return (
-    <main className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden">
+    // data-testid: the route spinner is what several first-paint fixes exist to keep off
+    // screen, and `.animate-spin` alone can't tell it apart from the inline auth/cover
+    // spinners the landing page legitimately shows.
+    <main
+      data-testid="route-loading"
+      className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden"
+    >
       <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
     </main>
   )
@@ -522,6 +531,19 @@ export default function App() {
     }, DISCOVER_PREFETCH_DELAY_MS)
     return () => window.clearTimeout(timer)
   }, [authLoading, appState, location.pathname])
+
+  /**
+   * Reading *surface chunk* preload. The reading screen lives in its own chunk (see
+   * reading-surface-lazy.tsx) so the landing page doesn't have to parse it before it can
+   * paint. Every route into reading goes through this "loading" state first, and the
+   * loading overlay stays up for at least LOADING_OVERLAY_PROGRESS_MS on top of a real
+   * LLM round trip -- so starting the download here means the chunk is already cached by
+   * the time there's anything to render, and the split never costs a visible beat.
+   */
+  useEffect(() => {
+    if (appState !== "loading") return
+    void preloadReadingSurface()
+  }, [appState])
 
   /**
    * Library prefetch: same idea and gating as the Discover prefetch above, but only once we
@@ -1322,93 +1344,99 @@ export default function App() {
     const hasSentences = readSentences.length > 0
 
     readingHome = (
-      <main
-        className={`min-h-app bg-background ${viewportMain}`}
-        style={{ maxHeight: "100dvh" }}
-      >
-        <div className="shrink-0">
-          <ReadingHeader
-            mode={viewMode}
-            onModeChange={setViewMode}
-            onBack={handleBack}
-            theme={readingTheme}
-            onThemeChange={setReadingTheme}
-            hoverTtsEnabled={hoverTtsEnabled}
-            onHoverTtsChange={setHoverTtsEnabled}
-            visible={toolbarVisible}
-          />
-        </div>
-        <div
-          data-testid="reading-surface"
-          className="flex min-h-0 flex-1 flex-col overflow-x-hidden animate-fade-in-up max-md:overflow-hidden md:overflow-y-auto"
-          onClick={handleReadingSurfaceTap}
+      // fallback={null}, not a spinner: the reading chunk is preloaded the moment a
+      // translation starts (see preloadReadingSurface below), so by the time this renders
+      // it has been in cache for the whole length of the loading overlay. A spinner here
+      // would only ever be a second loading indicator stacked on top of that one.
+      <Suspense fallback={null}>
+        <main
+          className={`min-h-app bg-background ${viewportMain}`}
+          style={{ maxHeight: "100dvh" }}
         >
-          {viewMode === "article" && totalPages > 0 ? (
-            <div className="flex w-full min-h-0 flex-1 flex-col">
-              <ArticleContent
-                items={articleItems}
-                loading={articleLoading}
-                errorMessage={articleErr ?? null}
-                onRetry={articleErr ? retryArticlePage : undefined}
-                pageKey={articlePageIndex}
-                hoverTtsEnabled={hoverTtsEnabled}
-                bookTitle={activeReadingTitle}
-                topFillPaddingPx={pageTopFillPaddingPx[articlePageIndex]}
-                pagination={
-                  totalPages > 1
-                    ? {
-                        pageIndex: articlePageIndex,
-                        pageCount: totalPages,
-                        onPrevious: goArticlePrev,
-                        onNext: goArticleNext,
-                        onJumpToPage: goToArticlePageInput,
-                        nextPageLoading,
-                        nextPageOpen,
-                        prevPageLoading,
-                      }
-                    : null
-                }
-              />
-            </div>
-          ) : hasSentences ? (
-            <div className="flex w-full min-h-0 flex-1 flex-col">
-              <ReadMode
-                readingSessionKey={readingSessionId}
-                readPageKey={articlePageIndex}
-                readStepOffset={readStepOffset}
-                enterAtLastStepNonce={readEnterLastStepNonce}
-                lastConsumedEnterNonce={readLastConsumedEnterNonce}
-                onConsumeEnterLastStep={consumeReadEnterLastStep}
-                sentences={readSentences}
-                articlePageIndex={articlePageIndex}
-                totalPages={totalPages}
-                onRequestNextArticlePage={goArticleNext}
-                onRequestPrevArticlePage={goReadPrevArticlePage}
-                nextPageLoading={nextPageLoading}
-                nextPageOpen={nextPageOpen}
-                nextPageError={readNextPageError}
-                onRetryNextPage={readNextPageError ? retryReadNextPage : undefined}
-                prevPageLoading={prevPageLoading}
-                hoverTtsEnabled={hoverTtsEnabled}
-              />
-            </div>
-          ) : totalPages > 0 ? (
-            <div className="flex w-full min-h-0 flex-1 flex-col">
-              <ArticleContent
-                items={articleItems}
-                loading={articleLoading}
-                errorMessage={articleErr ?? null}
-                onRetry={articleErr ? retryArticlePage : undefined}
-                pageKey={articlePageIndex}
-                hoverTtsEnabled={hoverTtsEnabled}
-                bookTitle={activeReadingTitle}
-                topFillPaddingPx={pageTopFillPaddingPx[articlePageIndex]}
-                pagination={null}
-              />
-            </div>
-          ) : null}
-        </div>
-      </main>
+          <div className="shrink-0">
+            <ReadingHeader
+              mode={viewMode}
+              onModeChange={setViewMode}
+              onBack={handleBack}
+              theme={readingTheme}
+              onThemeChange={setReadingTheme}
+              hoverTtsEnabled={hoverTtsEnabled}
+              onHoverTtsChange={setHoverTtsEnabled}
+              visible={toolbarVisible}
+            />
+          </div>
+          <div
+            data-testid="reading-surface"
+            className="flex min-h-0 flex-1 flex-col overflow-x-hidden animate-fade-in-up max-md:overflow-hidden md:overflow-y-auto"
+            onClick={handleReadingSurfaceTap}
+          >
+            {viewMode === "article" && totalPages > 0 ? (
+              <div className="flex w-full min-h-0 flex-1 flex-col">
+                <ArticleContent
+                  items={articleItems}
+                  loading={articleLoading}
+                  errorMessage={articleErr ?? null}
+                  onRetry={articleErr ? retryArticlePage : undefined}
+                  pageKey={articlePageIndex}
+                  hoverTtsEnabled={hoverTtsEnabled}
+                  bookTitle={activeReadingTitle}
+                  topFillPaddingPx={pageTopFillPaddingPx[articlePageIndex]}
+                  pagination={
+                    totalPages > 1
+                      ? {
+                          pageIndex: articlePageIndex,
+                          pageCount: totalPages,
+                          onPrevious: goArticlePrev,
+                          onNext: goArticleNext,
+                          onJumpToPage: goToArticlePageInput,
+                          nextPageLoading,
+                          nextPageOpen,
+                          prevPageLoading,
+                        }
+                      : null
+                  }
+                />
+              </div>
+            ) : hasSentences ? (
+              <div className="flex w-full min-h-0 flex-1 flex-col">
+                <ReadMode
+                  readingSessionKey={readingSessionId}
+                  readPageKey={articlePageIndex}
+                  readStepOffset={readStepOffset}
+                  enterAtLastStepNonce={readEnterLastStepNonce}
+                  lastConsumedEnterNonce={readLastConsumedEnterNonce}
+                  onConsumeEnterLastStep={consumeReadEnterLastStep}
+                  sentences={readSentences}
+                  articlePageIndex={articlePageIndex}
+                  totalPages={totalPages}
+                  onRequestNextArticlePage={goArticleNext}
+                  onRequestPrevArticlePage={goReadPrevArticlePage}
+                  nextPageLoading={nextPageLoading}
+                  nextPageOpen={nextPageOpen}
+                  nextPageError={readNextPageError}
+                  onRetryNextPage={readNextPageError ? retryReadNextPage : undefined}
+                  prevPageLoading={prevPageLoading}
+                  hoverTtsEnabled={hoverTtsEnabled}
+                />
+              </div>
+            ) : totalPages > 0 ? (
+              <div className="flex w-full min-h-0 flex-1 flex-col">
+                <ArticleContent
+                  items={articleItems}
+                  loading={articleLoading}
+                  errorMessage={articleErr ?? null}
+                  onRetry={articleErr ? retryArticlePage : undefined}
+                  pageKey={articlePageIndex}
+                  hoverTtsEnabled={hoverTtsEnabled}
+                  bookTitle={activeReadingTitle}
+                  topFillPaddingPx={pageTopFillPaddingPx[articlePageIndex]}
+                  pagination={null}
+                />
+              </div>
+            ) : null}
+          </div>
+        </main>
+      </Suspense>
     )
   }
 
@@ -1422,12 +1450,17 @@ export default function App() {
         <AppErrorModal message={error} onDismiss={() => setError("")} />
       )}
       {appState === "reading" && whereLeftOff && (
-        <WhereYouLeftOffModal
-          bookTitle={whereLeftOff.title}
-          summary={whereLeftOff.summary}
-          excerpt={whereLeftOff.excerpt}
-          onDismiss={() => setWhereLeftOff(null)}
-        />
+        // Same reading chunk as the screen underneath it, and it only renders once that
+        // screen is already up — so fallback={null} just means it can't appear before the
+        // reading surface it belongs to does.
+        <Suspense fallback={null}>
+          <WhereYouLeftOffModal
+            bookTitle={whereLeftOff.title}
+            summary={whereLeftOff.summary}
+            excerpt={whereLeftOff.excerpt}
+            onDismiss={() => setWhereLeftOff(null)}
+          />
+        </Suspense>
       )}
       {!IS_LOCAL_DEV && isLapsed && !popupDismissed && (
         <SubscriptionLapsedModal
