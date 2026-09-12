@@ -447,7 +447,14 @@ export function ArticleContent({
         <p
           className={cn(
             "text-center font-sans text-sm md:text-base font-bold text-muted-foreground",
-            "max-md:absolute max-md:inset-x-0 max-md:top-[calc(env(safe-area-inset-top,0px)+0.75rem)] max-md:mb-0",
+            "max-md:absolute max-md:inset-x-6 max-md:top-[calc(env(safe-area-inset-top,0px)+0.75rem)] max-md:mb-0",
+            // Short centred rule under the running head — the book-typography way of closing a
+            // head, and quieter than a full-measure rule, which drew a line across the page and
+            // then left a visible void under it. Out of flow with the title, so it can't move the
+            // text block.
+            "max-md:after:content-[''] max-md:after:mx-auto max-md:after:mt-2 max-md:after:block",
+            "max-md:after:h-px max-md:after:w-10 max-md:after:bg-[rgba(201,122,90,0.30)]",
+            "dark:max-md:after:bg-reading-warm/[0.25]",
             "md:mb-6",
           )}
         >
