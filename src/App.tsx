@@ -157,6 +157,16 @@ export default function App() {
   const { user, isLoading: authLoading, isSigningIn } = useAuth()
 
   const [appState, setAppState] = useState<AppState>("landing")
+  /**
+   * Flips true once the real per-submission setup (page-split reflow, usage preflight, cloud
+   * progress pull) has actually finished -- see the loading-overlay's own `ready` prop for why
+   * this exists: its progress bar fills to 100% on a fixed internal clock that's just a visual
+   * approximation, not a signal that the real work is done. On a long/slow submission that real
+   * work can outlast the bar's own fill time, and without this flag the bar would sit frozen at
+   * a stale 100% for however much longer the real work takes. Reset to false at the top of every
+   * submission and flipped true right before the (now purely cosmetic) minimum-display wait.
+   */
+  const [loadingSetupReady, setLoadingSetupReady] = useState(false)
 
   /** In-memory + sessionStorage: survives reading → home and page refresh (same tab). */
   const [landingDraft, setLandingDraft] = useState(() => getStoredLandingDraft())
@@ -648,6 +658,7 @@ export default function App() {
       setRateLimitMessage(null)
       setPlanLimitModal(null)
       setAppState("loading")
+      setLoadingSetupReady(false)
       const submitStartedAtMs = Date.now()
 
       try {
@@ -869,6 +880,10 @@ export default function App() {
             // Error details are stored in TranslationCache and surfaced by existing modal logic.
             bump()
           })
+        // The real setup work above (reflow, usage preflight, cloud progress pull) is done --
+        // let the overlay's progress bar actually reach 100% now. Everything left below is just
+        // the cosmetic minimum-display wait, not further real work to gate on.
+        setLoadingSetupReady(true)
         const remainingLoadingMs = Math.max(0, LANDING_MIN_LOADING_MS - (Date.now() - submitStartedAtMs))
         if (remainingLoadingMs > 0) {
           await new Promise((r) => setTimeout(r, remainingLoadingMs))
@@ -1442,7 +1457,7 @@ export default function App() {
 
   return (
     <>
-      {appState === "loading" && <LoadingOverlay />}
+      {appState === "loading" && <LoadingOverlay ready={loadingSetupReady} />}
       {error && (
         // Global (not scoped to the landing route): a translation can now fail while
         // initiated from a non-landing screen (e.g. Discover) without having navigated away,

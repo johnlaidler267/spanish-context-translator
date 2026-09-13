@@ -69,14 +69,46 @@ function barWidthAtKeyframeProgress(p: number): number {
   return 92
 }
 
-type LoadingOverlayProps = {
-  withBackdrop?: boolean
+/**
+ * Width the bar holds at until `ready` -- one tick short of the final keyframe stop (100%),
+ * matching the second-to-last `WIDTH_STOPS` entry. See the `ready` prop doc below for why this
+ * cap exists.
+ */
+export const PRE_READY_MAX_WIDTH = 92
+
+/**
+ * The width actually painted: the raw time-driven fill, capped short of full while the real
+ * work this overlay covers for is still in flight. Exported (pure, no DOM/React) so the clamp
+ * itself -- the fix for the "loading bar stalls at 100%" bug -- can be unit tested directly
+ * without rendering the component.
+ */
+export function displayBarWidth(rawWidth: number, ready: boolean): number {
+  return ready ? rawWidth : Math.min(rawWidth, PRE_READY_MAX_WIDTH)
 }
 
-export function LoadingOverlay({ withBackdrop = true }: LoadingOverlayProps) {
+type LoadingOverlayProps = {
+  withBackdrop?: boolean
+  /**
+   * Whether the real work this overlay is covering for has actually finished. The bar's own
+   * fill animation is a fixed-time visual approximation (see `LOADING_OVERLAY_PROGRESS_MS`) --
+   * it always reaches 100% on its own internal clock, regardless of whether the real work is
+   * done yet. When that real work legitimately takes longer than the animation (a big
+   * page-split reflow, a slow network round trip), letting the bar hit 100% early makes it look
+   * frozen/broken for however much longer the real work takes.
+   *
+   * Defaults to `true` (original behavior: the bar always completes on its own schedule) --
+   * pass `false` while the real work is still in flight and flip it to `true` right when it
+   * finishes, so the bar holds a little short of 100% instead of sitting at a stale "done" for
+   * a visible stall. See src/App.tsx's `loadingSetupReady` for the call site that does this.
+   */
+  ready?: boolean
+}
+
+export function LoadingOverlay({ withBackdrop = true, ready = true }: LoadingOverlayProps) {
   const [msgIndex, setMsgIndex] = useState(0)
   const [visible, setVisible] = useState(true)
-  const [barWidth, setBarWidth] = useState(0)
+  // Raw = purely time-driven fill, following the same clock/curve regardless of `ready`.
+  const [rawBarWidth, setRawBarWidth] = useState(0)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -90,12 +122,18 @@ export function LoadingOverlay({ withBackdrop = true }: LoadingOverlayProps) {
     const tick = (now: number) => {
       const linearT = Math.min(1, (now - start) / LOADING_OVERLAY_PROGRESS_MS)
       const kp = easedKeyframeProgress(linearT)
-      setBarWidth(barWidthAtKeyframeProgress(kp))
+      setRawBarWidth(barWidthAtKeyframeProgress(kp))
       if (linearT < 1) frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
   }, [])
+
+  // Hold just short of a full bar until the real work is actually done -- see the `ready` prop
+  // doc above. Once `ready` flips true this stops clamping and the bar (which has very likely
+  // already finished its own fill by then) reads 100% immediately, with no separate animation
+  // needed here.
+  const barWidth = displayBarWidth(rawBarWidth, ready)
 
   const percentLabel = Math.min(100, Math.round(barWidth))
 
