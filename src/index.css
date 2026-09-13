@@ -1361,6 +1361,16 @@ article span {
     flex-direction: column;
     min-height: 0;
     max-height: min(72dvh, 32rem);
+    /* A touch rounder than the 4px desktop default -- on mobile this box sits directly
+       under the much more rounded (1rem) Continue Reading cards with only a small gap,
+       so the near-square corners read as a jarring mismatch there in a way they don't
+       on desktop (where this box isn't stacked right under another rounded card). Still
+       well short of the cards' own radius so the field reads as its own, distinct shape.
+       (Not paired with overflow: hidden -- that also clips the .corner ornaments, which
+       sit right at the corner via a small negative inset. The toolbar's own bottom
+       corners are rounded to match below instead, since it's the only child painting an
+       opaque rect flush to the wrapper's edge -- see .textarea-toolbar below.) */
+    border-radius: 10px;
   }
   .textarea-input-area {
     flex: 1 1 auto;
@@ -1374,6 +1384,11 @@ article span {
   }
   .textarea-toolbar {
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    /* Matches .textarea-wrapper's mobile radius above -- the toolbar paints its own
+       opaque background flush to the wrapper's bottom edge, so without this its square
+       corners poke past the wrapper's now-visible curve. */
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
   }
   .textarea-toolbar .voice-input-wrap {
     max-width: none;
@@ -2930,6 +2945,13 @@ article span {
    desktop row's taller portrait covers and horizontal-scroll strip -- there's no room to
    scroll a strip above the fold on a phone, and only ever 2 cards are shown here (see
    MAX_MOBILE_CONTINUE_READING_ITEMS) so there's nothing to scroll to anyway. */
+.continue-reading-mobile {
+  /* Extra room below the cards, on top of the flex `gap-2` the mobile column already puts
+     between every child (see landing-screen.tsx) -- at that gap alone, the cards' 1rem-radius
+     corners sit almost flush against the composer's square-ish top edge right below them,
+     which reads as a mismatched stack rather than two distinct sections. */
+  margin-bottom: 0.375rem;
+}
 .continue-reading-mobile__row {
   display: flex;
   gap: 0.6rem;
@@ -2937,6 +2959,10 @@ article span {
 .continue-reading-mobile__row .discover-card {
   min-width: 0;
   flex: 1 1 0;
+  /* Slightly less rounded than the desktop/Discover card (1rem) -- at this row's small,
+     compact card size 1rem reads as noticeably "pill-like" right above the composer's
+     near-square corners below; this keeps the cards clearly rounded while narrowing that gap. */
+  border-radius: 0.75rem;
 }
 .continue-reading-mobile .sample-excerpt-label {
   margin-bottom: 0.5rem;
