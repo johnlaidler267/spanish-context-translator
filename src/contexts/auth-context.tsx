@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import type { User } from "@supabase/supabase-js"
-import { supabase } from "@/lib/supabase"
+import { supabase, getCachedSupabaseUser } from "@/lib/supabase"
 import { clearGuestUses } from "@/lib/subscription/guest-usage"
 import { invalidateLibraryCache } from "@/lib/storage/library-catalog"
 
@@ -66,12 +66,22 @@ export function currentPageRedirectUrl(): string {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user,    setUser   ] = useState<User | null>(null)
-  const [isLoading, setLoading] = useState(true)
   // Seeded from the URL so the very first render already knows; onAuthStateChange's event type
   // (SIGNED_IN vs INITIAL_SESSION) then confirms or corrects it once the real answer is known,
   // before isLoading flips to false — see the effect below.
   const [isSigningIn, setIsSigningIn] = useState(() => isAuthCallbackInUrl())
+  // Seeded synchronously from the session supabase-js already persisted to localStorage (skipped
+  // mid-callback, where any stored session predates the sign-in now completing), so a returning
+  // user's very first render already shows signed-in instead of a guaranteed-wrong "signed out"
+  // that flips a few hundred ms later once the real session restores. Best-effort — see
+  // getCachedSupabaseUser — and onAuthStateChange below still runs and corrects it either way.
+  const [user, setUser] = useState<User | null>(() =>
+    isSigningIn ? null : getCachedSupabaseUser(),
+  )
+  // Same idea: skip the manufactured wait when the seed above is already trustworthy (a cached
+  // user, or no session in storage at all — both known synchronously). Only an actual callback
+  // in progress still needs to block on the real exchange completing.
+  const [isLoading, setLoading] = useState(isSigningIn)
   const [authModalOpen, setAuthModalOpen] = useState(false)
 
   // ── Session restore ────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@
  *   VITE_SUPABASE_ANON_KEY  — the project's public anon key
  */
 
-import { createClient } from "@supabase/supabase-js"
+import { createClient, type User } from "@supabase/supabase-js"
 import type { Database } from "@/lib/db-types"
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
@@ -19,6 +19,40 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+
+/**
+ * The localStorage key supabase-js persists the session under when no `storageKey` override is
+ * passed to `createClient` (as here): `sb-<first label of the URL's hostname>-auth-token`. Kept
+ * in sync with tests/e2e-mocks/supabase-mock.ts, which seeds a fake session under this same key.
+ */
+const supabaseAuthStorageKey = (() => {
+  try {
+    return `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`
+  } catch {
+    return null
+  }
+})()
+
+/**
+ * Synchronously reads the signed-in user out of the session supabase-js already persisted to
+ * localStorage, without waiting for the client to initialize or for `onAuthStateChange` to fire.
+ * Used to seed auth state on first render so a returning user's page doesn't paint "signed out"
+ * for the ~300ms restoring the real session takes, then flip once it lands. Best-effort — never
+ * throws (private browsing can make localStorage inaccessible, the value can be absent or
+ * corrupt) — and can be wrong in the rare case a token expired or was revoked elsewhere;
+ * `onAuthStateChange` still runs afterward and corrects it either way.
+ */
+export function getCachedSupabaseUser(): User | null {
+  if (typeof window === "undefined" || !supabaseAuthStorageKey) return null
+  try {
+    const raw = window.localStorage.getItem(supabaseAuthStorageKey)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { user?: User } | null
+    return parsed?.user ?? null
+  } catch {
+    return null
+  }
+}
 
 /**
  * Get the current session's JWT access token.
