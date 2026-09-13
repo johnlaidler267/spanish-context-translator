@@ -11,7 +11,7 @@
  * features; major when restructuring the shape itself.
  */
 
-export const TIERS_CONFIG_VERSION = "2.0.4"
+export const TIERS_CONFIG_VERSION = "2.0.5"
 
 /** Pro fair-use caps (mirrors `supabase/functions/_shared/tiers.ts`). */
 export const PRO_FAIR_USE_CHARS_PER_MONTH = 4_000_000
@@ -105,6 +105,15 @@ export interface TierLimits {
   chunksPerRequest: number | null
   /** Max source-text pages processed per submission. */
   pagesPerSubmission: number | null
+  /**
+   * Max article pages of any single book/reading a user can page into before hitting an
+   * upgrade prompt — distinct from `pagesPerSubmission` (which caps how many pages an entire
+   * submission may translate at once, checked upfront at upload). This instead lets someone
+   * open any book, however long, and read a free preview of it page by page, then blocks
+   * paging further in (see `goToArticlePage` in App.tsx) rather than blocking the upload
+   * itself. null = no cap.
+   */
+  freeReadingPagesPerBook: number | null
   /** Max saved/bookmarked translations stored. */
   savedTranslations: number | null
   /** Max characters accepted per submission. */
@@ -188,6 +197,8 @@ export const TIERS: Record<TierId, TierConfig> = {
       chunksPerRequest:   80,
       /** null = an "article" may span multiple LLM pages; cap submissions/day via textsPerDay. */
       pagesPerSubmission: null,
+      /** Read the first 10 pages of any book free, then prompt to upgrade for the rest. */
+      freeReadingPagesPerBook: 10,
       savedTranslations:  0,
       charsPerSubmission: 600,
       charsPerMonth:      null,
@@ -222,6 +233,7 @@ export const TIERS: Record<TierId, TierConfig> = {
       textsPerDay:        null,
       chunksPerRequest:   null,
       pagesPerSubmission: null,
+      freeReadingPagesPerBook: null,
       savedTranslations:  null,
       charsPerSubmission: null,
       charsPerMonth:      PRO_FAIR_USE_CHARS_PER_MONTH,

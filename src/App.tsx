@@ -155,6 +155,12 @@ export default function App() {
   const location = useLocation()
   const { status: subscriptionStatus, isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
   const { user, isLoading: authLoading, isSigningIn } = useAuth()
+  // Shared by every free-plan gate below (char-limit-per-submission, free-preview page cap, …):
+  // a signed-in user counts as "free" whenever they have no active paid status, including a
+  // lapsed subscription — a guest (no `user` yet) isn't covered by this, since they're gated by
+  // the separate localStorage guest-tries limit instead (see hasReachedGuestLimit above).
+  const isEffectivelyFreeUser =
+    user != null && (subscriptionStatus == null || subscriptionStatus === "free" || isLapsed)
 
   const [appState, setAppState] = useState<AppState>("landing")
   /**
@@ -605,6 +611,7 @@ export default function App() {
         contentId = null,
         contentTitle = null,
         initialPageRatio = null,
+        isEbookUpload = false,
       }: {
         populateLandingDraft?: boolean
         contentId?: string | null
@@ -618,6 +625,14 @@ export default function App() {
          * exact page index because pagination itself is viewport-dependent (see `pages` below).
          */
         initialPageRatio?: number | null
+        /**
+         * From handleLibraryStartReading only. A book's own length has nothing to do with
+         * `charsPerSubmission` (a limit sized for a pasted article/snippet, not a whole novel) --
+         * an e-book's free-plan gate is `freeReadingPagesPerBook` instead (see `goToArticlePage`),
+         * which lets a free user open any book and read its first N pages regardless of the
+         * book's total length. Skips the charsPerSubmission check below for that reason.
+         */
+        isEbookUpload?: boolean
       } = {},
     ) => {
       if (!text.trim()) return
@@ -639,11 +654,18 @@ export default function App() {
       // paste still consumed a submission -- trackUsage below fires unconditionally, and
       // enforcement only happened later on the actual translate call -- so a submission
       // that could never succeed still cost you one. Mirrors handleDiscoverStartReading.
+      //
+      // Skipped for e-book uploads: `charsPerSubmission` is sized for a pasted article or
+      // snippet, not a whole novel -- a book's own free-plan gate is the page cap below
+      // (`goToArticlePage`/`freeReadingPagesPerBook`) instead, checked once the book is open
+      // rather than up front against its total length.
       const freeCharLimit = getTier("free").limits.charsPerSubmission
-      const isEffectivelyFreeUser =
-        user != null &&
-        (subscriptionStatus == null || subscriptionStatus === "free" || isLapsed)
-      if (isEffectivelyFreeUser && freeCharLimit !== null && trimmed.length > freeCharLimit) {
+      if (
+        !isEbookUpload &&
+        isEffectivelyFreeUser &&
+        freeCharLimit !== null &&
+        trimmed.length > freeCharLimit
+      ) {
         setPlanLimitModal({
           title: "Submission exceeds free plan allowance",
           message:
@@ -815,7 +837,7 @@ export default function App() {
         // in the book on this device's own freshly-built pages, whereas `pageIndex` only ever
         // meant something on whichever device originally saved it. Older rows (saved before this
         // anchor existed) have no `sentenceIndex` and fall back to the page-index behavior below.
-        const initialPageIndex =
+        const rawInitialPageIndex =
           savedProgress?.sentenceIndex != null
             ? findPageIndexForSentenceIndex(pageStartSentenceIndicesRef.current, savedProgress.sentenceIndex)
             : savedProgress != null
@@ -823,6 +845,15 @@ export default function App() {
               : initialPageRatio != null && pages.length > 0
                 ? Math.min(Math.max(Math.floor(initialPageRatio * pages.length), 0), pages.length - 1)
                 : 0
+        // Free-plan preview cap (see `freeReadingPagesPerBook` in tiers.ts): a returning free
+        // user resuming a book they'd read further into on another device/session (or while on
+        // a plan that's since lapsed) still lands within their free preview instead of reopening
+        // past it — `goToArticlePage` below is what actually blocks paging in any further.
+        const freeReadingPageCap = getTier("free").limits.freeReadingPagesPerBook
+        const initialPageIndex =
+          isEffectivelyFreeUser && freeReadingPageCap != null
+            ? Math.min(rawInitialPageIndex, freeReadingPageCap - 1)
+            : rawInitialPageIndex
 
         // "Where you left off" modal: only for a genuine resume past the first page —
         // reopening fresh (including a fresh open that landed past page 0 via
@@ -920,12 +951,11 @@ export default function App() {
     },
     [
       user,
+      isEffectivelyFreeUser,
       bump,
       articlePageSplitLimits,
       refreshUsagePreflight,
       translatePageWithUsage,
-      subscriptionStatus,
-      isLapsed,
       navigate,
       location.pathname,
     ],
@@ -943,9 +973,6 @@ export default function App() {
       if (!sourceText) return
 
       const freeCharLimit = getTier("free").limits.charsPerSubmission
-      const isEffectivelyFreeUser =
-        user != null &&
-        (subscriptionStatus == null || subscriptionStatus === "free" || isLapsed)
       if (
         isEffectivelyFreeUser &&
         freeCharLimit !== null &&
@@ -971,7 +998,7 @@ export default function App() {
         contentTitle: content.title,
       })
     },
-    [handleTextSubmit, subscriptionStatus, isLapsed, user],
+    [handleTextSubmit, isEffectivelyFreeUser],
   )
 
   const handleLibraryStartReading = useCallback(
@@ -988,10 +1015,10 @@ export default function App() {
         setError("Couldn't load this book. It may have been removed.")
         return
       }
-      // No separate over-the-limit preview/confirm step here (unlike Discover, which shows one
-      // inside its already-open ContentPreviewModal) -- handleTextSubmit already blocks and
-      // shows the plan-limit modal itself for a free-tier user opening an oversized book, same
-      // as pasting the same text directly would.
+      // Unlike a pasted/Discover submission, a book's own length is never checked against
+      // charsPerSubmission here (see `isEbookUpload` on handleTextSubmit) -- a free user can
+      // open any book regardless of its total length, and instead gets stopped by the page cap
+      // once they've read as far as the free plan allows (see `goToArticlePage`).
       //
       // Skip the detected front matter (see parse-epub.ts's storyStartOffset) on a first-ever
       // open only -- handleTextSubmit itself prefers a real saved reading position over this
@@ -1008,6 +1035,7 @@ export default function App() {
         contentId: book.id,
         contentTitle: book.title,
         initialPageRatio,
+        isEbookUpload: true,
       })
     },
     [handleTextSubmit],
@@ -1293,6 +1321,20 @@ export default function App() {
     // exactly one page translation, same as any other on-demand page load.
     const goToArticlePage = (target: number) => {
       if (target < 0 || target >= totalPages || target === articlePageIndex) return
+      // Free plan: read the first N pages of any book, then prompt to upgrade instead of
+      // paging further in — see `freeReadingPagesPerBook` in tiers.ts. `handleTextSubmit`
+      // already clamps where a returning free user lands on open; this is what actually stops
+      // paging past it (Previous, Next, and the "Page X" jump input all funnel through here).
+      const freeReadingPageCap = getTier("free").limits.freeReadingPagesPerBook
+      if (isEffectivelyFreeUser && freeReadingPageCap != null && target >= freeReadingPageCap) {
+        setPlanLimitModal({
+          title: "You've reached your free preview",
+          message:
+            `Free plan reading is limited to the first ${freeReadingPageCap} pages of any book. ` +
+            "Upgrade to keep reading.",
+        })
+        return
+      }
       if (cache.getPage(target) != null || cache.getError(target) != null) {
         setArticlePageIndex(target)
         return

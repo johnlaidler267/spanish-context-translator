@@ -316,6 +316,11 @@ function tierBullets(tier: TierConfig): string[] {
     bullets.push(`${limits.textsPerDay} submissions per day`)
   if (limits.charsPerSubmission !== null)
     bullets.push(`Up to ${limits.charsPerSubmission.toLocaleString()} characters per submission`)
+  bullets.push(
+    limits.freeReadingPagesPerBook === null
+      ? "Read full books, no page limit"
+      : `Read the first ${limits.freeReadingPagesPerBook} pages of any book free`,
+  )
   if (limits.savedTranslations === null)
     bullets.push("Unlimited saved translations")
   else if (limits.savedTranslations > 0)
