@@ -194,8 +194,18 @@ export async function measureArticlePageSplitLimitsWhenReady(isMobile: boolean):
  * per word), not the plain text this probe measures, so a page that "just barely" fits the
  * plain-text probe could still clip a hair in the real chunked render. Per the product
  * requirement, a page that ends a little early beats one that overflows or scrolls.
+ *
+ * On mobile, this margin is pure unused vertical space at the bottom of every page (desktop
+ * absorbs its own slack into {@link measurePageTopFillPaddingPx}'s centering instead, so it
+ * never reads as a gap there) -- at the old 0.93 it left close to a full extra line's worth of
+ * blank space below the last line of text on a typical phone screen. `TextChunk`'s own per-word
+ * underline styling (`px-0.5 -mx-0.5`) cancels its own horizontal padding via an equal negative
+ * margin and doesn't add line-height, so it doesn't actually cost the layout width or height —
+ * checked directly against the real chunked render (a short-word/heavy-punctuation stress case,
+ * the densest span-boundary scenario) at up to 0.99 with zero measured overflow. Left one real
+ * point of margin below that rather than removing the safety net entirely.
  */
-const REAL_FIT_HEIGHT_SAFETY = 0.93
+const REAL_FIT_HEIGHT_SAFETY = 0.97
 
 function createRealFitProbe(isMobile: boolean, widthPx: number, heightPx: number): HTMLDivElement {
   const probe = document.createElement("div")
