@@ -20,7 +20,7 @@ const MESSAGES = [
  * separately how long to keep the overlay up (see src/App.tsx's `LANDING_MIN_LOADING_MS`, kept in
  * sync with this).
  */
-export const LOADING_OVERLAY_PROGRESS_MS = 1500
+export const LOADING_OVERLAY_PROGRESS_MS = 1750
 
 type LoadingOverlayProps = {
   withBackdrop?: boolean

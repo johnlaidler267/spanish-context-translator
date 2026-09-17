@@ -11,7 +11,7 @@ import { test, expect } from "../e2e-mocks/fixtures"
 test("progress bar fills to 100% on its own schedule, independent of the still-in-flight fetch", async ({
   page,
 }) => {
-  // Held open far longer than the bar's own fill duration (1.5s) -- the bar must still complete
+  // Held open far longer than the bar's own fill duration (1.75s) -- the bar must still complete
   // its fill without waiting on this.
   await page.route("**/rest/v1/discover_items**id=eq.mock-item-1**", async (route) => {
     await new Promise((r) => setTimeout(r, 6000))
@@ -45,7 +45,7 @@ test("progress bar fills to 100% on its own schedule, independent of the still-i
   expect(p1).toBeGreaterThan(0)
 
   // The fetch behind this is still 5+ seconds from resolving, but the bar's own fill duration
-  // (1.5s) has now elapsed -- it must be at 100% regardless, not waiting on the real work.
-  await page.waitForTimeout(900)
+  // (1.75s) has now elapsed -- it must be at 100% regardless, not waiting on the real work.
+  await page.waitForTimeout(1100)
   expect(await readPercent()).toBe(100)
 })
