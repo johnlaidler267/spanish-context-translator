@@ -1,20 +1,18 @@
 /**
- * Repro/verification for "the loading bar stalls at 92%": the overlay used to cap its progress
- * bar flat at PRE_READY_MAX_WIDTH (92%) whenever the real setup work behind it outlasted the
- * bar's own ~1s fill animation -- which, combined with the immediate-loading-state fix for the
- * "tap does nothing" bug, is now common on a slow connection (the body_text fetch that fires on
- * tap, before the overlay's own clock even starts counting toward "ready"). Delays that fetch
- * well past 1s and samples the displayed percentage over that window to confirm it keeps
- * climbing instead of freezing.
+ * Verification for the loading bar's fixed-duration, constant-rate fill: it must climb smoothly
+ * from 0% to 100% on its own clock, with no dependence on (and no stall waiting for) the real
+ * work behind it. Delays the body_text fetch that fires on tap well past the bar's own fill
+ * duration and confirms the bar still reaches 100% on schedule instead of freezing partway
+ * while the real work is still in flight.
  */
 
 import { test, expect } from "../e2e-mocks/fixtures"
 
-test("progress bar keeps advancing instead of freezing while real setup work is still in flight", async ({
+test("progress bar fills to 100% on its own schedule, independent of the still-in-flight fetch", async ({
   page,
 }) => {
-  // Same single-row body_text lookup delayed in the tap-feedback repro, but held open for much
-  // longer here -- long enough to sample the bar well past the old 1s/92% stall point.
+  // Held open far longer than the bar's own fill duration (1.5s) -- the bar must still complete
+  // its fill without waiting on this.
   await page.route("**/rest/v1/discover_items**id=eq.mock-item-1**", async (route) => {
     await new Promise((r) => setTimeout(r, 6000))
     return route.fulfill({
@@ -37,18 +35,17 @@ test("progress bar keeps advancing instead of freezing while real setup work is 
     return Number.parseInt(text, 10)
   }
 
-  // Sample well past the old 1s fill clock (and past the old 92% cap) while the delayed fetch is
-  // still in flight -- each later sample must be strictly higher than the last, and still stay
-  // below 100 since the real work isn't done yet. A flat/repeated value here is exactly the old
-  // stall bug.
-  await page.waitForTimeout(1500)
+  // Samples during the fill must be strictly increasing -- a repeated/flat value here would be
+  // the old stall bug.
+  await page.waitForTimeout(400)
   const p1 = await readPercent()
-  await page.waitForTimeout(1500)
+  await page.waitForTimeout(400)
   const p2 = await readPercent()
-  await page.waitForTimeout(1500)
-  const p3 = await readPercent()
-
   expect(p2).toBeGreaterThan(p1)
-  expect(p3).toBeGreaterThan(p2)
-  expect(p3).toBeLessThan(100)
+  expect(p1).toBeGreaterThan(0)
+
+  // The fetch behind this is still 5+ seconds from resolving, but the bar's own fill duration
+  // (1.5s) has now elapsed -- it must be at 100% regardless, not waiting on the real work.
+  await page.waitForTimeout(900)
+  expect(await readPercent()).toBe(100)
 })

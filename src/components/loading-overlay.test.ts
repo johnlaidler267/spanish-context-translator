@@ -1,50 +1,31 @@
 import { describe, expect, it } from "vitest"
 
-import { fakeProgressWidth, finishProgressWidth, LOADING_OVERLAY_PROGRESS_MS } from "./loading-overlay"
+import { LOADING_OVERLAY_PROGRESS_MS } from "./loading-overlay"
 
-// Regression coverage for: "Translation loading bar stalls before article page" -- the overlay
-// used to hold flat at a fixed width (92%) for however long the real setup work outlasted its
-// own fill animation, which reads as broken/frozen on a slow connection. `fakeProgressWidth` is
-// the fix: a curve driven purely by wall-clock time that keeps inching forward no matter how
-// long the real work takes, instead of ever going flat.
-describe("fakeProgressWidth", () => {
-  it("starts at 0 and never returns a width at or above 100", () => {
-    expect(fakeProgressWidth(0)).toBe(0)
-    expect(fakeProgressWidth(500)).toBeLessThan(100)
-    expect(fakeProgressWidth(60_000)).toBeLessThan(100)
+// The overlay's progress bar is a fixed-duration, constant-rate fill from 0% to 100% -- it never
+// stalls partway (the old "flat at 92%" bug: capping the bar until real work finished) and never
+// sits at a stale 100% either, because it's not gated on real completion in the first place. This
+// is the simple linear-interpolation math the component's rAF loop drives the bar with.
+function barWidthAt(elapsedMs: number): number {
+  const linearT = Math.min(1, elapsedMs / LOADING_OVERLAY_PROGRESS_MS)
+  return linearT * 100
+}
+
+describe("loading overlay bar fill", () => {
+  it("starts at 0 and reaches exactly 100 by the fill duration", () => {
+    expect(barWidthAt(0)).toBe(0)
+    expect(barWidthAt(LOADING_OVERLAY_PROGRESS_MS)).toBe(100)
   })
 
-  it("is monotonically increasing, including long after the fast initial phase", () => {
-    const samples = [0, 200, 600, LOADING_OVERLAY_PROGRESS_MS, 2000, 5000, 15_000, 60_000]
-    for (let i = 1; i < samples.length; i++) {
-      expect(fakeProgressWidth(samples[i]!)).toBeGreaterThan(fakeProgressWidth(samples[i - 1]!))
-    }
+  it("advances at a constant rate (no easing/deceleration)", () => {
+    const quarter = barWidthAt(LOADING_OVERLAY_PROGRESS_MS * 0.25)
+    const half = barWidthAt(LOADING_OVERLAY_PROGRESS_MS * 0.5)
+    const threeQuarters = barWidthAt(LOADING_OVERLAY_PROGRESS_MS * 0.75)
+    expect(half - quarter).toBeCloseTo(25, 5)
+    expect(threeQuarters - half).toBeCloseTo(25, 5)
   })
 
-  it("keeps advancing well past the old fixed clock instead of going flat", () => {
-    // This is the exact bug: real setup work (a slow fetch, a big reflow) legitimately outlasting
-    // the bar's own short fill animation. Before the fix the bar would sit unchanged from this
-    // point on; now it should still be visibly climbing several seconds later.
-    const atClockEnd = fakeProgressWidth(LOADING_OVERLAY_PROGRESS_MS)
-    const fourSecondsLater = fakeProgressWidth(LOADING_OVERLAY_PROGRESS_MS + 4000)
-    expect(fourSecondsLater).toBeGreaterThan(atClockEnd + 1)
-  })
-})
-
-describe("finishProgressWidth", () => {
-  it("starts at the hand-off width and eases up to exactly 100", () => {
-    expect(finishProgressWidth(80, 0)).toBe(80)
-    expect(finishProgressWidth(80, 100_000)).toBe(100)
-  })
-
-  it("is monotonically increasing toward 100 over the animation window", () => {
-    const start = 75
-    let prev = finishProgressWidth(start, 0)
-    for (const t of [20, 60, 120, 200, 300]) {
-      const next = finishProgressWidth(start, t)
-      expect(next).toBeGreaterThanOrEqual(prev)
-      prev = next
-    }
-    expect(prev).toBe(100)
+  it("never exceeds 100, however long real work takes", () => {
+    expect(barWidthAt(LOADING_OVERLAY_PROGRESS_MS * 10)).toBe(100)
   })
 })

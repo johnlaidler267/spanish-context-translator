@@ -163,16 +163,6 @@ export default function App() {
     user != null && (subscriptionStatus == null || subscriptionStatus === "free" || isLapsed)
 
   const [appState, setAppState] = useState<AppState>("landing")
-  /**
-   * Flips true once the real per-submission setup (page-split reflow, usage preflight, cloud
-   * progress pull) has actually finished -- see the loading-overlay's own `ready` prop for why
-   * this exists: its progress bar fills to 100% on a fixed internal clock that's just a visual
-   * approximation, not a signal that the real work is done. On a long/slow submission that real
-   * work can outlast the bar's own fill time, and without this flag the bar would sit frozen at
-   * a stale 100% for however much longer the real work takes. Reset to false at the top of every
-   * submission and flipped true right before the (now purely cosmetic) minimum-display wait.
-   */
-  const [loadingSetupReady, setLoadingSetupReady] = useState(false)
 
   /** In-memory + sessionStorage: survives reading → home and page refresh (same tab). */
   const [landingDraft, setLandingDraft] = useState(() => getStoredLandingDraft())
@@ -689,7 +679,6 @@ export default function App() {
       setRateLimitMessage(null)
       setPlanLimitModal(null)
       setAppState("loading")
-      setLoadingSetupReady(false)
       const submitStartedAtMs = Date.now()
 
       try {
@@ -941,9 +930,8 @@ export default function App() {
             bump()
           })
         // The real setup work above (reflow, usage preflight, cloud progress pull) is done --
-        // let the overlay's progress bar actually reach 100% now. Everything left below is just
-        // the cosmetic minimum-display wait, not further real work to gate on.
-        setLoadingSetupReady(true)
+        // everything left below is just giving the overlay's fixed-duration progress bar (see
+        // loading-overlay.tsx) time to finish its own fill animation before cutting away.
         const remainingLoadingMs = Math.max(0, LANDING_MIN_LOADING_MS - (Date.now() - submitStartedAtMs))
         if (remainingLoadingMs > 0) {
           await new Promise((r) => setTimeout(r, remainingLoadingMs))
@@ -998,7 +986,6 @@ export default function App() {
       // tap on a card looking like it hadn't registered at all. Reverted back to "landing" on
       // every early-return path below so a blocked/failed load doesn't strand the overlay up.
       setAppState("loading")
-      setLoadingSetupReady(false)
 
       const { data, error } = await supabase
         .from("discover_items")
@@ -1048,7 +1035,6 @@ export default function App() {
       // getUser/getUserEpubText fetches below rather than after, so a slow connection doesn't
       // leave a tapped card looking unresponsive for however long those calls take.
       setAppState("loading")
-      setLoadingSetupReady(false)
 
       // Fetch a fresh user rather than trusting the `user` this callback closed over: this can
       // fire moments after a first-ever upload created a brand-new anonymous session (see
@@ -1584,7 +1570,7 @@ export default function App() {
 
   return (
     <>
-      {appState === "loading" && <LoadingOverlay ready={loadingSetupReady} />}
+      {appState === "loading" && <LoadingOverlay />}
       {error && (
         // Global (not scoped to the landing route): a translation can now fail while
         // initiated from a non-landing screen (e.g. Discover) without having navigated away,
