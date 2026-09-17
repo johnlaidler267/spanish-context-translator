@@ -11,7 +11,15 @@ import {
 } from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { TextChunk } from "@/components/reading/text-chunk"
-import { gapBetweenReconciledChunks, looksLikeLineBreakHeavySource, type ReconciledItem } from "@/lib/translate"
+import {
+  gapBetweenReconciledChunks,
+  looksLikeLineBreakHeavySource,
+  PARAGRAPH_BREAK_MARKER,
+  type ReconciledChapter,
+  type ReconciledChunk,
+  type ReconciledItem,
+  type ReconciledText,
+} from "@/lib/translate"
 import {
   getChunkIdFromPointerClientXY,
   useChunkTouchExploration,
@@ -82,6 +90,57 @@ function articleChunkTextByNumericId(
     cid++
   }
   return null
+}
+
+type ArticleFlowItem = ReconciledText | ReconciledChunk
+
+/** One rendered node inside a paragraph: same item, tagged with a stable React key (a "text" item
+ * split at a {@link PARAGRAPH_BREAK_MARKER} yields more than one entry from the same source item). */
+type ArticleParagraphEntry = { key: string; item: ArticleFlowItem }
+
+type ArticleParagraphBlock =
+  | { kind: "chapter"; key: string; item: ReconciledChapter }
+  | { kind: "paragraph"; key: string; entries: ArticleParagraphEntry[] }
+
+/**
+ * Group a page's flat `items` into paragraph blocks so prose can render a visible paragraph break
+ * (a new indented line, matching the drop-cap/indent convention below) instead of running every
+ * paragraph together — see the "Prose loses paragraph breaks" board card.
+ *
+ * A "text" gap item carries {@link PARAGRAPH_BREAK_MARKER} exactly where `splitSourceIntoSentences`
+ * put it (see page-split.ts): nothing else in the pipeline inserts that character, so splitting on
+ * it is splitting exactly where the source had a paragraph break. Never called for verse/lyrics —
+ * those never get the marker in the first place (splitSourceIntoSentences returns them as one
+ * untouched segment) and keep their own line-break rendering below.
+ */
+function groupItemsIntoParagraphBlocks(items: ReconciledItem[]): ArticleParagraphBlock[] {
+  const blocks: ArticleParagraphBlock[] = []
+  let current: ArticleParagraphEntry[] = []
+
+  const flushParagraph = () => {
+    if (current.length === 0) return
+    blocks.push({ kind: "paragraph", key: `para-${blocks.length}`, entries: current })
+    current = []
+  }
+
+  items.forEach((item, i) => {
+    if (item.type === "chapter") {
+      flushParagraph()
+      blocks.push({ kind: "chapter", key: `chap-${i}`, item })
+      return
+    }
+    if (item.type === "text" && item.text.includes(PARAGRAPH_BREAK_MARKER)) {
+      const parts = item.text.split(PARAGRAPH_BREAK_MARKER)
+      parts.forEach((part, pi) => {
+        if (pi > 0) flushParagraph()
+        if (part) current.push({ key: `item-${i}-${pi}`, item: { type: "text", text: part } })
+      })
+      return
+    }
+    current.push({ key: `item-${i}`, item })
+  })
+  flushParagraph()
+  return blocks
 }
 
 export function ArticleContent({
@@ -369,6 +428,13 @@ export function ArticleContent({
    */
   const isVerseLike = useMemo(() => looksLikeLineBreakHeavySource(pageText), [pageText])
 
+  /** Prose only (see {@link groupItemsIntoParagraphBlocks}) — verse keeps the flat, single-block
+   * render below untouched. */
+  const paragraphBlocks = useMemo(
+    () => (!items || isVerseLike ? null : groupItemsIntoParagraphBlocks(items)),
+    [items, isVerseLike],
+  )
+
   /**
    * Drop cap: only the very first page (no pagination = the only page), and only for prose —
    * verse already gets its own treatment above, and a drop cap fights the "Page 1 of N" framing
@@ -473,10 +539,10 @@ export function ArticleContent({
           "font-reading text-[1.6875rem] md:text-[1.725rem] leading-[1.75] md:leading-[1.85] text-foreground selection:bg-primary/20",
           // Verse (lyrics/poems): respect the line breaks the pipeline already preserves in the
           // text instead of letting the browser collapse them into spaces, and skip the
-          // novel-style first-line indent — it reads as a paragraph mistake on a poem. The drop
-          // cap (prose only) already marks where the text starts, so skip the indent there too.
-          isVerseLike ? "whitespace-pre-line" : !showDropCap && "indent-5 md:indent-7",
-          showDropCap && "article-drop-cap",
+          // novel-style first-line indent — it reads as a paragraph mistake on a poem. Prose's
+          // indent/drop-cap classes live per-paragraph below (see paragraphBlocks) now that a
+          // page can hold more than one paragraph.
+          isVerseLike && "whitespace-pre-line",
           // No scrolling, ever: pagination (see reflowPagesForRealFit) already guarantees a
           // page's content fits this box by construction, so overflow-hidden here is a defensive
           // backstop, not the correctness mechanism — it used to be `overflow-y-auto` on mobile,
@@ -491,96 +557,121 @@ export function ArticleContent({
             <span className="translating-page-gradient">Translating this page…</span>
           </div>
         )}
-        {!loading && !errorMessage && items && (
-          <>
-            {items.map((item, i) => {
-              if (item.type === "text") {
-                return <span key={i}>{item.text}</span>
-              }
-              if (item.type === "chapter") {
-                // Chapter markers aren't translated chunks — render the
-                // label plainly rather than feeding them to TextChunk
-                // (which expects chunk/meaning/literal/note and would
-                // otherwise crash or render as an interactive item with
-                // undefined content).
-                return (
-                  <div key={i} className="chapter-heading" role="heading" aria-level={2}>
-                    <span className="chapter-heading__rule" aria-hidden />
-                    <span className="chapter-heading__label">{item.label}</span>
-                    <span className="chapter-heading__rule" aria-hidden />
-                  </div>
-                )
-              }
-              const prev = i > 0 ? items[i - 1] : null
-              const gap =
-                prev?.type === "chunk" ? gapBetweenReconciledChunks(prev, item) : ""
-              const id = chunkId++
-              const chunkData = {
-                id,
-                text: item.chunk,
-                meaning: item.meaning,
-                literal: item.literal,
-                grammar: item.note,
-              }
-              return (
-                <span key={i}>
-                  {gap ? <span aria-hidden="true">{gap}</span> : null}
-                  <TextChunk
-                    variant="article"
-                    isCoarsePointer={isCoarsePointer}
-                    chunk={chunkData}
-                    popupChunkId={effectivePopupId}
-                    delegatePointerHover
-                    suppressDoubleTapAfterExplorationLiftRef={suppressDoubleTapAfterExplorationLiftRef}
-                    followPointerRef={
-                      touchExploring && effectivePopupId === id
-                        ? tooltipFollowRef
-                        : undefined
+        {!loading && !errorMessage && items && (() => {
+          // Shared per-item renderer for both the flat verse path and the paragraph-grouped
+          // prose path below — `prev` only ever needs to be the immediately preceding node
+          // *as rendered* (used solely to decide whether two adjacent chunks need a synthetic
+          // space between them; a paragraph break always has a "text" gap item on one side, so
+          // a paragraph group's own local previous entry is exactly equivalent to looking at the
+          // full flat `items` array here).
+          const renderFlowItem = (item: ArticleFlowItem, key: string, prev: ReconciledItem | null) => {
+            if (item.type === "text") {
+              return <span key={key}>{item.text}</span>
+            }
+            const gap = prev?.type === "chunk" ? gapBetweenReconciledChunks(prev, item) : ""
+            const id = chunkId++
+            const chunkData = {
+              id,
+              text: item.chunk,
+              meaning: item.meaning,
+              literal: item.literal,
+              grammar: item.note,
+            }
+            return (
+              <span key={key}>
+                {gap ? <span aria-hidden="true">{gap}</span> : null}
+                <TextChunk
+                  variant="article"
+                  isCoarsePointer={isCoarsePointer}
+                  chunk={chunkData}
+                  popupChunkId={effectivePopupId}
+                  delegatePointerHover
+                  suppressDoubleTapAfterExplorationLiftRef={suppressDoubleTapAfterExplorationLiftRef}
+                  followPointerRef={
+                    touchExploring && effectivePopupId === id
+                      ? tooltipFollowRef
+                      : undefined
+                  }
+                  followPointerPlaceRef={
+                    touchExploring && effectivePopupId === id
+                      ? followTooltipPlaceRef
+                      : undefined
+                  }
+                  followPointerClient={
+                    !touchExploring &&
+                    effectivePopupId === id &&
+                    tooltipPointer != null
+                      ? tooltipPointer
+                      : null
+                  }
+                  isTouchHighlight={
+                    exploringChunkId === id ||
+                    (chunkDetails.activeChunk != null && chunkDetails.activeChunk === item.chunk)
+                  }
+                  isPinned={pinnedChunkId === id}
+                  onActivate={() => commitExploringChunkId(id)}
+                  onDeactivate={() => {
+                    if (pinnedChunkId !== id) scheduleExploringLeave()
+                  }}
+                  onPinToggle={() => setPinnedChunkId(prev => (prev === id ? null : id))}
+                  onRequestDetails={() => {
+                    if (chunkDetails.activeChunk != null) {
+                      chunkDetails.close()
+                      setMenuOnlyChunkId(null)
+                      return
                     }
-                    followPointerPlaceRef={
-                      touchExploring && effectivePopupId === id
-                        ? followTooltipPlaceRef
-                        : undefined
-                    }
-                    followPointerClient={
-                      !touchExploring &&
-                      effectivePopupId === id &&
-                      tooltipPointer != null
-                        ? tooltipPointer
-                        : null
-                    }
-                    isTouchHighlight={
-                      exploringChunkId === id ||
-                      (chunkDetails.activeChunk != null && chunkDetails.activeChunk === item.chunk)
-                    }
-                    isPinned={pinnedChunkId === id}
-                    onActivate={() => commitExploringChunkId(id)}
-                    onDeactivate={() => {
-                      if (pinnedChunkId !== id) scheduleExploringLeave()
-                    }}
-                    onPinToggle={() => setPinnedChunkId(prev => (prev === id ? null : id))}
-                    onRequestDetails={() => {
-                      if (chunkDetails.activeChunk != null) {
-                        chunkDetails.close()
-                        setMenuOnlyChunkId(null)
-                        return
-                      }
-                      commitExploringChunkId(null)
-                      setPinnedChunkId(null)
-                      setMenuOnlyChunkId(id)
-                      chunkDetails.fetchDetails(item.chunk, pageText)
-                    }}
-                    onDoubleClickMenuOnly={() => {
-                      setExploringChunkId(null)
-                      setPinnedChunkId(null)
-                      setMenuOnlyChunkId(id)
-                    }}
-                  />
-                </span>
-              )
-            })}
-          </>
-        )}
+                    commitExploringChunkId(null)
+                    setPinnedChunkId(null)
+                    setMenuOnlyChunkId(id)
+                    chunkDetails.fetchDetails(item.chunk, pageText)
+                  }}
+                  onDoubleClickMenuOnly={() => {
+                    setExploringChunkId(null)
+                    setPinnedChunkId(null)
+                    setMenuOnlyChunkId(id)
+                  }}
+                />
+              </span>
+            )
+          }
+
+          const renderChapterHeading = (key: string, item: ReconciledChapter) => (
+            // Chapter markers aren't translated chunks — render the label plainly rather than
+            // feeding them to TextChunk (which expects chunk/meaning/literal/note and would
+            // otherwise crash or render as an interactive item with undefined content).
+            <div key={key} className="chapter-heading" role="heading" aria-level={2}>
+              <span className="chapter-heading__rule" aria-hidden />
+              <span className="chapter-heading__label">{item.label}</span>
+              <span className="chapter-heading__rule" aria-hidden />
+            </div>
+          )
+
+          if (isVerseLike || !paragraphBlocks) {
+            // Verse/lyrics: unchanged flat single-block render (no paragraph grouping — see
+            // groupItemsIntoParagraphBlocks's doc comment for why it's never applied here).
+            return items.map((item, i) => {
+              if (item.type === "chapter") return renderChapterHeading(String(i), item)
+              return renderFlowItem(item, String(i), i > 0 ? items[i - 1]! : null)
+            })
+          }
+
+          // Prose: one <p> per paragraph so a mid-page paragraph break is a real new indented
+          // line, not just running text — see groupItemsIntoParagraphBlocks.
+          return paragraphBlocks.map((block, bi) => {
+            if (block.kind === "chapter") return renderChapterHeading(block.key, block.item)
+            const isDropCapParagraph = showDropCap && bi === 0
+            return (
+              <p
+                key={block.key}
+                className={isDropCapParagraph ? "article-drop-cap" : "indent-5 md:indent-7"}
+              >
+                {block.entries.map((entry, ei) =>
+                  renderFlowItem(entry.item, entry.key, ei > 0 ? block.entries[ei - 1]!.item : null),
+                )}
+              </p>
+            )
+          })
+        })()}
       </article>
 
       {pagination && pagination.pageCount > 1 && (

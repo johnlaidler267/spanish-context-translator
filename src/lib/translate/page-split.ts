@@ -59,15 +59,23 @@ export function looksLikeLineBreakHeavySource(t: string): boolean {
 }
 
 /**
- * Split source Spanish into sentences without cutting mid-sentence.
- * Uses `Intl.Segmenter` when available (es).
+ * Zero-width sentinel prepended to the first sentence of every prose paragraph after the first
+ * (see {@link splitSourceIntoSentences}), so paragraph breaks survive pagination and translation
+ * instead of being lost to trimming. ArticleContent splits on it to render a visible paragraph
+ * break (new indented line).
+ *
+ * Deliberately not `\n`: a literal newline already means something specific downstream —
+ * `looksLikeLineBreakHeavySource` and `pieceMayBeSplitMidPiece` (reading-page-measure.ts) both
+ * treat "this piece contains `\n`" as "this is verse/lyrics line structure, don't reflow it like
+ * prose" — so reusing `\n` for a prose paragraph marker would make an ordinary paragraph break
+ * look like a poem line to the real-DOM pagination pass. U+2063 (INVISIBLE SEPARATOR) is not
+ * whitespace and has no letters, so it survives every `.trim()`/`\s`-based check in this module
+ * untouched, is never counted as a word, and is invisible if it ever ends up on screen.
  */
-export function splitSourceIntoSentences(text: string): string[] {
-  const t = text.trim()
-  if (!t) return []
-  if (looksLikeLineBreakHeavySource(t)) {
-    return [t]
-  }
+export const PARAGRAPH_BREAK_MARKER = "⁣"
+
+/** The sentence-segmenting half of {@link splitSourceIntoSentences} — no paragraph awareness. */
+function splitParagraphIntoSentences(t: string): string[] {
   try {
     const Seg = (
       Intl as unknown as {
@@ -87,6 +95,39 @@ export function splitSourceIntoSentences(text: string): string[] {
     .split(/(?<=[.!?…])\s+/u)
     .map((s) => s.trim())
     .filter(Boolean)
+}
+
+/**
+ * Split source Spanish into sentences without cutting mid-sentence.
+ * Uses `Intl.Segmenter` when available (es).
+ *
+ * Prose paragraphs (source blank lines, `/\n{2,}/`) are segmented one at a time and stitched back
+ * together with {@link PARAGRAPH_BREAK_MARKER} tagging each paragraph's first sentence after the
+ * first — this is purely a rendering signal for ArticleContent; it never changes which words end
+ * up in which sentence, so pagination and cross-device resume (both word-count based) are
+ * unaffected. Verse/lyrics is returned as one untouched segment, as before, and keeps its own
+ * (real) line breaks.
+ */
+export function splitSourceIntoSentences(text: string): string[] {
+  const t = text.trim()
+  if (!t) return []
+  if (looksLikeLineBreakHeavySource(t)) {
+    return [t]
+  }
+  const paragraphs = t
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+  const sentences: string[] = []
+  for (const para of paragraphs) {
+    const paraSentences = splitParagraphIntoSentences(para)
+    if (paraSentences.length === 0) continue
+    if (sentences.length > 0) {
+      paraSentences[0] = PARAGRAPH_BREAK_MARKER + paraSentences[0]
+    }
+    sentences.push(...paraSentences)
+  }
+  return sentences
 }
 
 function isNewlineOnlyToken(tok: string): boolean {

@@ -35,6 +35,7 @@ export {
   mergeArticlePagesIfWholeTextFitsLimits,
   pageCharCapForWordLimit,
   pageSourceText,
+  PARAGRAPH_BREAK_MARKER,
   resolvePageSplitLimits,
   resumeExcerptFromPageSource,
   splitSegmentIntoPageParts,

@@ -13,6 +13,7 @@ import {
   findPageIndexForSentenceIndex,
   PAGE_SIZE_WORDS_MOBILE,
   PAGE_SIZE_WORDS_DESKTOP,
+  PARAGRAPH_BREAK_MARKER,
 } from "@/lib/translate/page-split"
 
 describe("pageCharCapForWordLimit / resolvePageSplitLimits", () => {
@@ -73,6 +74,56 @@ describe("splitSourceIntoSentences", () => {
   it("keeps line-break-heavy text (lyrics/poems) as one segment instead of over-splitting", () => {
     const poem = "Verso uno\nVerso dos\nVerso tres\nVerso cuatro"
     expect(splitSourceIntoSentences(poem)).toEqual([poem])
+  })
+
+  it("tags a new paragraph's first sentence with the paragraph-break marker", () => {
+    const text = "Primera oración. Segunda oración.\n\nTercera oración."
+    expect(splitSourceIntoSentences(text)).toEqual([
+      "Primera oración.",
+      "Segunda oración.",
+      `${PARAGRAPH_BREAK_MARKER}Tercera oración.`,
+    ])
+  })
+
+  it("tags every paragraph after the first when there are more than two", () => {
+    const text = "Uno.\n\nDos.\n\n\nTres."
+    expect(splitSourceIntoSentences(text)).toEqual([
+      "Uno.",
+      `${PARAGRAPH_BREAK_MARKER}Dos.`,
+      `${PARAGRAPH_BREAK_MARKER}Tres.`,
+    ])
+  })
+
+  it("never emits a literal newline for prose — the marker is not \\n (that means verse to downstream pagination)", () => {
+    const text = "Primera oración.\n\nSegunda oración."
+    for (const sentence of splitSourceIntoSentences(text)) {
+      expect(sentence).not.toMatch(/\n/)
+    }
+  })
+
+  it("does not tag a single paragraph (no blank line in the source)", () => {
+    const text = "Uno. Dos.\nTres."
+    expect(splitSourceIntoSentences(text).some((s) => s.includes(PARAGRAPH_BREAK_MARKER))).toBe(false)
+  })
+})
+
+describe("splitSourceIntoSentences — paragraph marker survives pagination word counts", () => {
+  it("counts the same total words with or without a paragraph break", () => {
+    const withBreak = splitSourceIntoSentences("Uno dos tres.\n\nCuatro cinco seis.")
+    const withoutBreak = splitSourceIntoSentences("Uno dos tres. Cuatro cinco seis.")
+    const countWords = (sents: string[]) =>
+      sents.reduce((n, s) => n + s.replace(PARAGRAPH_BREAK_MARKER, "").trim().split(/\s+/).length, 0)
+    expect(countWords(withBreak)).toBe(countWords(withoutBreak))
+  })
+
+  it("reconstructs page source text with the marker glued to the next word, no stray newline", () => {
+    const sentences = splitSourceIntoSentences("Uno dos tres.\n\nCuatro cinco seis.")
+    const limits = { maxWords: 1000, maxChars: 10_000 }
+    const pages = buildSentencePages(sentences, limits)
+    expect(pages).toHaveLength(1)
+    const text = pageSourceText(pages[0]!)
+    expect(text).not.toMatch(/\n/)
+    expect(text).toBe(`Uno dos tres. ${PARAGRAPH_BREAK_MARKER}Cuatro cinco seis.`)
   })
 })
 
