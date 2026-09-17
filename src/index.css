@@ -2902,20 +2902,29 @@ article span {
 .continue-reading__row {
   display: flex;
   flex-wrap: nowrap;
+  justify-content: center;
   overflow-x: auto;
   gap: 0.7rem;
   padding-bottom: 0.2rem;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
 }
+/* max-width caps how far flex-grow (above) can stretch a card -- without it, fewer than 4
+   items grows the lone/few cards to fill the *entire* row by itself (the "single book
+   stretches full width" bug this section was reported for). The cap is picked so 4 cards
+   still grow to roughly fill the row/match the composer's width above, while 1-3 cards
+   stop at a normal card width; `justify-content: center` on the row then centers that
+   narrower group instead of pinning it to the left edge. */
 .continue-reading__row .discover-card {
   flex: 1 1 0;
   min-width: 9rem;
+  max-width: 12rem;
   scroll-snap-align: start;
 }
 @media (min-width: 64rem) {
   .continue-reading__row .discover-card {
     min-width: 10rem;
+    max-width: 13rem;
   }
 }
 .continue-reading .sample-excerpt-label {
@@ -2954,11 +2963,17 @@ article span {
 }
 .continue-reading-mobile__row {
   display: flex;
+  justify-content: center;
   gap: 0.6rem;
 }
 .continue-reading-mobile__row .discover-card {
   min-width: 0;
   flex: 1 1 0;
+  /* Same fix as .continue-reading__row above: without a cap, a lone card (only 1 item in
+     reading history -- MAX_MOBILE_CONTINUE_READING_ITEMS is a max of 2, not a guarantee)
+     grows via flex-grow to fill the entire row by itself. 15rem keeps the normal 2-card
+     layout (each well under the cap) unaffected while stopping a solo card at a sane width. */
+  max-width: 15rem;
   /* Slightly less rounded than the desktop/Discover card (1rem) -- at this row's small,
      compact card size 1rem reads as noticeably "pill-like" right above the composer's
      near-square corners below; this keeps the cards clearly rounded while narrowing that gap. */
