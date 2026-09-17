@@ -302,7 +302,13 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
         setPublishError("Could not load this book's text. Check your connection and try again.")
         return
       }
-      setPublishPrefill({ title: book.title, author: book.author ?? "", text: full.text, type: "book" })
+      setPublishPrefill({
+        title: book.title,
+        author: book.author ?? "",
+        text: full.text,
+        type: "book",
+        coverImage: book.coverImage,
+      })
       setPublishModalOpen(true)
     } finally {
       setPublishingBookId(null)

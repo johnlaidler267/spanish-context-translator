@@ -158,6 +158,9 @@ export type DevUploadResourcePrefill = {
   author: string
   text: string
   type?: ContentType
+  /** Data URL of the book's stored cover (see LibraryEpub.coverImage) -- carried over so the
+   *  curator doesn't have to re-supply a cover the book already has. */
+  coverImage?: string | null
 }
 
 type DevUploadResourceModalProps = {
@@ -176,6 +179,15 @@ export function DevUploadResourceModal({ open, onClose, onPublish, initial }: De
   const [tagsText, setTagsText] = useState("")
   const [text, setText] = useState("")
 
+  const [coverImageUrl, setCoverImageUrl] = useState("")
+  const [uploadedImageDataUrl, setUploadedImageDataUrl] = useState("")
+  const [uploadedImageName, setUploadedImageName] = useState("")
+  const [useUrlForCropWorkbench, setUseUrlForCropWorkbench] = useState(false)
+  const [coverCropAspect, setCoverCropAspect] = useState<DiscoverCoverAspect>("card")
+  const [croppedCoverJpeg, setCroppedCoverJpeg] = useState<string | null>(null)
+  const [tagsAiBusy, setTagsAiBusy] = useState(false)
+  const [tagsAiError, setTagsAiError] = useState<string | null>(null)
+
   // Dialog content stays mounted (visibility toggles via Radix's own `open`), so a plain
   // useState initializer only ever runs once -- this is what actually applies `initial` each
   // time the dialog opens with a (possibly new) prefill, without resetting to blank on close
@@ -186,15 +198,15 @@ export function DevUploadResourceModal({ open, onClose, onPublish, initial }: De
     setAuthor(initial.author)
     setText(initial.text)
     if (initial.type) setType(initial.type)
+    // Library covers come in as data URLs (see LibraryEpub.coverImage / parse-epub.ts), which
+    // the "Upload Cover Image" preview renders directly -- unlike `coverImageUrl`, which is for
+    // a fetchable http(s) URL and needs the separate "Preview & crop" step to load.
+    if (initial.coverImage) {
+      setCroppedCoverJpeg(null)
+      setUploadedImageDataUrl(initial.coverImage)
+      setUploadedImageName(`${initial.title || "cover"} (from Library)`)
+    }
   }, [open, initial])
-  const [coverImageUrl, setCoverImageUrl] = useState("")
-  const [uploadedImageDataUrl, setUploadedImageDataUrl] = useState("")
-  const [uploadedImageName, setUploadedImageName] = useState("")
-  const [useUrlForCropWorkbench, setUseUrlForCropWorkbench] = useState(false)
-  const [coverCropAspect, setCoverCropAspect] = useState<DiscoverCoverAspect>("card")
-  const [croppedCoverJpeg, setCroppedCoverJpeg] = useState<string | null>(null)
-  const [tagsAiBusy, setTagsAiBusy] = useState(false)
-  const [tagsAiError, setTagsAiError] = useState<string | null>(null)
 
   const wordCount = useMemo(() => {
     const words = text.trim().match(/\S+/g)

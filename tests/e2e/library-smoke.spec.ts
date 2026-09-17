@@ -165,6 +165,44 @@ test("shows a real cover image when the saved book has one, and the placeholder 
   await expect(cardWithoutCover.locator(".discover-cover--plate")).toBeVisible()
 })
 
+test("publishing a saved book to Discover carries over its stored cover image", async ({ page }) => {
+  // DISCOVER_DEV_EDIT (library/index.tsx) is import.meta.env.DEV, true under the Playwright
+  // webServer's `vite` dev server -- so the "Publish to Discover" control renders with no
+  // discover_curators row/mock needed.
+  await setupMocks(page, {
+    restTables: {
+      user_epubs: [
+        {
+          id: "mock-epub-cover-publish",
+          title: "Libro Para Publicar",
+          file_name: "para-publicar.epub",
+          char_count: 10,
+          body_text: "Texto del libro.",
+          author: "Autora de Prueba",
+          cover_image: TINY_PNG_DATA_URL,
+          created_at: "2024-01-01T00:00:00.000Z",
+          updated_at: "2024-01-01T00:00:00.000Z",
+        },
+      ],
+    },
+  })
+
+  await page.goto("/library")
+  await expect(page.getByText("Libro Para Publicar").first()).toBeVisible()
+
+  await page.getByRole("button", { name: "Publish Libro Para Publicar to Discover" }).click({ force: true })
+
+  await expect(page.getByRole("dialog", { name: "Upload Resource" })).toBeVisible()
+  // "Using uploaded image" only renders once `uploadedImageDataUrl` is set, and the crop
+  // workbench's <img> only mounts once `cropWorkbenchSrc` (derived from it) is non-null (see
+  // dev-upload-resource-modal.tsx / cover-image-crop-panel.tsx) -- together these are the
+  // signal the book's stored cover actually made it into the modal's prefill, not just that
+  // the modal opened.
+  await expect(page.getByText(/Using uploaded image:/)).toBeVisible()
+  const dialog = page.getByRole("dialog", { name: "Upload Resource" })
+  await expect(dialog.locator(`img[src="${TINY_PNG_DATA_URL}"]`)).toBeVisible()
+})
+
 test("removing a saved book takes it out of the list", async ({ page }) => {
   await setupMocks(page, {
     restTables: {
