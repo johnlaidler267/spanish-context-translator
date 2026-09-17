@@ -868,22 +868,41 @@ export default function App() {
         // sentence-index anchor (when available) is what lets this still find a recap generated
         // on a *different* device (e.g. desktop) whose own page-split put the same spot at a
         // different raw page index than this device's own `initialPageIndex - 1`.
+        const isGenuineResume = savedProgress != null && initialPageIndex > 0
+        const resumeAnchorSentenceIndex =
+          pageStartSentenceIndicesRef.current[initialPageIndex - 1] ?? null
+        const cachedResumeSummary =
+          contentId && isGenuineResume
+            ? getCachedPageRecap(user, contentId, initialPageIndex - 1, resumeAnchorSentenceIndex)
+            : null
+
         setWhereLeftOff(
-          savedProgress != null && initialPageIndex > 0
+          isGenuineResume
             ? {
                 title: contentTitle ?? null,
-                summary: contentId
-                  ? getCachedPageRecap(
-                      user,
-                      contentId,
-                      initialPageIndex - 1,
-                      pageStartSentenceIndicesRef.current[initialPageIndex - 1] ?? null,
-                    )
-                  : null,
+                summary: cachedResumeSummary,
                 excerpt: resumeExcerptFromPageSource(pages[initialPageIndex]!),
               }
             : null,
         )
+
+        // Background-prime the recap cache for the *next* reopen when this one has nothing
+        // cached yet (e.g. the previous session closed before the leave-triggered call --
+        // see the pagehide/cleanup effect below -- ever ran, or this position predates that
+        // fix entirely). Fire-and-forget: it can't add latency to *this* modal, which already
+        // rendered from whatever was (or wasn't) cached above. Reuses the exact same
+        // leave-triggered helper as a real leave would, so its own in-flight/cache dedupe
+        // (see maybeSummarizePreviousPageOnLeave) also protects against this racing a pagehide
+        // call for the same book/page.
+        if (contentId && isGenuineResume && cachedResumeSummary == null) {
+          void maybeSummarizePreviousPageOnLeave({
+            user,
+            contentId,
+            leavingAtPageIndex: initialPageIndex,
+            pages,
+            pageStartSentenceIndices: pageStartSentenceIndicesRef.current,
+          })
+        }
 
         // Keys the localStorage-persisted translation cache (see translation-cache-storage.ts):
         // a Discover item / Library book reuses its stable id so reopening it later can skip
@@ -1103,20 +1122,29 @@ export default function App() {
   }, [appState, activeReadingContentId, articlePageIndex, totalPages, user, sourcePages])
 
   /**
-   * "Where you left off" recap: once, right when the reader leaves a book (back arrow, or
-   * navigating elsewhere mid-session — both flip `appState` away from "reading", which is what
-   * this effect's cleanup fires on), summarize the page *before* wherever they're leaving off
-   * (their next resume point) with one cheap Gemini Flash Lite call and cache it — see
-   * maybeSummarizePreviousPageOnLeave (src/lib/translate/page-recap.ts) and
-   * reading-recap-storage.ts. Deliberately keyed only on `appState`, not on
-   * activePageIndex/activeReadingContentId: those change on every page turn / book switch, and
-   * this must fire only on the actual leave, not per page. The effect body reads the *latest*
-   * position from `latestReadingSnapshotRef` (kept current by the effect above) rather than
-   * closing over page/content values from whenever this effect itself last ran.
+   * "Where you left off" recap: right when the reader leaves a book, summarize the page
+   * *before* wherever they're leaving off (their next resume point) with one cheap Gemini
+   * Flash Lite call and cache it — see maybeSummarizePreviousPageOnLeave
+   * (src/lib/translate/page-recap.ts) and reading-recap-storage.ts. Three separate ways to
+   * "leave" all funnel into the same `runRecap`, and all share its in-flight/cache dedupe, so
+   * whichever fires first is the only one that actually pays for a call:
+   *  - a same-tab SPA navigation away (back arrow, switching books) — flips `appState` away
+   *    from "reading", which this effect's own cleanup fires on;
+   *  - `pagehide` — covers closing the tab/browser, which never flips `appState` (the effect
+   *    cleanup above never runs) since the whole page is torn down instead;
+   *  - `visibilitychange` → hidden — belt-and-suspenders for cases `pagehide` doesn't reliably
+   *    cover (notably some mobile Safari backgrounding). This can fire on a plain "switched
+   *    app for a second, came right back" too, not just a real leave — that's fine, it's the
+   *    same cheap call a real leave would make, just possibly a little earlier than necessary.
+   * Deliberately keyed only on `appState`, not on activePageIndex/activeReadingContentId: those
+   * change on every page turn / book switch, and this must fire only on an actual leave, not
+   * per page. `runRecap` reads the *latest* position from `latestReadingSnapshotRef` (kept
+   * current by the effect above) rather than closing over page/content values from whenever
+   * this effect itself last ran.
    */
   useEffect(() => {
     if (appState !== "reading") return
-    return () => {
+    const runRecap = () => {
       const snapshot = latestReadingSnapshotRef.current
       if (!snapshot) return
       void maybeSummarizePreviousPageOnLeave({
@@ -1126,6 +1154,16 @@ export default function App() {
         pages: snapshot.pages,
         pageStartSentenceIndices: snapshot.pageStartSentenceIndices,
       })
+    }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") runRecap()
+    }
+    window.addEventListener("pagehide", runRecap)
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    return () => {
+      window.removeEventListener("pagehide", runRecap)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+      runRecap()
     }
   }, [appState])
 

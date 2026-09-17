@@ -59,8 +59,17 @@ export async function fetchGroqChatViaEdge(body: object): Promise<Response> {
   })
 }
 
-/** Proxied chat completions (OpenAI-compatible body → Gemini; response shaped like OpenAI). */
-export async function fetchGeminiChatViaEdge(body: object): Promise<Response> {
+/**
+ * Proxied chat completions (OpenAI-compatible body → Gemini; response shaped like OpenAI).
+ * `keepalive` (small bodies only, browser-enforced ~64KB cap) lets the request outlive the
+ * page it was started from -- pass it for calls that might be fired from a `pagehide`/tab-close
+ * handler (see the "Where you left off" recap in page-recap.ts), where a plain `fetch` can get
+ * cut off mid-flight once the page starts tearing down.
+ */
+export async function fetchGeminiChatViaEdge(
+  body: object,
+  opts?: { keepalive?: boolean },
+): Promise<Response> {
   await ensureSessionForGroq()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error("No session")
@@ -68,6 +77,7 @@ export async function fetchGeminiChatViaEdge(body: object): Promise<Response> {
     method: "POST",
     headers: jsonHeaders(session),
     body: JSON.stringify(body),
+    ...(opts?.keepalive ? { keepalive: true } : {}),
   })
 }
 

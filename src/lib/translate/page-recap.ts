@@ -39,15 +39,23 @@ export async function summarizePreviousPageForRecap(
   const text = previousPageSourceText.trim()
   if (!text) return ""
   try {
-    const res = await fetchGeminiChatViaEdge({
-      model: RECAP_MODEL,
-      messages: [
-        { role: "system", content: RECAP_SYSTEM_PROMPT },
-        { role: "user", content: text },
-      ],
-      max_tokens: RECAP_MAX_OUTPUT_TOKENS,
-      temperature: 0.3,
-    })
+    const res = await fetchGeminiChatViaEdge(
+      {
+        model: RECAP_MODEL,
+        messages: [
+          { role: "system", content: RECAP_SYSTEM_PROMPT },
+          { role: "user", content: text },
+        ],
+        max_tokens: RECAP_MAX_OUTPUT_TOKENS,
+        temperature: 0.3,
+      },
+      // This call is now sometimes fired from a `pagehide`/tab-close handler (see
+      // maybeSummarizePreviousPageOnLeave's callers in App.tsx) -- keepalive gives it a real
+      // shot at completing instead of getting cut off the instant the page starts unloading.
+      // The body here is tiny (one page of text, capped output), well under the browser's
+      // keepalive size limit.
+      { keepalive: true },
+    )
     if (!res.ok) {
       const detail = await parseChatJsonErrorBody(res)
       console.warn("[reading-recap] gemini-chat failed:", detail || res.status)
@@ -67,12 +75,15 @@ export async function summarizePreviousPageForRecap(
 const recapInFlight = new Set<string>()
 
 /**
- * Orchestrates the whole "leaving the book" recap step: given the page the reader is on as
- * they leave (i.e. the page they'll resume to next time), summarizes the page *before* it and
- * caches the result -- see reading-recap-storage.ts. Called exactly once per leave from
- * App.tsx (see the reading-session cleanup effect there); safe to call defensively more than
- * once thanks to the in-flight/cache guards below, but the caller is still responsible for not
- * doing so on every page turn.
+ * Orchestrates the whole "leaving the book" recap step: given the page (`leavingAtPageIndex`)
+ * the reader is on as they leave -- or, on a background reopen-time prime, the page they've
+ * just resumed to (see App.tsx) -- summarizes the page *before* it and caches the result -- see
+ * reading-recap-storage.ts. Called from three places in App.tsx: the reading-session cleanup
+ * effect (SPA navigation away), its `pagehide`/`visibilitychange` listeners (tab close/
+ * backgrounding), and once right after a resume with nothing cached yet. Safe to call from more
+ * than one of those for what's effectively the same leave/position thanks to the in-flight/
+ * cache guards below -- whichever call lands first is the only one that actually pays for a
+ * network request -- but each caller is still responsible for not doing so on every page turn.
  *
  * No-ops (no network call at all) when:
  *  - there's no previous page to summarize (resuming on page 1), or
