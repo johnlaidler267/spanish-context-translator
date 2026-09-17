@@ -15,7 +15,7 @@ const TermsPage = lazyRoute(() => import("@/pages/terms"))
 const PrivacyPage = lazyRoute(() => import("@/pages/privacy"))
 import { LandingShellLayout } from "@/components/landing/landing-shell-layout"
 import { LandingScreen } from "@/components/landing/landing-screen"
-import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "@/components/loading-overlay"
+import { LoadingOverlay } from "@/components/loading-overlay"
 import {
   ArticleContent,
   ReadMode,
@@ -90,7 +90,6 @@ const IS_LOCAL_DEV = import.meta.env.DEV
 const ENFORCE_USAGE_LIMITS =
   !IS_LOCAL_DEV || import.meta.env.VITE_ENFORCE_USAGE_IN_DEV === "true"
 const USAGE_PREFLIGHT_TTL_MS = 60_000
-const LANDING_MIN_LOADING_MS = LOADING_OVERLAY_PROGRESS_MS
 /**
  * Desktop: small trim on DOM-measured page limits. Measurement already reserves footer height;
  * avoid stacking a large shrink here or article pages sit well under the viewport.
@@ -550,10 +549,10 @@ export default function App() {
   /**
    * Reading *surface chunk* preload. The reading screen lives in its own chunk (see
    * reading-surface-lazy.tsx) so the landing page doesn't have to parse it before it can
-   * paint. Every route into reading goes through this "loading" state first, and the
-   * loading overlay stays up for at least LOADING_OVERLAY_PROGRESS_MS on top of a real
-   * LLM round trip -- so starting the download here means the chunk is already cached by
-   * the time there's anything to render, and the split never costs a visible beat.
+   * paint. Every route into reading goes through this "loading" state first -- however brief
+   * (handleTextSubmit navigates into reading as soon as pages exist, not once translation
+   * finishes) -- so starting the download here means the chunk is already cached by the time
+   * there's anything to render, and the split never costs a visible beat.
    */
   useEffect(() => {
     if (appState !== "loading") return
@@ -679,7 +678,6 @@ export default function App() {
       setRateLimitMessage(null)
       setPlanLimitModal(null)
       setAppState("loading")
-      const submitStartedAtMs = Date.now()
 
       try {
         let sents = splitSourceIntoSentences(trimmed)
@@ -929,18 +927,12 @@ export default function App() {
             // Error details are stored in TranslationCache and surfaced by existing modal logic.
             bump()
           })
-        // The real setup work above (reflow, usage preflight, cloud progress pull) is done --
-        // everything left below is just giving the overlay's fixed-duration progress bar (see
-        // loading-overlay.tsx) time to finish its own fill animation before cutting away.
-        const remainingLoadingMs = Math.max(0, LANDING_MIN_LOADING_MS - (Date.now() - submitStartedAtMs))
-        if (remainingLoadingMs > 0) {
-          await new Promise((r) => setTimeout(r, remainingLoadingMs))
-        }
-        // The reading UI only mounts on the index route (see `appState === "reading"` below).
-        // Navigate here -- once translation is actually done -- rather than up front: doing it
-        // up front (as this used to) switched screens the instant "Start Reading" was clicked,
-        // so the loading overlay that follows sat on top of the landing page instead of
-        // whatever screen (e.g. Discover) the translation was actually started from.
+        // Navigate straight into the reading UI now -- pages exist (`setSourcePages` above) and
+        // the first page's translation is already kicked off (loadPage synchronously marks it
+        // in-flight), so ArticleContent's own per-page "Translating this page…" state (see
+        // articleLoading in the render below) takes over from here instead of making the user
+        // wait out a separate loading screen first. The reading UI only mounts on the index route
+        // (see `appState === "reading"` below).
         if (location.pathname === "/") {
           // Landing's own composer submit -- already home, flip straight into reading. Still
           // push a fresh history entry (same "/" path, just a new one) even though the URL
