@@ -1,38 +1,50 @@
 import { describe, expect, it } from "vitest"
 
-import { displayBarWidth, PRE_READY_MAX_WIDTH } from "./loading-overlay"
+import { fakeProgressWidth, finishProgressWidth, LOADING_OVERLAY_PROGRESS_MS } from "./loading-overlay"
 
-// Regression test for: "Translation loading bar stalls before article page" -- the overlay's
-// progress bar fills to 100% on a fixed internal clock (LOADING_OVERLAY_PROGRESS_MS) that's
-// independent of whether the real setup work (page-split reflow, usage preflight, cloud
-// progress pull) has actually finished. On a submission where that real work legitimately
-// outlasts the bar's own fill time, the bar used to sit frozen at a stale 100% until the real
-// work caught up -- a visible stall right before the article page mounts.
-describe("displayBarWidth", () => {
-  it("passes the raw width through unchanged once ready, even at 100%", () => {
-    expect(displayBarWidth(100, true)).toBe(100)
-    expect(displayBarWidth(50, true)).toBe(50)
-    expect(displayBarWidth(0, true)).toBe(0)
+// Regression coverage for: "Translation loading bar stalls before article page" -- the overlay
+// used to hold flat at a fixed width (92%) for however long the real setup work outlasted its
+// own fill animation, which reads as broken/frozen on a slow connection. `fakeProgressWidth` is
+// the fix: a curve driven purely by wall-clock time that keeps inching forward no matter how
+// long the real work takes, instead of ever going flat.
+describe("fakeProgressWidth", () => {
+  it("starts at 0 and never returns a width at or above 100", () => {
+    expect(fakeProgressWidth(0)).toBe(0)
+    expect(fakeProgressWidth(500)).toBeLessThan(100)
+    expect(fakeProgressWidth(60_000)).toBeLessThan(100)
   })
 
-  it("does not clamp raw widths already at or below the pre-ready cap", () => {
-    expect(displayBarWidth(0, false)).toBe(0)
-    expect(displayBarWidth(50, false)).toBe(50)
-    expect(displayBarWidth(PRE_READY_MAX_WIDTH, false)).toBe(PRE_READY_MAX_WIDTH)
+  it("is monotonically increasing, including long after the fast initial phase", () => {
+    const samples = [0, 200, 600, LOADING_OVERLAY_PROGRESS_MS, 2000, 5000, 15_000, 60_000]
+    for (let i = 1; i < samples.length; i++) {
+      expect(fakeProgressWidth(samples[i]!)).toBeGreaterThan(fakeProgressWidth(samples[i - 1]!))
+    }
   })
 
-  it("holds just short of a full bar instead of showing a stale 100% while not ready", () => {
-    // This is the exact bug: the internal clock reaches a full bar (100) before the real work
-    // (ready=false) is done. Before the fix this returned 100 and the bar would sit there,
-    // unchanged, for however much longer the real work took.
-    expect(displayBarWidth(100, false)).toBe(PRE_READY_MAX_WIDTH)
-    expect(displayBarWidth(100, false)).toBeLessThan(100)
+  it("keeps advancing well past the old fixed clock instead of going flat", () => {
+    // This is the exact bug: real setup work (a slow fetch, a big reflow) legitimately outlasting
+    // the bar's own short fill animation. Before the fix the bar would sit unchanged from this
+    // point on; now it should still be visibly climbing several seconds later.
+    const atClockEnd = fakeProgressWidth(LOADING_OVERLAY_PROGRESS_MS)
+    const fourSecondsLater = fakeProgressWidth(LOADING_OVERLAY_PROGRESS_MS + 4000)
+    expect(fourSecondsLater).toBeGreaterThan(atClockEnd + 1)
+  })
+})
+
+describe("finishProgressWidth", () => {
+  it("starts at the hand-off width and eases up to exactly 100", () => {
+    expect(finishProgressWidth(80, 0)).toBe(80)
+    expect(finishProgressWidth(80, 100_000)).toBe(100)
   })
 
-  it("uncaps immediately once ready flips true, with no separate catch-up animation needed", () => {
-    // Simulates the moment the real work finishes after the bar's own clock already maxed out.
-    const rawWidthAfterClockFinished = 100
-    expect(displayBarWidth(rawWidthAfterClockFinished, false)).toBe(PRE_READY_MAX_WIDTH)
-    expect(displayBarWidth(rawWidthAfterClockFinished, true)).toBe(100)
+  it("is monotonically increasing toward 100 over the animation window", () => {
+    const start = 75
+    let prev = finishProgressWidth(start, 0)
+    for (const t of [20, 60, 120, 200, 300]) {
+      const next = finishProgressWidth(start, t)
+      expect(next).toBeGreaterThanOrEqual(prev)
+      prev = next
+    }
+    expect(prev).toBe(100)
   })
 })

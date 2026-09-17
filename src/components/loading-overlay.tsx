@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 const MESSAGES = [
@@ -13,17 +13,8 @@ const MESSAGES = [
 /** Keep in sync with landing min loading delay for a full-fill handoff. */
 export const LOADING_OVERLAY_PROGRESS_MS = 1000
 
-/** Former `@keyframes progress-fill` width stops (keyframe time → bar width %). */
-const WIDTH_STOPS: [number, number][] = [
-  [0, 0],
-  [0.2, 48],
-  [0.45, 68],
-  [0.7, 80],
-  [0.88, 92],
-  [1, 100],
-]
-
-/** Former `animation-timing-function: cubic-bezier(0.25, 0.1, 0.1, 1)`. */
+/** Former `animation-timing-function: cubic-bezier(0.25, 0.1, 0.1, 1)`, still used for the fast
+ *  initial climb below. */
 const BEZ = { x1: 0.25, y1: 0.1, x2: 0.1, y2: 1 }
 
 function sampleCurveX(t: number): number {
@@ -40,8 +31,8 @@ function sampleCurveY(t: number): number {
   return ((a * t + b) * t + c) * t
 }
 
-/** Map linear clock 0–1 to eased keyframe timeline position 0–1 (matches CSS animation). */
-function easedKeyframeProgress(linearT: number): number {
+/** Map linear clock 0–1 to eased curve position 0–1 (matches the former CSS animation). */
+function easedProgress(linearT: number): number {
   const x = Math.min(1, Math.max(0, linearT))
   if (x <= 0) return 0
   if (x >= 1) return 1
@@ -56,50 +47,64 @@ function easedKeyframeProgress(linearT: number): number {
   return sampleCurveY(t)
 }
 
-function barWidthAtKeyframeProgress(p: number): number {
-  const clamped = Math.min(1, Math.max(0, p))
-  for (let i = 0; i < WIDTH_STOPS.length - 1; i++) {
-    const [t0, w0] = WIDTH_STOPS[i]!
-    const [t1, w1] = WIDTH_STOPS[i + 1]!
-    if (clamped <= t1) {
-      const u = t1 === t0 ? 1 : (clamped - t0) / (t1 - t0)
-      return w0 + u * (w1 - w0)
-    }
+/** Width the fast initial climb reaches by `LOADING_OVERLAY_PROGRESS_MS` -- kept well short of
+ *  100 so there's always a visible stretch of "still going" bar left for however much longer the
+ *  real work behind it (a page-split reflow, a slow network round trip) actually takes. */
+const FAST_PHASE_END_WIDTH = 80
+
+/** Width the slow crawl (see `fakeProgressWidth` below) approaches but never reaches on its own.
+ *  Left short of 100 so a `ready` handoff always has real distance left to close instead of the
+ *  bar arriving there by coincidence and looking done before the app is ready to navigate. */
+const SLOW_CRAWL_CEILING_WIDTH = 97
+
+/** How long it takes the slow crawl to close half the remaining distance to its ceiling. Smaller
+ *  = faster-looking progress; kept large enough that the crawl stays visibly moving for a good
+ *  several seconds instead of flattening out right away. */
+const SLOW_CRAWL_HALF_LIFE_MS = 3500
+
+/** How long the final close-out to 100% takes once the real work is actually done. */
+const FINISH_ANIMATION_MS = 300
+
+/**
+ * The bar width driven purely by wall-clock time since the overlay mounted, with no notion of
+ * whether the real work behind it is actually done -- a deliberately "fake" progress curve (a
+ * quick initial climb, then an ever-slowing crawl toward, but never reaching,
+ * `SLOW_CRAWL_CEILING_WIDTH`) so the bar is always visibly advancing, however long the real work
+ * ends up taking, rather than sitting frozen at some intermediate width. Exported (pure, no
+ * DOM/React) so the curve is unit-testable without rendering the component.
+ */
+export function fakeProgressWidth(elapsedMs: number): number {
+  if (elapsedMs <= 0) return 0
+  if (elapsedMs < LOADING_OVERLAY_PROGRESS_MS) {
+    return easedProgress(elapsedMs / LOADING_OVERLAY_PROGRESS_MS) * FAST_PHASE_END_WIDTH
   }
-  return 92
+  const slowElapsedMs = elapsedMs - LOADING_OVERLAY_PROGRESS_MS
+  const approach = 1 - Math.pow(0.5, slowElapsedMs / SLOW_CRAWL_HALF_LIFE_MS)
+  return FAST_PHASE_END_WIDTH + (SLOW_CRAWL_CEILING_WIDTH - FAST_PHASE_END_WIDTH) * approach
 }
 
 /**
- * Width the bar holds at until `ready` -- one tick short of the final keyframe stop (100%),
- * matching the second-to-last `WIDTH_STOPS` entry. See the `ready` prop doc below for why this
- * cap exists.
+ * The bar width during the short close-out animation once the real work is actually done: eases
+ * from wherever the fake crawl above happened to be at that moment up to a full 100%, instead of
+ * jumping there instantly. Exported for the same reason as `fakeProgressWidth`.
  */
-export const PRE_READY_MAX_WIDTH = 92
-
-/**
- * The width actually painted: the raw time-driven fill, capped short of full while the real
- * work this overlay covers for is still in flight. Exported (pure, no DOM/React) so the clamp
- * itself -- the fix for the "loading bar stalls at 100%" bug -- can be unit tested directly
- * without rendering the component.
- */
-export function displayBarWidth(rawWidth: number, ready: boolean): number {
-  return ready ? rawWidth : Math.min(rawWidth, PRE_READY_MAX_WIDTH)
+export function finishProgressWidth(widthAtReady: number, elapsedSinceReadyMs: number): number {
+  if (elapsedSinceReadyMs <= 0) return widthAtReady
+  const t = Math.min(1, elapsedSinceReadyMs / FINISH_ANIMATION_MS)
+  const eased = 1 - Math.pow(1 - t, 3)
+  return widthAtReady + (100 - widthAtReady) * eased
 }
 
 type LoadingOverlayProps = {
   withBackdrop?: boolean
   /**
-   * Whether the real work this overlay is covering for has actually finished. The bar's own
-   * fill animation is a fixed-time visual approximation (see `LOADING_OVERLAY_PROGRESS_MS`) --
-   * it always reaches 100% on its own internal clock, regardless of whether the real work is
-   * done yet. When that real work legitimately takes longer than the animation (a big
-   * page-split reflow, a slow network round trip), letting the bar hit 100% early makes it look
-   * frozen/broken for however much longer the real work takes.
-   *
-   * Defaults to `true` (original behavior: the bar always completes on its own schedule) --
-   * pass `false` while the real work is still in flight and flip it to `true` right when it
-   * finishes, so the bar holds a little short of 100% instead of sitting at a stale "done" for
-   * a visible stall. See src/App.tsx's `loadingSetupReady` for the call site that does this.
+   * Whether the real work this overlay is covering for has actually finished. Before this flips
+   * true the bar follows the always-advancing `fakeProgressWidth` curve regardless of real
+   * progress; once it flips, the bar eases from wherever that curve was up to a full 100% over
+   * `FINISH_ANIMATION_MS` (see `finishProgressWidth`). Defaults to `true` (bar just runs its fake
+   * curve to completion) -- pass `false` while the real work is still in flight and flip it to
+   * `true` right when it finishes. See src/App.tsx's `loadingSetupReady` for the call site that
+   * does this.
    */
   ready?: boolean
 }
@@ -107,9 +112,12 @@ type LoadingOverlayProps = {
 export function LoadingOverlay({ withBackdrop = true, ready = true }: LoadingOverlayProps) {
   const [msgIndex, setMsgIndex] = useState(0)
   const [visible, setVisible] = useState(true)
-  // Raw = purely time-driven fill, following the same clock/curve regardless of `ready`.
-  const [rawBarWidth, setRawBarWidth] = useState(0)
+  const [barWidth, setBarWidth] = useState(0)
   const [mounted, setMounted] = useState(false)
+
+  const readyRef = useRef(ready)
+  const readyAtRef = useRef<number | null>(null)
+  const widthAtReadyRef = useRef(0)
 
   useEffect(() => {
     setMounted(true)
@@ -117,23 +125,32 @@ export function LoadingOverlay({ withBackdrop = true, ready = true }: LoadingOve
   }, [])
 
   useEffect(() => {
+    readyRef.current = ready
+  }, [ready])
+
+  useEffect(() => {
     const start = performance.now()
     let frame = 0
     const tick = (now: number) => {
-      const linearT = Math.min(1, (now - start) / LOADING_OVERLAY_PROGRESS_MS)
-      const kp = easedKeyframeProgress(linearT)
-      setRawBarWidth(barWidthAtKeyframeProgress(kp))
-      if (linearT < 1) frame = requestAnimationFrame(tick)
+      if (!readyRef.current) {
+        setBarWidth(fakeProgressWidth(now - start))
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      // First tick after `ready` flips true: freeze the hand-off point the finish animation
+      // eases from, using whatever the fake curve had reached rather than jumping from wherever
+      // it happened to already be mid-frame.
+      if (readyAtRef.current == null) {
+        readyAtRef.current = now
+        widthAtReadyRef.current = fakeProgressWidth(now - start)
+      }
+      const finished = finishProgressWidth(widthAtReadyRef.current, now - readyAtRef.current)
+      setBarWidth(finished)
+      if (finished < 100) frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
   }, [])
-
-  // Hold just short of a full bar until the real work is actually done -- see the `ready` prop
-  // doc above. Once `ready` flips true this stops clamping and the bar (which has very likely
-  // already finished its own fill by then) reads 100% immediately, with no separate animation
-  // needed here.
-  const barWidth = displayBarWidth(rawBarWidth, ready)
 
   const percentLabel = Math.min(100, Math.round(barWidth))
 
