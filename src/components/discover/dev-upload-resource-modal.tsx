@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type ChangeEvent, type ClipboardEvent } from "react"
+import { useEffect, useMemo, useState, type ChangeEvent, type ClipboardEvent } from "react"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -149,13 +149,25 @@ export type DevResourceUpload = {
   coverImage?: string
 }
 
+/** Prefills the form from an existing piece of text instead of a blank sheet -- used by the
+ *  Library page's "Publish to Discover" action (see library/index.tsx) to carry over a saved
+ *  book's title/author/text so the curator only has to fill in the Discover-specific fields
+ *  (difficulty, tags, cover) rather than retype everything by hand. */
+export type DevUploadResourcePrefill = {
+  title: string
+  author: string
+  text: string
+  type?: ContentType
+}
+
 type DevUploadResourceModalProps = {
   open: boolean
   onClose: () => void
   onPublish: (resource: DevResourceUpload) => void
+  initial?: DevUploadResourcePrefill | null
 }
 
-export function DevUploadResourceModal({ open, onClose, onPublish }: DevUploadResourceModalProps) {
+export function DevUploadResourceModal({ open, onClose, onPublish, initial }: DevUploadResourceModalProps) {
   const [title, setTitle] = useState("")
   const [author, setAuthor] = useState("")
   const [language, setLanguage] = useState<string>("Spanish")
@@ -163,6 +175,18 @@ export function DevUploadResourceModal({ open, onClose, onPublish }: DevUploadRe
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("beginner")
   const [tagsText, setTagsText] = useState("")
   const [text, setText] = useState("")
+
+  // Dialog content stays mounted (visibility toggles via Radix's own `open`), so a plain
+  // useState initializer only ever runs once -- this is what actually applies `initial` each
+  // time the dialog opens with a (possibly new) prefill, without resetting to blank on close
+  // (resetForm/onClose already handle that on Publish/Cancel).
+  useEffect(() => {
+    if (!open || !initial) return
+    setTitle(initial.title)
+    setAuthor(initial.author)
+    setText(initial.text)
+    if (initial.type) setType(initial.type)
+  }, [open, initial])
   const [coverImageUrl, setCoverImageUrl] = useState("")
   const [uploadedImageDataUrl, setUploadedImageDataUrl] = useState("")
   const [uploadedImageName, setUploadedImageName] = useState("")
@@ -333,7 +357,9 @@ export function DevUploadResourceModal({ open, onClose, onPublish }: DevUploadRe
         <DialogHeader>
           <DialogTitle>Upload Resource</DialogTitle>
           <DialogDescription>
-            Add a custom text resource for Discover (dev only). Word count updates automatically.
+            {initial
+              ? "Publish this library book to Discover. Word count updates automatically."
+              : "Add a custom text resource for Discover. Word count updates automatically."}
           </DialogDescription>
         </DialogHeader>
 

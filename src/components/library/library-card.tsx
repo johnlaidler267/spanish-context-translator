@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from "react"
-import { BookOpen, Loader2, Trash2 } from "lucide-react"
+import { BookOpen, Loader2, Trash2, UploadCloud } from "lucide-react"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
 import { cn } from "@/lib/utils"
 
@@ -44,6 +44,16 @@ interface LibraryCardProps {
    *  row offers, so no trash icon is rendered there (see ContentCard's own onDelete, which is
    *  optional for the same reason). */
   onDelete?: () => void
+  /** Only passed for the Discover curator account (see checkIsDiscoverCurator /
+   *  discover_curators) -- pushes this book's text to the Discover catalog via the same
+   *  DevUploadResourceModal the Discover page's own "Upload Resource" button uses, prefilled
+   *  with this book's title/author/text. Omitted entirely for everyone else, same pattern as
+   *  `onDelete`, so non-curators never see a control that would just fail RLS. */
+  onPublish?: () => void
+  /** True while this card's own publish tap is fetching the book's full text before the publish
+   *  modal can open (see LibraryPage's handlePublishClick) -- swaps the upload icon for a
+   *  spinner for the same "don't look broken on a slow connection" reason as `isOpening`. */
+  isPublishing?: boolean
   /** True while this card's own tap is still resolving -- fetching the saved book's text (and
    *  re-checking auth) before the reader can open, see LibraryPage's handleOpenBook. Swaps the
    *  cover icon for a spinner so a tap on a slow connection reads as "working", not "nothing
@@ -59,6 +69,8 @@ export function LibraryCard({
   progressPercent,
   onOpen,
   onDelete,
+  onPublish,
+  isPublishing = false,
   isOpening = false,
   disabled = false,
 }: LibraryCardProps) {
@@ -193,18 +205,38 @@ export function LibraryCard({
           <span className="discover-card__progress">{progressPercent}% read</span>
         )}
 
-        {onDelete && (
+        {(onDelete || onPublish) && (
           <div className="discover-card__tools">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                onDelete()
-              }}
-              aria-label={`Remove ${book.title} from your library`}
-            >
-              <Trash2 className="size-3.5" aria-hidden />
-            </button>
+            {onPublish && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  if (!isPublishing) onPublish()
+                }}
+                disabled={isPublishing}
+                aria-label={`Publish ${book.title} to Discover`}
+                title="Publish to Discover"
+              >
+                {isPublishing ? (
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <UploadCloud className="size-3.5" aria-hidden />
+                )}
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onDelete()
+                }}
+                aria-label={`Remove ${book.title} from your library`}
+              >
+                <Trash2 className="size-3.5" aria-hidden />
+              </button>
+            )}
           </div>
         )}
       </div>

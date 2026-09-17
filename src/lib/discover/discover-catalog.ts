@@ -1,7 +1,8 @@
 import { supabase } from "@/lib/supabase"
 import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover/discover-map"
 import { getRecentlyViewedContentIdsAllScopes } from "@/lib/storage/reading-progress-storage"
-import type { ContentItem } from "@/lib/discover/content-data"
+import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
+import type { DiscoverItemInsert } from "@/lib/db-types"
 
 const LIST_SELECT =
   "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at"
@@ -36,6 +37,64 @@ export function writeCachedDiscoverItems(items: ContentItem[]) {
 }
 
 export type DiscoverCatalogResult = { items: ContentItem[] } | { error: string }
+
+/** Shape a curator's "publish this" form (dev-upload-resource-modal.tsx) hands over, whether the
+ *  text was typed fresh or came from an existing My Library book (library/index.tsx). */
+export type DiscoverResourcePublish = {
+  title: string
+  author: string
+  language: string
+  type: ContentType
+  difficulty: DifficultyLevel
+  text: string
+  tags: string[]
+  wordCount: number
+  coverImage?: string
+}
+
+/**
+ * Inserts one new row into `discover_items` from a curator's publish form and returns it mapped
+ * back to a `ContentItem`, ready to splice into a catalog list. Shared by the Discover page's own
+ * "Upload Resource" flow and the Library page's "Publish to Discover" flow (see
+ * DevUploadResourceModal / library/index.tsx) -- same insert, same LIST_SELECT shape, so both
+ * surfaces render the result identically without duplicating this mapping.
+ *
+ * Server-authoritative: RLS on `discover_items` only allows a `discover_curators` row to insert
+ * (see supabase/migrations/0023_restore_discover_curators.sql), so this fails for anyone else
+ * regardless of what a client shows.
+ */
+export async function publishDiscoverResource(
+  resource: DiscoverResourcePublish,
+): Promise<{ item: ContentItem } | { error: string }> {
+  const estimatedMinutes = Math.max(1, Math.ceil(resource.wordCount / 200))
+  const estimatedTime =
+    estimatedMinutes >= 60 ? `${Math.ceil(estimatedMinutes / 60)} hours` : `${estimatedMinutes} min`
+  const defaultTag = resource.type[0].toUpperCase() + resource.type.slice(1)
+  const normalizedTags = resource.tags.length > 0 ? resource.tags : [defaultTag]
+  const preview = resource.text.slice(0, 800)
+
+  const insert: DiscoverItemInsert = {
+    title: resource.title,
+    author: resource.author,
+    type: resource.type,
+    difficulty: resource.difficulty,
+    word_count: resource.wordCount,
+    language: resource.language,
+    cover_image:
+      resource.coverImage ??
+      "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=600&fit=crop",
+    tags: normalizedTags,
+    preview,
+    estimated_time: estimatedTime,
+    body_text: resource.text,
+  }
+
+  const { data, error } = await supabase.from("discover_items").insert(insert).select(LIST_SELECT).single()
+  if (error || !data) {
+    return { error: error?.message ?? "Could not publish." }
+  }
+  return { item: discoverRowToContentItem(data as DiscoverListRow) }
+}
 
 let inFlight: Promise<DiscoverCatalogResult> | null = null
 

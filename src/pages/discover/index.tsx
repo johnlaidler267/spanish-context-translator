@@ -20,18 +20,14 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { hasReadingProgress } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
-import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover/discover-map"
 import {
   fetchDiscoverCatalog,
+  publishDiscoverResource,
   readCachedDiscoverItems,
   writeCachedDiscoverItems,
 } from "@/lib/discover/discover-catalog"
 import { checkIsDiscoverCurator } from "@/lib/discover/discover-curator"
-import type { DiscoverItemInsert } from "@/lib/db-types"
 import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
-
-const LIST_SELECT =
-  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at"
 
 type DiscoverPageProps = {
   onStartReading: (content: ContentItem) => Promise<{ blockedMessage?: string } | void> | { blockedMessage?: string } | void
@@ -177,7 +173,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     })
   }, [discoverItems, searchQuery, selectedTypes, selectedDifficulties])
 
-  // `preview` now comes with the list load (see LIST_SELECT), so the modal opens with
+  // `preview` now comes with the list load (see discover-catalog.ts), so the modal opens with
   // its final content already in hand — no click-triggered fetch, no post-open resize.
   const handleContentClick = (content: ContentItem) => {
     setSelectedContent(content)
@@ -233,39 +229,15 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   }
 
   const handlePublishResource = async (resource: DevResourceUpload) => {
-    const estimatedMinutes = Math.max(1, Math.ceil(resource.wordCount / 200))
-    const estimatedTime =
-      estimatedMinutes >= 60 ? `${Math.ceil(estimatedMinutes / 60)} hours` : `${estimatedMinutes} min`
-    const difficulty = resource.difficulty
-    const defaultTag = resource.type[0].toUpperCase() + resource.type.slice(1)
-    const normalizedTags = resource.tags.length > 0 ? resource.tags : [defaultTag]
-    const preview = resource.text.slice(0, 800)
-
-    const insert: DiscoverItemInsert = {
-      title: resource.title,
-      author: resource.author,
-      type: resource.type,
-      difficulty,
-      word_count: resource.wordCount,
-      language: resource.language,
-      cover_image:
-        resource.coverImage ??
-        "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=600&fit=crop",
-      tags: normalizedTags,
-      preview,
-      estimated_time: estimatedTime,
-      body_text: resource.text,
-    }
-
     setActionError(null)
-    const { data, error } = await supabase.from("discover_items").insert(insert).select(LIST_SELECT).single()
+    const result = await publishDiscoverResource(resource)
 
-    if (error || !data) {
-      setActionError(error?.message ?? "Could not publish.")
+    if ("error" in result) {
+      setActionError(result.error)
       return
     }
 
-    const newItem = discoverRowToContentItem(data as DiscoverListRow)
+    const newItem = result.item
     setDiscoverItems((currentItems) => {
       const next = [newItem, ...currentItems]
       writeCachedDiscoverItems(next)

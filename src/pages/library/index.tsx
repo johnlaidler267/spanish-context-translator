@@ -12,7 +12,13 @@ import { Button } from "@/components/ui/button"
 import { LibraryCard } from "@/components/library/library-card"
 import { LibraryPreviewModal } from "@/components/library/library-preview-modal"
 import {
+  DevUploadResourceModal,
+  type DevResourceUpload,
+  type DevUploadResourcePrefill,
+} from "@/components/discover/dev-upload-resource-modal"
+import {
   deleteUserEpub,
+  getUserEpubText,
   saveEpubToLibrary,
   EpubLibraryError,
   type LibraryEpub,
@@ -22,9 +28,18 @@ import {
   readCachedLibraryEpubs,
   writeCachedLibraryEpubs,
 } from "@/lib/storage/library-catalog"
+import { publishDiscoverResource } from "@/lib/discover/discover-catalog"
+import { checkIsDiscoverCurator } from "@/lib/discover/discover-curator"
 import { getReadingProgressPercent } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import { cn } from "@/lib/utils"
+
+// Local dev always sees the "Publish to Discover" control; production shows it only for a real
+// curator (see discover_curators / supabase/migrations/0023_restore_discover_curators.sql) --
+// same gate as the Discover page's own canManageCatalog, kept in sync deliberately: the RLS
+// policy on discover_items is what actually enforces this, this just avoids showing a control
+// that would fail for everyone else.
+const DISCOVER_DEV_EDIT = import.meta.env.DEV
 
 type LibraryPageProps = {
   /** Opens a saved book straight into reading, resuming at its saved page if any (same
@@ -68,6 +83,29 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [isCurator, setIsCurator] = useState(false)
+  useEffect(() => {
+    if (DISCOVER_DEV_EDIT) return
+    let cancelled = false
+    void checkIsDiscoverCurator().then((curator) => {
+      if (!cancelled) setIsCurator(curator)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+  const canManageCatalog = DISCOVER_DEV_EDIT || isCurator
+
+  // "Publish to Discover" flow (curator only): tapping a card's publish icon fetches that
+  // book's full text (list rows deliberately omit body_text -- see LibraryEpub's docstring),
+  // then opens the same DevUploadResourceModal the Discover page's "Upload Resource" button
+  // uses, prefilled with this book's title/author/text.
+  const [publishingBookId, setPublishingBookId] = useState<string | null>(null)
+  const [publishError, setPublishError] = useState<string | null>(null)
+  const [publishNotice, setPublishNotice] = useState<string | null>(null)
+  const [publishModalOpen, setPublishModalOpen] = useState(false)
+  const [publishPrefill, setPublishPrefill] = useState<DevUploadResourcePrefill | null>(null)
 
   // Which book (if any) is mid-open: getUserEpubText/handleLibraryStartReading (App.tsx) fetch
   // the saved book's full text -- and re-check auth -- over the network before the reading UI
@@ -253,6 +291,36 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
     }
   }
 
+  const handlePublishClick = async (book: LibraryEpub) => {
+    if (publishingBookId) return
+    setPublishError(null)
+    setPublishNotice(null)
+    setPublishingBookId(book.id)
+    try {
+      const full = await getUserEpubText(user, book.id)
+      if (!full) {
+        setPublishError("Could not load this book's text. Check your connection and try again.")
+        return
+      }
+      setPublishPrefill({ title: book.title, author: book.author ?? "", text: full.text, type: "book" })
+      setPublishModalOpen(true)
+    } finally {
+      setPublishingBookId(null)
+    }
+  }
+
+  const handlePublishResource = async (resource: DevResourceUpload) => {
+    setPublishError(null)
+    const result = await publishDiscoverResource(resource)
+    if ("error" in result) {
+      setPublishError(result.error)
+      return
+    }
+    setPublishModalOpen(false)
+    setPublishPrefill(null)
+    setPublishNotice(`Published "${result.item.title}" to Discover.`)
+  }
+
   return (
     <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
       <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-16 pt-6 sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
@@ -297,6 +365,16 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
             {uploadError}
           </p>
         )}
+        {publishError && (
+          <p className="mb-4 text-sm text-destructive" role="alert">
+            {publishError}
+          </p>
+        )}
+        {publishNotice && (
+          <p className="mb-4 text-sm text-muted-foreground" role="status">
+            {publishNotice}
+          </p>
+        )}
 
         {listLoading ? (
           <LibrarySkeletonGrid />
@@ -329,6 +407,8 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
                 progressPercent={getReadingProgressPercent(user, book.id)}
                 onOpen={() => setPreviewBook(book)}
                 onDelete={() => void handleDelete(book.id)}
+                onPublish={canManageCatalog ? () => void handlePublishClick(book) : undefined}
+                isPublishing={publishingBookId === book.id}
                 isOpening={openingBookId === book.id}
                 disabled={openingBookId != null && openingBookId !== book.id}
               />
@@ -345,6 +425,18 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
         progressPercent={previewBook ? getReadingProgressPercent(user, previewBook.id) : null}
         isOpening={previewBook != null && openingBookId === previewBook.id}
       />
+
+      {canManageCatalog && (
+        <DevUploadResourceModal
+          open={publishModalOpen}
+          onClose={() => {
+            setPublishModalOpen(false)
+            setPublishPrefill(null)
+          }}
+          onPublish={(resource) => void handlePublishResource(resource)}
+          initial={publishPrefill}
+        />
+      )}
     </div>
   )
 }
