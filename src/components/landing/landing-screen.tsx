@@ -117,7 +117,7 @@ export function LandingScreen({
   onContinueReading,
   onContinueLibraryBook,
 }: LandingScreenProps) {
-  const { user } = useAuth()
+  const { user, openAuthModal } = useAuth()
   const { status: subscriptionStatus } = useSubscription()
   const cachedSubscriptionRow = useMemo(
     () => (user?.id ? readCachedSubscriptionRow(user.id) : undefined),
@@ -357,7 +357,11 @@ export function LandingScreen({
     user,
     onContinue: onContinueReading,
     onOpenLibraryBook: onContinueLibraryBook,
-    fallback: (
+    // Signed out: no reading history to speak of yet, so a generic hardcoded sample
+    // paragraph isn't really "yours" -- swap it for an invite to sign in, using the same
+    // excerpt-rail visual language (label + serif body + arrow link) instead of a plain
+    // banner, so the layout doesn't jump between signed-in/out states.
+    fallback: user ? (
       <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
         <p className="sample-excerpt-label text-center">Sample text</p>
         <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
@@ -365,6 +369,19 @@ export function LandingScreen({
           <span className="mt-3 block text-center">
             <span className="sample-link inline-flex items-center gap-2">
               Try this sample
+              <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
+            </span>
+          </span>
+        </button>
+      </div>
+    ) : (
+      <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
+        <p className="sample-excerpt-label text-center">Welcome</p>
+        <button type="button" onClick={openAuthModal} className="sample-excerpt-btn text-left w-full group">
+          <p className="sample-paragraph font-serif text-ui-base overflow-hidden">Sign in to save your place in every story and pick up right where you left off, on any device.</p>
+          <span className="mt-3 block text-center">
+            <span className="sample-link inline-flex items-center gap-2">
+              Sign in
               <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
             </span>
           </span>
