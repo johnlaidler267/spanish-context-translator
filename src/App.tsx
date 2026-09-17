@@ -15,7 +15,7 @@ const TermsPage = lazyRoute(() => import("@/pages/terms"))
 const PrivacyPage = lazyRoute(() => import("@/pages/privacy"))
 import { LandingShellLayout } from "@/components/landing/landing-shell-layout"
 import { LandingScreen } from "@/components/landing/landing-screen"
-import { LoadingOverlay } from "@/components/loading-overlay"
+import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "@/components/loading-overlay"
 import {
   ArticleContent,
   ReadMode,
@@ -549,10 +549,10 @@ export default function App() {
   /**
    * Reading *surface chunk* preload. The reading screen lives in its own chunk (see
    * reading-surface-lazy.tsx) so the landing page doesn't have to parse it before it can
-   * paint. Every route into reading goes through this "loading" state first -- however brief
-   * (handleTextSubmit navigates into reading as soon as pages exist, not once translation
-   * finishes) -- so starting the download here means the chunk is already cached by the time
-   * there's anything to render, and the split never costs a visible beat.
+   * paint. Every route into reading goes through this "loading" state first, and the
+   * loading overlay stays up for at least LOADING_OVERLAY_PROGRESS_MS on top of a real
+   * LLM round trip -- so starting the download here means the chunk is already cached by
+   * the time there's anything to render, and the split never costs a visible beat.
    */
   useEffect(() => {
     if (appState !== "loading") return
@@ -610,6 +610,7 @@ export default function App() {
         contentTitle = null,
         initialPageRatio = null,
         isEbookUpload = false,
+        loadingStartedAtMs = Date.now(),
       }: {
         populateLandingDraft?: boolean
         contentId?: string | null
@@ -631,6 +632,17 @@ export default function App() {
          * book's total length. Skips the charsPerSubmission check below for that reason.
          */
         isEbookUpload?: boolean
+        /**
+         * When the loading overlay first appeared, for the cosmetic minimum-display wait below.
+         * Defaults to right now, correct for a plain landing submit (this function is the first
+         * thing to set `appState` to "loading"). handleDiscoverStartReading/
+         * handleLibraryStartReading pass their own earlier timestamp instead -- they flip the
+         * overlay on before their own network fetch (see those functions), so anchoring the wait
+         * to *this* function's own start (after that fetch already resolved) undercounted how
+         * long the overlay had actually been up, and made the bar sit at a stale 100% for
+         * whatever the fetch had already taken beyond the bar's own fill duration.
+         */
+        loadingStartedAtMs?: number
       } = {},
     ) => {
       if (!text.trim()) return
@@ -927,12 +939,21 @@ export default function App() {
             // Error details are stored in TranslationCache and surfaced by existing modal logic.
             bump()
           })
-        // Navigate straight into the reading UI now -- pages exist (`setSourcePages` above) and
-        // the first page's translation is already kicked off (loadPage synchronously marks it
-        // in-flight), so ArticleContent's own per-page "Translating this page…" state (see
-        // articleLoading in the render below) takes over from here instead of making the user
-        // wait out a separate loading screen first. The reading UI only mounts on the index route
-        // (see `appState === "reading"` below).
+        // Let the loading overlay's own cosmetic fill animation finish (it's a fixed-duration
+        // "keep the user occupied" bar, not a real progress signal -- see loading-overlay.tsx)
+        // before cutting over, but never wait any longer than that: the first page's translation
+        // is already kicked off above (loadPage marks it in-flight synchronously), so if it's
+        // still not done by the time the bar completes, ArticleContent's own per-page
+        // "Translating this page…" state (see articleLoading in the render below) takes over
+        // from there instead of the overlay sitting at a stale 100%.
+        const remainingLoadingMs = Math.max(
+          0,
+          LOADING_OVERLAY_PROGRESS_MS - (Date.now() - loadingStartedAtMs),
+        )
+        if (remainingLoadingMs > 0) {
+          await new Promise((r) => setTimeout(r, remainingLoadingMs))
+        }
+        // The reading UI only mounts on the index route (see `appState === "reading"` below).
         if (location.pathname === "/") {
           // Landing's own composer submit -- already home, flip straight into reading. Still
           // push a fresh history entry (same "/" path, just a new one) even though the URL
@@ -978,6 +999,7 @@ export default function App() {
       // tap on a card looking like it hadn't registered at all. Reverted back to "landing" on
       // every early-return path below so a blocked/failed load doesn't strand the overlay up.
       setAppState("loading")
+      const loadingStartedAtMs = Date.now()
 
       const { data, error } = await supabase
         .from("discover_items")
@@ -1016,6 +1038,7 @@ export default function App() {
         populateLandingDraft: false,
         contentId: content.id,
         contentTitle: content.title,
+        loadingStartedAtMs,
       })
     },
     [handleTextSubmit, isEffectivelyFreeUser],
@@ -1027,6 +1050,7 @@ export default function App() {
       // getUser/getUserEpubText fetches below rather than after, so a slow connection doesn't
       // leave a tapped card looking unresponsive for however long those calls take.
       setAppState("loading")
+      const loadingStartedAtMs = Date.now()
 
       // Fetch a fresh user rather than trusting the `user` this callback closed over: this can
       // fire moments after a first-ever upload created a brand-new anonymous session (see
@@ -1062,6 +1086,7 @@ export default function App() {
         contentTitle: book.title,
         initialPageRatio,
         isEbookUpload: true,
+        loadingStartedAtMs,
       })
     },
     [handleTextSubmit],
