@@ -992,6 +992,14 @@ export default function App() {
 
   const handleDiscoverStartReading = useCallback(
     async (content: ContentItem) => {
+      // Flip the loading overlay on immediately, before the body_text fetch below -- on a slow
+      // mobile connection that fetch alone can take several seconds, and until this call nothing
+      // set any loading state until handleTextSubmit did, well after it resolved. That left a
+      // tap on a card looking like it hadn't registered at all. Reverted back to "landing" on
+      // every early-return path below so a blocked/failed load doesn't strand the overlay up.
+      setAppState("loading")
+      setLoadingSetupReady(false)
+
       const { data, error } = await supabase
         .from("discover_items")
         .select("body_text")
@@ -999,7 +1007,10 @@ export default function App() {
         .maybeSingle()
       const body = data?.body_text?.trim() ?? ""
       const sourceText = !error && body.length > 0 ? body : content.preview.trim()
-      if (!sourceText) return
+      if (!sourceText) {
+        setAppState("landing")
+        return
+      }
 
       const freeCharLimit = getTier("free").limits.charsPerSubmission
       if (
@@ -1007,6 +1018,7 @@ export default function App() {
         freeCharLimit !== null &&
         sourceText.length > freeCharLimit
       ) {
+        setAppState("landing")
         const blockedMessage =
           `This reading is ${sourceText.length.toLocaleString()} characters long, which is over the free plan limit of ` +
           `${freeCharLimit.toLocaleString()} characters per submission. Upgrade to continue.`
@@ -1032,6 +1044,12 @@ export default function App() {
 
   const handleLibraryStartReading = useCallback(
     async (book: LibraryEpub) => {
+      // Same reasoning as handleDiscoverStartReading: flip the loading overlay on before the
+      // getUser/getUserEpubText fetches below rather than after, so a slow connection doesn't
+      // leave a tapped card looking unresponsive for however long those calls take.
+      setAppState("loading")
+      setLoadingSetupReady(false)
+
       // Fetch a fresh user rather than trusting the `user` this callback closed over: this can
       // fire moments after a first-ever upload created a brand-new anonymous session (see
       // library page's handleFileSelected), before the auth context's own state has caught up.
@@ -1041,6 +1059,7 @@ export default function App() {
       const saved = await getUserEpubText(freshUser, book.id)
       const sourceText = saved?.text.trim() ?? ""
       if (!sourceText) {
+        setAppState("landing")
         setError("Couldn't load this book. It may have been removed.")
         return
       }
