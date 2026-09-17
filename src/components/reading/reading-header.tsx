@@ -1,7 +1,7 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { ChevronLeft, Moon, Sun, Settings2, Volume2, VolumeX } from "lucide-react"
+import { ChevronLeft, Moon, Sun, Settings2, Volume2, VolumeX, Sparkles } from "lucide-react"
 import { ModeToggle, type ViewMode } from "@/components/reading/mode-toggle"
 import { type ReadingTheme } from "@/components/reading/theme-toggle"
 import { READING_HEADER_BAND_REM } from "@/lib/reading/reading-layout"
@@ -25,6 +25,14 @@ interface ReadingHeaderProps {
    * so callers that don't manage this (none currently) get the always-on look.
    */
   visible?: boolean
+  /**
+   * Free-plan reading-cap nudge: how many more pages of the current ebook a free user can page
+   * into before hitting the upgrade gate (see `freeReadingPagesPerBook` in tiers.ts and
+   * `goToArticlePage` in App.tsx, which is what actually enforces it). Null/omitted hides the
+   * indicator entirely — App.tsx already only computes it for a free user reading an uploaded
+   * ebook with more than one page, so this component doesn't re-derive any of those conditions.
+   */
+  freeEbookPreview?: { pagesRemaining: number; pageCap: number } | null
 }
 
 /** Mobile band height — inline minHeight on the mobile gradient/img so rem tweaks always apply (Tailwind var() on children was unreliable). */
@@ -39,6 +47,7 @@ export function ReadingHeader({
   hoverTtsEnabled,
   onHoverTtsChange,
   visible = true,
+  freeEbookPreview = null,
 }: ReadingHeaderProps) {
   // The persistent landing sidebar (see landing-shell-layout.tsx) isn't hidden during reading
   // (readingActive only changes its nav highlighting) and sits on top of this fixed header
@@ -80,6 +89,39 @@ export function ReadingHeader({
         >
           <ChevronLeft className="h-5 w-5 max-md:h-[1.35rem] max-md:w-[1.35rem]" strokeWidth={2.25} aria-hidden />
         </button>
+
+        {freeEbookPreview && (
+          // Desktop only here -- centered between the back arrow and the (fairly wide, four-item)
+          // control rail on the same row. On mobile that rail alone nearly spans the header, so
+          // this would either sit underneath it or force an awkward squeeze; the mobile version
+          // below instead gets its own row under the main bar, out of everything's way.
+          <Link
+            to="/upgrade"
+            className={cn(
+              "free-preview-pill absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:flex",
+              "items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5",
+              "font-sans text-xs font-medium text-reading-pager-ink",
+              "border-reading-warm/25 bg-reading-warm/[0.09] shadow-[0_2px_10px_rgba(58,51,46,0.05)]",
+              "transition-colors duration-200 ease-in-out hover:bg-reading-warm/[0.16] hover:text-reading-pager-ink-hover",
+              "dark:border-reading-warm/20 dark:bg-white/[0.05] dark:hover:bg-reading-warm/[0.12]",
+              visible ? "pointer-events-auto" : "pointer-events-none",
+            )}
+            tabIndex={visible ? undefined : -1}
+            aria-label={
+              freeEbookPreview.pagesRemaining > 0
+                ? `${freeEbookPreview.pagesRemaining} free page${freeEbookPreview.pagesRemaining === 1 ? "" : "s"} left in this book — upgrade for full access`
+                : "Free preview ends on this page — upgrade for full access"
+            }
+          >
+            <Sparkles className="h-3 w-3 shrink-0 text-[#b86c4f] dark:text-reading-warm" aria-hidden />
+            <span>
+              {freeEbookPreview.pagesRemaining > 0
+                ? `${freeEbookPreview.pagesRemaining} free page${freeEbookPreview.pagesRemaining === 1 ? "" : "s"} left`
+                : "Last free page"}
+            </span>
+            <span className="opacity-70">Upgrade</span>
+          </Link>
+        )}
 
         {/* Right side: one quiet control rail so mode + reader actions feel like a single toolset. */}
         <div
@@ -136,6 +178,38 @@ export function ReadingHeader({
           </Link>
         </div>
       </div>
+
+      {freeEbookPreview && (
+        // Mobile: own row under the main bar (see the desktop pill above for why) -- still part
+        // of the same fading toolbar, just stacked instead of centered inline.
+        <div className="relative z-[2] flex justify-center px-4 pt-1.5 md:hidden">
+          <Link
+            to="/upgrade"
+            className={cn(
+              "free-preview-pill flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1",
+              "font-sans text-xs font-medium text-reading-pager-ink",
+              "border-reading-warm/25 bg-reading-warm/[0.09] shadow-[0_2px_10px_rgba(58,51,46,0.05)]",
+              "transition-colors duration-200 ease-in-out hover:bg-reading-warm/[0.16] hover:text-reading-pager-ink-hover",
+              "dark:border-reading-warm/20 dark:bg-white/[0.05] dark:hover:bg-reading-warm/[0.12]",
+              visible ? "pointer-events-auto" : "pointer-events-none",
+            )}
+            tabIndex={visible ? undefined : -1}
+            aria-label={
+              freeEbookPreview.pagesRemaining > 0
+                ? `${freeEbookPreview.pagesRemaining} free page${freeEbookPreview.pagesRemaining === 1 ? "" : "s"} left in this book — upgrade for full access`
+                : "Free preview ends on this page — upgrade for full access"
+            }
+          >
+            <Sparkles className="h-3 w-3 shrink-0 text-[#b86c4f] dark:text-reading-warm" aria-hidden />
+            <span className="tabular-nums">
+              {freeEbookPreview.pagesRemaining > 0
+                ? `${freeEbookPreview.pagesRemaining} free pages left`
+                : "Last free page"}
+            </span>
+            <span className="opacity-70">Upgrade</span>
+          </Link>
+        </div>
+      )}
     </header>
   )
 }

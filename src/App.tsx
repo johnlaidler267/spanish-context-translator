@@ -361,6 +361,15 @@ export default function App() {
    * for a plain landing-page paste with no title — shown at the top of article mode. */
   const [activeReadingTitle, setActiveReadingTitle] = useState<string | null>(null)
   /**
+   * True only for a Library EPUB upload (see `isEbookUpload` on handleTextSubmit) — a pasted
+   * snippet or a Discover article both get their length checked upfront (`charsPerSubmission`)
+   * so they never accumulate enough pages for `freeReadingPagesPerBook` to matter; only an
+   * uploaded book can run long enough to hit it. Drives the free-plan reading-cap indicator in
+   * the reading toolbar (see `freeEbookPreview` below) — reset on `handleBack` like the other
+   * "what's currently open" state above.
+   */
+  const [activeReadingIsEbook, setActiveReadingIsEbook] = useState(false)
+  /**
    * Set when a book/article is reopened with real saved progress (resuming past its first
    * page) — shows the "Where you left off" modal. `summary` is a cached Gemini recap of the
    * page before the resume point (see maybeSummarizePreviousPageOnLeave), shown when available;
@@ -915,6 +924,7 @@ export default function App() {
         setArticlePageIndex(initialPageIndex)
         setActiveReadingContentId(contentId ?? null)
         setActiveReadingTitle(contentTitle ?? null)
+        setActiveReadingIsEbook(isEbookUpload)
         setReadingSessionId((k) => k + 1)
         setReadEnterLastStepNonce(0)
         setReadLastConsumedEnterNonce(0)
@@ -1067,6 +1077,7 @@ export default function App() {
     setArticlePageIndex(0)
     setActiveReadingContentId(null)
     setActiveReadingTitle(null)
+    setActiveReadingIsEbook(false)
     setWhereLeftOff(null)
     pageStartSentenceIndicesRef.current = []
     setPageTopFillPaddingPx([])
@@ -1092,6 +1103,22 @@ export default function App() {
   }, [bump, navigate])
 
   const totalPages = sourcePages.length
+
+  /**
+   * Free-plan reading-cap indicator (see `freeReadingPagesPerBook` in tiers.ts and the actual
+   * gate in `goToArticlePage` below) -- purely derived from state already held for other reasons
+   * (current page, page count, tier), no extra fetch. Null hides the indicator entirely: a paid
+   * user, a book that already fits on one page (nothing to preview-gate), or anything that isn't
+   * an uploaded ebook (see `activeReadingIsEbook`).
+   */
+  const freeReadingPageCap = getTier("free").limits.freeReadingPagesPerBook
+  const freeEbookPreview =
+    isEffectivelyFreeUser && activeReadingIsEbook && totalPages > 1 && freeReadingPageCap != null
+      ? {
+          pagesRemaining: Math.max(freeReadingPageCap - (articlePageIndex + 1), 0),
+          pageCap: freeReadingPageCap,
+        }
+      : null
 
   /**
    * Persist "which page was I on" for Discover content as the reader moves through it, so
@@ -1458,6 +1485,7 @@ export default function App() {
               hoverTtsEnabled={hoverTtsEnabled}
               onHoverTtsChange={setHoverTtsEnabled}
               visible={toolbarVisible}
+              freeEbookPreview={freeEbookPreview}
             />
           </div>
           <div
