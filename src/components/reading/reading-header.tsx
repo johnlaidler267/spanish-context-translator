@@ -127,8 +127,8 @@ export function ReadingHeader({
         <div
           className={cn(
             "flex items-center gap-0.5 rounded-[0.85rem] border px-1 py-0.5",
-            "border-border/45 bg-background/62 shadow-[0_4px_16px_rgba(58,51,46,0.05)] backdrop-blur-sm",
-            "dark:border-white/8 dark:bg-[rgba(26,26,26,0.58)] dark:shadow-[0_6px_18px_rgba(0,0,0,0.16)]",
+            "border-border/30 bg-background/45 shadow-[0_1px_6px_rgba(58,51,46,0.03)] backdrop-blur-sm",
+            "dark:border-white/6 dark:bg-[rgba(26,26,26,0.4)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.1)]",
             visible ? "pointer-events-auto" : "pointer-events-none",
           )}
         >

@@ -615,7 +615,7 @@ html.lector-reading-session .global-corner-letter {
     --reading-mode-ink: #746254;
     --reading-mode-ink-hover: #4f4339;
     --reading-mode-on-accent: #fff8f1;
-    --reading-mode-active: linear-gradient(180deg, rgba(201, 122, 90, 0.82), rgba(184, 108, 79, 0.78));
+    --reading-mode-active: linear-gradient(180deg, rgba(201, 122, 90, 0.66), rgba(184, 108, 79, 0.62));
     --reading-pager: #fffaf5;
     --reading-pager-ink: #6a584b;
     --reading-pager-ink-hover: #4d4035;

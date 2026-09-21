@@ -28,7 +28,7 @@ export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/38 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
           "min-h-[2.35rem] min-w-[2.35rem] px-2.25 py-1.5 xl:min-w-[6.5rem] xl:px-3.25 max-md:min-h-[2.55rem] max-md:min-w-[2.55rem] max-md:px-2.75 max-md:py-2",
           mode === "article"
-            ? "bg-[image:var(--reading-mode-active)] text-reading-mode-on-accent shadow-[0_3px_10px_rgba(184,108,79,0.16),inset_0_1px_0_rgba(255,255,255,0.14)]"
+            ? "bg-[image:var(--reading-mode-active)] text-reading-mode-on-accent shadow-[0_1px_4px_rgba(184,108,79,0.09),inset_0_1px_0_rgba(255,255,255,0.1)]"
             : "font-medium text-reading-mode-ink hover:bg-reading-warm/[0.06] hover:text-reading-mode-ink-hover dark:hover:bg-reading-warm/[0.08]"
         )}
         aria-pressed={mode === "article"}
@@ -44,7 +44,7 @@ export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/38 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
           "min-h-[2.35rem] min-w-[2.35rem] px-2.25 py-1.5 xl:min-w-[5.75rem] xl:px-3 xl:gap-2.5 max-md:min-h-[2.55rem] max-md:min-w-[2.55rem] max-md:px-2.75 max-md:py-2",
           mode === "read"
-            ? "bg-[image:var(--reading-mode-active)] text-reading-mode-on-accent shadow-[0_3px_10px_rgba(184,108,79,0.16),inset_0_1px_0_rgba(255,255,255,0.14)]"
+            ? "bg-[image:var(--reading-mode-active)] text-reading-mode-on-accent shadow-[0_1px_4px_rgba(184,108,79,0.09),inset_0_1px_0_rgba(255,255,255,0.1)]"
             : "font-medium text-reading-mode-ink hover:bg-reading-warm/[0.06] hover:text-reading-mode-ink-hover dark:hover:bg-reading-warm/[0.08]"
         )}
         aria-pressed={mode === "read"}
