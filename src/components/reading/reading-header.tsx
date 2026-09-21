@@ -87,7 +87,7 @@ export function ReadingHeader({
           )}
           aria-label="Back"
         >
-          <ChevronLeft className="h-5 w-5 max-md:h-[1.35rem] max-md:w-[1.35rem]" strokeWidth={2.25} aria-hidden />
+          <ChevronLeft className="h-5 w-5 max-md:h-[1.35rem] max-md:w-[1.35rem]" strokeWidth={1.75} aria-hidden />
         </button>
 
         {freeEbookPreview && (
@@ -133,7 +133,6 @@ export function ReadingHeader({
           )}
         >
           <ModeToggle mode={mode} onModeChange={onModeChange} />
-          <div className="mx-0.5 h-6 w-px bg-border/45 dark:bg-white/8" aria-hidden />
           <button
             type="button"
             onClick={() => {
@@ -142,7 +141,9 @@ export function ReadingHeader({
               onHoverTtsChange(next)
             }}
             className={cn(
-              "hover-tts-toggle-btn flex items-center justify-center w-9 h-9 max-md:w-10.5 max-md:h-10.5 rounded-[0.7rem] text-foreground/82 transition-colors duration-200 ease-in-out hover:bg-muted/35 hover:text-foreground",
+              // ml-1 stands in for the removed divider: spacing, not a rule, keeps the
+              // mode pair and the reader actions reading as two clusters.
+              "hover-tts-toggle-btn ml-1 flex items-center justify-center w-9 h-9 max-md:w-10.5 max-md:h-10.5 rounded-[0.7rem] text-foreground/82 transition-colors duration-200 ease-in-out hover:bg-muted/35 hover:text-foreground",
               hoverTtsEnabled &&
                 "bg-reading-warm/10 text-[#b86c4f] ring-1 ring-reading-warm/[0.18]",
             )}
@@ -154,8 +155,8 @@ export function ReadingHeader({
             }
           >
             {hoverTtsEnabled
-              ? <Volume2 className="hover-tts-toggle-icon h-4 w-4 max-md:h-5 max-md:w-5" aria-hidden />
-              : <VolumeX className="hover-tts-toggle-icon h-4 w-4 max-md:h-5 max-md:w-5" aria-hidden />}
+              ? <Volume2 className="hover-tts-toggle-icon h-4 w-4 max-md:h-5 max-md:w-5" strokeWidth={1.5} aria-hidden />
+              : <VolumeX className="hover-tts-toggle-icon h-4 w-4 max-md:h-5 max-md:w-5" strokeWidth={1.5} aria-hidden />}
           </button>
           <button
             type="button"
@@ -166,15 +167,15 @@ export function ReadingHeader({
             aria-label="Cycle reading theme"
           >
             {theme === "light"
-              ? <Sun className="sun-icon h-4 w-4 max-md:h-5 max-md:w-5" />
-              : <Moon className="moon-icon h-4 w-4 max-md:h-5 max-md:w-5" />}
+              ? <Sun className="sun-icon h-4 w-4 max-md:h-5 max-md:w-5" strokeWidth={1.5} />
+              : <Moon className="moon-icon h-4 w-4 max-md:h-5 max-md:w-5" strokeWidth={1.5} />}
           </button>
           <Link
             to="/settings"
             className="profile-btn flex items-center justify-center w-9 h-9 max-md:w-10.5 max-md:h-10.5 rounded-[0.7rem] text-foreground/82 hover:bg-muted/35 hover:text-foreground transition-colors duration-200 ease-in-out"
             aria-label="Settings"
           >
-            <Settings2 className="h-4 w-4 max-md:h-5 max-md:w-5" />
+            <Settings2 className="h-4 w-4 max-md:h-5 max-md:w-5" strokeWidth={1.5} />
           </Link>
         </div>
       </div>

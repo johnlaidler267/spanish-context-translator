@@ -12,14 +12,10 @@ interface ModeToggleProps {
 
 export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
   return (
-    <div
-      className={cn(
-        "flex items-center gap-0.5 rounded-[0.75rem] p-0.5 max-md:min-h-[2.6rem]",
-        "border border-reading-rail-border/70 bg-reading-rail/[0.82]",
-        "shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]",
-        "dark:bg-reading-rail/[0.72] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
-      )}
-    >
+    // No border/background of its own: this sits inside reading-header's control rail,
+    // which already supplies the surface. A second framed box inside the first is what
+    // made the toolbar read as heavy.
+    <div className="flex items-center gap-0.5 max-md:min-h-[2.6rem]">
       <button
         type="button"
         onClick={() => onModeChange("article")}
@@ -33,7 +29,7 @@ export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
         )}
         aria-pressed={mode === "article"}
       >
-        <FileText className="h-4 w-4 max-md:h-5 max-md:w-5 shrink-0" strokeWidth={2} />
+        <FileText className="h-4 w-4 max-md:h-5 max-md:w-5 shrink-0" strokeWidth={1.5} />
         <span className="hidden xl:inline whitespace-nowrap tracking-[0.01em]">Article</span>
       </button>
       <button
@@ -49,7 +45,7 @@ export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
         )}
         aria-pressed={mode === "read"}
       >
-        <BookOpen className="h-4 w-4 max-md:h-5 max-md:w-5 shrink-0" strokeWidth={2} />
+        <BookOpen className="h-4 w-4 max-md:h-5 max-md:w-5 shrink-0" strokeWidth={1.5} />
         <span className="hidden xl:inline whitespace-nowrap tracking-[0.01em]">Read</span>
       </button>
     </div>
