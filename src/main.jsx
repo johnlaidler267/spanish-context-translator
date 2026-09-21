@@ -9,6 +9,7 @@ import { AuthModal } from '@/components/auth/auth-modal'
 import { ErrorBoundary } from '@/components/error-boundary'
 import App from '@/App'
 import { warmDiscoverFirstPaint } from '@/lib/discover/discover-catalog'
+import { warmReadingProgressFirstPaint } from '@/lib/storage/reading-progress-sync'
 
 /*
   Discover catalog first-paint warm-up, started before React mounts anything.
@@ -27,11 +28,14 @@ import { warmDiscoverFirstPaint } from '@/lib/discover/discover-catalog'
 const CATALOG_ROUTES = ['/discover']
 const NON_CATALOG_PREFIXES = ['/settings', '/upgrade', '/terms', '/privacy', '/library']
 const path = window.location.pathname
-if (
-  CATALOG_ROUTES.includes(path) ||
+const isLandingRoute = !CATALOG_ROUTES.includes(path) &&
   !NON_CATALOG_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix + '/'))
-) {
+if (CATALOG_ROUTES.includes(path) || isLandingRoute) {
   warmDiscoverFirstPaint()
+}
+// Only landing renders the Continue Reading row this pull feeds -- see warmReadingProgressFirstPaint.
+if (isLandingRoute) {
+  warmReadingProgressFirstPaint()
 }
 
 createRoot(document.getElementById('root')).render(

@@ -1,5 +1,5 @@
 import type { User } from "@supabase/supabase-js"
-import { supabase } from "@/lib/supabase"
+import { getCachedSupabaseUser, supabase } from "@/lib/supabase"
 import { mergeCloudProgress, type CloudProgressRow } from "@/lib/storage/reading-progress-storage"
 import { mergeCloudRecaps, type CloudRecapRow } from "@/lib/storage/reading-recap-storage"
 
@@ -253,6 +253,27 @@ export function ensureCloudReadingProgressPulled(user: User | null): Promise<voi
     }
   })()
   return pullPromise
+}
+
+/**
+ * Starts the reading-progress cloud pull before React mounts -- same idea and root cause as
+ * `warmDiscoverFirstPaint` (discover-catalog.ts): the landing page's Continue Reading row
+ * (useLandingContinueReading) only ever kicked this off from its own mount effect, so on a
+ * signed-in browser with no reading history cached locally yet (a fresh device, or right after
+ * signing in), the row had nothing to show until that round trip finished well after first
+ * paint -- visibly later than the rest of the landing page, including its hero image.
+ *
+ * Reads the signed-in user synchronously out of localStorage (the same trick
+ * `getCachedSupabaseUser` exists for -- see its docstring) instead of waiting for `AuthProvider`
+ * to restore the session, so the real network pull can start before the app has even rendered.
+ * Safe to call again later with the "real" `user` once auth resolves:
+ * `ensureCloudReadingProgressPulled` is cached per user id, so a matching id is a no-op reuse
+ * of this same pull, and a mismatched one (a stale/cleared cache) just re-pulls for the correct
+ * user -- never left without one.
+ */
+export function warmReadingProgressFirstPaint(): void {
+  if (typeof window === "undefined") return
+  void ensureCloudReadingProgressPulled(getCachedSupabaseUser())
 }
 
 /** Test-only: clears the debounce timers, the per-user pull cache, and the recap-column latch. */
