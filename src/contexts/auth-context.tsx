@@ -16,6 +16,14 @@ import { invalidateLibraryCache } from "@/lib/storage/library-catalog"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/**
+ * Which door the user came through. Sign-in and sign-up are the *same* operation here
+ * (magic link and Google OAuth both create the account on first use), so this only
+ * selects the modal's framing — a returning user shouldn't be told to "create an
+ * account", and a new one shouldn't have to guess that "Sign in" will also register them.
+ */
+export type AuthIntent = "signin" | "signup"
+
 interface AuthContextValue {
   user:            User | null
   isLoading:       boolean
@@ -24,9 +32,10 @@ interface AuthContextValue {
   signOut:         () => Promise<void>
   signInWithMagicLink: (email: string) => Promise<{ error: string | null }>
   signInWithOAuth: (provider: "google") => Promise<void>
-  openAuthModal:   () => void
+  openAuthModal:   (intent?: AuthIntent) => void
   closeAuthModal:  () => void
   authModalOpen:   boolean
+  authModalIntent: AuthIntent
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -120,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // in progress still needs to block on the real exchange completing.
   const [isLoading, setLoading] = useState(isSigningIn)
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authModalIntent, setAuthModalIntent] = useState<AuthIntent>("signin")
   // Snapshot of whether THIS page load started mid-callback, captured once (useRef's initial
   // value is only used on first render) — unlike `isSigningIn`, which the effect below
   // reassigns as real events land, this stays put so the effect knows whether to clean the
@@ -201,7 +211,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const openAuthModal = useCallback(() => {
+  const openAuthModal = useCallback((intent: AuthIntent = "signin") => {
+    setAuthModalIntent(intent)
     setAuthModalOpen(true)
   }, [])
 
@@ -219,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     openAuthModal,
     closeAuthModal,
     authModalOpen,
+    authModalIntent,
   }
 
   return (

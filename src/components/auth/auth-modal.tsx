@@ -6,7 +6,7 @@ import { AuthSignInOptions } from "@/components/auth/auth-sign-in-options"
 import { useAuth } from "@/contexts/auth-context"
 
 export function AuthModal() {
-  const { authModalOpen, closeAuthModal } = useAuth()
+  const { authModalOpen, closeAuthModal, authModalIntent } = useAuth()
 
   useEffect(() => {
     if (!authModalOpen) return
@@ -40,10 +40,12 @@ export function AuthModal() {
 
         <div className="mb-6">
           <h2 id="auth-modal-title" className="font-serif text-2xl font-medium text-foreground">
-            Sign in to LexaLens
+            {authModalIntent === "signup" ? "Create your account" : "Sign in to LexaLens"}
           </h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Save your reading history and unlock your free plan.
+            {authModalIntent === "signup"
+              ? "Free to start — no password to remember. Your reading history syncs to every device."
+              : "Save your reading history and pick up where you left off, on any device."}
           </p>
         </div>
 

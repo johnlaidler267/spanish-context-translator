@@ -377,7 +377,7 @@ export function LandingScreen({
     ) : (
       <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
         <p className="sample-excerpt-label text-center">Welcome</p>
-        <button type="button" onClick={openAuthModal} className="sample-excerpt-btn text-left w-full group">
+        <button type="button" onClick={() => openAuthModal("signin")} className="sample-excerpt-btn text-left w-full group">
           <p className="sample-paragraph font-serif text-ui-base overflow-hidden">Sign in to save your place in every story and pick up right where you left off, on any device.</p>
           <span className="mt-3 block text-center">
             <span className="sample-link inline-flex items-center gap-2">

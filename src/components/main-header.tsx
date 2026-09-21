@@ -11,6 +11,7 @@ import type { SubscriptionRowLike } from "@/lib/subscription/subscription-displa
 import { beginRouteTransition } from "@/lib/route-transition-shell"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
 import { LexaLensWordmark } from "@/components/lexa-lens-wordmark"
+import { AuthCta } from "@/components/auth/auth-cta"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
 const LANDING_SUB_ROW_CACHE = "lexa.landingSubRow.v1"
@@ -311,6 +312,10 @@ export function MainHeader({
   const stacked = variant === "stacked"
   const isMdUp = useMediaQuery("(min-width: 768px)")
   const location = useLocation()
+  // Gated on !authLoading so a returning user with a stored session never sees
+  // "Sign up" flash in the header before their session finishes restoring.
+  const { user: authUser, isLoading: authLoading } = useAuth()
+  const showAuthCta = !authLoading && !authUser
   const showHomeMobilePlanBanner = showMobilePlanBanner && !isMdUp && location.pathname === "/"
   const showSettingsShortcut = showBrandWordmark && location.pathname !== "/settings"
   const fixedInset =
@@ -430,6 +435,7 @@ export function MainHeader({
                 )}
               </>
             ) : null}
+            {showAuthCta ? <AuthCta className="ml-0.5" /> : null}
           </div>
         </div>
         {showHomeMobilePlanBanner && <PlanBadgeContent guestMode="upgrade" />}
