@@ -26,6 +26,11 @@ vi.mock("@/lib/storage/reading-progress-sync", () => ({
   pushPageRecap: (...args: unknown[]) => pushPageRecap(...args),
 }))
 
+const getCachedSupabaseAccessToken = vi.fn()
+vi.mock("@/lib/supabase", () => ({
+  getCachedSupabaseAccessToken: () => getCachedSupabaseAccessToken(),
+}))
+
 const user = { id: "user-1" } as User
 
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
@@ -38,12 +43,17 @@ function jsonResponse(body: unknown, ok = true, status = 200): Response {
 }
 
 describe("page-recap", () => {
+  const sendBeacon = vi.fn()
+
   beforeEach(() => {
     vi.stubGlobal("window", {})
     vi.stubGlobal("localStorage", makeMemoryStorage())
+    vi.stubGlobal("navigator", { sendBeacon })
     vi.resetModules()
     fetchGeminiChatViaEdge.mockReset()
     pushPageRecap.mockReset().mockResolvedValue(undefined)
+    getCachedSupabaseAccessToken.mockReset().mockReturnValue(null)
+    sendBeacon.mockReset().mockReturnValue(true)
   })
 
   afterEach(() => vi.unstubAllGlobals())
@@ -205,6 +215,84 @@ describe("page-recap", () => {
       )
       await Promise.all([p1, p2])
       expect(fetchGeminiChatViaEdge).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("sendPageRecapBeaconOnLeave", () => {
+    const pages = [["Page one sentence."], ["Page two sentence."], ["Page three sentence."]]
+
+    it("sends a beacon (not a fetch) when signed in with a cached access token", async () => {
+      getCachedSupabaseAccessToken.mockReturnValue("token-abc")
+      const { sendPageRecapBeaconOnLeave } = await import("@/lib/translate/page-recap")
+
+      sendPageRecapBeaconOnLeave({ user, contentId: "book-1", leavingAtPageIndex: 2, pages })
+
+      expect(fetchGeminiChatViaEdge).not.toHaveBeenCalled()
+      expect(sendBeacon).toHaveBeenCalledTimes(1)
+      const [url, blob] = sendBeacon.mock.calls[0] as [string, Blob]
+      expect(url).toBe("https://example.supabase.co/functions/v1/recap-beacon")
+      expect(blob.type).toBe("application/json")
+      const payload = JSON.parse(await blob.text()) as Record<string, unknown>
+      expect(payload).toMatchObject({
+        access_token: "token-abc",
+        contentId: "book-1",
+        // Leaving at page index 2 -> the page before it (index 1) is what gets summarized.
+        forPageIndex: 1,
+        position: { pageIndex: 2, totalPages: 3 },
+      })
+      expect(payload.previousPageSourceText).toContain("Page two")
+    })
+
+    it("falls back to the awaited fetch path for a guest (no reading_progress row to write to)", async () => {
+      getCachedSupabaseAccessToken.mockReturnValue(null)
+      fetchGeminiChatViaEdge.mockResolvedValue(
+        jsonResponse({ choices: [{ message: { role: "assistant", content: "Recap." } }] }),
+      )
+      const { sendPageRecapBeaconOnLeave } = await import("@/lib/translate/page-recap")
+
+      sendPageRecapBeaconOnLeave({ user: null, contentId: "book-1", leavingAtPageIndex: 2, pages })
+      await vi.waitFor(() => expect(fetchGeminiChatViaEdge).toHaveBeenCalledTimes(1))
+      expect(sendBeacon).not.toHaveBeenCalled()
+    })
+
+    it("falls back to the awaited fetch path when signed in but no token is cached yet", async () => {
+      getCachedSupabaseAccessToken.mockReturnValue(null)
+      fetchGeminiChatViaEdge.mockResolvedValue(
+        jsonResponse({ choices: [{ message: { role: "assistant", content: "Recap." } }] }),
+      )
+      const { sendPageRecapBeaconOnLeave } = await import("@/lib/translate/page-recap")
+
+      sendPageRecapBeaconOnLeave({ user, contentId: "book-1", leavingAtPageIndex: 2, pages })
+      await vi.waitFor(() => expect(fetchGeminiChatViaEdge).toHaveBeenCalledTimes(1))
+      expect(sendBeacon).not.toHaveBeenCalled()
+    })
+
+    it("falls back to the awaited fetch path when the browser refuses to queue the beacon", async () => {
+      getCachedSupabaseAccessToken.mockReturnValue("token-abc")
+      sendBeacon.mockReturnValue(false)
+      fetchGeminiChatViaEdge.mockResolvedValue(
+        jsonResponse({ choices: [{ message: { role: "assistant", content: "Recap." } }] }),
+      )
+      const { sendPageRecapBeaconOnLeave } = await import("@/lib/translate/page-recap")
+
+      sendPageRecapBeaconOnLeave({ user, contentId: "book-1", leavingAtPageIndex: 2, pages })
+      await vi.waitFor(() => expect(fetchGeminiChatViaEdge).toHaveBeenCalledTimes(1))
+    })
+
+    it("does nothing at all when leaving on page 1 (no previous page)", async () => {
+      getCachedSupabaseAccessToken.mockReturnValue("token-abc")
+      const { sendPageRecapBeaconOnLeave } = await import("@/lib/translate/page-recap")
+      sendPageRecapBeaconOnLeave({ user, contentId: "book-1", leavingAtPageIndex: 0, pages })
+      expect(sendBeacon).not.toHaveBeenCalled()
+      expect(fetchGeminiChatViaEdge).not.toHaveBeenCalled()
+    })
+
+    it("sends only one beacon across repeated calls for the same leave point", async () => {
+      getCachedSupabaseAccessToken.mockReturnValue("token-abc")
+      const { sendPageRecapBeaconOnLeave } = await import("@/lib/translate/page-recap")
+      sendPageRecapBeaconOnLeave({ user, contentId: "book-1", leavingAtPageIndex: 2, pages })
+      sendPageRecapBeaconOnLeave({ user, contentId: "book-1", leavingAtPageIndex: 2, pages })
+      expect(sendBeacon).toHaveBeenCalledTimes(1)
     })
   })
 })

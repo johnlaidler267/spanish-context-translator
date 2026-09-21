@@ -39,3 +39,8 @@ verify_jwt = false
 
 [functions.gemini-chat]
 verify_jwt = false
+
+# Called via navigator.sendBeacon (tab-close/backgrounding), which cannot set an Authorization
+# header at all -- validates a Supabase access token carried in the body instead.
+[functions.recap-beacon]
+verify_jwt = false

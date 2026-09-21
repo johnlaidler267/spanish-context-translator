@@ -1,9 +1,12 @@
 import type { User } from "@supabase/supabase-js"
 import { fetchGeminiChatViaEdge } from "@/lib/groq-edge"
+import { getCachedSupabaseAccessToken } from "@/lib/supabase"
 import { parseChatJsonErrorBody, stringifyMessageContent } from "@/lib/translate/chat-completion"
 import { pageSourceText } from "@/lib/translate/page-split"
 import { getCachedPageRecap, setCachedPageRecap } from "@/lib/storage/reading-recap-storage"
 import { pushPageRecap } from "@/lib/storage/reading-progress-sync"
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
 /**
  * Cheapest allowed `gemini-chat` model (see supabase/functions/gemini-chat/index.ts's
@@ -74,24 +77,7 @@ export async function summarizePreviousPageForRecap(
 /** In-flight dedupe key so a duplicate leave-trigger (e.g. a double effect-cleanup fire) can't start a second call for the same book/page while one is already running. */
 const recapInFlight = new Set<string>()
 
-/**
- * Orchestrates the whole "leaving the book" recap step: given the page (`leavingAtPageIndex`)
- * the reader is on as they leave -- or, on a background reopen-time prime, the page they've
- * just resumed to (see App.tsx) -- summarizes the page *before* it and caches the result -- see
- * reading-recap-storage.ts. Called from three places in App.tsx: the reading-session cleanup
- * effect (SPA navigation away), its `pagehide`/`visibilitychange` listeners (tab close/
- * backgrounding), and once right after a resume with nothing cached yet. Safe to call from more
- * than one of those for what's effectively the same leave/position thanks to the in-flight/
- * cache guards below -- whichever call lands first is the only one that actually pays for a
- * network request -- but each caller is still responsible for not doing so on every page turn.
- *
- * No-ops (no network call at all) when:
- *  - there's no previous page to summarize (resuming on page 1), or
- *  - a cached recap for this exact previous page already exists (e.g. this exact leave point
- *    was already summarized once and never revisited past it), or
- *  - a call for this same book/page is already in flight.
- */
-export async function maybeSummarizePreviousPageOnLeave(params: {
+interface RecapLeaveParams {
   user: User | null
   contentId: string | null
   /** 0-based page the reader is on as they leave -- becomes the next resume point. */
@@ -107,26 +93,63 @@ export async function maybeSummarizePreviousPageOnLeave(params: {
    * just without the cross-device match.
    */
   pageStartSentenceIndices?: number[]
-}): Promise<void> {
-  const { user, contentId, leavingAtPageIndex, pages, pageStartSentenceIndices } = params
-  if (!contentId) return
-  const previousPageIndex = leavingAtPageIndex - 1
-  if (previousPageIndex < 0) return
-  const previousPage = pages[previousPageIndex]
-  if (!previousPage || previousPage.length === 0) return
-  const previousPageSentenceIndex = pageStartSentenceIndices?.[previousPageIndex] ?? null
+}
 
-  if (
-    getCachedPageRecap(user, contentId, previousPageIndex, previousPageSentenceIndex) != null
-  ) {
-    return
+/**
+ * Shared "is there anything worth summarizing, and is it already cached" guard for both
+ * `maybeSummarizePreviousPageOnLeave` and `sendPageRecapBeaconOnLeave` below. Returns null (no
+ * network call warranted) when there's no previous page to summarize (resuming on page 1) or a
+ * cached recap for this exact previous page already exists.
+ */
+function resolveRecapTarget(params: RecapLeaveParams): {
+  contentId: string
+  previousPageIndex: number
+  previousPageSentenceIndex: number | null
+  previousPageText: string
+} | null {
+  const { user, contentId, leavingAtPageIndex, pages, pageStartSentenceIndices } = params
+  if (!contentId) return null
+  const previousPageIndex = leavingAtPageIndex - 1
+  if (previousPageIndex < 0) return null
+  const previousPage = pages[previousPageIndex]
+  if (!previousPage || previousPage.length === 0) return null
+  const previousPageSentenceIndex = pageStartSentenceIndices?.[previousPageIndex] ?? null
+  if (getCachedPageRecap(user, contentId, previousPageIndex, previousPageSentenceIndex) != null) {
+    return null
   }
+  return {
+    contentId,
+    previousPageIndex,
+    previousPageSentenceIndex,
+    previousPageText: pageSourceText(previousPage),
+  }
+}
+
+/**
+ * Orchestrates the whole "leaving the book" recap step with a normal two-way `fetch`: calls
+ * Gemini, waits for the reply, and caches the result locally (reading-recap-storage.ts) and to
+ * the cloud (pushPageRecap) -- see reading-progress-sync.ts. Safe to use whenever the tab isn't
+ * actively tearing down as the call happens: the reading-session cleanup effect in App.tsx
+ * (same-tab SPA navigation away -- back arrow, switching books) and the background reopen-time
+ * prime (nothing cached yet for the resumed position). For the `pagehide`/`visibilitychange`
+ * (tab close/backgrounding) case, use `sendPageRecapBeaconOnLeave` instead -- see its docstring
+ * for why a plain awaited fetch is the wrong tool there even with `keepalive`.
+ *
+ * No-ops (no network call at all) when `resolveRecapTarget` finds nothing to do, or when a call
+ * for this same book/page is already in flight -- whichever call lands first among any callers
+ * racing for the same leave/position is the only one that actually pays for a request.
+ */
+export async function maybeSummarizePreviousPageOnLeave(params: RecapLeaveParams): Promise<void> {
+  const { user, leavingAtPageIndex, pages, pageStartSentenceIndices } = params
+  const target = resolveRecapTarget(params)
+  if (!target) return
+  const { contentId, previousPageIndex, previousPageSentenceIndex, previousPageText } = target
 
   const key = `${user?.id ?? "guest"}:${contentId}:${previousPageIndex}`
   if (recapInFlight.has(key)) return
   recapInFlight.add(key)
   try {
-    const summary = await summarizePreviousPageForRecap(pageSourceText(previousPage))
+    const summary = await summarizePreviousPageForRecap(previousPageText)
     if (summary) {
       setCachedPageRecap(user, contentId, previousPageIndex, summary, previousPageSentenceIndex)
       // ...and to this reader's `reading_progress` row, so the one call we just paid for is
@@ -149,5 +172,78 @@ export async function maybeSummarizePreviousPageOnLeave(params: {
     }
   } finally {
     recapInFlight.delete(key)
+  }
+}
+
+/** Keys already sent via `sendPageRecapBeaconOnLeave` this session -- see its docstring. Never
+ *  cleared: a beacon has no completion signal to clear it on, and re-sending for the exact same
+ *  leave point in the same session isn't worth the duplicate Gemini call. */
+const beaconSent = new Set<string>()
+
+/**
+ * The `pagehide`/`visibilitychange`-hidden (tab close/backgrounding) counterpart to
+ * `maybeSummarizePreviousPageOnLeave`, using `navigator.sendBeacon` instead of a normal `fetch`.
+ *
+ * Root cause this works around: a request kicked off from a `pagehide`/`visibilitychange`
+ * handler -- even with `fetch(..., { keepalive: true })` -- is routinely cut off by the browser
+ * before the response comes back, because the tab is tearing down at that exact moment. That
+ * silently leaves nothing cached for this leave point, and the *next* time this book is opened,
+ * "Where you left off" falls back to its verbatim excerpt instead of showing an AI summary --
+ * far more often than a genuine "the LLM call failed" rate would explain. `sendBeacon` is what
+ * browsers provide for exactly this moment: the request is guaranteed to actually go out even
+ * as the page unloads.
+ *
+ * The trade-off: a beacon can't carry an `Authorization` header, and there's no response for
+ * this tab to read -- so unlike the awaited version, this can't call Gemini and write the
+ * result itself. Instead it fires one beacon at the `recap-beacon` Edge Function (carrying a
+ * Supabase access token *in the body*, read synchronously via `getCachedSupabaseAccessToken` so
+ * there's no `await supabase.auth.getSession()` for the tearing-down tab to wait on) and that
+ * function does the two-way work -- call Gemini, write the reader's `reading_progress` row --
+ * server-side, where nothing is unloading. This browser can't update its own local cache from a
+ * beacon it'll never see the reply to; the written cloud row is picked up on the *next* reopen
+ * (any device) via `ensureCloudReadingProgressPulled`'s cloud-to-local merge.
+ *
+ * Falls back to the old best-effort `fetch`-with-`keepalive` path (via
+ * `summarizePreviousPageForRecap`, same as before this beacon existed) for a guest or anyone
+ * with no cached access token -- there's no `reading_progress` row for the beacon's server side
+ * to write to without a signed-in user anyway -- and for a browser without `sendBeacon` support.
+ */
+export function sendPageRecapBeaconOnLeave(params: RecapLeaveParams): void {
+  const { user, leavingAtPageIndex, pages, pageStartSentenceIndices } = params
+  const target = resolveRecapTarget(params)
+  if (!target) return
+  const { contentId, previousPageIndex, previousPageSentenceIndex, previousPageText } = target
+
+  const accessToken = user ? getCachedSupabaseAccessToken() : null
+  if (!accessToken || typeof navigator === "undefined" || !navigator.sendBeacon) {
+    void maybeSummarizePreviousPageOnLeave(params)
+    return
+  }
+
+  const key = `${user?.id ?? "guest"}:${contentId}:${previousPageIndex}`
+  if (beaconSent.has(key)) return
+
+  const payload = {
+    access_token: accessToken,
+    contentId,
+    previousPageSourceText: previousPageText,
+    forPageIndex: previousPageIndex,
+    forSentenceIndex: previousPageSentenceIndex,
+    position: {
+      pageIndex: leavingAtPageIndex,
+      totalPages: pages.length,
+      sentenceIndex: pageStartSentenceIndices?.[leavingAtPageIndex] ?? null,
+    },
+  }
+  const sent = navigator.sendBeacon(
+    `${supabaseUrl}/functions/v1/recap-beacon`,
+    new Blob([JSON.stringify(payload)], { type: "application/json" }),
+  )
+  // sendBeacon returning false means the browser refused to queue it (e.g. over its payload
+  // size limit) -- fall back to the old best-effort path rather than lose the recap entirely.
+  if (sent) {
+    beaconSent.add(key)
+  } else {
+    void maybeSummarizePreviousPageOnLeave(params)
   }
 }

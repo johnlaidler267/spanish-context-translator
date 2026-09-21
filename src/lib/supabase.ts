@@ -55,6 +55,28 @@ export function getCachedSupabaseUser(): User | null {
 }
 
 /**
+ * Synchronously reads the current access token out of the same persisted session
+ * `getCachedSupabaseUser` reads -- no `await supabase.auth.getSession()` round trip. Used by
+ * the `pagehide`/`visibilitychange` "Where you left off" recap beacon (see
+ * `sendPageRecapBeaconOnLeave` in page-recap.ts), which needs the token *immediately* while the
+ * tab may already be tearing down -- an async call has no guarantee of resolving before that.
+ * Best-effort like its sibling: never throws, can be stale if the token was just revoked
+ * elsewhere, and that's fine here since the token is only ever used for one best-effort,
+ * silently-absorbed-on-failure write.
+ */
+export function getCachedSupabaseAccessToken(): string | null {
+  if (typeof window === "undefined" || !supabaseAuthStorageKey) return null
+  try {
+    const raw = window.localStorage.getItem(supabaseAuthStorageKey)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { access_token?: string } | null
+    return typeof parsed?.access_token === "string" ? parsed.access_token : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Get the current session's JWT access token.
  * Returns null if the user is not authenticated.
  */

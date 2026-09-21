@@ -37,6 +37,7 @@ import {
   pageSourceText,
   READ_MODE_CHARS_PER_STEP_MOBILE,
   resumeExcerptFromPageSource,
+  sendPageRecapBeaconOnLeave,
   splitSourceIntoSentences,
   subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
@@ -1173,27 +1174,51 @@ export default function App() {
   /**
    * "Where you left off" recap: right when the reader leaves a book, summarize the page
    * *before* wherever they're leaving off (their next resume point) with one cheap Gemini
-   * Flash Lite call and cache it — see maybeSummarizePreviousPageOnLeave
-   * (src/lib/translate/page-recap.ts) and reading-recap-storage.ts. Three separate ways to
-   * "leave" all funnel into the same `runRecap`, and all share its in-flight/cache dedupe, so
-   * whichever fires first is the only one that actually pays for a call:
+   * Flash Lite call and cache it. Three separate ways to "leave" all read the *latest* position
+   * from `latestReadingSnapshotRef` (kept current by the effect above) rather than closing over
+   * page/content values from whenever this effect itself last ran, but split into two different
+   * calls depending on whether the tab is actually tearing down as they fire:
    *  - a same-tab SPA navigation away (back arrow, switching books) — flips `appState` away
-   *    from "reading", which this effect's own cleanup fires on;
-   *  - `pagehide` — covers closing the tab/browser, which never flips `appState` (the effect
-   *    cleanup above never runs) since the whole page is torn down instead;
-   *  - `visibilitychange` → hidden — belt-and-suspenders for cases `pagehide` doesn't reliably
-   *    cover (notably some mobile Safari backgrounding). This can fire on a plain "switched
-   *    app for a second, came right back" too, not just a real leave — that's fine, it's the
-   *    same cheap call a real leave would make, just possibly a little earlier than necessary.
-   * Deliberately keyed only on `appState`, not on activePageIndex/activeReadingContentId: those
-   * change on every page turn / book switch, and this must fire only on an actual leave, not
-   * per page. `runRecap` reads the *latest* position from `latestReadingSnapshotRef` (kept
-   * current by the effect above) rather than closing over page/content values from whenever
-   * this effect itself last ran.
+   *    from "reading", which this effect's own cleanup fires on. The app keeps running through
+   *    this, so it uses the normal awaited `maybeSummarizePreviousPageOnLeave` (two-way fetch —
+   *    call Gemini, wait for the reply, cache it locally *and* to the cloud);
+   *  - `pagehide` (closing the tab/browser — the effect cleanup above never runs for this, since
+   *    the whole page is torn down instead) and `visibilitychange` → hidden (belt-and-suspenders
+   *    for cases `pagehide` doesn't reliably cover, notably some mobile Safari backgrounding;
+   *    can also fire on a plain "switched app for a second, came right back") both use
+   *    `sendPageRecapBeaconOnLeave` instead — a `navigator.sendBeacon` fire-and-forget call, not
+   *    a normal fetch, because the tab really may be gone before a normal request would finish.
+   *    See its docstring (src/lib/translate/page-recap.ts) for why that distinction matters: a
+   *    plain fetch here — even with `keepalive` — silently loses the recap far more often than
+   *    "the LLM call failed" would explain.
+   * All three share `maybeSummarizePreviousPageOnLeave`'s in-flight/cache dedupe (the beacon
+   * path falls back to it directly for a guest, and for anyone the beacon itself couldn't be
+   * queued for), so a duplicate trigger for the same leave/position never pays for a second
+   * call. Deliberately keyed only on `appState`, not on activePageIndex/activeReadingContentId:
+   * those change on every page turn / book switch, and this must fire only on an actual leave,
+   * not per page.
    */
   useEffect(() => {
     if (appState !== "reading") return
-    const runRecap = () => {
+    const runRecapBeacon = () => {
+      const snapshot = latestReadingSnapshotRef.current
+      if (!snapshot) return
+      sendPageRecapBeaconOnLeave({
+        user: snapshot.user,
+        contentId: snapshot.contentId,
+        leavingAtPageIndex: snapshot.pageIndex,
+        pages: snapshot.pages,
+        pageStartSentenceIndices: snapshot.pageStartSentenceIndices,
+      })
+    }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") runRecapBeacon()
+    }
+    window.addEventListener("pagehide", runRecapBeacon)
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    return () => {
+      window.removeEventListener("pagehide", runRecapBeacon)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
       const snapshot = latestReadingSnapshotRef.current
       if (!snapshot) return
       void maybeSummarizePreviousPageOnLeave({
@@ -1203,16 +1228,6 @@ export default function App() {
         pages: snapshot.pages,
         pageStartSentenceIndices: snapshot.pageStartSentenceIndices,
       })
-    }
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") runRecap()
-    }
-    window.addEventListener("pagehide", runRecap)
-    document.addEventListener("visibilitychange", onVisibilityChange)
-    return () => {
-      window.removeEventListener("pagehide", runRecap)
-      document.removeEventListener("visibilitychange", onVisibilityChange)
-      runRecap()
     }
   }, [appState])
 

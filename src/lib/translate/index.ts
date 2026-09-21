@@ -46,6 +46,7 @@ export { translatePageText } from "@/lib/translate/translate-page"
 
 export {
   maybeSummarizePreviousPageOnLeave,
+  sendPageRecapBeaconOnLeave,
   summarizePreviousPageForRecap,
 } from "@/lib/translate/page-recap"
 

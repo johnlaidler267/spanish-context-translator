@@ -4,6 +4,12 @@
  * cached for that book -- the next reopen fell back to the plain text excerpt forever. See the
  * `pagehide`/`visibilitychange` listeners next to the leave-triggered effect in App.tsx.
  *
+ * `pagehide`/`visibilitychange` fire `sendPageRecapBeaconOnLeave` (a `navigator.sendBeacon` hit
+ * on the `recap-beacon` Edge Function), not the plain `fetch`-based `gemini-chat` call the
+ * reopen-time background prime (second describe block below) still uses -- see
+ * src/lib/translate/page-recap.ts's docstrings for why the two leave-paths need different
+ * transports.
+ *
  * This needs a real browser lifecycle event (`pagehide`), not just component state, so it's a
  * Playwright test against the e2e-mocks harness rather than a Vitest/RTL one -- see
  * tests/e2e-mocks/README.md.
@@ -93,6 +99,18 @@ async function mockChatEdgeFunctions(
   return { recapRequestBody: () => recapRequestBody }
 }
 
+/** Registers the `recap-beacon` mock the `pagehide`/`visibilitychange` path hits instead of `gemini-chat` directly -- see the module docstring. */
+async function mockRecapBeacon(
+  page: import("@playwright/test").Page,
+): Promise<{ recapBeaconBody: () => unknown }> {
+  let recapBeaconBody: unknown = null
+  await page.route("**/functions/v1/recap-beacon**", async (route) => {
+    recapBeaconBody = route.request().postDataJSON()
+    await route.fulfill({ status: 204 })
+  })
+  return { recapBeaconBody: () => recapBeaconBody }
+}
+
 test.setTimeout(45_000)
 
 test.describe("closing the tab (pagehide)", () => {
@@ -109,7 +127,12 @@ test.describe("closing the tab (pagehide)", () => {
   })
 
   test("generates and caches a recap, not just navigating away", async ({ page }) => {
-    const { recapRequestBody } = await mockChatEdgeFunctions(page)
+    // Still needed for the groq-chat override (the actual translate flow, unrelated to the
+    // recap) -- see mockChatEdgeFunctions's own comment on why the harness default isn't enough
+    // for this book's longer, multi-paragraph text. The gemini-chat mock it also registers goes
+    // unused by this test (the pagehide path hits recap-beacon, not gemini-chat directly).
+    await mockChatEdgeFunctions(page)
+    const { recapBeaconBody } = await mockRecapBeacon(page)
 
     await page.goto("/discover")
     await page.getByRole("button", { name: "Recap Test Book by Test Author" }).first().click()
@@ -122,18 +145,24 @@ test.describe("closing the tab (pagehide)", () => {
     ).toBeVisible()
 
     // Nothing should have been generated yet -- only leaving triggers it.
-    expect(recapRequestBody()).toBeNull()
+    expect(recapBeaconBody()).toBeNull()
 
     // Simulate the tab closing: dispatch `pagehide` directly rather than actually closing the
     // page, so the mocked network route can still observe the request that fires from it.
     await page.evaluate(() => window.dispatchEvent(new Event("pagehide")))
 
-    await expect.poll(recapRequestBody).not.toBeNull()
-    const body = recapRequestBody() as { model?: string; messages?: Array<{ role: string; content: string }> }
-    expect(body.model).toBe("gemini-2.5-flash-lite")
-    const userMessage = body.messages?.find((m) => m.role === "user")
+    await expect.poll(recapBeaconBody).not.toBeNull()
+    const body = recapBeaconBody() as {
+      access_token?: string
+      contentId?: string
+      previousPageSourceText?: string
+      forPageIndex?: number
+    }
+    expect(body.access_token).toBe("mock-access-token")
+    expect(body.contentId).toBe(BOOK_ID)
+    expect(body.forPageIndex).toBe(0)
     // Summarizes the page *before* the one we left on (page 1's content), not page 2's.
-    expect(userMessage?.content).toContain("despertaba lentamente")
+    expect(body.previousPageSourceText).toContain("despertaba lentamente")
   })
 })
 
