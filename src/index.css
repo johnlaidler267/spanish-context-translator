@@ -2758,6 +2758,27 @@ article span {
   to { transform: rotate(360deg); }
 }
 
+/* Short mobile viewports: pull the hero block up and hand the space to the illustration.
+   The landing column clears the fixed header with 7.5rem of padding, and the hero adds its
+   own 0.5rem top/bottom — on a tall phone that breathing room is invisible slack, but on a
+   short one it is the difference between the illustration rendering at full size and being
+   shrunk. The header itself is 6.5rem tall here, so 6.75rem still clears it; this reclaims
+   the padding, not the clearance. Only below 740px, where the hero actually runs out of
+   room — taller screens keep the original spacing. */
+@media (max-width: 767px) and (max-height: 740px) {
+  /* Doubled class for specificity: the padding this overrides comes from a Tailwind
+     `max-md:pt-[...]` utility, which ties with a single class and would win on source order. */
+  .landing-column.landing-column {
+    /* 7rem, not less: the header ends at 6.5rem and the illustration bobs 3px
+       (see @keyframes levitate), so a tighter value has it grazing the header. */
+    padding-top: max(7rem, calc(env(safe-area-inset-top, 0px) + 5.25rem));
+  }
+  .landing-column .hero-mark--literary {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
 /* Landing hero illustration (mobile). It shrinks to give the greeting room on short
    viewports (see `min-h-0 shrink` in landing-screen.tsx), but past a point that leaves a
    ~14px speck that reads as a rendering artifact rather than art. Below this height it's
