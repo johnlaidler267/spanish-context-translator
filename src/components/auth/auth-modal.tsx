@@ -6,7 +6,7 @@ import { AuthSignInOptions } from "@/components/auth/auth-sign-in-options"
 import { useAuth } from "@/contexts/auth-context"
 
 export function AuthModal() {
-  const { authModalOpen, closeAuthModal, authModalIntent } = useAuth()
+  const { authModalOpen, closeAuthModal } = useAuth()
 
   useEffect(() => {
     if (!authModalOpen) return
@@ -40,12 +40,13 @@ export function AuthModal() {
 
         <div className="mb-6">
           <h2 id="auth-modal-title" className="font-serif text-2xl font-medium text-foreground">
-            {authModalIntent === "signup" ? "Create your account" : "Sign in to LexaLens"}
+            Sign in to LexaLens
           </h2>
+          {/* Spells out that this doubles as sign-up — the header deliberately has no
+              separate button for it, since the same link does both. */}
           <p className="mt-1.5 text-sm text-muted-foreground">
-            {authModalIntent === "signup"
-              ? "Free to start — no password to remember. Your reading history syncs to every device."
-              : "Save your reading history and pick up where you left off, on any device."}
+            New here? The same link creates your account. No password either way, and your
+            reading history follows you to every device.
           </p>
         </div>
 

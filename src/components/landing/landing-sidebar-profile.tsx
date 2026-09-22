@@ -123,10 +123,10 @@ export function LandingSidebarProfile({
             // signed out, led to a settings page about nobody.
             <button
               type="button"
-              onClick={() => openAuthModal("signup")}
+              onClick={() => openAuthModal()}
               className={avatarClass}
-              aria-label="Sign in or sign up"
-              title="Sign in or sign up"
+              aria-label="Sign in"
+              title="Sign in"
             >
               <LogIn className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
             </button>
@@ -142,7 +142,7 @@ export function LandingSidebarProfile({
         <p className="text-ui-2xs leading-snug text-muted-foreground">
           Save your place in every story.
         </p>
-        <AuthCta stretch className="mt-2 w-full" />
+        <AuthCta stretch className="mt-2" />
       </div>
     )
   }
