@@ -11,6 +11,10 @@ import {
   readContinueReadingCount,
   writeContinueReadingCount,
 } from "@/lib/storage/continue-reading-count"
+import {
+  readCachedLibraryBooks,
+  writeCachedLibraryBooks,
+} from "@/lib/storage/epub-library-cache"
 import { listUserEpubs, type LibraryEpub } from "@/lib/storage/epub-library"
 import { getRecentlyViewedProgress } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
@@ -73,12 +77,27 @@ export function useLandingContinueReading({
 }: UseLandingContinueReadingOptions): { mobileRow: ReactNode; desktopRow: ReactNode } {
   const { isMobile } = useViewport()
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
-  const [libraryBooks, setLibraryBooks] = useState<LibraryEpub[]>([])
+  const [libraryBooks, setLibraryBooks] = useState<LibraryEpub[]>(
+    () => readCachedLibraryBooks(user) ?? [],
+  )
   // The row can't know how many cards it will have until both sources have answered, so until
-  // then it reserves however many it held last time (see continue-reading-count.ts). The
-  // catalog half starts settled when its localStorage cache was warm enough to seed `catalog`.
-  const [libraryLoaded, setLibraryLoaded] = useState(false)
+  // then it reserves however many it held last time (see continue-reading-count.ts). Either
+  // half starts settled when its localStorage cache was warm enough to seed the state above.
+  const [libraryLoaded, setLibraryLoaded] = useState(() => readCachedLibraryBooks(user) !== null)
+  /** Distinct from `libraryLoaded`, which a warm cache satisfies — only the network refreshes the cache. */
+  const [libraryLoadedFromNetwork, setLibraryLoadedFromNetwork] = useState(false)
   const [catalogLoaded, setCatalogLoaded] = useState(() => readCachedDiscoverItems() !== null)
+  /**
+   * Both sources answered from cache before first paint, so what the row computes now is a
+   * complete answer rather than a partial one — the thing the settle gate below exists to
+   * avoid showing. It may still be one sync behind, but cloud progress is merged *into*
+   * localStorage (see mergeCloudProgress), so local history already carries everything the
+   * cloud knew at the last visit; a pending pull can only add reading done elsewhere since.
+   * That's real data arriving, not the row churning through half-built states.
+   */
+  const [warmStart] = useState(
+    () => readCachedLibraryBooks(user) !== null && readCachedDiscoverItems() !== null,
+  )
   // Keyed on the user id rather than read once: the session is normally restored from
   // localStorage before first paint, but when it isn't, a one-shot read here would have
   // reserved the guest bucket's count for a signed-in reader.
@@ -112,6 +131,7 @@ export function useLandingContinueReading({
       if (cancelled) return
       setLibraryBooks(books)
       setLibraryLoaded(true)
+      setLibraryLoadedFromNetwork(true)
     })
     return () => {
       cancelled = true
@@ -154,13 +174,24 @@ export function useLandingContinueReading({
   // far: the three disagree about both membership and order while they land, and mobile shows
   // only two cards, so each partial answer visibly swapped a book out — catalog cache alone,
   // then the library listing displacing it, then cloud progress reordering the result.
-  const resolved = (libraryLoaded && catalogLoaded && progressSynced) || settleTimedOut
+  const resolved = warmStart || (libraryLoaded && catalogLoaded && progressSynced) || settleTimedOut
 
   // Record what the next visit should reserve. In an effect, not in render: this writes to
   // localStorage, and render runs twice under StrictMode.
   useEffect(() => {
     if (resolved) writeContinueReadingCount(user, items.length)
   }, [resolved, items.length, user])
+
+  // Cache the listing only once the network has answered — seeding it from its own cache would
+  // pin a deleted book forever. Covers ride along only for the books on the row, which is all
+  // first paint needs and keeps a 450k data URL per book out of a ~5MB budget.
+  useEffect(() => {
+    if (!libraryLoadedFromNetwork) return
+    const shownIds = new Set(
+      items.flatMap((item) => (item.kind === "library" ? [item.book.id] : [])),
+    )
+    writeCachedLibraryBooks(user, libraryBooks, shownIds)
+  }, [libraryLoadedFromNetwork, libraryBooks, items, user])
 
   // Still answering: hold placeholders rather than show a partial, unstable answer. With no
   // remembered count there is nothing to promise, so a first-ever visit falls through to the
