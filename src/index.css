@@ -3398,36 +3398,6 @@ article span {
   opacity: 0.6;
 }
 
-.discover-modal__notice {
-  margin-top: 1rem;
-  border: 1px solid rgba(163, 122, 46, 0.35);
-  border-radius: 0.6rem;
-  background: rgba(163, 122, 46, 0.1);
-  padding: 0.7rem 0.9rem;
-  font-size: var(--text-ui-base);
-  letter-spacing: var(--track-ui-base);
-  color: #7a5a1e;
-}
-
-.discover-modal__notice p {
-  margin: 0;
-}
-
-.discover-modal__notice p.discover-modal__notice-links {
-  margin-top: 0.4rem;
-}
-
-.discover-modal__notice-links a {
-  color: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.discover-modal__notice-links a:hover {
-  opacity: 0.85;
-}
-
 .discover-modal__actions {
   display: flex;
   flex-shrink: 0;
