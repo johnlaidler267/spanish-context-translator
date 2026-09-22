@@ -35,6 +35,9 @@ const MAX_MOBILE_CONTINUE_READING_ITEMS = 2
  */
 const RECENT_LOOKBACK_ITEMS = 25
 
+/** Longest the row will hold its placeholders waiting for a source that may never answer. */
+const SETTLE_TIMEOUT_MS = 2500
+
 interface UseLandingContinueReadingOptions {
   user: User | null
   onContinue: (content: ContentItem) => void
@@ -115,15 +118,28 @@ export function useLandingContinueReading({
     }
   }, [user])
 
+  const [progressSynced, setProgressSynced] = useState(false)
+
   useEffect(() => {
     let cancelled = false
     void ensureCloudReadingProgressPulled(user).then(() => {
-      if (!cancelled) setSyncVersion((n) => n + 1)
+      if (cancelled) return
+      setSyncVersion((n) => n + 1)
+      setProgressSynced(true)
     })
     return () => {
       cancelled = true
     }
   }, [user])
+
+  // All three sources swallow their own errors, so they settle even offline — but a request
+  // that never returns at all (a stalled mobile connection) would otherwise leave the row on
+  // placeholders indefinitely. Past this point, show whatever has arrived: stale beats stuck.
+  const [settleTimedOut, setSettleTimedOut] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setSettleTimedOut(true), SETTLE_TIMEOUT_MS)
+    return () => clearTimeout(id)
+  }, [])
 
   const items = useMemo(() => {
     if (catalog.length === 0 && libraryBooks.length === 0) return []
@@ -134,7 +150,11 @@ export function useLandingContinueReading({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, libraryBooks, user, syncVersion])
 
-  const resolved = libraryLoaded && catalogLoaded
+  // Every source has answered. Until they all have, the row must not render what it has so
+  // far: the three disagree about both membership and order while they land, and mobile shows
+  // only two cards, so each partial answer visibly swapped a book out — catalog cache alone,
+  // then the library listing displacing it, then cloud progress reordering the result.
+  const resolved = (libraryLoaded && catalogLoaded && progressSynced) || settleTimedOut
 
   // Record what the next visit should reserve. In an effect, not in render: this writes to
   // localStorage, and render runs twice under StrictMode.
@@ -142,10 +162,12 @@ export function useLandingContinueReading({
     if (resolved) writeContinueReadingCount(user, items.length)
   }, [resolved, items.length, user])
 
-  // Reserve the row's space while the sources are still answering. Only with a remembered
-  // count: a first-ever visit has nothing to promise, so it keeps today's behaviour of
-  // rendering nothing rather than flashing placeholders at a reader who has no history.
-  if (!resolved && items.length === 0 && reservedCount > 0) {
+  // Still answering: hold placeholders rather than show a partial, unstable answer. With no
+  // remembered count there is nothing to promise, so a first-ever visit falls through to the
+  // fallback below rather than flashing placeholders at a reader who may have no history.
+  if (!resolved && reservedCount === 0) return { mobileRow: null, desktopRow: fallback }
+
+  if (!resolved) {
     const placeholders = (count: number) =>
       Array.from({ length: count }, (_, i) => (
         <DiscoverSkeletonCard key={`placeholder-${i}`} compact />
