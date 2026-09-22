@@ -2758,6 +2758,17 @@ article span {
   to { transform: rotate(360deg); }
 }
 
+/* Landing hero illustration (mobile). It shrinks to give the greeting room on short
+   viewports (see `min-h-0 shrink` in landing-screen.tsx), but past a point that leaves a
+   ~14px speck that reads as a rendering artifact rather than art. Below this height it's
+   dropped entirely: it's decorative, and the greeting, divider and cards all need the room
+   more than it does. 620px is where it would otherwise fall under half its natural size. */
+@media (max-height: 620px) {
+  .landing-hero-art {
+    display: none;
+  }
+}
+
 /* Filigree — whisper, not performance (~20% lighter + slightly smaller motif) */
 .filigree-divider {
   display: block;
