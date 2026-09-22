@@ -7,7 +7,23 @@ function Shimmer({ className }: { className: string }) {
   return <span aria-hidden className={cn("discover-loading-shimmer block", className)} />
 }
 
-function SkeletonCard({ featured = false }: { featured?: boolean }) {
+/**
+ * Exported so the landing page's Continue Reading row reserves space with the very same box
+ * the real card occupies — a second, hand-sized placeholder would drift out of sync with
+ * `.discover-card`'s dimensions and reintroduce the shift it exists to prevent.
+ *
+ * `compact` matches the Continue Reading rows specifically: both clamp the title to one line
+ * and hide the meta line (see `.continue-reading__row` / `.continue-reading-mobile__row` in
+ * index.css), so the grid's two-line title would make the placeholder taller than what
+ * replaces it.
+ */
+export function DiscoverSkeletonCard({
+  featured = false,
+  compact = false,
+}: {
+  featured?: boolean
+  compact?: boolean
+}) {
   return (
     <div
       aria-hidden
@@ -19,7 +35,7 @@ function SkeletonCard({ featured = false }: { featured?: boolean }) {
       <div className="discover-card__body">
         <Shimmer className="h-3 w-1/2 rounded-full" />
         <Shimmer className="mt-2 h-4 w-4/5 rounded-full" />
-        <Shimmer className="mt-1.5 h-4 w-3/5 rounded-full" />
+        {!compact && <Shimmer className="mt-1.5 h-4 w-3/5 rounded-full" />}
         <div className="discover-card__meta">
           <Shimmer className="h-2.5 w-20 rounded-full" />
           <Shimmer className="h-2.5 w-12 rounded-full" />
@@ -47,7 +63,7 @@ export function DiscoverLoadingState() {
         </div>
         <div className="discover-grid discover-grid--featured">
           {Array.from({ length: 2 }).map((_, index) => (
-            <SkeletonCard key={`featured-${index}`} featured />
+            <DiscoverSkeletonCard key={`featured-${index}`} featured />
           ))}
         </div>
       </div>
@@ -67,7 +83,7 @@ export function DiscoverLoadingState() {
         </div>
         <div className="discover-grid">
           {Array.from({ length: 8 }).map((_, index) => (
-            <SkeletonCard key={`card-${index}`} />
+            <DiscoverSkeletonCard key={`card-${index}`} />
           ))}
         </div>
       </div>

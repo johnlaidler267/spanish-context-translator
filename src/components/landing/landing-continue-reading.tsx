@@ -4,8 +4,13 @@ import { useEffect, useMemo, useState, type ReactNode } from "react"
 import type { User } from "@supabase/supabase-js"
 import { ContentCard } from "@/pages/discover/content-card"
 import { LibraryCard } from "@/components/library/library-card"
+import { DiscoverSkeletonCard } from "@/components/discover/discover-loading-state"
 import { fetchDiscoverCatalog, readCachedDiscoverItems } from "@/lib/discover/discover-catalog"
 import { buildContinueReadingItems } from "@/lib/discover/continue-reading"
+import {
+  readContinueReadingCount,
+  writeContinueReadingCount,
+} from "@/lib/storage/continue-reading-count"
 import { listUserEpubs, type LibraryEpub } from "@/lib/storage/epub-library"
 import { getRecentlyViewedProgress } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
@@ -66,6 +71,16 @@ export function useLandingContinueReading({
   const { isMobile } = useViewport()
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
   const [libraryBooks, setLibraryBooks] = useState<LibraryEpub[]>([])
+  // The row can't know how many cards it will have until both sources have answered, so until
+  // then it reserves however many it held last time (see continue-reading-count.ts). The
+  // catalog half starts settled when its localStorage cache was warm enough to seed `catalog`.
+  const [libraryLoaded, setLibraryLoaded] = useState(false)
+  const [catalogLoaded, setCatalogLoaded] = useState(() => readCachedDiscoverItems() !== null)
+  // Keyed on the user id rather than read once: the session is normally restored from
+  // localStorage before first paint, but when it isn't, a one-shot read here would have
+  // reserved the guest bucket's count for a signed-in reader.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const reservedCount = useMemo(() => readContinueReadingCount(user), [user?.id])
   // Bumped once cloud-synced progress (see reading-progress-sync.ts) has been merged into the
   // localStorage cache below, so this row also reflects progress made on another device
   // instead of only whatever this browser already knew about.
@@ -77,8 +92,11 @@ export function useLandingContinueReading({
     // (see discover-catalog.ts) — shares the in-flight/localStorage cache rather than firing
     // a separate request, and keeps this row's covers/titles fresh once it resolves.
     void fetchDiscoverCatalog().then((result) => {
-      if (cancelled || !("items" in result)) return
-      setCatalog(result.items)
+      if (cancelled) return
+      if ("items" in result) setCatalog(result.items)
+      // Settled either way — a failed catalog fetch must still release the placeholder,
+      // or a reader whose row is all library books would sit on skeletons forever.
+      setCatalogLoaded(true)
     })
     return () => {
       cancelled = true
@@ -88,7 +106,9 @@ export function useLandingContinueReading({
   useEffect(() => {
     let cancelled = false
     void listUserEpubs(user).then((books) => {
-      if (!cancelled) setLibraryBooks(books)
+      if (cancelled) return
+      setLibraryBooks(books)
+      setLibraryLoaded(true)
     })
     return () => {
       cancelled = true
@@ -113,6 +133,50 @@ export function useLandingContinueReading({
     // reruns once cloud-synced progress has landed in localStorage (see the effect above).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, libraryBooks, user, syncVersion])
+
+  const resolved = libraryLoaded && catalogLoaded
+
+  // Record what the next visit should reserve. In an effect, not in render: this writes to
+  // localStorage, and render runs twice under StrictMode.
+  useEffect(() => {
+    if (resolved) writeContinueReadingCount(user, items.length)
+  }, [resolved, items.length, user])
+
+  // Reserve the row's space while the sources are still answering. Only with a remembered
+  // count: a first-ever visit has nothing to promise, so it keeps today's behaviour of
+  // rendering nothing rather than flashing placeholders at a reader who has no history.
+  if (!resolved && items.length === 0 && reservedCount > 0) {
+    const placeholders = (count: number) =>
+      Array.from({ length: count }, (_, i) => (
+        <DiscoverSkeletonCard key={`placeholder-${i}`} compact />
+      ))
+
+    return isMobile
+      ? {
+          mobileRow: (
+            <div className="continue-reading-mobile w-full entry-4 order-2" aria-busy="true">
+              <div className="continue-reading-mobile__row">
+                {placeholders(Math.min(reservedCount, MAX_MOBILE_CONTINUE_READING_ITEMS))}
+              </div>
+            </div>
+          ),
+          desktopRow: null,
+        }
+      : {
+          mobileRow: null,
+          desktopRow: (
+            <div
+              className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1"
+              aria-busy="true"
+            >
+              <p className="sample-excerpt-label text-center">Continue reading</p>
+              <div className="continue-reading__row">
+                {placeholders(Math.min(reservedCount, MAX_CONTINUE_READING_ITEMS))}
+              </div>
+            </div>
+          ),
+        }
+  }
 
   if (items.length === 0) return { mobileRow: null, desktopRow: fallback }
 
