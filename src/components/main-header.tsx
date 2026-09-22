@@ -316,7 +316,11 @@ export function MainHeader({
   // "Sign up" flash in the header before their session finishes restoring.
   const { user: authUser, isLoading: authLoading } = useAuth()
   const showAuthCta = !authLoading && !authUser
-  const showHomeMobilePlanBanner = showMobilePlanBanner && !isMdUp && location.pathname === "/"
+  // Signed out, this pitched an upgrade to someone who has no account to upgrade —
+  // directly under the header's own Sign in / Sign up. The CTA is the guest's next
+  // step; the plan banner only makes sense once there's a plan to move off.
+  const showHomeMobilePlanBanner =
+    showMobilePlanBanner && !isMdUp && location.pathname === "/" && authUser !== null
   const showSettingsShortcut = showBrandWordmark && location.pathname !== "/settings"
   const fixedInset =
     !stacked && isMdUp && contentInsetLeftPx > 0
