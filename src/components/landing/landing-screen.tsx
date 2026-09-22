@@ -21,6 +21,8 @@ import { getTier, type TierId } from "@/lib/subscription/tiers"
 import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscription/subscription-display"
 import { LandingQuickFillControls } from "@/components/landing/landing-quick-fill-controls"
 import { useLandingContinueReading } from "@/components/landing/landing-continue-reading"
+import { ContentCard } from "@/pages/discover/content-card"
+import { fetchDiscoverCatalog, readCachedDiscoverItems } from "@/lib/discover/discover-catalog"
 import type { ContentItem } from "@/lib/discover/content-data"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
 import {
@@ -349,6 +351,25 @@ export function LandingScreen({
     })
   }, [])
 
+  // Signed-out desktop fallback: a small "Featured reads" row instead of a bare sign-in
+  // prompt, so there's something concrete to click into before asking for an account. Reads
+  // from the same Discover catalog useLandingContinueReading uses -- fetchDiscoverCatalog
+  // shares one in-flight request/localStorage cache across every caller (see its own
+  // docstring), so this doesn't add a second network round trip on top of the landing page's
+  // existing prefetch (warmDiscoverFirstPaint in main.jsx).
+  const [featuredCatalog, setFeaturedCatalog] = useState<ContentItem[]>(
+    () => readCachedDiscoverItems() ?? [],
+  )
+  useEffect(() => {
+    let cancelled = false
+    void fetchDiscoverCatalog().then((result) => {
+      if (!cancelled && "items" in result) setFeaturedCatalog(result.items)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Continue Reading: one data fetch, two placements in the tree below (mobileRow lands between
   // the filigree divider and the composer form; desktopRow replaces the sample-excerpt fallback
   // below the composer) -- see useLandingContinueReading for why this is a hook and not a
@@ -358,9 +379,10 @@ export function LandingScreen({
     onContinue: onContinueReading,
     onOpenLibraryBook: onContinueLibraryBook,
     // Signed out: no reading history to speak of yet, so a generic hardcoded sample
-    // paragraph isn't really "yours" -- swap it for an invite to sign in, using the same
-    // excerpt-rail visual language (label + serif body + arrow link) instead of a plain
-    // banner, so the layout doesn't jump between signed-in/out states.
+    // paragraph isn't really "yours". A bare "sign in" ask here converted on nothing to
+    // look at, so this shows a few Discover picks instead (same card row/handler the
+    // signed-in Continue Reading row uses) -- falls back further to the plain sign-in
+    // invite only if the catalog hasn't loaded/is empty.
     fallback: user ? (
       <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
         <p className="sample-excerpt-label text-center">Sample text</p>
@@ -373,6 +395,20 @@ export function LandingScreen({
             </span>
           </span>
         </button>
+      </div>
+    ) : featuredCatalog.length > 0 ? (
+      <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
+        <p className="sample-excerpt-label text-center">Featured reads</p>
+        <div className="continue-reading__row">
+          {featuredCatalog.slice(0, 4).map((item) => (
+            <ContentCard
+              key={`landing-featured-${item.id}`}
+              content={item}
+              onClick={() => onContinueReading(item)}
+              eagerCover
+            />
+          ))}
+        </div>
       </div>
     ) : (
       <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
