@@ -208,6 +208,22 @@ export type UserEpubRow = {
   story_start_offset: number
 }
 
+/**
+ * Full database row from `public.beta_pro_grants` — emails comped to Pro tier,
+ * keyed by email since a pre-signup person has no user_id yet (see
+ * supabase/migrations/0025_beta_pro_grants.sql). Only readable/writable by
+ * curators (same allowlist as DiscoverCuratorRow) under RLS.
+ */
+export type BetaProGrantRow = {
+  email: string
+  granted_by: string | null
+  note: string | null
+  created_at: string
+  /** Null while still pending a signup; set once activated. */
+  claimed_at: string | null
+  claimed_by: string | null
+}
+
 // ─── Insert types (omit server-generated fields) ────────────────────────────
 
 export type UserSubscriptionInsert = Omit<
@@ -310,6 +326,16 @@ export interface Database {
         Row:    UserEpubRow
         Insert: UserEpubInsert
         Update: UserEpubUpdate
+        Relationships: []
+      }
+      beta_pro_grants: {
+        Row:    BetaProGrantRow
+        Insert: Omit<BetaProGrantRow, "created_at" | "claimed_at" | "claimed_by"> & {
+          created_at?: string
+          claimed_at?: string | null
+          claimed_by?: string | null
+        }
+        Update: Partial<BetaProGrantRow>
         Relationships: []
       }
     }

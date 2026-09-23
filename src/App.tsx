@@ -13,6 +13,7 @@ const LibraryPage = lazyRoute(() => import("@/pages/library"))
 const UpgradePage = lazyRoute(() => import("@/pages/upgrade"))
 const TermsPage = lazyRoute(() => import("@/pages/terms"))
 const PrivacyPage = lazyRoute(() => import("@/pages/privacy"))
+const AdminPage = lazyRoute(() => import("@/pages/admin"))
 import { LandingShellLayout } from "@/components/landing/landing-shell-layout"
 import { LandingScreen } from "@/components/landing/landing-screen"
 import { LOADING_OVERLAY_PROGRESS_MS, LoadingOverlay } from "@/components/loading-overlay"
@@ -1635,6 +1636,7 @@ export default function App() {
           <Route path="/upgrade" element={<UpgradePage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route
             element={
               <LandingShellLayout

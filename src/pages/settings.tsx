@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect, useRef, type ReactNode } from "react"
-import { useSearchParams } from "react-router-dom"
-import { ArrowLeft, Check, CreditCard, LogOut, SlidersHorizontal, UserRound } from "lucide-react"
+import { Link, useSearchParams } from "react-router-dom"
+import { ArrowLeft, Check, CreditCard, LogOut, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react"
+import { checkIsDiscoverCurator } from "@/lib/discover/discover-curator"
 import { BackToHomeLink } from "@/components/back-to-home-link"
 import { MainHeader } from "@/components/main-header"
 import { SubscriptionStatus } from "@/components/subscription/subscription-status"
@@ -197,6 +198,19 @@ export default function SettingsPage() {
   )
   const displayNameUserKeyRef = useRef<string | undefined>(undefined)
   const { user, signOut, openAuthModal } = useAuth()
+
+  // Same curator allowlist that gates the Discover admin UI, reused as the general
+  // "admin" concept -- see checkIsDiscoverCurator's docstring.
+  const [isCurator, setIsCurator] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void checkIsDiscoverCurator().then((curator) => {
+      if (!cancelled) setIsCurator(curator)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
   const llmInfo = getTranslationLlmDisplayInfo()
   const normalizedNameInput = sanitizeDisplayName(nameInput)
   const nameDirty = normalizedNameInput !== savedName
@@ -488,6 +502,26 @@ export default function SettingsPage() {
                           {user.id}
                         </p>
                       </SettingsRow>
+
+                      {isCurator && (
+                        <SettingsRow
+                          label="Beta Pro access"
+                          description="Comp specific people to Pro tier, no cap."
+                          labelAs="p"
+                        >
+                          <Link
+                            to="/admin"
+                            className={cn(
+                              "inline-flex h-10 items-center gap-2 rounded-md border border-border px-4 text-sm font-normal",
+                              "transition-colors duration-200 ease-out hover:bg-muted",
+                              focusRing,
+                            )}
+                          >
+                            <ShieldCheck className="h-4 w-4" strokeWidth={1.65} aria-hidden />
+                            Manage
+                          </Link>
+                        </SettingsRow>
+                      )}
 
                       {user.is_anonymous !== true && (
                         <SettingsRow
