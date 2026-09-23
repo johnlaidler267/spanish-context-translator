@@ -155,7 +155,7 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const { status: subscriptionStatus, isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
-  const { user, isLoading: authLoading, isSigningIn } = useAuth()
+  const { user, isGuest, isLoading: authLoading, isSigningIn, openAuthModal } = useAuth()
   // Shared by every free-plan gate below (char-limit-per-submission, free-preview page cap, …):
   // a signed-in user counts as "free" whenever they have no active paid status, including a
   // lapsed subscription — a guest (no `user` yet) isn't covered by this, since they're gated by
@@ -352,14 +352,14 @@ export default function App() {
    * for a plain landing-page paste with no title — shown at the top of article mode. */
   const [activeReadingTitle, setActiveReadingTitle] = useState<string | null>(null)
   /**
-   * True only for a Library EPUB upload (see `isEbookUpload` on handleTextSubmit) — a pasted
-   * snippet or a Discover article both get their length checked upfront (`charsPerSubmission`)
-   * so they never accumulate enough pages for `freeReadingPagesPerBook` to matter; only an
-   * uploaded book can run long enough to hit it. Drives the free-plan reading-cap indicator in
+   * True for a book — a Library EPUB upload or a Discover book (see `isBook` on
+   * handleTextSubmit). A pasted snippet or a Discover article/song/poem gets its length checked
+   * upfront (`charsPerSubmission`) so it never accumulates enough pages for
+   * `freeReadingPagesPerBook` to matter; only a book can run long enough to hit it. Drives the free-plan reading-cap indicator in
    * the reading toolbar (see `freeEbookPreview` below) — reset on `handleBack` like the other
    * "what's currently open" state above.
    */
-  const [activeReadingIsEbook, setActiveReadingIsEbook] = useState(false)
+  const [activeReadingIsBook, setActiveReadingIsBook] = useState(false)
   /**
    * Set when a book/article is reopened with real saved progress (resuming past its first
    * page) — shows the "Where you left off" modal. `summary` is a cached Gemini recap of the
@@ -611,7 +611,7 @@ export default function App() {
         contentId = null,
         contentTitle = null,
         initialPageRatio = null,
-        isEbookUpload = false,
+        isBook = false,
         loadingStartedAtMs = Date.now(),
       }: {
         populateLandingDraft?: boolean
@@ -627,13 +627,14 @@ export default function App() {
          */
         initialPageRatio?: number | null
         /**
-         * From handleLibraryStartReading only. A book's own length has nothing to do with
+         * From handleLibraryStartReading, and handleDiscoverStartReading for a Discover book. A
+         * book's own length has nothing to do with
          * `charsPerSubmission` (a limit sized for a pasted article/snippet, not a whole novel) --
          * an e-book's free-plan gate is `freeReadingPagesPerBook` instead (see `goToArticlePage`),
          * which lets a free user open any book and read its first N pages regardless of the
          * book's total length. Skips the charsPerSubmission check below for that reason.
          */
-        isEbookUpload?: boolean
+        isBook?: boolean
         /**
          * When the loading overlay first appeared, for the cosmetic minimum-display wait below.
          * Defaults to right now, correct for a plain landing submit (this function is the first
@@ -667,13 +668,13 @@ export default function App() {
       // enforcement only happened later on the actual translate call -- so a submission
       // that could never succeed still cost you one. Mirrors handleDiscoverStartReading.
       //
-      // Skipped for e-book uploads: `charsPerSubmission` is sized for a pasted article or
+      // Skipped for books (Library uploads and Discover books): `charsPerSubmission` is sized for a pasted article or
       // snippet, not a whole novel -- a book's own free-plan gate is the page cap below
       // (`goToArticlePage`/`freeReadingPagesPerBook`) instead, checked once the book is open
       // rather than up front against its total length.
       const freeCharLimit = getTier("free").limits.charsPerSubmission
       if (
-        !isEbookUpload &&
+        !isBook &&
         isEffectivelyFreeUser &&
         freeCharLimit !== null &&
         trimmed.length > freeCharLimit
@@ -925,7 +926,7 @@ export default function App() {
         setArticlePageIndex(initialPageIndex)
         setActiveReadingContentId(contentId ?? null)
         setActiveReadingTitle(contentTitle ?? null)
-        setActiveReadingIsEbook(isEbookUpload)
+        setActiveReadingIsBook(isBook)
         setReadingSessionId((k) => k + 1)
         setReadEnterLastStepNonce(0)
         setReadLastConsumedEnterNonce(0)
@@ -1000,6 +1001,11 @@ export default function App() {
       // set any loading state until handleTextSubmit did, well after it resolved. That left a
       // tap on a card looking like it hadn't registered at all. Reverted back to "landing" on
       // every early-return path below so a blocked/failed load doesn't strand the overlay up.
+      // Books are for account holders: the anonymous guest session only exists to meter
+      // short pastes. ContentPreviewModal answers this with a sign-in prompt.
+      const isBook = content.type === "book"
+      if (isBook && isGuest) return { signInRequired: true }
+
       setAppState("loading")
       const loadingStartedAtMs = Date.now()
 
@@ -1015,8 +1021,11 @@ export default function App() {
         return
       }
 
+      // A Discover book gets the same free-plan gate as a Library upload -- the page cap
+      // (`freeReadingPagesPerBook`, see `isBook` on handleTextSubmit) -- not this length check.
       const freeCharLimit = getTier("free").limits.charsPerSubmission
       if (
+        !isBook &&
         isEffectivelyFreeUser &&
         freeCharLimit !== null &&
         sourceText.length > freeCharLimit
@@ -1040,10 +1049,20 @@ export default function App() {
         populateLandingDraft: false,
         contentId: content.id,
         contentTitle: content.title,
+        isBook,
         loadingStartedAtMs,
       })
     },
-    [handleTextSubmit, isEffectivelyFreeUser],
+    [handleTextSubmit, isEffectivelyFreeUser, isGuest],
+  )
+
+  /** Landing's Discover picks: no preview dialog to host the sign-in prompt, so open the auth modal. */
+  const handleLandingDiscoverOpen = useCallback(
+    async (content: ContentItem) => {
+      const result = await handleDiscoverStartReading(content)
+      if (result && "signInRequired" in result) openAuthModal()
+    },
+    [handleDiscoverStartReading, openAuthModal],
   )
 
   const handleLibraryStartReading = useCallback(
@@ -1068,7 +1087,7 @@ export default function App() {
         return
       }
       // Unlike a pasted/Discover submission, a book's own length is never checked against
-      // charsPerSubmission here (see `isEbookUpload` on handleTextSubmit) -- a free user can
+      // charsPerSubmission here (see `isBook` on handleTextSubmit) -- a free user can
       // open any book regardless of its total length, and instead gets stopped by the page cap
       // once they've read as far as the free plan allows (see `goToArticlePage`).
       //
@@ -1087,7 +1106,7 @@ export default function App() {
         contentId: book.id,
         contentTitle: book.title,
         initialPageRatio,
-        isEbookUpload: true,
+        isBook: true,
         loadingStartedAtMs,
       })
     },
@@ -1101,7 +1120,7 @@ export default function App() {
     setArticlePageIndex(0)
     setActiveReadingContentId(null)
     setActiveReadingTitle(null)
-    setActiveReadingIsEbook(false)
+    setActiveReadingIsBook(false)
     setWhereLeftOff(null)
     pageStartSentenceIndicesRef.current = []
     setPageTopFillPaddingPx([])
@@ -1133,11 +1152,11 @@ export default function App() {
    * gate in `goToArticlePage` below) -- purely derived from state already held for other reasons
    * (current page, page count, tier), no extra fetch. Null hides the indicator entirely: a paid
    * user, a book that already fits on one page (nothing to preview-gate), or anything that isn't
-   * an uploaded ebook (see `activeReadingIsEbook`).
+   * a book (see `activeReadingIsBook`).
    */
   const freeReadingPageCap = getTier("free").limits.freeReadingPagesPerBook
   const freeEbookPreview =
-    isEffectivelyFreeUser && activeReadingIsEbook && totalPages > 1 && freeReadingPageCap != null
+    isEffectivelyFreeUser && activeReadingIsBook && totalPages > 1 && freeReadingPageCap != null
       ? {
           pagesRemaining: Math.max(freeReadingPageCap - (articlePageIndex + 1), 0),
           pageCap: freeReadingPageCap,
@@ -1364,7 +1383,7 @@ export default function App() {
           isLoading={appState === "loading"}
           theme={appTheme}
           displayName={displayName}
-          onContinueReading={handleDiscoverStartReading}
+          onContinueReading={handleLandingDiscoverOpen}
           onContinueLibraryBook={handleLibraryStartReading}
         />
       </div>

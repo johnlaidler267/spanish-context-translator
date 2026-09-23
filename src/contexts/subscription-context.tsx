@@ -76,8 +76,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const requestSeqRef = useRef(0)
 
   useEffect(() => {
+    // A guest session starting (or replacing a signed-out user) has no plan to wait on —
+    // blocking here would flash the full-screen spinner mid-session.
+    if (user?.is_anonymous === true) return
     subscriptionBlockingCheckDone = false
-  }, [user?.id])
+  }, [user?.id, user?.is_anonymous])
 
   const recheck = useCallback(async (opts?: { silent?: boolean }) => {
     const silent =

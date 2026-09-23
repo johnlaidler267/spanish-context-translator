@@ -35,7 +35,9 @@ export function LandingSidebarProfile({
   onNavigate,
 }: LandingSidebarProfileProps) {
   const ctxStatus = useSubscriptionOptional()?.status ?? null
-  const { user, isLoading: authLoading, openAuthModal } = useAuth()
+  const { user: sessionUser, isGuest, isLoading: authLoading, openAuthModal } = useAuth()
+  // The anonymous guest session isn't an account — render it exactly like signed out.
+  const user = isGuest ? null : sessionUser
   const navigate = useNavigate()
   const [pill, setPill] = useState<LinkPlanPill | null>(null)
 

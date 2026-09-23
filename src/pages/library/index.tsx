@@ -6,6 +6,7 @@ import { BookOpen, Plus, Upload } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
 import { beginRouteTransition, cancelRouteTransition } from "@/lib/route-transition-shell"
 import { useAuth } from "@/contexts/auth-context"
+import { BookSignInDialog } from "@/components/auth/book-sign-in-dialog"
 import { supabase } from "@/lib/supabase"
 import { ensureSessionForGroq } from "@/lib/groq-edge"
 import { Button } from "@/components/ui/button"
@@ -70,7 +71,7 @@ function LibrarySkeletonGrid() {
 export default function LibraryPage({ onStartReading }: LibraryPageProps) {
   const navigate = useNavigate()
   const { registerNewChat } = useLandingShellNewChat()
-  const { user } = useAuth()
+  const { user, isGuest } = useAuth()
   // Cache-first paint: if App.tsx's landing-page background prefetch (or a previous visit
   // this session) already warmed this user's library, render it immediately instead of a
   // skeleton -- see library-catalog.ts's docstring for why this replaced a plain
@@ -188,8 +189,16 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
     }
   }, [user, cachedBooks])
 
+  const [signInPromptOpen, setSignInPromptOpen] = useState(false)
+
   const handleUploadClick = () => {
     if (uploading) return
+    // Uploads are books, and books need a real account (see BookSignInDialog). Books a guest
+    // uploaded before this gate existed stay openable — they belong to the anonymous user.
+    if (isGuest) {
+      setSignInPromptOpen(true)
+      return
+    }
     fileInputRef.current?.click()
   }
 
@@ -422,6 +431,8 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
           </div>
         )}
       </main>
+
+      <BookSignInDialog open={signInPromptOpen} onOpenChange={setSignInPromptOpen} />
 
       <LibraryPreviewModal
         book={previewBook}

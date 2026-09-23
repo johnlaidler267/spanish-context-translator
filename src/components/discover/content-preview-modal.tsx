@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import { ArrowRight, Trash2, X } from "lucide-react"
 import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
 import { DifficultyMark, normalizeDifficulty } from "@/components/discover/difficulty-mark"
+import { BookSignInDialog } from "@/components/auth/book-sign-in-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -17,13 +18,17 @@ import {
 import { contentTypeLabels } from "@/lib/discover/content-data"
 import type { ContentItem } from "@/lib/discover/content-data"
 
+/**
+ * What "Start reading" can come back with instead of opening the reader: a plan-limit message,
+ * or a guest trying to open a book (books need an account — see handleDiscoverStartReading).
+ */
+export type StartReadingResult = { blockedMessage: string } | { signInRequired: true } | void
+
 interface ContentPreviewModalProps {
   content: ContentItem | null
   open: boolean
   onClose: () => void
-  onStartReading: (
-    content: ContentItem,
-  ) => Promise<{ blockedMessage?: string } | void> | { blockedMessage?: string } | void
+  onStartReading: (content: ContentItem) => Promise<StartReadingResult> | StartReadingResult
   /** True when this reader already has a saved page position for `content` — swaps the CTA to "Continue reading". */
   hasProgress?: boolean
   /** When set (e.g. Vite dev), shows a catalog edit entry point. */
@@ -42,9 +47,13 @@ export function ContentPreviewModal({
   onDeleteCatalog,
 }: ContentPreviewModalProps) {
   const [startReadingError, setStartReadingError] = useState<string | null>(null)
+  const [signInPromptOpen, setSignInPromptOpen] = useState(false)
 
   useEffect(() => {
-    if (!open) setStartReadingError(null)
+    if (!open) {
+      setStartReadingError(null)
+      setSignInPromptOpen(false)
+    }
   }, [open, content?.id])
 
   if (!content) return null
@@ -54,9 +63,9 @@ export function ContentPreviewModal({
   const handleStartReading = async () => {
     setStartReadingError(null)
     const result = await onStartReading(content)
-    if (result?.blockedMessage) {
-      setStartReadingError(result.blockedMessage)
-    }
+    if (!result) return
+    if ("signInRequired" in result) setSignInPromptOpen(true)
+    else setStartReadingError(result.blockedMessage)
   }
 
   return (
@@ -138,6 +147,9 @@ export function ContentPreviewModal({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Nested for the same reason as the plan-limit popup below. */}
+      <BookSignInDialog open={signInPromptOpen} onOpenChange={setSignInPromptOpen} />
 
       {/* A separate, nested Dialog rather than the app-wide RateLimitModal (see
           handleDiscoverStartReading in App.tsx): that modal is a plain document.body portal,

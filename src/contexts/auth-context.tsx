@@ -18,6 +18,8 @@ import { invalidateLibraryCache } from "@/lib/storage/library-catalog"
 
 interface AuthContextValue {
   user:            User | null
+  /** No session, or the anonymous guest session — i.e. not a real account. Show sign-in UI. */
+  isGuest:         boolean
   isLoading:       boolean
   /** True only while an actual sign-in is completing (OAuth/magic-link callback), never on a plain page refresh of an existing session. */
   isSigningIn:     boolean
@@ -34,6 +36,24 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Visitors without an account get a Supabase anonymous session up front so Edge Functions can
+ * meter their usage. Previously it was only created lazily by the first AI call (see
+ * ensureSessionForGroq in lib/groq-edge.ts), which swapped the signed-out UI for a guest one
+ * mid-session. Module-level so Strict Mode's double effect doesn't create two guests.
+ */
+let guestSessionPromise: Promise<void> | null = null
+
+function startGuestSession(): void {
+  guestSessionPromise ??= supabase.auth
+    .signInAnonymously()
+    .then(() => undefined)
+    .catch(() => undefined) // Lazy path in groq-edge.ts still retries on first AI call.
+    .finally(() => {
+      guestSessionPromise = null
+    })
+}
 
 /**
  * True only while the current page load looks like it's completing an OAuth or magic-link
@@ -154,9 +174,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (nextUser) {
           // Signed-in session (initial restore, OAuth return, or sign-in) — clear guest tries, close modal
-          clearGuestUses()
-          setAuthModalOpen(false)
+          if (nextUser.is_anonymous !== true) {
+            clearGuestUses()
+            setAuthModalOpen(false)
+          }
         } else {
+          // Deferred: GoTrue calls made inside this callback deadlock on its lock.
+          window.setTimeout(startGuestSession, 0)
           // No session (explicit sign-out, or one that expired/was revoked elsewhere) — drop
           // the in-memory library cache (library-catalog.ts) so a next sign-in on this same
           // device/browser, by this user or a different one, never briefly shows the prior
@@ -211,6 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextValue = {
     user,
+    isGuest: user == null || user.is_anonymous === true,
     isLoading,
     isSigningIn,
     signOut,

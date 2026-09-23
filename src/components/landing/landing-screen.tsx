@@ -119,7 +119,7 @@ export function LandingScreen({
   onContinueReading,
   onContinueLibraryBook,
 }: LandingScreenProps) {
-  const { user, openAuthModal } = useAuth()
+  const { user, isGuest, openAuthModal } = useAuth()
   const { status: subscriptionStatus } = useSubscription()
   const cachedSubscriptionRow = useMemo(
     () => (user?.id ? readCachedSubscriptionRow(user.id) : undefined),
@@ -383,7 +383,7 @@ export function LandingScreen({
     // look at, so this shows a few Discover picks instead (same card row/handler the
     // signed-in Continue Reading row uses) -- falls back further to the plain sign-in
     // invite only if the catalog hasn't loaded/is empty.
-    fallback: user ? (
+    fallback: !isGuest ? (
       <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
         <p className="sample-excerpt-label text-center">Sample text</p>
         <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">

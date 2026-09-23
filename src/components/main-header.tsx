@@ -126,7 +126,9 @@ function optimisticPillFromCache(
 /** Landing plan pill — subscription copy from DB; context status invalidates when coarse status changes. */
 function PlanBadgeContent({ guestMode = "signin" }: { guestMode?: "signin" | "upgrade" }) {
   const ctxStatus = useSubscriptionOptional()?.status ?? null
-  const { user, isLoading: authLoading, openAuthModal } = useAuth()
+  const { user: sessionUser, isGuest, isLoading: authLoading, openAuthModal } = useAuth()
+  // The anonymous guest session isn't an account — render it exactly like signed out.
+  const user = isGuest ? null : sessionUser
   const navigate = useNavigate()
   const cachedSubscriptionRow = useMemo(
     () => (user?.id ? readCachedSubscriptionRow(user.id) : undefined),
@@ -314,13 +316,13 @@ export function MainHeader({
   const location = useLocation()
   // Gated on !authLoading so a returning user with a stored session never sees
   // "Sign up" flash in the header before their session finishes restoring.
-  const { user: authUser, isLoading: authLoading } = useAuth()
-  const showAuthCta = !authLoading && !authUser
+  const { isGuest, isLoading: authLoading } = useAuth()
+  const showAuthCta = !authLoading && isGuest
   // Signed out, this pitched an upgrade to someone who has no account to upgrade —
   // directly under the header's own Sign in / Sign up. The CTA is the guest's next
   // step; the plan banner only makes sense once there's a plan to move off.
   const showHomeMobilePlanBanner =
-    showMobilePlanBanner && !isMdUp && location.pathname === "/" && authUser !== null
+    showMobilePlanBanner && !isMdUp && location.pathname === "/" && !isGuest
   const showSettingsShortcut = showBrandWordmark && location.pathname !== "/settings"
   const fixedInset =
     !stacked && isMdUp && contentInsetLeftPx > 0

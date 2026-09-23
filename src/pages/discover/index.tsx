@@ -6,7 +6,10 @@ import { useNavigate } from "react-router-dom"
 import { Compass, Library, Plus, Sparkles } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
 import { DiscoverLoadingState } from "@/components/discover/discover-loading-state"
-import { ContentPreviewModal } from "@/components/discover/content-preview-modal"
+import {
+  ContentPreviewModal,
+  type StartReadingResult,
+} from "@/components/discover/content-preview-modal"
 import { DevEditDiscoverItemModal } from "@/components/discover/dev-edit-discover-item-modal"
 import {
   DevUploadResourceModal,
@@ -30,7 +33,7 @@ import { checkIsDiscoverCurator } from "@/lib/discover/discover-curator"
 import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 
 type DiscoverPageProps = {
-  onStartReading: (content: ContentItem) => Promise<{ blockedMessage?: string } | void> | { blockedMessage?: string } | void
+  onStartReading: (content: ContentItem) => Promise<StartReadingResult> | StartReadingResult
 }
 
 const DISCOVER_DEV_EDIT = import.meta.env.DEV
