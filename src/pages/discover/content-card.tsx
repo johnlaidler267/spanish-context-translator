@@ -56,7 +56,13 @@ export function ContentCard({
         <DiscoverCoverArt content={content} className="discover-card__art" eager={featured || eagerCover} />
         <span className="discover-card__type">{contentTypeLabels[content.type]}</span>
         {progressPercent != null && (
-          <span className="discover-card__progress">{progressPercent}% read</span>
+          <>
+            <span className="discover-card__progress">{progressPercent}% read</span>
+            {/* Only shown in the desktop Continue Reading row -- see .continue-reading__row in index.css. */}
+            <span className="discover-card__progress-bar" aria-hidden>
+              <span style={{ width: `${progressPercent}%` }} />
+            </span>
+          </>
         )}
 
         {(onEdit || onDelete) && (

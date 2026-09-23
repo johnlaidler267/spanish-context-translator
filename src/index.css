@@ -2151,6 +2151,12 @@ article span {
   backdrop-filter: blur(8px);
 }
 
+/* Thin reading-progress bar along the cover's bottom edge. Hidden by default -- only the desktop
+   Continue Reading row turns it on (see .continue-reading__row below). */
+.discover-card__progress-bar {
+  display: none;
+}
+
 /* Progress pill -- landing page's Continue Reading row (opposite corner from the type badge). */
 .discover-card__progress {
   position: absolute;
@@ -2969,7 +2975,6 @@ article span {
   padding: 0.5rem 0.6rem 0.55rem;
 }
 .continue-reading__row .discover-card__title {
-  margin-top: 0.1rem;
   font-size: var(--text-ui-sm);
 }
 /* Difficulty + time line is useful browsing Discover's full shelf, but this row is
@@ -2977,6 +2982,62 @@ article span {
    in, so drop the meta line to keep each card shorter. */
 .continue-reading__row .discover-card__meta {
   display: none;
+}
+/* Progress pill moves to the top corner opposite the type badge: bottom-right sat on top of a
+   plate cover's author line (clipping it, or hiding it outright under a two-line title), and
+   the bar below now carries "how far in" along that bottom edge instead. */
+.continue-reading__row .discover-card__progress {
+  top: 0.6rem;
+  right: 0.6rem;
+  bottom: auto;
+}
+.continue-reading__row .discover-card__type {
+  top: 0.6rem;
+  left: 0.6rem;
+}
+.continue-reading__row .discover-card__type,
+.continue-reading__row .discover-card__progress {
+  padding: 0.12rem 0.45rem;
+}
+/* Nudge a plate cover's motif/title down so they clear the two badges now sharing the top edge. */
+.continue-reading__row .discover-cover--plate {
+  padding: 2rem 1rem 1rem;
+}
+.continue-reading__row .discover-card__progress-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: block;
+  height: 3px;
+  background: rgba(58, 51, 46, 0.1);
+}
+.continue-reading__row .discover-card__progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(90deg, #c97a5a, #b5654a);
+}
+.dark .continue-reading__row .discover-card__progress-bar {
+  background: rgba(234, 224, 213, 0.12);
+}
+.dark .continue-reading__row .discover-card__progress-bar > span {
+  background: linear-gradient(90deg, #d9906f, #c97a5a);
+}
+/* Title leads (it's what the reader is scanning for), author follows as the quieter line. */
+.continue-reading__row .discover-card__body {
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+}
+.continue-reading__row .discover-card__title {
+  margin-top: 0;
+  font-weight: 500;
+  -webkit-line-clamp: 1;
+}
+.continue-reading__row .discover-card__author {
+  margin-top: 0.1rem;
+  font-size: var(--text-label-2xs);
 }
 
 /* Continue Reading — landing page, mobile only. Same content/handlers as .continue-reading

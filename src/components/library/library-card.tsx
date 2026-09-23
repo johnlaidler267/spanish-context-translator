@@ -202,7 +202,13 @@ export function LibraryCard({
         </div>
         <span className="discover-card__type">Book</span>
         {progressPercent != null && (
-          <span className="discover-card__progress">{progressPercent}% read</span>
+          <>
+            <span className="discover-card__progress">{progressPercent}% read</span>
+            {/* Only shown in the desktop Continue Reading row -- see .continue-reading__row in index.css. */}
+            <span className="discover-card__progress-bar" aria-hidden>
+              <span style={{ width: `${progressPercent}%` }} />
+            </span>
+          </>
         )}
 
         {(onDelete || onPublish) && (
