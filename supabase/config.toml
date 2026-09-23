@@ -44,3 +44,6 @@ verify_jwt = false
 # header at all -- validates a Supabase access token carried in the body instead.
 [functions.recap-beacon]
 verify_jwt = false
+
+[functions.admin-beta-grant]
+verify_jwt = false
