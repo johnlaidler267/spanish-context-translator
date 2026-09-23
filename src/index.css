@@ -3040,6 +3040,77 @@ article span {
   font-size: var(--text-label-2xs);
 }
 
+/* Single-item variant (see continueReadingRowClass in landing-continue-reading.tsx). One
+   portrait card centered under the full-width composer read as a stray tile, so a lone item
+   becomes a landscape shelf card like Discover's spotlight row: small portrait cover beside
+   the copy, wide enough to hold its own under the textbox, and shorter than the portrait
+   card so the landing still fits in one viewport. */
+.continue-reading__row--solo .discover-card {
+  flex: 0 1 28rem;
+  min-width: 0;
+  max-width: 28rem;
+  flex-direction: row;
+  align-items: stretch;
+}
+.continue-reading__row--solo .discover-card__frame {
+  flex: 0 0 6.25rem;
+  aspect-ratio: 2 / 3;
+  border-right: 1px solid rgba(58, 51, 46, 0.08);
+  border-bottom: none;
+}
+.dark .continue-reading__row--solo .discover-card__frame {
+  border-right-color: rgba(234, 224, 213, 0.09);
+}
+/* Too narrow for two badges -- the body already says what it is, so only "how far in" stays. */
+.continue-reading__row--solo .discover-card__type {
+  display: none;
+}
+.continue-reading__row--solo .discover-card__progress {
+  top: 0.45rem;
+  left: 0.45rem;
+  right: auto;
+}
+/* The body carries the title now, so a plate cover drops back to just its motif rather than
+   repeating the title in a cramped column. */
+.continue-reading__row--solo .discover-cover--plate {
+  padding: 0.6rem;
+}
+.continue-reading__row--solo .discover-cover__plate-title,
+.continue-reading__row--solo .discover-cover__plate-author {
+  display: none;
+}
+.continue-reading__row--solo .discover-cover__rule {
+  inset: 0.4rem;
+}
+.continue-reading__row--solo .discover-cover__motif {
+  margin-bottom: 0;
+}
+/* Room to breathe: normal-weight two-line title, and the meta line the strip hides comes
+   back. Plain column + order instead of the strip's column-reverse, which would float the
+   meta line above the title. */
+.continue-reading__row--solo .discover-card__body {
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.9rem 1.15rem;
+}
+.continue-reading__row--solo .discover-card__title {
+  order: 0;
+  font-size: var(--text-display-xs);
+  letter-spacing: var(--track-display-xs);
+  -webkit-line-clamp: 2;
+}
+.continue-reading__row--solo .discover-card__author {
+  order: 1;
+  margin-top: 0.2rem;
+  font-size: var(--text-ui-sm);
+}
+.continue-reading__row--solo .discover-card__meta {
+  order: 2;
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0.7rem;
+}
+
 /* Continue Reading — landing page, mobile only. Same content/handlers as .continue-reading
    above (see landing-continue-reading.tsx, which renders both from one data fetch) but a
    shorter, two-up layout: two reduced-height rectangle cards side by side, sized to the
