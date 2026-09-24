@@ -2192,9 +2192,23 @@ article span {
   transition: opacity 0.2s ease;
 }
 
-.discover-card:hover .discover-card__tools,
+/* Hover reveal must stay behind (hover: hover): iOS Safari treats a tap that
+   reveals content via :hover as a hover and swallows the click, so cards would
+   need two taps to open. Touch screens just show the tools outright. */
 .discover-card:focus-within .discover-card__tools {
   opacity: 1;
+}
+
+@media (hover: hover) {
+  .discover-card:hover .discover-card__tools {
+    opacity: 1;
+  }
+}
+
+@media (hover: none) {
+  .discover-card__tools {
+    opacity: 1;
+  }
 }
 
 .discover-card__tools button {
