@@ -55,7 +55,7 @@ cp .env.example .env
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key |
 | `VITE_STRIPE_PRICE_PRO_MONTHLY` | Stripe Price ID for Pro monthly (`price_…`) |
 | `VITE_STRIPE_PRICE_PRO_ANNUAL` | Stripe Price ID for Pro annual (`price_…`) |
-| `VITE_TRANSLATION_LLM_PROVIDER` | Optional: set to `gemini` to use `gemini-chat` instead of Groq |
+| `VITE_TRANSLATION_LLM_PROVIDER` | Optional: set to `groq` to use `groq-chat` instead of Gemini (default) |
 | `VITE_GEMINI_MODEL`, `VITE_GEMINI_MODEL_LEARN` | Optional Gemini model overrides (must match `gemini-chat` allowlist) |
 | `VITE_ENFORCE_USAGE_IN_DEV` | Optional: `true` to enforce limits during local dev |
 | `VITE_SIMULATE_LAPSED` | Optional: `true` to exercise lapsed-subscription UI locally |
@@ -90,9 +90,9 @@ npx supabase@latest secrets set RESEND_API_KEY=re_...
 npx supabase@latest secrets set APP_URL=https://your-domain.com
 npx supabase@latest secrets set REPLAY_WEBHOOK_SECRET=some-random-secret
 npx supabase@latest secrets set PAST_DUE_GRACE_DAYS=3   # optional, defaults to 3
-npx supabase@latest secrets set GROQ_API_KEY=gsk_...    # Groq — used only by Edge Functions (translation, Learn, voice, chunk details)
-# Optional — only if you set VITE_TRANSLATION_LLM_PROVIDER=gemini and deploy `gemini-chat`:
-# npx supabase@latest secrets set GEMINI_API_KEY=...
+npx supabase@latest secrets set GROQ_API_KEY=gsk_...    # Groq — used only by Edge Functions (voice, chunk details; translation/Learn if provider=groq)
+# Gemini — default translation/Learn provider (via `gemini-chat`):
+npx supabase@latest secrets set GEMINI_API_KEY=...
 ```
 
 **Auth (required for translation):** In Supabase → **Authentication** → **Providers**, enable **Anonymous** sign-ins. Guests get an anonymous JWT so Edge Functions can authorize requests without exposing `GROQ_API_KEY` in the client bundle.
@@ -181,9 +181,9 @@ The client also pre-checks limits before translation (`src/lib/subscription/enfo
 
 ### Translation (Groq or Gemini)
 
-By default, chunking uses **Groq** through **`groq-chat`** (`src/lib/translate/` → `src/lib/groq-edge.ts`). The Groq API key is **not** in the browser. **On-demand** Groq projects enforce a low **tokens-per-minute / request-size** budget (roughly prompt + `max_tokens`). If you see TPM errors on short text, lower `TRANSLATE_MAX_COMPLETION_TOKENS` in `src/lib/translate/llm-settings.ts`, shorten the prompt, or upgrade Groq.
+With `VITE_TRANSLATION_LLM_PROVIDER=groq`, chunking uses **Groq** through **`groq-chat`** (`src/lib/translate/` → `src/lib/groq-edge.ts`). The Groq API key is **not** in the browser. **On-demand** Groq projects enforce a low **tokens-per-minute / request-size** budget (roughly prompt + `max_tokens`). If you see TPM errors on short text, lower `TRANSLATE_MAX_COMPLETION_TOKENS` in `src/lib/translate/llm-settings.ts`, shorten the prompt, or upgrade Groq.
 
-**Gemini (optional):** Set `VITE_TRANSLATION_LLM_PROVIDER=gemini`, add the Supabase secret **`GEMINI_API_KEY`**, and deploy **`gemini-chat`**. Google’s API uses separate quotas from Groq; errors such as **`limit: 0`** or **free-tier quota exceeded** usually mean billing is not enabled for the Google Cloud / AI Studio project, the key has no usable quota for the chosen model, or you need to adjust usage in [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits). To fall back to Groq, remove or unset `VITE_TRANSLATION_LLM_PROVIDER`.
+**Gemini (default):** Add the Supabase secret **`GEMINI_API_KEY`**, and deploy **`gemini-chat`**. Google’s API uses separate quotas from Groq; errors such as **`limit: 0`** or **free-tier quota exceeded** usually mean billing is not enabled for the Google Cloud / AI Studio project, the key has no usable quota for the chosen model, or you need to adjust usage in [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits). To fall back to Groq, set `VITE_TRANSLATION_LLM_PROVIDER=groq`.
 
 ### Landing plan pill
 

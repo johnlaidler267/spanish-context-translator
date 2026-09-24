@@ -1,9 +1,9 @@
 import type { PageSplitLimits } from "@/lib/translate/types"
 
-/** `groq` (default) or `gemini` — set `VITE_TRANSLATION_LLM_PROVIDER` in `.env`. */
+/** `gemini` (default) or `groq` — set `VITE_TRANSLATION_LLM_PROVIDER=groq` in `.env` to use Groq. */
 export function translationProvider(): "groq" | "gemini" {
   const v = (import.meta.env.VITE_TRANSLATION_LLM_PROVIDER as string | undefined)?.trim().toLowerCase()
-  return v === "gemini" ? "gemini" : "groq"
+  return v === "groq" ? "groq" : "gemini"
 }
 
 const GROQ_TRANSLATE_MODEL = "qwen/qwen3.8-27b"

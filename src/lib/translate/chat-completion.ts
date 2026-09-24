@@ -45,7 +45,7 @@ function formatRateLimitUserMessage(detail: string): string {
     return (
       `Google reports no usable Gemini quota for this key${modelBit} — often until billing is enabled or the project has API access. ` +
       "Details: https://ai.google.dev/gemini-api/docs/rate-limits — " +
-      "or switch to Groq by removing or unsetting VITE_TRANSLATION_LLM_PROVIDER."
+      "or switch to Groq by setting VITE_TRANSLATION_LLM_PROVIDER=groq."
     )
   }
 
