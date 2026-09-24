@@ -1021,6 +1021,13 @@ article span {
   mix-blend-mode: multiply;
 }
 
+/* Mobile: the greeting sits right above the cards/divider, so the swipe reads as clutter there */
+@media (max-width: 767px) {
+  .wordmark-ink::after {
+    display: none;
+  }
+}
+
 /* CTA — flat terracotta + subtle top highlight (museum light, no grain wash) */
 /* !important beats Tailwind bg-primary from <Button> */
 .btn-cta {
