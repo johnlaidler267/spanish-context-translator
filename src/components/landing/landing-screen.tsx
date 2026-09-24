@@ -512,8 +512,11 @@ export function LandingScreen({
             loading="eager"
             fetchPriority="high"
           />
+          {/* With no Continue Reading row (signed out, or nothing in progress) there's nothing
+              below for the greeting to introduce, so pair the art's mt-auto with mb-auto here to
+              center art + greeting in the hero instead of leaving them sunk to its bottom. */}
           <h1
-            className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl shrink-0"
+            className={`wordmark font-normal text-3xl sm:text-4xl md:text-5xl shrink-0${mobileRow == null ? " max-md:mb-auto" : ""}`}
             style={{ lineHeight: "1.15" }}
           >
             <span className="hero-greeting-gradient">
