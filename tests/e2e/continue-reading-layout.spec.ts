@@ -5,7 +5,9 @@
  * `flex: 1 1 0` with no `max-width`, so flex-grow stretched the lone/few cards to fill the
  * entire row -- a single book's cover read as a giant full-bleed banner instead of a card
  * (see the reference screenshot on the board card). Asserts each card's rendered width stays
- * under a sane cap regardless of how many items are shown (1, 2, 3, 4).
+ * under a sane cap regardless of how many items are shown (1, 2, 3, 4). A lone item is
+ * intentionally a wider landscape "shelf" card (`.continue-reading__row--solo`, capped at
+ * 28rem), so it gets its own cap -- still well short of the full row.
  *
  * Uses tests/e2e-mocks (see its README) instead of a real Supabase project/Groq key.
  */
@@ -73,8 +75,9 @@ for (const count of [1, 2, 3, 4]) {
       const box = await cards.nth(i).boundingBox()
       expect(box).not.toBeNull()
       // The bug: a lone/few card(s) grew via flex-grow to fill the entire ~800px row.
-      // Post-fix, max-width caps every card well under that regardless of count.
-      expect(box!.width).toBeLessThan(230)
+      // Post-fix, max-width caps every card well under that regardless of count -- 28rem
+      // (448px) for the solo landscape card, a portrait-card width otherwise.
+      expect(box!.width).toBeLessThan(count === 1 ? 450 : 230)
       expect(box!.width).toBeGreaterThan(100)
       // Never wider than the row itself (sanity check against a bad selector/empty row).
       expect(box!.width).toBeLessThanOrEqual(rowBox!.width)

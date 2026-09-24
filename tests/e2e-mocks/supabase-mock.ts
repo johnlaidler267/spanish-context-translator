@@ -3,7 +3,7 @@
  *
  * Fakes a signed-in Supabase session and intercepts the backend calls a normal
  * signed-in flow makes (Supabase Auth, PostgREST tables, and the groq-chat /
- * chunk-details / track-usage Edge Functions), so a Playwright test can drive real
+ * gemini-chat / chunk-details / track-usage Edge Functions), so a Playwright test can drive real
  * pages/components against a local build with no real Supabase project or Groq key.
  *
  * See tests/e2e-mocks/README.md for how to use this in a new test, and — importantly —
@@ -164,6 +164,13 @@ export async function mockRestTable(
 // ─── Edge Function mocks ────────────────────────────────────────────────────────
 
 /**
+ * `page.route` glob for the translate LLM proxy, whichever provider is active (groq-chat or
+ * gemini-chat). Use it when a spec overrides the translate call itself (a delay, echoing the
+ * page text back) so the override doesn't silently miss when the default provider changes.
+ */
+export const CHAT_EDGE_FUNCTIONS_GLOB = "**/functions/v1/{groq,gemini}-chat**"
+
+/**
  * Generic escape hatch for mocking any `supabase/functions/v1/<name>` Edge Function
  * not already covered by `setupMocks` — e.g. `gemini-chat`, `groq-transcribe`,
  * `chunk-memory-trick`. `body` may be a static JSON-serializable value or a function
@@ -322,7 +329,7 @@ export interface SetupMocksOptions {
   subscription?: Record<string, unknown> | Record<string, unknown>[] | null
   /** Extra PostgREST table mocks beyond discover_items/user_subscriptions: table name -> rows. */
   restTables?: Record<string, unknown[]>
-  /** Overrides the groq-chat mock's `choices[0].message.content` (see buildGroqChatResponse doc above). */
+  /** Overrides the groq-chat/gemini-chat mocks' `choices[0].message.content` (see buildGroqChatResponse doc above). */
   groqChatContent?: string
   /** Overrides the chunk-details mock response body. */
   chunkDetails?: Record<string, unknown>
@@ -333,8 +340,8 @@ export interface SetupMocksOptions {
 
 /**
  * One-call setup: fakes a signed-in session (unless `signedIn: false`) and wires up
- * the standard backend mocks (auth, discover_items, user_subscriptions, groq-chat,
- * chunk-details, track-usage). Call this before `page.goto(...)`, in place of
+ * the standard backend mocks (auth, discover_items, user_subscriptions, groq-chat /
+ * gemini-chat, chunk-details, track-usage). Call this before `page.goto(...)`, in place of
  * hand-rolled route interception. Returns the mock user (or null when signed out).
  *
  * Add more Playwright routes with `page.route(...)` / `mockEdgeFunction(...)`
@@ -362,9 +369,14 @@ export async function setupMocks(
     await mockRestTable(page, table, rows, { supabaseUrl })
   }
 
-  await mockEdgeFunction(page, "groq-chat", () => buildGroqChatResponse(options.groqChatContent ?? DEFAULT_GROQ_CHAT_CONTENT), {
-    supabaseUrl,
-  })
+  // Translate/Learn go to whichever of these VITE_TRANSLATION_LLM_PROVIDER picks (Gemini by
+  // default -- see src/lib/translate/llm-settings.ts). Both proxies return the same
+  // OpenAI-compatible shape, so mock both and stay provider-agnostic.
+  for (const fn of ["groq-chat", "gemini-chat"]) {
+    await mockEdgeFunction(page, fn, () => buildGroqChatResponse(options.groqChatContent ?? DEFAULT_GROQ_CHAT_CONTENT), {
+      supabaseUrl,
+    })
+  }
   await mockEdgeFunction(page, "chunk-details", options.chunkDetails ?? DEFAULT_CHUNK_DETAILS, { supabaseUrl })
   await mockEdgeFunction(page, "track-usage", options.trackUsage ?? DEFAULT_TRACK_USAGE, { supabaseUrl })
 

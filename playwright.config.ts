@@ -21,6 +21,12 @@ const chromiumExecutablePath =
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
+  // Capped rather than Playwright's default (half the cores): several specs assert wall-clock
+  // timing of the loading bar (loading-bar-no-stall, no-double-wait-after-slow-fetch,
+  // opens-reading-page-immediately), and with 4+ Chrome instances hammering one Vite dev
+  // server they blow their bounds from CPU contention alone. 2 workers finishes the suite as
+  // fast as 4 did on an 8-core Mac without those spurious failures.
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],

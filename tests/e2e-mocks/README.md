@@ -3,7 +3,7 @@
 Reusable Playwright setup for browser-level bug repro against this repo, with **no
 real Supabase project or Groq key required**. It fakes a signed-in Supabase session
 and mocks the backend calls a normal signed-in flow makes (Supabase Auth, the
-`discover_items` / `user_subscriptions` tables, and the `groq-chat` /
+`discover_items` / `user_subscriptions` tables, and the `groq-chat` / `gemini-chat` /
 `chunk-details` / `track-usage` Edge Functions).
 
 **Prefer this harness for any browser-level repro instead of hand-rolling mocks.**
@@ -41,8 +41,11 @@ npm run test:e2e
 That's it for the common case — `test`/`expect` imported from `../e2e-mocks/fixtures`
 (not `@playwright/test` directly) apply the default mock set automatically before
 each test: a signed-in user, an empty/free `user_subscriptions` row, two sample
-`discover_items` rows, and stub responses for `groq-chat` / `chunk-details` /
-`track-usage`. `playwright.config.ts` boots the Vite dev server itself with dummy
+`discover_items` rows, and stub responses for `groq-chat` / `gemini-chat` /
+`chunk-details` / `track-usage`. Translation goes to whichever of the two chat proxies
+`VITE_TRANSLATION_LLM_PROVIDER` picks (Gemini by default), so both get the same stub; to
+override the translate call in a spec, route `CHAT_EDGE_FUNCTIONS_GLOB` (exported from
+`supabase-mock.ts`) rather than one endpoint name. `playwright.config.ts` boots the Vite dev server itself with dummy
 `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` — you don't need to create a `.env.local`
 or start anything yourself.
 

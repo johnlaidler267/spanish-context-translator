@@ -16,6 +16,7 @@
  */
 
 import { test, expect } from "../e2e-mocks/fixtures"
+import { CHAT_EDGE_FUNCTIONS_GLOB } from "../e2e-mocks/supabase-mock"
 
 const PAGE_ONE_TEXT = Array(12)
   .fill(
@@ -55,44 +56,37 @@ const DISCOVER_ITEMS = [
 // needed for this book's body text to actually split into more than one article page.
 const PRO_SUBSCRIPTION = { status: "active", plan_id: "pro", past_due_since: null }
 
-/** Registers the two Edge Function mocks both tests below need, capturing gemini-chat's body. */
+/** Registers the chat mock both tests below need, capturing the recap request body. */
 async function mockChatEdgeFunctions(
   page: import("@playwright/test").Page,
 ): Promise<{ recapRequestBody: () => unknown }> {
   let recapRequestBody: unknown = null
-  await page.route("**/functions/v1/gemini-chat**", async (route) => {
-    recapRequestBody = route.request().postDataJSON()
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        choices: [{ message: { role: "assistant", content: "A village wakes up by the river." } }],
-      }),
-    })
-  })
-  // Registered after the harness's own default groq-chat mock (which returns a fixed 2-chunk
-  // reply regardless of input) -- this repo's later-registered `page.route` wins, and these
-  // tests need the real translate flow's chunk-reconcile step to actually succeed for a page as
-  // long as our multi-paragraph book, not just for the harness's short default example text
-  // (see chunk-reconcile.ts's rebuilt-vs-source check). Echoing the exact page text back as a
-  // single chunk always reconciles cleanly, whatever the source text is.
-  await page.route("**/functions/v1/groq-chat**", async (route) => {
+  // One handler for both proxies: gemini-chat serves the recap *and*, with Gemini as the default
+  // translation provider (see llm-settings.ts), the translate call too -- so tell them apart by
+  // the translate prompt's own "TEXT:\n" marker rather than by endpoint.
+  //
+  // Registered after the harness's own default chat mocks (which return a fixed 2-chunk reply
+  // regardless of input) -- this repo's later-registered `page.route` wins, and these tests need
+  // the real translate flow's chunk-reconcile step to actually succeed for a page as long as our
+  // multi-paragraph book, not just for the harness's short default example text (see
+  // chunk-reconcile.ts's rebuilt-vs-source check). Echoing the exact page text back as a single
+  // chunk always reconciles cleanly, whatever the source text is.
+  await page.route(CHAT_EDGE_FUNCTIONS_GLOB, async (route) => {
     const requestBody = route.request().postDataJSON() as {
       messages?: Array<{ role: string; content: string }>
     }
     const userContent = requestBody?.messages?.find((m) => m.role === "user")?.content ?? ""
     // buildChunkSortUserPrompt appends the exact page text after a literal "TEXT:\n" marker.
-    const canonical = userContent.split("TEXT:\n").pop() ?? userContent
+    const isTranslate = userContent.includes("TEXT:\n")
+    if (!isTranslate) recapRequestBody = requestBody
+    const content = isTranslate
+      ? JSON.stringify([{ c: userContent.split("TEXT:\n").pop() ?? userContent, m: "Translation." }])
+      : "A village wakes up by the river."
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        choices: [
-          {
-            message: { role: "assistant", content: JSON.stringify([{ c: canonical, m: "Translation." }]) },
-            finish_reason: "stop",
-          },
-        ],
+        choices: [{ message: { role: "assistant", content }, finish_reason: "stop" }],
       }),
     })
   })
@@ -127,10 +121,10 @@ test.describe("closing the tab (pagehide)", () => {
   })
 
   test("generates and caches a recap, not just navigating away", async ({ page }) => {
-    // Still needed for the groq-chat override (the actual translate flow, unrelated to the
+    // Still needed for the translate override (the actual translate flow, unrelated to the
     // recap) -- see mockChatEdgeFunctions's own comment on why the harness default isn't enough
-    // for this book's longer, multi-paragraph text. The gemini-chat mock it also registers goes
-    // unused by this test (the pagehide path hits recap-beacon, not gemini-chat directly).
+    // for this book's longer, multi-paragraph text. Its recap branch goes unused by this test
+    // (the pagehide path hits recap-beacon, not gemini-chat directly).
     await mockChatEdgeFunctions(page)
     const { recapBeaconBody } = await mockRecapBeacon(page)
 

@@ -8,14 +8,15 @@
  */
 
 import { test, expect } from "../e2e-mocks/fixtures"
+import { CHAT_EDGE_FUNCTIONS_GLOB } from "../e2e-mocks/supabase-mock"
 
 test("cuts over to the reading page right when the loading bar finishes, with the LLM call still in flight", async ({
   page,
 }) => {
-  // Registered after the fixture's own groq-chat mock, so it takes priority: delay the response
+  // Registered after the fixture's own groq-chat/gemini-chat mocks, so it takes priority: delay the response
   // well past the loading overlay's own fill duration (1.75s), so the reading page's own
   // translating state is what's covering the remaining wait, not the overlay.
-  await page.route("**/functions/v1/groq-chat**", async (route) => {
+  await page.route(CHAT_EDGE_FUNCTIONS_GLOB, async (route) => {
     await new Promise((r) => setTimeout(r, 4000))
     return route.fulfill({
       status: 200,

@@ -95,7 +95,9 @@ test("shows reading progress on a saved book and resumes it on click", async ({ 
 
   await page.goto("/library")
   await expect(page.getByText("Mi Libro Guardado").first()).toBeVisible()
-  await expect(page.getByText("50% read")).toBeVisible()
+  // Scoped to the visible corner badge: the card also carries a `__progress-inline` copy that
+  // only the mobile landing row displays.
+  await expect(page.locator(".discover-card__progress", { hasText: "50% read" })).toBeVisible()
 
   // Clicking a card opens a preview modal first (mirroring Discover's own preview-before-read
   // flow) rather than jumping straight into reading -- this book already has progress, so the
