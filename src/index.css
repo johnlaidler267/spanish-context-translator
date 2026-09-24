@@ -2946,9 +2946,11 @@ article span {
   /* overflow-x: auto forces overflow-y to clip as well, which sliced the top off a card
      lifted by .discover-card:hover (translateY(-4px)) and cut its deeper hover shadow short.
      Padding gives the lift and shadow room inside the scroll box; the matching negative
-     margins cancel it so the row's position on the page doesn't move. */
-  padding: 0.5rem 0 1.25rem;
-  margin: -0.5rem 0 -1.05rem;
+     margins cancel it so the row's position on the page doesn't move. The bottom has to clear
+     the whole hover shadow (24px offset + 42px blur - 22px spread = ~44px) or the clip draws
+     a hard horizontal edge across it. */
+  padding: 0.5rem 0 3rem;
+  margin: -0.5rem 0 -2.8rem;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
 }
