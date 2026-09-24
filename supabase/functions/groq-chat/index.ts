@@ -14,6 +14,7 @@ const ALLOWED_MODELS = new Set([
   "openai/gpt-oss-20b",
   "llama-3.1-8b-instant",
   "llama-3.3-70b-versatile",
+  "qwen/qwen3.8-27b",
 ])
 
 const MAX_TOKENS_CAP = 8192
