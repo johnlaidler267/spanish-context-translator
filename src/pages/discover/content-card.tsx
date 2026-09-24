@@ -97,6 +97,12 @@ export function ContentCard({
 
       <div className="discover-card__body">
         <p className="discover-card__author">{content.author}</p>
+        {progressPercent != null && (
+          // Only shown in the mobile Continue Reading row -- see .continue-reading-mobile__row in index.css.
+          <span className="discover-card__progress-inline">
+            {progressPercent}%<span className="sr-only"> read</span>
+          </span>
+        )}
         <h3 className="discover-card__title">{content.title}</h3>
         <div className="discover-card__meta">
           <DifficultyMark level={difficulty} />

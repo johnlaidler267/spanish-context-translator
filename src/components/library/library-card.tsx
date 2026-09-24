@@ -249,6 +249,12 @@ export function LibraryCard({
 
       <div className="discover-card__body">
         {book.author && <p className="discover-card__author">{book.author}</p>}
+        {progressPercent != null && (
+          // Only shown in the mobile Continue Reading row -- see .continue-reading-mobile__row in index.css.
+          <span className="discover-card__progress-inline">
+            {progressPercent}%<span className="sr-only"> read</span>
+          </span>
+        )}
         <h3 className="discover-card__title">{book.title}</h3>
         <div className="discover-card__meta">
           <span className="discover-card__time">
