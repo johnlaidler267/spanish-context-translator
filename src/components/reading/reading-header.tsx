@@ -1,7 +1,7 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { ChevronLeft, Moon, Sun, Settings2, Volume2, VolumeX, Sparkles } from "lucide-react"
+import { ChevronLeft, Moon, Sun, Volume2, VolumeX, Sparkles } from "lucide-react"
 import { ModeToggle, type ViewMode } from "@/components/reading/mode-toggle"
 import { type ReadingTheme } from "@/components/reading/theme-toggle"
 import { READING_HEADER_BAND_REM } from "@/lib/reading/reading-layout"
@@ -170,13 +170,6 @@ export function ReadingHeader({
               ? <Sun className="sun-icon h-4 w-4 max-md:h-5 max-md:w-5" strokeWidth={1.5} />
               : <Moon className="moon-icon h-4 w-4 max-md:h-5 max-md:w-5" strokeWidth={1.5} />}
           </button>
-          <Link
-            to="/settings"
-            className="profile-btn flex items-center justify-center w-9 h-9 max-md:w-10.5 max-md:h-10.5 rounded-[0.7rem] text-foreground/82 hover:bg-muted/35 hover:text-foreground transition-colors duration-200 ease-in-out"
-            aria-label="Settings"
-          >
-            <Settings2 className="h-4 w-4 max-md:h-5 max-md:w-5" strokeWidth={1.5} />
-          </Link>
         </div>
       </div>
 
