@@ -88,7 +88,9 @@ interface MainHeaderProps {
 /** Owns the centered pill-chip shell so it can collapse to nothing — never a blank shell. */
 function MobileChipWrapper({ children }: { children: ReactNode }) {
   return (
-    <div className="pointer-events-auto md:hidden flex w-full justify-center px-2.5 pb-2 pt-0.5">
+    // mobile-plan-chip-row: on short phones index.css lifts this into the top bar's row, between
+    // the menu and theme buttons, to give the landing hero that height back.
+    <div className="mobile-plan-chip-row pointer-events-auto md:hidden flex w-full justify-center px-2.5 pb-2 pt-0.5">
       <div className="plan-badge plan-badge--header plan-badge--mobile-chip">{children}</div>
     </div>
   )

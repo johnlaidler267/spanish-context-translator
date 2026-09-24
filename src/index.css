@@ -2766,24 +2766,36 @@ article span {
   to { transform: rotate(360deg); }
 }
 
-/* Short mobile viewports: pull the hero block up and hand the space to the illustration.
-   The landing column clears the fixed header with 7.5rem of padding, and the hero adds its
-   own 0.5rem top/bottom — on a tall phone that breathing room is invisible slack, but on a
-   short one it is the difference between the illustration rendering at full size and being
-   shrunk. The header itself is 6.5rem tall here, so 6.75rem still clears it; this reclaims
-   the padding, not the clearance. Only below 740px, where the hero actually runs out of
-   room — taller screens keep the original spacing. */
+/* Short mobile viewports: pull the hero block up and hand the space to the illustration and
+   the greeting. On a tall phone the header's second row (the plan pill) and the column's
+   7.5rem clearance are invisible slack; on a short one the hero ran out of room, the art
+   shrank, and the gap between the greeting and the "Continue reading" label bottomed out so
+   the label read as the greeting's subtitle. Only below 740px, where the hero actually runs
+   out of room — taller screens keep the original spacing. */
 @media (max-width: 767px) and (max-height: 740px) {
+  /* The plan pill moves up into the top bar's row, centered between the menu and theme
+     buttons (the row is 3.5rem; -3rem cancels the wrapper's own height and centers the ~2.3rem
+     chip in it), so the header shrinks to that one row. The wrapper spans the full width over
+     those buttons, so it passes taps through and only the chip itself takes them. */
+  .mobile-plan-chip-row {
+    margin-top: -3rem;
+    pointer-events: none;
+  }
+  .mobile-plan-chip-row > * {
+    pointer-events: auto;
+  }
   /* Doubled class for specificity: the padding this overrides comes from a Tailwind
      `max-md:pt-[...]` utility, which ties with a single class and would win on source order. */
   .landing-column.landing-column {
-    /* 7rem, not less: the header ends at 6.5rem and the illustration bobs 3px
-       (see @keyframes levitate), so a tighter value has it grazing the header. */
-    padding-top: max(7rem, calc(env(safe-area-inset-top, 0px) + 5.25rem));
+    /* Clears the now single-row header (3.5rem + safe area) with a little room for the
+       illustration's 3px bob (see @keyframes levitate), so it never grazes the header. */
+    padding-top: max(4rem, calc(env(safe-area-inset-top, 0px) + 3.75rem));
   }
   .landing-column .hero-mark--literary {
     padding-top: 0;
-    padding-bottom: 0;
+    /* Not 0: with the column's flex gap this keeps ~2rem between the greeting and the
+       "Continue reading" label, so the label reads as the cards' heading. */
+    padding-bottom: 1rem;
   }
 }
 
@@ -2795,6 +2807,12 @@ article span {
 @media (max-height: 620px) {
   .landing-hero-art {
     display: none;
+  }
+  /* The art's mt-auto is what anchors the hero's content toward the cards (see
+     landing-screen.tsx); with the art gone the greeting would sit at the top with all the
+     slack dumped between it and the "Continue reading" label, so center it instead. */
+  .landing-column .hero-mark--literary {
+    justify-content: center;
   }
 }
 
