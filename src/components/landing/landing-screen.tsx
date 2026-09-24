@@ -463,7 +463,7 @@ export function LandingScreen({
         style={{ position: "relative" }}
       >
         <img
-          src={theme === "dark" ? "/landing-bg-dark.png" : "/landing-bg.png"}
+          src={theme === "dark" ? "/landing-bg-dark.webp" : "/landing-bg.webp"}
           aria-hidden
           className={
             theme === "dark"

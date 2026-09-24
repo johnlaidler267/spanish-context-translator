@@ -65,12 +65,12 @@ createRoot(document.getElementById('root')).render(
                 aria-hidden
               >
                 <img
-                  src="/mobile-corner-letter.png"
+                  src="/mobile-corner-letter.webp"
                   alt=""
                   className="block h-auto w-full object-contain object-left-top opacity-[0.2] dark:hidden"
                 />
                 <img
-                  src="/mobile-corner-letter-dark.png"
+                  src="/mobile-corner-letter-dark.webp"
                   alt=""
                   className="hidden h-auto w-full object-contain object-left-top dark:block opacity-[0.17]"
                 />

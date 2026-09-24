@@ -1004,7 +1004,7 @@ export default function App() {
       // Books are for account holders: the anonymous guest session only exists to meter
       // short pastes. ContentPreviewModal answers this with a sign-in prompt.
       const isBook = content.type === "book"
-      if (isBook && isGuest) return { signInRequired: true }
+      if (isBook && isGuest) return { signInRequired: true as const }
 
       setAppState("loading")
       const loadingStartedAtMs = Date.now()
