@@ -370,8 +370,8 @@ export function LandingScreen({
     }
   }, [])
 
-  // Continue Reading: one data fetch, two placements in the tree below (mobileRow lands between
-  // the filigree divider and the composer form; desktopRow replaces the sample-excerpt fallback
+  // Continue Reading: one data fetch, two placements in the tree below (mobileRow lands above
+  // the filigree divider, which separates it from the composer form; desktopRow replaces the sample-excerpt fallback
   // below the composer) -- see useLandingContinueReading for why this is a hook and not a
   // component rendered directly where it's used.
   const { mobileRow, desktopRow } = useLandingContinueReading({
@@ -486,8 +486,13 @@ export function LandingScreen({
         className="landing-column w-full max-w-[800px] flex flex-col flex-1 min-h-0 max-md:flex-1 max-md:min-h-0 max-md:overflow-hidden max-md:overflow-x-hidden md:flex-none md:justify-start md:my-auto gap-4 md:gap-5 max-md:pt-[max(7.5rem,calc(env(safe-area-inset-top,0px)+5.75rem))] md:pt-0"
         style={{ position: "relative", zIndex: 2 }}
       >
-        {/* Hero — mobile: fills space above composer; desktop: top */}
-        <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block pt-2 md:pt-0 pb-2 md:pb-6">
+        {/* Hero — mobile: fills space above composer; desktop: top. On mobile the art + greeting
+            sit toward the bottom of that space (the art's max-md:mt-auto) rather than centered in
+            it: centered split the slack evenly, leaving a wide dead gap between the greeting and
+            the Continue Reading cards it introduces. mt-auto rather than justify-end because an
+            auto margin collapses to 0 when the hero overflows on a short phone, where
+            justify-end would push the top of the art out of reach of its own scroll. */}
+        <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center max-md:justify-start items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block pt-2 md:pt-0 pb-[clamp(0.75rem,5dvh,2.5rem)] md:pb-6">
           <img
             src="/landing-hero-books.webp"
             alt=""
@@ -502,7 +507,7 @@ export function LandingScreen({
             // nothing — the height is driven by the width above (35vw at the book's aspect).
             // Dropped rather than made real: turning it on now would halve the illustration
             // at every size, which isn't what this change is for.
-            className="landing-hero-art md:hidden mx-auto mb-2 w-[min(35vw,15rem)] h-auto min-h-0 shrink object-contain object-center select-none pointer-events-none animate-levitate"
+            className="landing-hero-art md:hidden mx-auto max-md:mt-auto mb-2 w-[min(35vw,15rem)] h-auto min-h-0 shrink object-contain object-center select-none pointer-events-none animate-levitate"
             aria-hidden
             loading="eager"
             fetchPriority="high"
@@ -525,18 +530,19 @@ export function LandingScreen({
           </h1>
         </div>
 
-        {/* Filigree sits directly above the textbox (mobile); desktop: below textarea, above sample (flex order inside group).
-            order-3 on mobile (md:order-2 on desktop) for this whole group relative to hero/
-            continue-reading-desktop. Within the group on mobile, the divider (order-1), the
-            mobile Continue Reading row (order-2, see useLandingContinueReading's `mobileRow`),
-            and the composer (order-3) render in that order -- divider, then cards, then the
-            text field, per the mobile design. Desktop doesn't render the mobile row at all
-            (it's md:hidden), so its local order-2 never competes with the composer there. */}
-        <div className="order-3 md:order-2 flex flex-col gap-2 w-full shrink-0 md:mt-0 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))] md:pb-0">
+        {/* order-3 on mobile (md:order-2 on desktop) for this whole group relative to hero/
+            continue-reading-desktop. Within the group on mobile: the Continue Reading row
+            (order-1, see useLandingContinueReading's `mobileRow`), the filigree divider
+            (order-2), then the composer (order-3). The divider sits *between* cards and
+            composer so they read as two sections -- above the cards it split them from the
+            greeting instead and left the cards looking like part of the composer. Desktop
+            never renders the mobile row, and there the composer is md:order-1, so the
+            divider's order-2 still lands it below the textarea, above the sample/row. */}
+        <div className="order-3 md:order-2 flex flex-col gap-2 w-full shrink-0 md:mt-0 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] md:pb-0">
           <img
             src="/filigree-divider.svg"
             alt=""
-            className="filigree-divider order-1 md:order-2 mx-auto shrink-0"
+            className="filigree-divider order-2 mx-auto shrink-0"
             aria-hidden
           />
           {mobileRow}

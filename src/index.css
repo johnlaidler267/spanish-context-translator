@@ -1376,8 +1376,10 @@ article span {
     flex: 1 1 auto;
     /* 10rem was a flat floor regardless of viewport -- on a short phone (iPhone SE
        and similar, ~667px tall) that alone can push the toolbar below the fold. Scale
-       the floor down with viewport height so very short screens ask for less. */
-    min-height: min(22dvh, 10rem);
+       the floor down with viewport height so very short screens ask for less. Capped at
+       8rem: at 10rem the empty field was the tallest thing on the page for what's usually a
+       one-line paste, and it squeezed the Continue Reading cards up against it. */
+    min-height: min(18dvh, 8rem);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -3125,13 +3127,8 @@ article span {
    desktop row's taller portrait covers and horizontal-scroll strip -- there's no room to
    scroll a strip above the fold on a phone, and only ever 2 cards are shown here (see
    MAX_MOBILE_CONTINUE_READING_ITEMS) so there's nothing to scroll to anyway. */
-.continue-reading-mobile {
-  /* Extra room below the cards, on top of the flex `gap-2` the mobile column already puts
-     between every child (see landing-screen.tsx) -- at that gap alone, the cards' 1rem-radius
-     corners sit almost flush against the composer's square-ish top edge right below them,
-     which reads as a mismatched stack rather than two distinct sections. */
-  margin-bottom: 0.375rem;
-}
+/* No extra margin: the filigree divider now sits between this row and the composer (see
+   landing-screen.tsx), which is what keeps the two reading as distinct sections. */
 .continue-reading-mobile__row {
   display: flex;
   justify-content: center;
@@ -3157,18 +3154,42 @@ article span {
   /* aspect-ratio is width/height, so a *larger* ratio is a *shorter* frame -- the
      previous 1.6/1 here had this backwards (it was meant to shrink the frame vs. the
      desktop row's 4/3, but 1.6/1 is taller than even that). 2.4/1 restores the actual
-     "short, landscape-like" proportion the row was designed around. */
-  aspect-ratio: 2.4 / 1;
+     "short, landscape-like" proportion the row was designed around. 2/1 rather than 2.4/1:
+     at 2.4 the crop kept only a thin band of the cover (heads cut off, a book jacket reduced
+     to one strip of sky), for ~12px the phone can afford now the pill no longer sits on it. */
+  aspect-ratio: 2 / 1;
 }
 /* Type badge (BOOK/ARTICLE/...) is redundant at this size and crowds the corner opposite the
    progress pill -- drop it so the shorter frame reads as cover art, not a cluttered label. */
 .continue-reading-mobile__row .discover-card__type {
   display: none;
 }
+/* The "% read" pill covered about half of a cover this small -- a thin bar along the cover's
+   bottom edge (same as the desktop row) says "how far in" without hiding the art. */
 .continue-reading-mobile__row .discover-card__progress {
-  right: 0.5rem;
-  bottom: 0.5rem;
-  padding: 0.15rem 0.48rem;
+  display: none;
+}
+.continue-reading-mobile__row .discover-card__progress-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: block;
+  height: 3px;
+  background: rgba(58, 51, 46, 0.1);
+}
+.continue-reading-mobile__row .discover-card__progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(90deg, #c97a5a, #b5654a);
+}
+.dark .continue-reading-mobile__row .discover-card__progress-bar {
+  background: rgba(234, 224, 213, 0.12);
+}
+.dark .continue-reading-mobile__row .discover-card__progress-bar > span {
+  background: linear-gradient(90deg, #d9906f, #c97a5a);
 }
 .continue-reading-mobile__row .discover-cover--plate {
   padding: 0.5rem 0.6rem;

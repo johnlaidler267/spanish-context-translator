@@ -217,7 +217,8 @@ export function useLandingContinueReading({
     return isMobile
       ? {
           mobileRow: (
-            <div className="continue-reading-mobile w-full entry-4 order-2" aria-busy="true">
+            <div className="continue-reading-mobile w-full entry-4 order-1" aria-busy="true">
+              <p className="sample-excerpt-label text-center">Continue reading</p>
               <div className="continue-reading-mobile__row">
                 {placeholders(Math.min(reservedCount, MAX_MOBILE_CONTINUE_READING_ITEMS))}
               </div>
@@ -250,12 +251,13 @@ export function useLandingContinueReading({
   // duplication of rendering both rows in the DOM and hiding one with CSS.
   if (isMobile) {
     return {
-      // No label on mobile (removed per design) -- just the two cards. Caller renders this as a
-      // sibling of the filigree divider and composer form, inside their shared flex wrapper (see
-      // landing-screen.tsx) -- order-2 puts it between the divider (order-1) and the composer
-      // (bumped to order-3 there).
+      // Labelled like desktop: without it the two cards read as suggestions rather than books
+      // already started. Caller renders this as a sibling of the filigree divider and composer
+      // form, inside their shared flex wrapper (see landing-screen.tsx) -- order-1 puts it
+      // above the divider (order-2), which then separates it from the composer (order-3).
       mobileRow: (
-        <div className="continue-reading-mobile w-full entry-4 order-2">
+        <div className="continue-reading-mobile w-full entry-4 order-1">
+          <p className="sample-excerpt-label text-center">Continue reading</p>
           <div className="continue-reading-mobile__row">
             {mobileItems.map((item) =>
               item.kind === "discover" ? (
