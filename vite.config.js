@@ -21,6 +21,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // supabase-js always bundles its Realtime and Storage clients, which this app never
+      // uses -- ~84KB minified of the main bundle every page parses before it can paint.
+      // Swap in tiny stand-ins; see the files themselves before starting to use either.
+      '@supabase/realtime-js': path.resolve(__dirname, './src/lib/supabase-stubs/realtime-js.ts'),
+      '@supabase/storage-js': path.resolve(__dirname, './src/lib/supabase-stubs/storage-js.ts'),
     },
     dedupe: ['react', 'react-dom'],
   },
