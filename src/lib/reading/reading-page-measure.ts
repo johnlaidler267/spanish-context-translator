@@ -330,64 +330,40 @@ function splitTailPieceForRealFit(
 }
 
 /**
- * Binary-searches the longest piece-count prefix of `current` (at least 1) that fits, per `fits`.
- * `current` is already known not to fit whole. Used instead of popping pieces off the end one at
- * a time so an overflowing page costs O(log n) real-DOM measurements instead of O(n) — the
- * difference between a snappy real-fit pass and one that hangs the tab on a real book (a long
- * page's worth of short sentences can be dozens of pieces; popping one at a time meant dozens of
- * forced layouts per overflowing page, and a systematic estimate/real mismatch across a whole
- * novel can mean *most* pages need this, not a rare few).
- *
- * Also returns the accepted prefix's real measured height, for the same reuse reason as
- * `splitPieceForRealFit` above.
- */
-function findFittingPrefixLength(
-  current: string[],
-  fits: FitProbe,
-  heightBox: { value: number },
-): { length: number; height: number } {
-  let lo = 1
-  let hi = current.length
-  let best = 0
-  let bestHeight = 0
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1
-    if (fits(current.slice(0, mid))) {
-      best = mid
-      bestHeight = heightBox.value
-      lo = mid + 1
-    } else {
-      hi = mid - 1
-    }
-  }
-  return { length: best, height: bestHeight }
-}
-
-/**
  * Yield to the browser between batches of forced-layout measurements so a long reflow (a full
  * novel can be hundreds of pages) never blocks the main thread continuously -- without this the
  * tab can go fully unresponsive for the whole pass with no visible progress, indistinguishable
  * from a crash, even though the work itself eventually finishes.
  *
- * Deliberately `setTimeout`, not `requestAnimationFrame`: rAF only fires on an actual paint tick,
- * which browsers throttle or fully pause for a backgrounded/non-visible tab (switching tabs
- * mid-load, an inactive window) -- silently stalling this entire pass for as long as the tab stays
- * backgrounded, which read exactly like the original hang this was meant to fix. `setTimeout`
- * doesn't depend on painting at all, so it keeps yielding (and this pass keeps making progress)
- * whether or not the tab is currently visible.
+ * A `MessageChannel` post, not `setTimeout(0)` or `requestAnimationFrame`: rAF only fires on a
+ * paint tick, which browsers pause for a backgrounded tab (stalling the whole pass), and nested
+ * `setTimeout(0)` is clamped to >=4ms per call -- across the hundreds of yields a long novel needs,
+ * that clamp alone added seconds of pure idle time to opening a book. A message task runs as soon
+ * as the browser has handled pending input/paint, whether or not the tab is visible.
  */
 function yieldToMainThread(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0))
+  return new Promise((resolve) => {
+    const channel = new MessageChannel()
+    channel.port1.onmessage = () => {
+      channel.port1.close()
+      resolve()
+    }
+    channel.port2.postMessage(null)
+  })
 }
 
-/** How many real-DOM `fits()` measurements to run before yielding a frame back to the browser. */
-const YIELD_EVERY_FITS_CALLS = 40
+/**
+ * How long (ms) to run real-DOM measurements before yielding back to the browser. Time-based
+ * rather than a fixed call count because a measurement's cost varies with how much text it lays
+ * out; this keeps the loading overlay animating smoothly at roughly frame rate either way.
+ */
+const YIELD_EVERY_MS = 12
 
 /**
- * Starting lookahead window size (in pieces) for `packOnePage`. Comfortably above a typical real
- * page's piece count for ordinary prose (a page usually holds somewhere around 4-12 sentences),
- * so the common case resolves in one or two `fits()` calls without needing to grow the window at
- * all.
+ * Lookahead window size (in pieces) for `packOnePage`'s first page. Comfortably above a typical real
+ * page's piece count for ordinary prose (a page usually holds somewhere around 4-12 sentences).
+ * Later pages start from the previous page's piece count instead -- consecutive pages of the same
+ * book hold similar amounts of text, so that guess usually resolves a page in two `fits()` calls.
  */
 const INITIAL_LOOKAHEAD_PIECES = 16
 /**
@@ -498,75 +474,107 @@ export async function reflowPagesForRealFit(
     splitRemainder: string | null
   }
 
-  // Grows the lookahead window geometrically from `start` until it either overflows the real box
-  // or would reach the end of the book, then (on overflow) binary-searches the true fitting
-  // prefix within that window. Bounds each page's cost to O(log MAX_LOOKAHEAD_PIECES) measurements
-  // over at most MAX_LOOKAHEAD_PIECES pieces of text, regardless of how far into the book this
-  // page starts or how the original per-page estimate was biased.
-  const packOnePage = (start: number, flatPieces: readonly string[]): PackedPage => {
-    let windowSize = INITIAL_LOOKAHEAD_PIECES
-    while (true) {
-      const end = Math.min(flatPieces.length, start + windowSize)
-      const windowPieces = flatPieces.slice(start, end)
-      const wholeWindowFits = fits(windowPieces)
-      const reachedEnd = end === flatPieces.length
-      if (wholeWindowFits && (reachedEnd || windowSize >= MAX_LOOKAHEAD_PIECES)) {
-        // Either the whole rest of the book fits, or we hit the lookahead cap while everything so
-        // far still fits (an unusually short-sentence-heavy stretch) -- take it as-is. A page
-        // ending at the cap instead of wherever the box would truly stop filling is the accepted
-        // tradeoff for bounding cost.
-        return {
-          pieces: windowPieces,
-          height: heightBox.value,
-          usedWholePieces: windowPieces.length,
-          splitRemainder: null,
+  // Finds the longest fitting prefix (in whole pieces) starting at `start` by galloping outward
+  // from `guess` -- up while it still fits, down while it doesn't -- then binary-searching the
+  // bracket that leaves. With `guess` taken from the previous page (see the loop below), the
+  // common case is exactly two measurements: `guess` fits, `guess + 1` doesn't. Worst case is still
+  // O(log MAX_LOOKAHEAD_PIECES) measurements over at most MAX_LOOKAHEAD_PIECES pieces of text,
+  // regardless of how far into the book this page starts or how the estimate was biased.
+  const packOnePage = (start: number, flatPieces: readonly string[], guess: number): PackedPage => {
+    const maxLen = Math.min(flatPieces.length - start, MAX_LOOKAHEAD_PIECES)
+    const measure = (n: number) => fits(flatPieces.slice(start, start + n))
+    // Invariant: a prefix of `lo` pieces fits (0 = none known to), `hi` pieces overflows
+    // (`maxLen + 1` = nothing within reach is known to overflow).
+    let lo = 0
+    let loHeight = 0
+    let hi = maxLen + 1
+    const first = Math.min(Math.max(1, guess), maxLen)
+    if (measure(first)) {
+      lo = first
+      loHeight = heightBox.value
+      for (let step = 1; lo < maxLen; step *= 2) {
+        const next = Math.min(maxLen, lo + step)
+        if (!measure(next)) {
+          hi = next
+          break
         }
+        lo = next
+        loHeight = heightBox.value
       }
-      if (wholeWindowFits) {
-        windowSize *= 2
-        continue
+    } else {
+      hi = first
+      for (let step = 1; hi > 1; step *= 2) {
+        const next = Math.max(1, hi - step)
+        if (measure(next)) {
+          lo = next
+          loHeight = heightBox.value
+          break
+        }
+        hi = next
       }
-      // Window overflows — binary-search the longest prefix that actually fits.
-      const found = findFittingPrefixLength(windowPieces, fits, heightBox)
-      if (found.length > 0) {
-        const accepted = windowPieces.slice(0, found.length)
-        // Top up the leftover lines with the start of the piece that didn't fit whole. Without
-        // this, a page stopped at the last *whole* sentence that fit, so whenever the next
-        // sentence was two or three lines long and only one line of room was left, those lines
-        // stayed blank — the visible "only part of the page is filled" bug, and the reason the
-        // amount of text per page swung around: how much was wasted depended entirely on how long
-        // the next sentence happened to be.
-        // `accepted` is checked too, not just the tail: once any newline is on the page,
-        // `setRealFitProbeText` measures the whole page as `pre-line`, and whether the heuristic
-        // trips can change as the tail prefix grows — which would make `fits` non-monotonic and
-        // break the binary search below. Pure prose (no newlines anywhere) has neither problem.
-        const tail = windowPieces[found.length]
-        if (tail != null && pieceMayBeSplitMidPiece(tail) && accepted.every(pieceMayBeSplitMidPiece)) {
-          const split = splitTailPieceForRealFit(accepted, tail, fits, heightBox)
-          if (split) {
-            return {
-              pieces: [...accepted, split.prefix],
-              height: split.height,
-              usedWholePieces: found.length,
-              splitRemainder: split.remainder,
-            }
+    }
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1
+      if (measure(mid)) {
+        lo = mid
+        loHeight = heightBox.value
+      } else {
+        hi = mid
+      }
+    }
+
+    if (hi > maxLen) {
+      // Either the whole rest of the book fits, or we hit the lookahead cap while everything so
+      // far still fits (an unusually short-sentence-heavy stretch) -- take it as-is. A page
+      // ending at the cap instead of wherever the box would truly stop filling is the accepted
+      // tradeoff for bounding cost.
+      return {
+        pieces: flatPieces.slice(start, start + lo),
+        height: loHeight,
+        usedWholePieces: lo,
+        splitRemainder: null,
+      }
+    }
+    const windowPieces = flatPieces.slice(start, start + hi)
+    const found = { length: lo, height: loHeight }
+    if (found.length > 0) {
+      const accepted = windowPieces.slice(0, found.length)
+      // Top up the leftover lines with the start of the piece that didn't fit whole. Without
+      // this, a page stopped at the last *whole* sentence that fit, so whenever the next
+      // sentence was two or three lines long and only one line of room was left, those lines
+      // stayed blank — the visible "only part of the page is filled" bug, and the reason the
+      // amount of text per page swung around: how much was wasted depended entirely on how long
+      // the next sentence happened to be.
+      // `accepted` is checked too, not just the tail: once any newline is on the page,
+      // `setRealFitProbeText` measures the whole page as `pre-line`, and whether the heuristic
+      // trips can change as the tail prefix grows — which would make `fits` non-monotonic and
+      // break the binary search below. Pure prose (no newlines anywhere) has neither problem.
+      const tail = windowPieces[found.length]
+      if (tail != null && pieceMayBeSplitMidPiece(tail) && accepted.every(pieceMayBeSplitMidPiece)) {
+        const split = splitTailPieceForRealFit(accepted, tail, fits, heightBox)
+        if (split) {
+          return {
+            pieces: [...accepted, split.prefix],
+            height: split.height,
+            usedWholePieces: found.length,
+            splitRemainder: split.remainder,
           }
         }
-        return {
-          pieces: accepted,
-          height: found.height,
-          usedWholePieces: found.length,
-          splitRemainder: null,
-        }
       }
-      // A single piece alone still overflows an empty box — split it at a word boundary.
-      const [prefix, remainder, prefixHeight] = splitPieceForRealFit(windowPieces[0]!, fits, heightBox)
       return {
-        pieces: [prefix],
-        height: prefixHeight,
-        usedWholePieces: 0,
-        splitRemainder: remainder || null,
+        pieces: accepted,
+        height: found.height,
+        usedWholePieces: found.length,
+        splitRemainder: null,
       }
+    }
+    // A single piece alone still overflows an empty box — split it at a word boundary.
+    const [prefix, remainder, prefixHeight] = splitPieceForRealFit(windowPieces[0]!, fits, heightBox)
+    return {
+      pieces: [prefix],
+      height: prefixHeight,
+      usedWholePieces: 0,
+      splitRemainder: remainder || null,
     }
   }
 
@@ -580,10 +588,13 @@ export async function reflowPagesForRealFit(
     // search) measurements, a small constant, so this is generous headroom rather than the tight
     // bound it has to actually do the work of enforcing.
     const maxFitsCalls = flatPieces.length * 20 + 4000
-    let fitsCallCountAtLastYield = 0
+    let lastYieldAt = performance.now()
+    // Seeds each page's search (see packOnePage) -- pages of the same book hold similar amounts.
+    let guess = INITIAL_LOOKAHEAD_PIECES
 
     while (startIdx < flatPieces.length && fitsCallCount < maxFitsCalls) {
-      const packed = packOnePage(startIdx, flatPieces)
+      const packed = packOnePage(startIdx, flatPieces, guess)
+      guess = Math.max(1, packed.pieces.length)
       result.push(packed.pieces)
       resultHeights.push(packed.height)
       startIdx += packed.usedWholePieces
@@ -601,9 +612,9 @@ export async function reflowPagesForRealFit(
       if (fitsCallCount >= maxFitsCalls) break
       // Keep the tab responsive across a long reflow (a full novel can be hundreds of pages) —
       // without this the whole pass blocks the main thread continuously with no visible progress.
-      if (fitsCallCount - fitsCallCountAtLastYield >= YIELD_EVERY_FITS_CALLS) {
-        fitsCallCountAtLastYield = fitsCallCount
+      if (performance.now() - lastYieldAt >= YIELD_EVERY_MS) {
         await yieldToMainThread()
+        lastYieldAt = performance.now()
       }
     }
 
