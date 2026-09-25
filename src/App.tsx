@@ -728,7 +728,7 @@ export default function App() {
         // drops content. Also returns the desktop fill-padding polish computed from the same
         // measurements, instead of a separate second full-book pass. See reflowPagesForRealFit's
         // docstring for the full root cause.
-        const reflowed = await reflowPagesForRealFit(pages, isMobile)
+        const reflowed = await reflowPagesForRealFit(pages, isMobile, { title: contentTitle })
         pages = reflowed.pages
         setPageTopFillPaddingPx(reflowed.topFillPaddingPx)
         // Cross-device resume anchor -- a sentence index means the same spot in the book on

@@ -30,10 +30,18 @@ const DESKTOP_ARTICLE_BOTTOM_PX = 64
 /** Desktop article spacing before footer (matches ArticleContent `md:mb-8`). */
 const DESKTOP_ARTICLE_TO_FOOTER_GAP_PX = 32
 /**
- * Desktop pagination footer reserve (buttons are 44px tall + border/padding).
- * Keep this slightly conservative so text never collides with footer controls.
+ * Desktop pagination footer height (ArticleContent's footer: 44px `h-11` buttons + `pt-1`).
+ * Was a "conservative" 96px -- double the real footer -- which silently shaved ~48px (roughly a
+ * full line) off every desktop page and left a visible blank band above the pager. Overflow is
+ * already guarded by REAL_FIT_HEIGHT_SAFETY and the real-DOM reflow, so this should be exact.
  */
-const DESKTOP_PAGINATION_FOOTER_PX = 96
+const DESKTOP_PAGINATION_FOOTER_PX = 48
+/**
+ * Desktop running head (ArticleContent's `bookTitle` <p>: `md:text-base` bold + `md:mb-6`). In
+ * flow on desktop (unlike mobile, where it sits absolutely inside the top band), so it takes
+ * height away from the article box whenever a title is shown -- see desktopTitleReservePx.
+ */
+const DESKTOP_TITLE_MARGIN_PX = 24
 
 /** Mobile horizontal padding — ArticleContent px-6. */
 const MOBILE_PAD_X_PX = 24 * 2
@@ -47,6 +55,15 @@ const MOBILE_BOTTOM_MIN_REM = 5.5
 const MOBILE_BOTTOM_SAFE_PLUS_REM = 4.5
 
 const REM = 16
+
+/**
+ * Probe typography for the article body. Desktop is `leading-[1.75]`, not the article's own
+ * `md:leading-[1.85]`: index.css's `article p, article span { line-height: 1.75 }` overrides it on
+ * every paragraph and chunk, so 1.75 is what actually renders. Probing at 1.85 made every line
+ * ~6% taller than reality, so desktop pages stopped a line or more short of the real box.
+ */
+const PROBE_CLASS_MOBILE = "font-reading text-[1.6875rem] leading-[1.75] text-foreground"
+const PROBE_CLASS_DESKTOP = "font-reading text-[1.725rem] leading-[1.75] text-foreground"
 
 /**
  * Spanish-heavy filler (~5–8 char tokens) so the probe isn’t biased by English-length words.
@@ -94,7 +111,33 @@ function articleContentWidthPx(isMobile: boolean): number {
   return Math.max(200, Math.min(ARTICLE_MAX_WIDTH_PX, w) - pad)
 }
 
-function articleBodyHeightPx(isMobile: boolean): number {
+/**
+ * Height the desktop running head takes out of the article box, measured with the same classes
+ * and width it renders at (so a long title that wraps to two lines is accounted for). 0 on
+ * mobile, where the title is out of flow, or when there is no title.
+ */
+function desktopTitleReservePx(isMobile: boolean, title: string | null | undefined): number {
+  if (isMobile || !title || typeof document === "undefined") return 0
+  const probe = document.createElement("p")
+  probe.setAttribute("aria-hidden", "true")
+  probe.className = "text-center font-sans text-base font-bold"
+  Object.assign(probe.style, {
+    position: "fixed",
+    visibility: "hidden",
+    left: "0",
+    top: "0",
+    margin: "0",
+    width: `${articleContentWidthPx(false)}px`,
+    pointerEvents: "none",
+  })
+  probe.textContent = title
+  document.body.appendChild(probe)
+  const h = probe.getBoundingClientRect().height
+  document.body.removeChild(probe)
+  return h + DESKTOP_TITLE_MARGIN_PX
+}
+
+function articleBodyHeightPx(isMobile: boolean, reservePx = 0): number {
   if (typeof window === "undefined") return 400
   const vh = window.innerHeight
   const safe = readSafeAreaInsets()
@@ -111,7 +154,8 @@ function articleBodyHeightPx(isMobile: boolean): number {
       DESKTOP_ARTICLE_TOP_PX -
       DESKTOP_ARTICLE_BOTTOM_PX -
       DESKTOP_ARTICLE_TO_FOOTER_GAP_PX -
-      DESKTOP_PAGINATION_FOOTER_PX,
+      DESKTOP_PAGINATION_FOOTER_PX -
+      reservePx,
   )
 }
 
@@ -129,9 +173,7 @@ export function measureArticleBodyMaxChars(isMobile: boolean): number {
 
   const probe = document.createElement("div")
   probe.setAttribute("aria-hidden", "true")
-  probe.className = isMobile
-    ? "font-reading text-[1.6875rem] leading-[1.75] text-foreground"
-    : "font-reading text-[1.725rem] leading-[1.85] text-foreground"
+  probe.className = isMobile ? PROBE_CLASS_MOBILE : PROBE_CLASS_DESKTOP
   Object.assign(probe.style, {
     position: "fixed",
     visibility: "hidden",
@@ -216,9 +258,7 @@ const REAL_FIT_HEIGHT_SAFETY = 0.97
 function createRealFitProbe(isMobile: boolean, widthPx: number, heightPx: number): HTMLDivElement {
   const probe = document.createElement("div")
   probe.setAttribute("aria-hidden", "true")
-  probe.className = isMobile
-    ? "font-reading text-[1.6875rem] leading-[1.75] text-foreground"
-    : "font-reading text-[1.725rem] leading-[1.85] text-foreground"
+  probe.className = isMobile ? PROBE_CLASS_MOBILE : PROBE_CLASS_DESKTOP
   Object.assign(probe.style, {
     position: "fixed",
     visibility: "hidden",
@@ -509,6 +549,7 @@ const MAX_LOOKAHEAD_PIECES = 128
 export async function reflowPagesForRealFit(
   pages: string[][],
   isMobile: boolean,
+  opts: { title?: string | null } = {},
 ): Promise<{ pages: string[][]; topFillPaddingPx: number[] }> {
   if (typeof document === "undefined" || pages.length === 0) {
     return { pages, topFillPaddingPx: pages.map(() => 0) }
@@ -527,7 +568,8 @@ export async function reflowPagesForRealFit(
   }
 
   const width = articleContentWidthPx(isMobile)
-  const height = articleBodyHeightPx(isMobile) * REAL_FIT_HEIGHT_SAFETY
+  const fullHeight = articleBodyHeightPx(isMobile, desktopTitleReservePx(isMobile, opts.title))
+  const height = fullHeight * REAL_FIT_HEIGHT_SAFETY
   if (width < 80 || height < 80) return { pages, topFillPaddingPx: pages.map(() => 0) }
 
   // Flatten to one ordered piece stream and repack from scratch against the real box, ignoring
@@ -730,7 +772,7 @@ export async function reflowPagesForRealFit(
 
     const topFillPaddingPx = isMobile
       ? result.map(() => 0)
-      : computeTopFillPaddingFromHeights(resultHeights, articleBodyHeightPx(isMobile))
+      : computeTopFillPaddingFromHeights(resultHeights, fullHeight)
 
     return { pages: result, topFillPaddingPx }
   } finally {
