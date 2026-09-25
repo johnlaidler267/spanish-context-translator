@@ -12,6 +12,7 @@ import {
   pageSourceText,
   PARAGRAPH_BREAK_MARKER,
   resolvePageSplitLimits,
+  stripStandaloneRomanChapterLines,
 } from "@/lib/translate"
 
 /** Keep sentence batching conservative vs measured fill (wide glyphs, punctuation). */
@@ -236,37 +237,110 @@ function createRealFitProbe(isMobile: boolean, widthPx: number, heightPx: number
   return probe
 }
 
+/** One run of page text, or a chapter heading that `translatePageText` will splice in. */
+type ProbeSegment = { kind: "text"; text: string } | { kind: "chapter"; label: string }
+
+/**
+ * Same chapter-heading split `translatePageText` applies (standalone Roman-numeral lines become
+ * `.chapter-heading` blocks at these offsets), so the probe lays out what will actually render.
+ */
+function segmentPageTextForProbe(text: string): ProbeSegment[] {
+  const { stripped, markers } = stripStandaloneRomanChapterLines(text)
+  if (markers.length === 0) return [{ kind: "text", text }]
+  const out: ProbeSegment[] = []
+  let pos = 0
+  for (const marker of [...markers].sort((a, b) => a.insertAfterCanonIndex - b.insertAfterCanonIndex)) {
+    const at = Math.min(Math.max(marker.insertAfterCanonIndex, pos), stripped.length)
+    if (at > pos) out.push({ kind: "text", text: stripped.slice(pos, at) })
+    out.push({ kind: "chapter", label: marker.label })
+    pos = at
+  }
+  if (pos < stripped.length) out.push({ kind: "text", text: stripped.slice(pos) })
+  return out
+}
+
+function createChapterHeadingProbe(label: string): HTMLDivElement {
+  const heading = document.createElement("div")
+  heading.className = "chapter-heading"
+  for (const cls of ["chapter-heading__rule", "chapter-heading__label", "chapter-heading__rule"]) {
+    const span = document.createElement("span")
+    span.className = cls
+    if (cls === "chapter-heading__label") span.textContent = label
+    heading.appendChild(span)
+  }
+  return heading
+}
+
 /**
  * Mirrors ArticleContent's render structure: verse is one flat `whitespace-pre-line` block, and
  * prose is one indented `<p>` per paragraph (split on {@link PARAGRAPH_BREAK_MARKER}), with the
- * book's very first paragraph getting the drop cap instead of the indent.
+ * book's very first paragraph getting the drop cap instead of the indent. Standalone Roman-numeral
+ * lines become `.chapter-heading` blocks in both, as they do on screen.
  *
  * Prose used to be measured as a single run of text with the (invisible) markers inline, so a
  * paragraph break cost nothing in the probe — but in the real render each one ends a line early
  * and starts an indented new one, up to a full extra line per break. A page with a few more
  * paragraph breaks than usual came out a line taller than measured and its last line was clipped
- * by the page box.
+ * by the page box. Chapter headings had the same problem: measured as a one-word line, rendered
+ * as a block with ~4rem of margin around it.
  */
 function setRealFitProbeText(probe: HTMLDivElement, text: string, isFirstPage: boolean): void {
-  if (looksLikeLineBreakHeavySource(text)) {
+  const segments = segmentPageTextForProbe(text)
+  probe.textContent = ""
+  // ArticleContent decides verse vs. prose on its rendered items' text, where chapter labels sit
+  // inline rather than on their own lines.
+  const renderedText = segments.map((seg) => (seg.kind === "text" ? seg.text : seg.label)).join("")
+  if (looksLikeLineBreakHeavySource(renderedText)) {
     probe.style.whiteSpace = "pre-line"
-    probe.textContent = text
+    for (const seg of segments) {
+      probe.appendChild(
+        seg.kind === "text" ? document.createTextNode(seg.text) : createChapterHeadingProbe(seg.label),
+      )
+    }
     return
   }
   probe.style.whiteSpace = "normal"
-  probe.textContent = ""
-  text
-    .split(PARAGRAPH_BREAK_MARKER)
-    .filter((part) => part.length > 0)
-    .forEach((part, i) => {
+  // No drop cap when the page opens with a chapter heading (see ArticleContent's showDropCap).
+  let dropCapPending = isFirstPage && segments[0]?.kind !== "chapter"
+  for (const seg of segments) {
+    if (seg.kind === "chapter") {
+      probe.appendChild(createChapterHeadingProbe(seg.label))
+      continue
+    }
+    for (const part of seg.text.split(PARAGRAPH_BREAK_MARKER)) {
+      if (part.length === 0) continue
       const p = document.createElement("p")
-      p.className = isFirstPage && i === 0 ? "article-drop-cap" : "indent-5 md:indent-7"
+      p.className = dropCapPending ? "article-drop-cap" : "indent-5 md:indent-7"
+      dropCapPending = false
       p.textContent = part
       probe.appendChild(p)
-    })
+    }
+  }
 }
 
 type FitProbe = (pieces: string[]) => boolean
+
+/**
+ * `piece` cut after its first `n` words, keeping the original whitespace between words (so a
+ * verse piece's line breaks survive) and dropping only the whitespace at the cut itself.
+ *
+ * Rejoining the words with plain spaces instead flattened a long poem into one run of prose the
+ * moment a piece was too tall for a page, which also stopped its standalone Roman-numeral lines
+ * from being recognised as chapter headings.
+ */
+function splitPieceAtWord(piece: string, n: number): [string, string] {
+  const re = /\S+/g
+  let count = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(piece)) !== null) {
+    count++
+    if (count === n) {
+      const end = m.index + m[0].length
+      return [piece.slice(0, end).trimStart(), piece.slice(end).replace(/^\s+/, "")]
+    }
+  }
+  return [piece.trimStart(), ""]
+}
 
 /**
  * Binary-searches the longest word-count prefix of `piece` that fits an otherwise-empty page,
@@ -294,7 +368,7 @@ function splitPieceForRealFit(
   let bestHeight = 0
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    if (fits([words.slice(0, mid).join(" ")])) {
+    if (fits([splitPieceAtWord(piece, mid)[0]])) {
       best = mid
       bestHeight = heightBox.value
       lo = mid + 1
@@ -302,7 +376,7 @@ function splitPieceForRealFit(
       hi = mid - 1
     }
   }
-  return [words.slice(0, best).join(" "), words.slice(best).join(" "), bestHeight]
+  return [...splitPieceAtWord(piece, best), bestHeight]
 }
 
 /**
@@ -342,7 +416,7 @@ function splitTailPieceForRealFit(
   let bestHeight = 0
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    if (fits([...accepted, words.slice(0, mid).join(" ")])) {
+    if (fits([...accepted, splitPieceAtWord(piece, mid)[0]])) {
       best = mid
       bestHeight = heightBox.value
       lo = mid + 1
@@ -351,11 +425,8 @@ function splitTailPieceForRealFit(
     }
   }
   if (best === 0) return null
-  return {
-    prefix: words.slice(0, best).join(" "),
-    remainder: words.slice(best).join(" "),
-    height: bestHeight,
-  }
+  const [prefix, remainder] = splitPieceAtWord(piece, best)
+  return { prefix, remainder, height: bestHeight }
 }
 
 /**
