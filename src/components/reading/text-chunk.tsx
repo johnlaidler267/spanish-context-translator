@@ -150,6 +150,8 @@ const ARROW_BOX: Record<"article" | "read", number> = { read: 10, article: 15 }
 /** Mobile: taps in a chain must fall within this gap (ms) to count toward opening details. */
 const TAP_CHAIN_GAP_MS = 550
 const TAPS_TO_OPEN_DETAILS_MOBILE = 2
+/** A click this soon after a touch on the chunk is that touch's synthetic click, not a mouse click. */
+const CLICK_AFTER_TOUCH_MS = 1000
 
 function estimateTooltipHeight(chunk: ChunkData): number {
   // Rough estimate for placement only; tooltip content remains auto-sized by the browser.
@@ -291,6 +293,9 @@ export function TextChunk({
   const tapChainRef = useRef<{ n: number; t: number }>({ n: 0, t: 0 })
   const tapResetTimerRef = useRef<number | null>(null)
   const suppressClickAfterTouchGestureUntilRef = useRef(0)
+  /** Touch in progress on this chunk, and when the last one ended — see the click guard below. */
+  const touchActiveRef = useRef(false)
+  const lastTouchEndAtRef = useRef(0)
   /** Last viewport pointer while this chunk’s tooltip is open — reflow scroll/resize */
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const pointerRafRef = useRef<number | null>(null)
@@ -581,6 +586,32 @@ export function TextChunk({
     }
   }, [delegatePointerHover, handleTouchEnd])
 
+  /**
+   * On touch, details open only via the double-tap chain; `onClick` is for mouse. Our touchend
+   * `preventDefault` normally kills the synthetic click, but iOS home-screen web apps turn a long
+   * press into a `touchcancel` + click (nothing to select/preview), which would open details
+   * from a single press-and-hold. Track touches so any click tied to one is ignored.
+   */
+  useLayoutEffect(() => {
+    const el = chunkRef.current
+    if (!el) return
+    const onStart = () => {
+      touchActiveRef.current = true
+    }
+    const onEnd = () => {
+      touchActiveRef.current = false
+      lastTouchEndAtRef.current = Date.now()
+    }
+    el.addEventListener("touchstart", onStart, { passive: true })
+    el.addEventListener("touchend", onEnd, { passive: true })
+    el.addEventListener("touchcancel", onEnd, { passive: true })
+    return () => {
+      el.removeEventListener("touchstart", onStart)
+      el.removeEventListener("touchend", onEnd)
+      el.removeEventListener("touchcancel", onEnd)
+    }
+  }, [])
+
   const arrowSize = ARROW_BOX[variant]
 
   const { prefix, underline, suffix } = splitChunkTextForUnderline(chunk.text)
@@ -738,6 +769,7 @@ export function TextChunk({
         data-chunk-id={chunk.id}
         onClick={() => {
           if (Date.now() < suppressClickAfterTouchGestureUntilRef.current) return
+          if (touchActiveRef.current || Date.now() - lastTouchEndAtRef.current < CLICK_AFTER_TOUCH_MS) return
           onActivate()
           onRequestDetails?.()
         }}
