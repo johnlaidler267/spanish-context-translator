@@ -7,7 +7,12 @@
 
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
 import type { PageSplitLimits } from "@/lib/translate"
-import { looksLikeLineBreakHeavySource, pageSourceText, resolvePageSplitLimits } from "@/lib/translate"
+import {
+  looksLikeLineBreakHeavySource,
+  pageSourceText,
+  PARAGRAPH_BREAK_MARKER,
+  resolvePageSplitLimits,
+} from "@/lib/translate"
 
 /** Keep sentence batching conservative vs measured fill (wide glyphs, punctuation). */
 const CHAR_BUDGET_SAFETY = 0.84
@@ -231,10 +236,34 @@ function createRealFitProbe(isMobile: boolean, widthPx: number, heightPx: number
   return probe
 }
 
-/** Mirrors ArticleContent's verse handling (`whitespace-pre-line`, no collapsing) vs. prose. */
-function setRealFitProbeText(probe: HTMLDivElement, text: string): void {
-  probe.style.whiteSpace = looksLikeLineBreakHeavySource(text) ? "pre-line" : "normal"
-  probe.textContent = text
+/**
+ * Mirrors ArticleContent's render structure: verse is one flat `whitespace-pre-line` block, and
+ * prose is one indented `<p>` per paragraph (split on {@link PARAGRAPH_BREAK_MARKER}), with the
+ * book's very first paragraph getting the drop cap instead of the indent.
+ *
+ * Prose used to be measured as a single run of text with the (invisible) markers inline, so a
+ * paragraph break cost nothing in the probe — but in the real render each one ends a line early
+ * and starts an indented new one, up to a full extra line per break. A page with a few more
+ * paragraph breaks than usual came out a line taller than measured and its last line was clipped
+ * by the page box.
+ */
+function setRealFitProbeText(probe: HTMLDivElement, text: string, isFirstPage: boolean): void {
+  if (looksLikeLineBreakHeavySource(text)) {
+    probe.style.whiteSpace = "pre-line"
+    probe.textContent = text
+    return
+  }
+  probe.style.whiteSpace = "normal"
+  probe.textContent = ""
+  text
+    .split(PARAGRAPH_BREAK_MARKER)
+    .filter((part) => part.length > 0)
+    .forEach((part, i) => {
+      const p = document.createElement("p")
+      p.className = isFirstPage && i === 0 ? "article-drop-cap" : "indent-5 md:indent-7"
+      p.textContent = part
+      probe.appendChild(p)
+    })
 }
 
 type FitProbe = (pieces: string[]) => boolean
@@ -454,9 +483,12 @@ export async function reflowPagesForRealFit(
   // the measurement that decided a page fits for the fill-padding calculation too, instead of
   // re-measuring the same content again in a separate pass.
   const heightBox = { value: 0 }
+  // Page 1 renders its opening paragraph with a drop cap (see ArticleContent's showDropCap),
+  // which changes how that paragraph wraps — the probe has to know which page it's packing.
+  let packingFirstPage = true
   const fits: FitProbe = (pieces) => {
     fitsCallCount++
-    setRealFitProbeText(probe, pageSourceText(pieces))
+    setRealFitProbeText(probe, pageSourceText(pieces), packingFirstPage)
     heightBox.value = probe.scrollHeight
     return heightBox.value <= probe.clientHeight + 1
   }
@@ -593,6 +625,7 @@ export async function reflowPagesForRealFit(
     let guess = INITIAL_LOOKAHEAD_PIECES
 
     while (startIdx < flatPieces.length && fitsCallCount < maxFitsCalls) {
+      packingFirstPage = result.length === 0
       const packed = packOnePage(startIdx, flatPieces, guess)
       guess = Math.max(1, packed.pieces.length)
       result.push(packed.pieces)
