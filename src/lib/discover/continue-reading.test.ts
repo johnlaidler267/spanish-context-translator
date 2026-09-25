@@ -105,4 +105,28 @@ describe("buildContinueReadingItems", () => {
 
     expect(items).toEqual([{ kind: "library", book: library[0], percent: null }])
   })
+
+  it("shows the same book only once when it exists under two ids, keeping the most recent", () => {
+    // Same EPUB uploaded twice (two user_epubs rows), plus a Discover copy of it -- three ids,
+    // one book. Title/author match loosely (case, whitespace, curly vs straight apostrophe).
+    const camus = (id: string, title: string, author: string | null): LibraryEpub => ({
+      ...libraryBook(id),
+      title,
+      author,
+    })
+    const library = [
+      camus("u1", "Noces, suivi de L'été", "Albert Camus"),
+      camus("u2", "  noces, suivi de L’été ", "albert camus"),
+      libraryBook("u3"),
+    ]
+    const catalog = [{ ...discoverItem("d1"), title: "Noces, suivi de L'été", author: "Albert Camus" }]
+    const recent = [entry("u2", 4000), entry("u1", 3000), entry("d1", 2500), entry("u3", 2000)]
+
+    const items = buildContinueReadingItems(recent, catalog, library, 2)
+
+    expect(items).toEqual([
+      { kind: "library", book: library[1], percent: 30 },
+      { kind: "library", book: library[2], percent: 30 },
+    ])
+  })
 })
