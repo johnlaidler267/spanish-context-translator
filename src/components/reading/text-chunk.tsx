@@ -769,7 +769,13 @@ export function TextChunk({
         data-chunk-id={chunk.id}
         onClick={() => {
           if (Date.now() < suppressClickAfterTouchGestureUntilRef.current) return
-          if (touchActiveRef.current || Date.now() - lastTouchEndAtRef.current < CLICK_AFTER_TOUCH_MS) return
+          if (touchActiveRef.current) {
+            // The touch never reported its end (iOS long press) — this click is its end.
+            touchActiveRef.current = false
+            lastTouchEndAtRef.current = Date.now()
+            return
+          }
+          if (Date.now() - lastTouchEndAtRef.current < CLICK_AFTER_TOUCH_MS) return
           onActivate()
           onRequestDetails?.()
         }}

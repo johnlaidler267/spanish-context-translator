@@ -520,6 +520,8 @@ export function ReadMode({
           style={pageEnterStyle}
           className={cn(
             "block w-full font-reading text-[2.34375rem] md:text-[3.45rem] lg:text-[4.3125rem] max-md:leading-[1.52] md:leading-snug text-center text-foreground text-balance selection:bg-primary/20",
+            // No iOS long-press callout: it can swallow the lift of a press-and-hold explore.
+            "[-webkit-touch-callout:none]",
             touchExploring && "touch-none select-none",
           )}
         >

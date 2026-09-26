@@ -1392,7 +1392,11 @@ article span {
     overflow: hidden;
   }
   .textarea-toolbar {
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    /* No safe-area-inset-bottom here: the composer isn't flush to the screen edge -- its
+       parent group in landing-screen already pads for the home indicator. Adding it here too
+       doubled the gap inside the box in the iOS home-screen app, where the inset is ~34px
+       (in Safari it's 0 while the toolbar shows, which is why it only showed there). */
+    padding: 10px 12px;
     /* Matches .textarea-wrapper's mobile radius above -- the toolbar paints its own
        opaque background flush to the wrapper's bottom edge, so without this its square
        corners poke past the wrapper's now-visible curve. */

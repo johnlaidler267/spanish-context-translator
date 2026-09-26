@@ -298,16 +298,41 @@ export function useChunkTouchExploration(
       endTouchExploration()
     }
 
+    /**
+     * Backstop for a touch that ends without reaching the surface as touchend/touchcancel:
+     * in an iOS home-screen web app a press-and-hold is taken over by the system long-press
+     * gesture, and the surface never hears the lift — leaving the word highlighted with its
+     * tooltip stuck open. Any of these on the window means the finger is no longer exploring.
+     * Bubble phase (not capture) so a normal lift still runs onTouchEndCapture first.
+     */
+    const onStrayEnd = () => endTouchExploration()
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") endTouchExploration()
+    }
+    const STRAY_END_EVENTS = [
+      "touchend",
+      "touchcancel",
+      "pointerup",
+      "pointercancel",
+      "click",
+      "contextmenu",
+      "blur",
+    ] as const
+
     el.addEventListener("touchstart", onTouchStart, { passive: true })
     el.addEventListener("touchmove", onTouchMove, { passive: false })
     el.addEventListener("touchend", onTouchEndCapture, { capture: true })
     el.addEventListener("touchcancel", onTouchEndCapture, { capture: true })
+    for (const type of STRAY_END_EVENTS) window.addEventListener(type, onStrayEnd)
+    document.addEventListener("visibilitychange", onVisibility)
 
     return () => {
       el.removeEventListener("touchstart", onTouchStart)
       el.removeEventListener("touchmove", onTouchMove)
       el.removeEventListener("touchend", onTouchEndCapture, { capture: true })
       el.removeEventListener("touchcancel", onTouchEndCapture, { capture: true })
+      for (const type of STRAY_END_EVENTS) window.removeEventListener(type, onStrayEnd)
+      document.removeEventListener("visibilitychange", onVisibility)
       touchExploringRef.current = false
       onTouchPointerRef.current?.(null)
       setTouchExploring(false)

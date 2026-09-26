@@ -549,6 +549,8 @@ export function ArticleContent({
           // which let a cut-off sentence's remainder scroll out of reach instead of ever being
           // shown, the root cause of real content silently going missing when a page turned.
           "min-h-0 flex-1 md:mb-8 overflow-hidden",
+          // No iOS long-press callout: it can swallow the lift of a press-and-hold explore.
+          "[-webkit-touch-callout:none]",
           touchExploring && "touch-none select-none",
         )}
       >
