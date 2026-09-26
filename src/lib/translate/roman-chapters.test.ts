@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest"
 import { stripStandaloneRomanChapterLines, insertChapterMarkers } from "@/lib/translate/roman-chapters"
+import {
+  coalesceGlueablePunctuationReconciledItems,
+  normalizeChunkingSource,
+  reconcileChunks,
+} from "@/lib/translate/chunk-reconcile"
 import type { ReconciledItem } from "@/lib/translate/types"
 
 describe("stripStandaloneRomanChapterLines", () => {
@@ -99,5 +104,38 @@ describe("insertChapterMarkers", () => {
       { type: "text", text: "Hola" },
       { type: "chapter", label: "I" },
     ])
+  })
+})
+
+describe("chapter markers through the full reconcile pipeline", () => {
+  const nextWordChunk = (items: ReconciledItem[]) =>
+    items.find((i) => i.type === "chunk" && i.chunk.trim().length > 0)
+
+  const run = (input: string, rows: { chunk: string; meaning: string }[]) => {
+    const { stripped, markers } = stripStandaloneRomanChapterLines(input)
+    const canonical = normalizeChunkingSource(stripped)
+    const items = coalesceGlueablePunctuationReconciledItems(reconcileChunks(rows, canonical))
+    return insertChapterMarkers(items, markers)
+  }
+
+  it("places a heading at the right spot when earlier text has doubled spaces", () => {
+    const out = run("II\nEl   perro\t\tcorrió.\nIII\nFin del día.", [
+      { chunk: "El perro", meaning: "x" },
+      { chunk: "corrió", meaning: "x" },
+      { chunk: "Fin del día", meaning: "x" },
+    ])
+    const iii = out.findIndex((i) => i.type === "chapter" && i.label === "III")
+    expect(nextWordChunk(out.slice(iii + 1))).toMatchObject({ chunk: "Fin del día" })
+    expect(out.some((i) => i.type === "chunk" && i.chunk === "Fi")).toBe(false)
+  })
+
+  it("accounts for leading whitespace trimmed from the source and tabs mid-line", () => {
+    const out = run("   Hola\t\tmundo.\nIV\nAdiós.", [
+      { chunk: "Hola mundo", meaning: "x" },
+      { chunk: "Adiós", meaning: "x" },
+    ])
+    const iv = out.findIndex((i) => i.type === "chapter" && i.label === "IV")
+    expect(nextWordChunk(out.slice(iv + 1))).toMatchObject({ chunk: "Adiós" })
+    expect(nextWordChunk(out.slice(0, iv))).toMatchObject({ chunk: "Hola mundo." })
   })
 })

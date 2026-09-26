@@ -1,3 +1,4 @@
+import { collapseHorizontalWsOnly } from "@/lib/translate/text-ws"
 import type { ReconciledChunk, ReconciledItem, RomanChapterMarker } from "@/lib/translate/types"
 
 /** True when a whole line is only a Roman numeral (chapter heading). */
@@ -28,7 +29,24 @@ export function stripStandaloneRomanChapterLines(input: string): {
     }
     kept.push(line)
   }
-  return { stripped: kept.join("\n"), markers }
+  const stripped = kept.join("\n")
+  return { stripped, markers: markers.map((m) => toCanonMarker(stripped, m)) }
+}
+
+/**
+ * Map a marker's offset into `stripped` onto the normalized chunking source
+ * (`collapseHorizontalWsOnly(stripped)`), which collapses whitespace runs and trims — otherwise
+ * doubled spaces/tabs before a heading shift it earlier and split a word.
+ */
+function toCanonMarker(stripped: string, marker: RomanChapterMarker): RomanChapterMarker {
+  const collapse = (s: string) => s.replace(/\r\n/g, "\n").replace(/[^\S\n]+/g, " ")
+  const leadingTrim = collapse(stripped).length - collapse(stripped).trimStart().length
+  const canonLength = collapseHorizontalWsOnly(stripped).length
+  const prefixLength = collapse(stripped.slice(0, marker.insertAfterCanonIndex)).length
+  return {
+    ...marker,
+    insertAfterCanonIndex: Math.min(canonLength, Math.max(0, prefixLength - leadingTrim)),
+  }
 }
 
 /**
