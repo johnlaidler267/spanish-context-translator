@@ -11,6 +11,7 @@ import {
 } from "react"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { TextChunk } from "@/components/reading/text-chunk"
+import { canShowDropCap } from "@/lib/reading/drop-cap"
 import {
   gapBetweenReconciledChunks,
   looksLikeLineBreakHeavySource,
@@ -443,7 +444,8 @@ export function ArticleContent({
    */
   const isFirstPage = !pagination || pagination.pageIndex === 0
   const showDropCap =
-    !loading && !errorMessage && isFirstPage && !isVerseLike && items != null && items[0]?.type !== "chapter"
+    !loading && !errorMessage && isFirstPage && !isVerseLike && items != null && items[0]?.type !== "chapter" &&
+    canShowDropCap(pageText)
 
   const handleGlobalClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement

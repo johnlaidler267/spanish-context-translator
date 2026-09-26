@@ -5,6 +5,7 @@
  * Read-mode uses larger type; article pagination still follows article body metrics.
  */
 
+import { canShowDropCap } from "@/lib/reading/drop-cap"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
 import type { PageSplitLimits } from "@/lib/translate"
 import {
@@ -341,7 +342,8 @@ function setRealFitProbeText(probe: HTMLDivElement, text: string, isFirstPage: b
   }
   probe.style.whiteSpace = "normal"
   // No drop cap when the page opens with a chapter heading (see ArticleContent's showDropCap).
-  let dropCapPending = isFirstPage && segments[0]?.kind !== "chapter"
+  let dropCapPending =
+    isFirstPage && segments[0]?.kind === "text" && canShowDropCap(segments[0].text)
   for (const seg of segments) {
     if (seg.kind === "chapter") {
       probe.appendChild(createChapterHeadingProbe(seg.label))
