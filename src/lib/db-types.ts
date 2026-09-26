@@ -1,6 +1,6 @@
 /**
  * TypeScript types mirroring the Supabase database schema.
- * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql, 0024_reading_progress_recap.sql).
+ * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql, 0024_reading_progress_recap.sql, 0026_shared_translation_cache.sql).
  *
  * Usage with the Supabase client:
  *   import { createClient } from '@supabase/supabase-js'
@@ -224,6 +224,27 @@ export type BetaProGrantRow = {
   claimed_by: string | null
 }
 
+/**
+ * Full database row from `public.translation_cache` — the cross-user translation cache for
+ * Discover content (see supabase/migrations/0026_shared_translation_cache.sql and
+ * src/lib/translate/shared-translation-cache.ts).
+ */
+export type TranslationCacheRow = {
+  id: string
+  discover_item_id: string
+  /** SHA-256 hex of the translation batch's exact source text. */
+  source_hash: string
+  target_lang: string
+  model_version: string
+  status: "pending" | "ready"
+  /** `ReconciledItem[]` once ready; null while pending. */
+  chunks: unknown[] | null
+  source_char_len: number
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
 // ─── Insert types (omit server-generated fields) ────────────────────────────
 
 export type UserSubscriptionInsert = Omit<
@@ -326,6 +347,12 @@ export interface Database {
         Row:    UserEpubRow
         Insert: UserEpubInsert
         Update: UserEpubUpdate
+        Relationships: []
+      }
+      translation_cache: {
+        Row:    TranslationCacheRow
+        Insert: Omit<TranslationCacheRow, "id" | "created_at" | "updated_at">
+        Update: Partial<Omit<TranslationCacheRow, "id" | "created_at" | "updated_at">>
         Relationships: []
       }
       beta_pro_grants: {

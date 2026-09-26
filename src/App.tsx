@@ -47,6 +47,8 @@ import {
 } from "@/lib/translate"
 import { reflowPagesForRealFit } from "@/lib/reading/reading-page-measure"
 import { TranslationCache } from "@/lib/translation-cache"
+import { assertBatchAligned, BatchedPageTranslator } from "@/lib/translate/translation-batches"
+import { loadBatchWithSharedCache } from "@/lib/translate/shared-translation-cache"
 import { cacheKeyForPastedText } from "@/lib/storage/translation-cache-storage"
 import type { ViewMode } from "@/components/reading/mode-toggle"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
@@ -307,6 +309,13 @@ export default function App() {
 
   const cacheRef = useRef(new TranslationCache())
   /**
+   * For Discover content only: routes each page's translation through fixed-size batches backed
+   * by the cross-user shared cache (see translation-batches.ts / shared-translation-cache.ts), so
+   * a page someone else already read costs no LLM call. Null for anything private (pastes,
+   * Library books) -- those translate page by page as before. Read by translatePageWithUsage.
+   */
+  const pageTranslatorRef = useRef<BatchedPageTranslator | null>(null)
+  /**
    * Latest "which book, which page, which user" as of the last page turn — kept fresh by the
    * progress-persisting effect below, and read by the leave-triggered recap effect right after
    * it (see there for why this needs to be a ref rather than a plain closure). Null before any
@@ -469,7 +478,8 @@ export default function App() {
    */
   const translatePageWithUsage = useCallback(
     async (pageText: string): Promise<ReconciledItem[]> => {
-      if (!user || !ENFORCE_USAGE_LIMITS) return translatePageText(pageText)
+      const translate = pageTranslatorRef.current?.translatePage ?? translatePageText
+      if (!user || !ENFORCE_USAGE_LIMITS) return translate(pageText)
 
       let preflight = usagePreflightRef.current
       if (preflight == null || Date.now() - preflight.fetchedAt >= USAGE_PREFLIGHT_TTL_MS) {
@@ -490,7 +500,7 @@ export default function App() {
         throw new UsageError(guard.message || "You've reached a plan limit.")
       }
 
-      const result = await translatePageText(pageText)
+      const result = await translate(pageText)
 
       // Charge only after a successful translation — a failed page shouldn't cost anything.
       // Fire-and-forget, same pattern as the submit-time charge below.
@@ -613,6 +623,7 @@ export default function App() {
         initialPageRatio = null,
         isBook = false,
         loadingStartedAtMs = Date.now(),
+        sharedCacheDiscoverItemId = null,
       }: {
         populateLandingDraft?: boolean
         contentId?: string | null
@@ -646,6 +657,12 @@ export default function App() {
          * whatever the fetch had already taken beyond the bar's own fill duration.
          */
         loadingStartedAtMs?: number
+        /**
+         * Discover catalog id, from handleDiscoverStartReading only: turns on the cross-user
+         * shared translation cache for this piece (see pageTranslatorRef). Never set for Library
+         * books -- their text is private to the uploader.
+         */
+        sharedCacheDiscoverItemId?: string | null
       } = {},
     ) => {
       if (!text.trim()) return
@@ -922,6 +939,24 @@ export default function App() {
         // the cache, anything else is treated as different content.
         const translationCacheKey = contentId ?? cacheKeyForPastedText(trimmed)
         cacheRef.current = new TranslationCache({ user, cacheKey: translationCacheKey })
+        pageTranslatorRef.current = sharedCacheDiscoverItemId
+          ? BatchedPageTranslator.create(
+              sents,
+              pages,
+              (batchText) =>
+                loadBatchWithSharedCache(
+                  {
+                    discoverItemId: sharedCacheDiscoverItemId,
+                    writerUserId: user && !user.is_anonymous ? user.id : null,
+                  },
+                  batchText,
+                  // Checked before it can be stored: a batch whose items don't line up with its
+                  // source text can't be sliced onto pages, so it's never shared.
+                  async (t) => assertBatchAligned(t, await translatePageText(t)),
+                ),
+              translatePageText,
+            )
+          : null
         setSourcePages(pages)
         setArticlePageIndex(initialPageIndex)
         setActiveReadingContentId(contentId ?? null)
@@ -1051,6 +1086,7 @@ export default function App() {
         contentTitle: content.title,
         isBook,
         loadingStartedAtMs,
+        sharedCacheDiscoverItemId: content.id,
       })
     },
     [handleTextSubmit, isEffectivelyFreeUser, isGuest],
@@ -1117,6 +1153,7 @@ export default function App() {
     setAppState("landing")
     setSourcePages([])
     cacheRef.current = new TranslationCache()
+    pageTranslatorRef.current = null
     setArticlePageIndex(0)
     setActiveReadingContentId(null)
     setActiveReadingTitle(null)
