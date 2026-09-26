@@ -6,7 +6,7 @@ import {
   parseChatJsonErrorBody,
   throwChatHttpError,
 } from "@/lib/translate/chat-completion"
-import { buildChunkSortUserPrompt } from "@/lib/translate/chunk-sort-prompt"
+import { buildChunkSortMessages } from "@/lib/translate/chunk-sort-prompt"
 import { extractChunkJsonArrayFromText } from "@/lib/translate/chunk-json"
 import {
   assertReconcileDidNotLeaveLongPlainTail,
@@ -19,7 +19,7 @@ import {
 } from "@/lib/translate/chunk-reconcile"
 import { insertChapterMarkers, stripStandaloneRomanChapterLines } from "@/lib/translate/roman-chapters"
 import { TRANSLATE_MAX_COMPLETION_TOKENS, translateModel, translationProvider } from "@/lib/translate/llm-settings"
-import type { RawChunk, ReconciledItem } from "@/lib/translate/types"
+import type { RawChunk, ReconciledItem, RomanChapterMarker } from "@/lib/translate/types"
 
 /** Single LLM call: chunk JSON → reconciled items for one page of source text. */
 export async function translatePageText(input: string): Promise<ReconciledItem[]> {
@@ -29,8 +29,7 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     throw new Error("No text to translate.")
   }
 
-  const systemContent = ""
-  const userContent = buildChunkSortUserPrompt(canonical)
+  const { system: systemContent, user: userContent } = buildChunkSortMessages(canonical)
   console.log("[translatePageText] LLM user prompt:", userContent)
 
   const base = {
@@ -63,6 +62,18 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
   }
   const raw = combineAssistantPayloadsForChunkParse(data)
   console.log("[translatePageText] final LLM reply:", raw)
+  return chunkReplyToItems(raw, canonical, romanChapterMarkers)
+}
+
+/**
+ * Model reply text → reconciled items for `canonical` (the exact TEXT sent in the prompt).
+ * Throws when the reply has no usable chunk rows or leaves a long untranslated tail.
+ */
+export function chunkReplyToItems(
+  raw: string,
+  canonical: string,
+  romanChapterMarkers: RomanChapterMarker[] = [],
+): ReconciledItem[] {
   const parsed = extractChunkJsonArrayFromText(raw)
   const merged = postProcessChunks(parsed)
   const chunks: RawChunk[] = []
