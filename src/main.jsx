@@ -10,6 +10,7 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import App from '@/App'
 import { warmDiscoverFirstPaint } from '@/lib/discover/discover-catalog'
 import { warmReadingProgressFirstPaint } from '@/lib/storage/reading-progress-sync'
+import { warmLibraryFirstPaint } from '@/lib/storage/library-catalog'
 
 /*
   Discover catalog first-paint warm-up, started before React mounts anything.
@@ -33,9 +34,11 @@ const isLandingRoute = !CATALOG_ROUTES.includes(path) &&
 if (CATALOG_ROUTES.includes(path) || isLandingRoute) {
   warmDiscoverFirstPaint()
 }
-// Only landing renders the Continue Reading row this pull feeds -- see warmReadingProgressFirstPaint.
+// Only landing renders the Continue Reading row these feed -- see warmReadingProgressFirstPaint
+// and warmLibraryFirstPaint.
 if (isLandingRoute) {
   warmReadingProgressFirstPaint()
+  warmLibraryFirstPaint()
 }
 
 createRoot(document.getElementById('root')).render(

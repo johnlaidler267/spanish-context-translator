@@ -15,7 +15,8 @@ import {
   readCachedLibraryBooks,
   writeCachedLibraryBooks,
 } from "@/lib/storage/epub-library-cache"
-import { listUserEpubs, type LibraryEpub } from "@/lib/storage/epub-library"
+import type { LibraryEpub } from "@/lib/storage/epub-library"
+import { fetchLibraryCatalog, readCachedLibraryEpubs } from "@/lib/storage/library-catalog"
 import { getRecentlyViewedProgress } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import { useViewport } from "@/contexts/viewport-context"
@@ -87,15 +88,21 @@ export function useLandingContinueReading({
 }: UseLandingContinueReadingOptions): { mobileRow: ReactNode; desktopRow: ReactNode } {
   const { isMobile } = useViewport()
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
+  // This session's in-memory listing (library-catalog.ts) wins over the localStorage copy: it
+  // came from the network moments ago -- usually the pre-mount warm-up in main.jsx, which runs
+  // while the loading bar is still up -- so it's both fresher and never missing covers.
+  const [sessionLibrary] = useState(() => (user ? readCachedLibraryEpubs(user.id) : null))
   const [libraryBooks, setLibraryBooks] = useState<LibraryEpub[]>(
-    () => readCachedLibraryBooks(user) ?? [],
+    () => sessionLibrary ?? readCachedLibraryBooks(user) ?? [],
   )
   // The row can't know how many cards it will have until both sources have answered, so until
   // then it reserves however many it held last time (see continue-reading-count.ts). Either
-  // half starts settled when its localStorage cache was warm enough to seed the state above.
-  const [libraryLoaded, setLibraryLoaded] = useState(() => readCachedLibraryBooks(user) !== null)
+  // half starts settled when its cache was warm enough to seed the state above.
+  const [libraryLoaded, setLibraryLoaded] = useState(
+    () => sessionLibrary !== null || readCachedLibraryBooks(user) !== null,
+  )
   /** Distinct from `libraryLoaded`, which a warm cache satisfies — only the network refreshes the cache. */
-  const [libraryLoadedFromNetwork, setLibraryLoadedFromNetwork] = useState(false)
+  const [libraryLoadedFromNetwork, setLibraryLoadedFromNetwork] = useState(sessionLibrary !== null)
   const [catalogLoaded, setCatalogLoaded] = useState(() => readCachedDiscoverItems() !== null)
   /**
    * Both sources answered from cache before first paint, so what the row computes now is a
@@ -106,7 +113,9 @@ export function useLandingContinueReading({
    * That's real data arriving, not the row churning through half-built states.
    */
   const [warmStart] = useState(
-    () => readCachedLibraryBooks(user) !== null && readCachedDiscoverItems() !== null,
+    () =>
+      (sessionLibrary !== null || readCachedLibraryBooks(user) !== null) &&
+      readCachedDiscoverItems() !== null,
   )
   // Keyed on the user id rather than read once: the session is normally restored from
   // localStorage before first paint, but when it isn't, a one-shot read here would have
@@ -137,7 +146,9 @@ export function useLandingContinueReading({
 
   useEffect(() => {
     let cancelled = false
-    void listUserEpubs(user).then((books) => {
+    // Shared with the pre-mount warm-up (warmLibraryFirstPaint) and the Library page: joins
+    // its in-flight request rather than firing a second one.
+    void fetchLibraryCatalog(user).then((books) => {
       if (cancelled) return
       setLibraryBooks(books)
       setLibraryLoaded(true)

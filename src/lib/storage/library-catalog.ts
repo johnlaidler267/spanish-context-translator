@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js"
 import { listUserEpubs, type LibraryEpub } from "@/lib/storage/epub-library"
+import { getCachedSupabaseUser } from "@/lib/supabase"
 
 /**
  * Background prefetch + cache for the personal EPUB library (`user_epubs`), mirroring
@@ -69,6 +70,20 @@ export function fetchLibraryCatalog(user: User | null): Promise<LibraryEpub[]> {
   })
   inFlight = { userId, promise }
   return promise
+}
+
+/**
+ * Starts the library listing before React mounts -- same idea as `warmDiscoverFirstPaint` and
+ * `warmReadingProgressFirstPaint`. The landing page's Continue Reading row holds its
+ * placeholders until this listing answers too, and it was the one source still only fetched
+ * from the row's own mount effect: after the bundle parsed, auth resolved and the loading bar
+ * cleared. On a phone that left the cards filling in seconds after the rest of the page. The
+ * row calls the same `fetchLibraryCatalog`, so it picks up this in-flight request (or its
+ * cached result) instead of starting its own.
+ */
+export function warmLibraryFirstPaint(): void {
+  if (typeof window === "undefined") return
+  void fetchLibraryCatalog(getCachedSupabaseUser())
 }
 
 /** Drops the cached library entirely -- call on sign-out so the next session on this
