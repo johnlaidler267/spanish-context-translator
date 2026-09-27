@@ -16,20 +16,24 @@ import {
   writeCachedLibraryBooks,
 } from "@/lib/storage/epub-library-cache"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
-import { fetchLibraryCatalog, readCachedLibraryEpubs } from "@/lib/storage/library-catalog"
+import {
+  MAX_CONTINUE_READING_ITEMS,
+  MAX_MOBILE_CONTINUE_READING_ITEMS,
+  fetchSessionLibraryCovers,
+  fetchSessionLibraryListing,
+  readSessionLibraryCovers,
+  readSessionLibraryListing,
+} from "@/lib/storage/continue-reading-library"
 import { getRecentlyViewedProgress } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import { useViewport } from "@/contexts/viewport-context"
 import type { ContentItem } from "@/lib/discover/content-data"
 
-/** Capped at 4 so the row never overflows into a horizontal scrollbar at typical widths --
- *  see .continue-reading__row in index.css for the card-width math this relies on. */
-const MAX_CONTINUE_READING_ITEMS = 4
-
-/** Mobile row shows two reduced-height cards side by side -- see .continue-reading-mobile__row
- *  in index.css. Takes the first two of the same (already recency-ordered) list the desktop
- *  row uses rather than fetching/ordering separately. */
-const MAX_MOBILE_CONTINUE_READING_ITEMS = 2
+// MAX_CONTINUE_READING_ITEMS (4) keeps the desktop row from overflowing into a horizontal
+// scrollbar -- see .continue-reading__row in index.css. MAX_MOBILE_CONTINUE_READING_ITEMS (2):
+// mobile shows two reduced-height cards side by side (.continue-reading-mobile__row), the first
+// two of the same recency-ordered list. Both live in continue-reading-library.ts because its
+// pre-mount warm-up needs them to know which covers to fetch.
 
 /**
  * How many raw "recently viewed" entries to pull before matching them against the Discover
@@ -88,13 +92,24 @@ export function useLandingContinueReading({
 }: UseLandingContinueReadingOptions): { mobileRow: ReactNode; desktopRow: ReactNode } {
   const { isMobile } = useViewport()
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
-  // This session's in-memory listing (library-catalog.ts) wins over the localStorage copy: it
-  // came from the network moments ago -- usually the pre-mount warm-up in main.jsx, which runs
-  // while the loading bar is still up -- so it's both fresher and never missing covers.
-  const [sessionLibrary] = useState(() => (user ? readCachedLibraryEpubs(user.id) : null))
+  // This session's in-memory listing (continue-reading-library.ts) wins over the localStorage
+  // copy: it came from the network moments ago -- usually the pre-mount warm-up in main.jsx,
+  // which runs while the loading bar is still up. It's listed without covers (they're what
+  // made the listing slow); those arrive separately into `covers`, for just the shown books.
+  const [sessionLibrary] = useState(() => readSessionLibraryListing(user))
   const [libraryBooks, setLibraryBooks] = useState<LibraryEpub[]>(
     () => sessionLibrary ?? readCachedLibraryBooks(user) ?? [],
   )
+  /** Known covers by book id (null = the book has none): the ones last visit cached, plus
+   *  whatever this session has fetched. A shown book missing from here gets fetched below. */
+  const [covers, setCovers] = useState<ReadonlyMap<string, string | null>>(() => {
+    const known = new Map<string, string | null>()
+    for (const book of readCachedLibraryBooks(user) ?? []) {
+      if (book.coverImage) known.set(book.id, book.coverImage)
+    }
+    for (const [id, cover] of readSessionLibraryCovers(user)) known.set(id, cover)
+    return known
+  })
   // The row can't know how many cards it will have until both sources have answered, so until
   // then it reserves however many it held last time (see continue-reading-count.ts). Either
   // half starts settled when its cache was warm enough to seed the state above.
@@ -146,9 +161,8 @@ export function useLandingContinueReading({
 
   useEffect(() => {
     let cancelled = false
-    // Shared with the pre-mount warm-up (warmLibraryFirstPaint) and the Library page: joins
-    // its in-flight request rather than firing a second one.
-    void fetchLibraryCatalog(user).then((books) => {
+    // Joins the pre-mount warm-up's request if it's still in flight (see main.jsx).
+    void fetchSessionLibraryListing(user).then((books) => {
       if (cancelled) return
       setLibraryBooks(books)
       setLibraryLoaded(true)
@@ -182,20 +196,53 @@ export function useLandingContinueReading({
     return () => clearTimeout(id)
   }, [])
 
+  const booksWithCovers = useMemo(
+    () => libraryBooks.map((book) => ({ ...book, coverImage: covers.get(book.id) ?? book.coverImage })),
+    [libraryBooks, covers],
+  )
+
   const items = useMemo(() => {
-    if (catalog.length === 0 && libraryBooks.length === 0) return []
+    if (catalog.length === 0 && booksWithCovers.length === 0) return []
     const recent = getRecentlyViewedProgress(user, RECENT_LOOKBACK_ITEMS)
-    return buildContinueReadingItems(recent, catalog, libraryBooks, MAX_CONTINUE_READING_ITEMS)
+    return buildContinueReadingItems(recent, catalog, booksWithCovers, MAX_CONTINUE_READING_ITEMS)
     // `syncVersion` isn't read above -- it's a deliberate recompute trigger so this memo
     // reruns once cloud-synced progress has landed in localStorage (see the effect above).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, libraryBooks, user, syncVersion])
+  }, [catalog, booksWithCovers, user, syncVersion])
+
+  // Covers for the library books this viewport actually shows and we don't have yet -- the
+  // warm-up has usually fetched them already, in which case this joins or reuses its request.
+  const visibleCount = isMobile ? MAX_MOBILE_CONTINUE_READING_ITEMS : MAX_CONTINUE_READING_ITEMS
+  const missingCoverIds = items
+    .slice(0, visibleCount)
+    .flatMap((item) => (item.kind === "library" && !covers.has(item.book.id) ? [item.book.id] : []))
+  const missingCoverKey = missingCoverIds.join(",")
+  useEffect(() => {
+    if (!missingCoverKey) return
+    let cancelled = false
+    void fetchSessionLibraryCovers(user, missingCoverKey.split(",")).then((fetched) => {
+      if (cancelled) return
+      setCovers((prev) => new Map([...prev, ...fetched]))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [missingCoverKey, user])
 
   // Every source has answered. Until they all have, the row must not render what it has so
   // far: the three disagree about both membership and order while they land, and mobile shows
   // only two cards, so each partial answer visibly swapped a book out — catalog cache alone,
   // then the library listing displacing it, then cloud progress reordering the result.
-  const resolved = warmStart || (libraryLoaded && catalogLoaded && progressSynced) || settleTimedOut
+  // Covers count too, so a card doesn't land with its placeholder art and then swap in the real
+  // cover a beat later.
+  const ready =
+    ((warmStart || (libraryLoaded && catalogLoaded && progressSynced)) && missingCoverIds.length === 0) ||
+    settleTimedOut
+  // Latched: once shown, a book arriving later (e.g. from cloud progress) whose cover isn't in
+  // yet must not flip the whole row back to placeholders.
+  const [everReady, setEverReady] = useState(false)
+  if (ready && !everReady) setEverReady(true)
+  const resolved = ready || everReady
 
   // Record what the next visit should reserve. In an effect, not in render: this writes to
   // localStorage, and render runs twice under StrictMode.
@@ -211,8 +258,8 @@ export function useLandingContinueReading({
     const shownIds = new Set(
       items.flatMap((item) => (item.kind === "library" ? [item.book.id] : [])),
     )
-    writeCachedLibraryBooks(user, libraryBooks, shownIds)
-  }, [libraryLoadedFromNetwork, libraryBooks, items, user])
+    writeCachedLibraryBooks(user, booksWithCovers, shownIds)
+  }, [libraryLoadedFromNetwork, booksWithCovers, items, user])
 
   // Still answering: hold placeholders rather than show a partial, unstable answer. With no
   // remembered count there is nothing to promise, so a first-ever visit falls through to the

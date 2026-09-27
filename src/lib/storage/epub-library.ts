@@ -99,13 +99,23 @@ function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
 }
 
 /** This user's saved books, most recently added first. `[]` for a guest with no session yet,
- *  or if the fetch failed (swallowed -- see module docstring). */
-export async function listUserEpubs(user: User | null): Promise<LibraryEpub[]> {
+ *  or if the fetch failed (swallowed -- see module docstring).
+ *
+ *  `covers: false` leaves `cover_image` out of the query (every `coverImage` comes back null).
+ *  Each cover is an embedded data URL of up to MAX_COVER_IMAGE_CHARS, so with them a modest
+ *  library is a multi-megabyte response -- the landing page's Continue Reading row, which shows
+ *  at most a few books, lists without them and fetches just its own via `fetchUserEpubCovers`. */
+export async function listUserEpubs(
+  user: User | null,
+  { covers = true }: { covers?: boolean } = {},
+): Promise<LibraryEpub[]> {
   if (!user) return []
   const { data, error } = await supabase
     .from("user_epubs")
     .select(
-      "id, title, file_name, char_count, created_at, updated_at, cover_image, author, description, story_start_offset",
+      covers
+        ? "id, title, file_name, char_count, created_at, updated_at, cover_image, author, description, story_start_offset"
+        : "id, title, file_name, char_count, created_at, updated_at, author, description, story_start_offset",
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
@@ -113,7 +123,30 @@ export async function listUserEpubs(user: User | null): Promise<LibraryEpub[]> {
     if (error) console.warn("[epub-library] list failed:", error.message)
     return []
   }
-  return (data as UserEpubListRow[]).map(rowToLibraryEpub)
+  return (data as unknown as UserEpubListRow[]).map((row) =>
+    rowToLibraryEpub({ ...row, cover_image: row.cover_image ?? null }),
+  )
+}
+
+/** Covers for just `ids` (a book with none maps to null). `{}` for a guest, an empty `ids`, or a
+ *  swallowed failure -- a missing cover just falls back to LibraryCard's placeholder. */
+export async function fetchUserEpubCovers(
+  user: User | null,
+  ids: readonly string[],
+): Promise<Record<string, string | null>> {
+  if (!user || ids.length === 0) return {}
+  const { data, error } = await supabase
+    .from("user_epubs")
+    .select("id, cover_image")
+    .eq("user_id", user.id)
+    .in("id", [...ids])
+  if (error || !data) {
+    if (error) console.warn("[epub-library] cover fetch failed:", error.message)
+    return {}
+  }
+  return Object.fromEntries(
+    (data as { id: string; cover_image: string | null }[]).map((row) => [row.id, row.cover_image]),
+  )
 }
 
 /**

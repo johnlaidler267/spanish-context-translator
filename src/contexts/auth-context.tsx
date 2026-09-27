@@ -13,6 +13,7 @@ import type { User } from "@supabase/supabase-js"
 import { supabase, getCachedSupabaseUser } from "@/lib/supabase"
 import { clearGuestUses } from "@/lib/subscription/guest-usage"
 import { invalidateLibraryCache } from "@/lib/storage/library-catalog"
+import { invalidateContinueReadingLibrary } from "@/lib/storage/continue-reading-library"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -186,6 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // device/browser, by this user or a different one, never briefly shows the prior
           // session's cached books before its own fetch resolves.
           invalidateLibraryCache()
+          invalidateContinueReadingLibrary()
         }
       },
     )

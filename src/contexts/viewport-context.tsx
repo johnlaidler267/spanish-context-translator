@@ -5,7 +5,7 @@ import { createContext, useContext, useSyncExternalStore, type ReactNode } from 
  * switched by in CSS. Keep the two in sync: this context now decides which row is *rendered*,
  * so a mismatch here shows the wrong layout rather than just styling it oddly.
  */
-const MOBILE_MEDIA_QUERY = "(max-width: 767.98px)"
+export const MOBILE_MEDIA_QUERY = "(max-width: 767.98px)"
 
 interface ViewportContextType {
   isMobile: boolean
