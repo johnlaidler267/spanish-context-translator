@@ -13,6 +13,7 @@ import {
 } from "@/lib/storage/continue-reading-count"
 import {
   readCachedLibraryBooks,
+  readCachedLibraryCovers,
   writeCachedLibraryBooks,
 } from "@/lib/storage/epub-library-cache"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
@@ -103,10 +104,7 @@ export function useLandingContinueReading({
   /** Known covers by book id (null = the book has none): the ones last visit cached, plus
    *  whatever this session has fetched. A shown book missing from here gets fetched below. */
   const [covers, setCovers] = useState<ReadonlyMap<string, string | null>>(() => {
-    const known = new Map<string, string | null>()
-    for (const book of readCachedLibraryBooks(user) ?? []) {
-      if (book.coverImage) known.set(book.id, book.coverImage)
-    }
+    const known = readCachedLibraryCovers(user)
     for (const [id, cover] of readSessionLibraryCovers(user)) known.set(id, cover)
     return known
   })
@@ -258,8 +256,8 @@ export function useLandingContinueReading({
     const shownIds = new Set(
       items.flatMap((item) => (item.kind === "library" ? [item.book.id] : [])),
     )
-    writeCachedLibraryBooks(user, booksWithCovers, shownIds)
-  }, [libraryLoadedFromNetwork, booksWithCovers, items, user])
+    writeCachedLibraryBooks(user, libraryBooks, covers, shownIds)
+  }, [libraryLoadedFromNetwork, libraryBooks, covers, items, user])
 
   // Still answering: hold placeholders rather than show a partial, unstable answer. With no
   // remembered count there is nothing to promise, so a first-ever visit falls through to the
