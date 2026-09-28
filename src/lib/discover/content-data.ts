@@ -13,6 +13,12 @@ export interface ContentItem {
   tags: string[]
   preview: string
   estimatedTime: string
+  /**
+   * The row's `updated_at` -- versions the saved page layout for this item (see
+   * book-layout-cache.ts). Missing on the static sample items and on a catalog cached before
+   * this existed, which just means no saved layout is used until the catalog refreshes.
+   */
+  updatedAt?: string
 }
 
 export const contentItems: ContentItem[] = [

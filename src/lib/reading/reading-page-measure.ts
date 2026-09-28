@@ -517,6 +517,21 @@ const INITIAL_LOOKAHEAD_PIECES = 16
 const MAX_LOOKAHEAD_PIECES = 128
 
 /**
+ * The article box `reflowPagesForRealFit` packs pages into on this viewport, for this title (a
+ * long desktop title wrapping to two lines takes height out of it). Exported so a saved page
+ * layout (see book-layout-cache.ts) can tell whether it was built for a box this one still holds.
+ */
+export function realFitBoxPx(
+  isMobile: boolean,
+  title: string | null | undefined,
+): { widthPx: number; heightPx: number } {
+  return {
+    widthPx: articleContentWidthPx(isMobile),
+    heightPx: articleBodyHeightPx(isMobile, desktopTitleReservePx(isMobile, title)),
+  }
+}
+
+/**
  * Authoritative real-DOM correction pass over `pages` (already produced by the fast word/char
  * estimate in `buildSentencePages`) that guarantees every page's content actually fits the real,
  * non-scrolling reading box — the fix for both the mobile content-loss bug and the desktop
@@ -552,7 +567,12 @@ export async function reflowPagesForRealFit(
   pages: string[][],
   isMobile: boolean,
   opts: { title?: string | null } = {},
-): Promise<{ pages: string[][]; topFillPaddingPx: number[] }> {
+): Promise<{
+  pages: string[][]
+  topFillPaddingPx: number[]
+  /** The box the pages were fitted to -- absent when nothing was actually measured. */
+  boxPx?: { widthPx: number; heightPx: number }
+}> {
   if (typeof document === "undefined" || pages.length === 0) {
     return { pages, topFillPaddingPx: pages.map(() => 0) }
   }
@@ -569,8 +589,7 @@ export async function reflowPagesForRealFit(
     }
   }
 
-  const width = articleContentWidthPx(isMobile)
-  const fullHeight = articleBodyHeightPx(isMobile, desktopTitleReservePx(isMobile, opts.title))
+  const { widthPx: width, heightPx: fullHeight } = realFitBoxPx(isMobile, opts.title)
   const height = fullHeight * REAL_FIT_HEIGHT_SAFETY
   if (width < 80 || height < 80) return { pages, topFillPaddingPx: pages.map(() => 0) }
 
@@ -776,7 +795,7 @@ export async function reflowPagesForRealFit(
       ? result.map(() => 0)
       : computeTopFillPaddingFromHeights(resultHeights, fullHeight)
 
-    return { pages: result, topFillPaddingPx }
+    return { pages: result, topFillPaddingPx, boxPx: { widthPx: width, heightPx: fullHeight } }
   } finally {
     document.body.removeChild(probe)
   }

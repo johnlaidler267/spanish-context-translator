@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import { clearReadingProgress } from "@/lib/storage/reading-progress-storage"
+import { deleteBookLayout } from "@/lib/storage/book-layout-cache"
 import { clearCachedTranslation } from "@/lib/storage/translation-cache-storage"
 
 /**
@@ -271,6 +272,7 @@ export async function deleteUserEpub(user: User | null, id: string): Promise<boo
   if (deleted) {
     clearReadingProgress(user, id)
     clearCachedTranslation(user, id)
+    void deleteBookLayout(user.id, id)
   }
   return deleted
 }

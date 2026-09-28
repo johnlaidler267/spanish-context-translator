@@ -5,7 +5,7 @@ import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/c
 import type { DiscoverItemInsert } from "@/lib/db-types"
 
 const LIST_SELECT =
-  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at"
+  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at, updated_at"
 
 // Bumped to v2: cached rows now carry `preview` — v1 entries would open the modal blank.
 // localStorage (not sessionStorage): the catalog rarely changes day to day, so a fresh

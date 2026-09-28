@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState, useCallback, useEffect, useRef } from "react"
+import { Suspense, useState, useCallback, useEffect, useLayoutEffect, useRef } from "react"
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import { lazyRoute } from "@/lib/lazy-route"
 
@@ -43,9 +43,17 @@ import {
   subdivideReadStepsForDesktop,
   subdivideReadStepsForMobile,
   translatePageText,
+  type PageSplitLimits,
   type ReconciledItem,
 } from "@/lib/translate"
-import { reflowPagesForRealFit } from "@/lib/reading/reading-page-measure"
+import { realFitBoxPx, reflowPagesForRealFit } from "@/lib/reading/reading-page-measure"
+import {
+  bookLayoutSignature,
+  readBookLayout,
+  writeBookLayout,
+  type BookLayout,
+  type BookLayoutBox,
+} from "@/lib/storage/book-layout-cache"
 import { TranslationCache } from "@/lib/translation-cache"
 import { assertBatchAligned, BatchedPageTranslator } from "@/lib/translate/translation-batches"
 import { loadBatchWithSharedCache } from "@/lib/translate/shared-translation-cache"
@@ -100,6 +108,28 @@ const USAGE_PREFLIGHT_TTL_MS = 60_000
  * avoid stacking a large shrink here or article pages sit well under the viewport.
  */
 const DESKTOP_ARTICLE_PAGE_LIMIT_SCALE = 0.95
+
+function effectivePageLimitsFor(measured: PageSplitLimits, isMobile: boolean): PageSplitLimits {
+  const base = clampPageLimitsForLlmBatching(measured)
+  if (isMobile) return base
+  return {
+    maxWords: Math.max(80, Math.floor(base.maxWords * DESKTOP_ARTICLE_PAGE_LIMIT_SCALE)),
+    maxChars: Math.max(400, Math.floor(base.maxChars * DESKTOP_ARTICLE_PAGE_LIMIT_SCALE)),
+  }
+}
+
+function isMobileReadingViewport(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+}
+
+/**
+ * Reopening a book whose page layout is already saved on this device (see
+ * book-layout-cache.ts) usually takes well under a frame's worth of real work, so it opens
+ * without the loading overlay at all. The overlay only comes up if something on the way still
+ * turns out slow (e.g. the once-a-session reading-progress sync on a bad connection), so a tap
+ * never looks ignored either.
+ */
+const CACHED_OPEN_OVERLAY_DELAY_MS = 400
 /**
  * Discover catalog prefetch: how long a user must be sitting on the landing page before
  * warming the Discover cache in the background. Short enough that most people have it
@@ -231,7 +261,10 @@ export default function App() {
    * instead of depending on commit ordering.
    */
   const pendingReadingTransitionRef = useRef(false)
-  useEffect(() => {
+  // A layout effect so the flip lands before the browser paints the route change: when reading
+  // opens with no loading overlay on top (a saved-layout reopen, see openWithoutLoadingOverlay),
+  // a plain effect let the landing page flash for a frame between the two.
+  useLayoutEffect(() => {
     if (pendingReadingTransitionRef.current && location.pathname === "/") {
       pendingReadingTransitionRef.current = false
       setAppState("reading")
@@ -632,6 +665,8 @@ export default function App() {
         isBook = false,
         loadingStartedAtMs = Date.now(),
         sharedCacheDiscoverItemId = null,
+        savedLayout = null,
+        layoutCacheVersion = null,
       }: {
         populateLandingDraft?: boolean
         contentId?: string | null
@@ -671,9 +706,21 @@ export default function App() {
          * books -- their text is private to the uploader.
          */
         sharedCacheDiscoverItemId?: string | null
+        /**
+         * This book's pagination from an earlier open on this device (see book-layout-cache.ts).
+         * When set, `text` is ignored (callers pass "" -- the whole point is not re-downloading
+         * it) and the split/reflow below is skipped, along with the loading overlay.
+         */
+        savedLayout?: BookLayout | null
+        /**
+         * Version stamp of `contentId`'s text (its row's `updated_at`). When set, a freshly
+         * computed layout is saved on this device for the next open; omitted for anything
+         * without a stable version (a plain paste), which is never saved.
+         */
+        layoutCacheVersion?: string | null
       } = {},
     ) => {
-      if (!text.trim()) return
+      if (!savedLayout && !text.trim()) return
 
       // Guests: no track-usage — cap anonymous previews in localStorage (guest_tries_used).
       // NOTE: `!user` is only ever true for the very first submit — a successful translate
@@ -685,8 +732,9 @@ export default function App() {
         setGuestSignupOpen(true)
         return
       }
-      const trimmed = dedupeConsecutiveDuplicateLines(text).trim()
-      if (populateLandingDraft) setLandingDraft(trimmed)
+      const trimmed = savedLayout ? "" : dedupeConsecutiveDuplicateLines(text).trim()
+      const textLength = savedLayout?.textLength ?? trimmed.length
+      if (populateLandingDraft && !savedLayout) setLandingDraft(trimmed)
 
       // Free plan: block before anything gets tracked. Without this check, an over-limit
       // paste still consumed a submission -- trackUsage below fires unconditionally, and
@@ -702,12 +750,12 @@ export default function App() {
         !isBook &&
         isEffectivelyFreeUser &&
         freeCharLimit !== null &&
-        trimmed.length > freeCharLimit
+        textLength > freeCharLimit
       ) {
         setPlanLimitModal({
           title: "Submission exceeds free plan allowance",
           message:
-            `This text is ${trimmed.length.toLocaleString()} characters long, which is over the free plan limit of ` +
+            `This text is ${textLength.toLocaleString()} characters long, which is over the free plan limit of ` +
             `${freeCharLimit.toLocaleString()} characters per submission. Upgrade to continue.`,
         })
         return
@@ -717,45 +765,70 @@ export default function App() {
       rateLimitModalSuppressedRef.current = false
       setRateLimitMessage(null)
       setPlanLimitModal(null)
-      setAppState("loading")
+      // A saved layout skips all the slow work below, so it opens without the overlay (see
+      // CACHED_OPEN_OVERLAY_DELAY_MS -- the caller brings it up only if this still runs long).
+      if (!savedLayout) setAppState("loading")
 
       try {
-        let sents = splitSourceIntoSentences(trimmed)
-        if (sents.length === 0) sents = [trimmed]
-        const isMobile =
-          typeof window !== "undefined" &&
-          window.matchMedia("(max-width: 767px)").matches
-        const basePageLimits = clampPageLimitsForLlmBatching(articlePageSplitLimits)
-        const effectivePageLimits = isMobile
-          ? basePageLimits
-          : {
-              maxWords: Math.max(
-                80,
-                Math.floor(basePageLimits.maxWords * DESKTOP_ARTICLE_PAGE_LIMIT_SCALE),
-              ),
-              maxChars: Math.max(
-                400,
-                Math.floor(basePageLimits.maxChars * DESKTOP_ARTICLE_PAGE_LIMIT_SCALE),
-              ),
-            }
-        let pages = buildSentencePages(sents, effectivePageLimits)
-        if (pages.length === 0) pages = [[trimmed]]
-        pages = mergeArticlePagesIfWholeTextFitsLimits(
-          pages,
-          effectivePageLimits,
-          trimmed,
-          isMobile,
-        )
-        // Authoritative real-DOM correction: the estimate above is only ever a starting guess
-        // (calibrated against generic filler text, not this book's own words) -- this pass
-        // measures the real rendered box and moves anything that wouldn't actually fit onto the
-        // next page instead, so a page can end a little early but never overflows, scrolls, or
-        // drops content. Also returns the desktop fill-padding polish computed from the same
-        // measurements, instead of a separate second full-book pass. See reflowPagesForRealFit's
-        // docstring for the full root cause.
-        const reflowed = await reflowPagesForRealFit(pages, isMobile, { title: contentTitle })
-        pages = reflowed.pages
-        setPageTopFillPaddingPx(reflowed.topFillPaddingPx)
+        let sents: string[]
+        let pages: string[][]
+        let pageStartSentenceIndices: number[]
+        if (savedLayout) {
+          sents = savedLayout.sents
+          pages = savedLayout.pages
+          pageStartSentenceIndices = savedLayout.pageStartSentenceIndices
+          setPageTopFillPaddingPx(savedLayout.topFillPaddingPx)
+        } else {
+          sents = splitSourceIntoSentences(trimmed)
+          if (sents.length === 0) sents = [trimmed]
+          const isMobile = isMobileReadingViewport()
+          const effectivePageLimits = effectivePageLimitsFor(articlePageSplitLimits, isMobile)
+          pages = buildSentencePages(sents, effectivePageLimits)
+          if (pages.length === 0) pages = [[trimmed]]
+          pages = mergeArticlePagesIfWholeTextFitsLimits(
+            pages,
+            effectivePageLimits,
+            trimmed,
+            isMobile,
+          )
+          // Authoritative real-DOM correction: the estimate above is only ever a starting guess
+          // (calibrated against generic filler text, not this book's own words) -- this pass
+          // measures the real rendered box and moves anything that wouldn't actually fit onto the
+          // next page instead, so a page can end a little early but never overflows, scrolls, or
+          // drops content. Also returns the desktop fill-padding polish computed from the same
+          // measurements, instead of a separate second full-book pass. See reflowPagesForRealFit's
+          // docstring for the full root cause.
+          const reflowed = await reflowPagesForRealFit(pages, isMobile, { title: contentTitle })
+          pages = reflowed.pages
+          setPageTopFillPaddingPx(reflowed.topFillPaddingPx)
+          // Cross-device resume anchor -- see the comment where it's stored below.
+          pageStartSentenceIndices =
+            sents.length > 1 ? computePageStartSentenceIndices(sents, pages) : []
+          // Save it for the next open on this device. Keyed on the box the reflow actually
+          // measured (not a fresh reading afterwards, which a rotation mid-reflow could skew).
+          if (contentId && layoutCacheVersion && user && reflowed.boxPx) {
+            void writeBookLayout(
+              user.id,
+              contentId,
+              layoutCacheVersion,
+              {
+                signature: bookLayoutSignature({
+                  isMobile,
+                  widthPx: reflowed.boxPx.widthPx,
+                  ...effectivePageLimits,
+                }),
+                heightPx: reflowed.boxPx.heightPx,
+              },
+              {
+                sents,
+                pages,
+                topFillPaddingPx: reflowed.topFillPaddingPx,
+                pageStartSentenceIndices,
+                textLength,
+              },
+            )
+          }
+        }
         // Cross-device resume anchor -- a sentence index means the same spot in the book on
         // every device, unlike a raw page index (see computePageStartSentenceIndices). Skipped
         // (left empty) when the source segmented into only one "sentence": an unusual
@@ -767,8 +840,7 @@ export default function App() {
         // *same* device. `setReadingProgress`/`pushReadingProgress` already omit `sentenceIndex`
         // when this is empty (see the persisting effect), so leaving it empty here is enough to
         // fall back to today's page-index behavior for that rare case.
-        pageStartSentenceIndicesRef.current =
-          sents.length > 1 ? computePageStartSentenceIndices(sents, pages) : []
+        pageStartSentenceIndicesRef.current = pageStartSentenceIndices
 
         // Only the user's own text (landing composer, no contentId) counts as a submission.
         // Discover items and Library books always carry a contentId, and used to be charged a
@@ -998,10 +1070,11 @@ export default function App() {
         // still not done by the time the bar completes, ArticleContent's own per-page
         // "Translating this page…" state (see articleLoading in the render below) takes over
         // from there instead of the overlay sitting at a stale 100%.
-        const remainingLoadingMs = Math.max(
-          0,
-          LOADING_OVERLAY_PROGRESS_MS - (Date.now() - loadingStartedAtMs),
-        )
+        // Nothing to wait out on a saved-layout open: there was no overlay (or only the
+        // late one from CACHED_OPEN_OVERLAY_DELAY_MS, which shouldn't hold things up further).
+        const remainingLoadingMs = savedLayout
+          ? 0
+          : Math.max(0, LOADING_OVERLAY_PROGRESS_MS - (Date.now() - loadingStartedAtMs))
         if (remainingLoadingMs > 0) {
           await new Promise((r) => setTimeout(r, remainingLoadingMs))
         }
@@ -1043,6 +1116,44 @@ export default function App() {
     ],
   )
 
+  /** This book's layout saved from an earlier open on this device, if it still fits this screen. */
+  const findSavedBookLayout = useCallback(
+    async (contentId: string, version: string | null | undefined, title: string) => {
+      if (!user || !version) return null
+      const isMobile = isMobileReadingViewport()
+      const { widthPx, heightPx } = realFitBoxPx(isMobile, title)
+      const box: BookLayoutBox = {
+        signature: bookLayoutSignature({
+          isMobile,
+          widthPx,
+          ...effectivePageLimitsFor(articlePageSplitLimits, isMobile),
+        }),
+        heightPx,
+      }
+      return readBookLayout(user.id, contentId, version, box)
+    },
+    [user, articlePageSplitLimits],
+  )
+
+  /**
+   * Opens reading from a saved layout with no loading overlay, bringing it up only if the open
+   * is still running after CACHED_OPEN_OVERLAY_DELAY_MS. Also waits for the reading screen's
+   * own code chunk first: the "loading" state is what normally starts that download (see the
+   * preload effect above), and without it the reader would mount as a blank Suspense fallback.
+   */
+  const openWithoutLoadingOverlay = useCallback(async (open: () => Promise<unknown>) => {
+    const timer = window.setTimeout(
+      () => setAppState((s) => (s === "landing" ? "loading" : s)),
+      CACHED_OPEN_OVERLAY_DELAY_MS,
+    )
+    try {
+      await preloadReadingSurface().catch(() => {})
+      await open()
+    } finally {
+      window.clearTimeout(timer)
+    }
+  }, [])
+
   const handleDiscoverStartReading = useCallback(
     async (content: ContentItem) => {
       // Flip the loading overlay on immediately, before the body_text fetch below -- on a slow
@@ -1055,20 +1166,28 @@ export default function App() {
       const isBook = content.type === "book"
       if (isBook && isGuest) return { signInRequired: true as const }
 
-      setAppState("loading")
+      // Opened before on this device: its pages are already saved, so there's no text to fetch
+      // and nothing to paginate -- see book-layout-cache.ts.
+      const savedLayout = await findSavedBookLayout(content.id, content.updatedAt, content.title)
+
+      if (!savedLayout) setAppState("loading")
       const loadingStartedAtMs = Date.now()
 
-      const { data, error } = await supabase
-        .from("discover_items")
-        .select("body_text")
-        .eq("id", content.id)
-        .maybeSingle()
-      const body = data?.body_text?.trim() ?? ""
-      const sourceText = !error && body.length > 0 ? body : content.preview.trim()
-      if (!sourceText) {
-        setAppState("landing")
-        return
+      let sourceText = ""
+      if (!savedLayout) {
+        const { data, error } = await supabase
+          .from("discover_items")
+          .select("body_text")
+          .eq("id", content.id)
+          .maybeSingle()
+        const body = data?.body_text?.trim() ?? ""
+        sourceText = !error && body.length > 0 ? body : content.preview.trim()
+        if (!sourceText) {
+          setAppState("landing")
+          return
+        }
       }
+      const textLength = savedLayout?.textLength ?? sourceText.length
 
       // A Discover book gets the same free-plan gate as a Library upload -- the page cap
       // (`freeReadingPagesPerBook`, see `isBook` on handleTextSubmit) -- not this length check.
@@ -1077,11 +1196,11 @@ export default function App() {
         !isBook &&
         isEffectivelyFreeUser &&
         freeCharLimit !== null &&
-        sourceText.length > freeCharLimit
+        textLength > freeCharLimit
       ) {
         setAppState("landing")
         const blockedMessage =
-          `This reading is ${sourceText.length.toLocaleString()} characters long, which is over the free plan limit of ` +
+          `This reading is ${textLength.toLocaleString()} characters long, which is over the free plan limit of ` +
           `${freeCharLimit.toLocaleString()} characters per submission. Upgrade to continue.`
         // Shown inline by ContentPreviewModal (which is already open here) rather than via the
         // global RateLimitModal — stacking that on top of the open Discover dialog left it
@@ -1094,16 +1213,27 @@ export default function App() {
       // renders fine on top of whatever screen is current) so the overlay's blurred backdrop
       // shows Discover, not the landing page. handleTextSubmit navigates home itself once the
       // translation is ready, right before switching into the reading UI.
-      await handleTextSubmit(sourceText, {
-        populateLandingDraft: false,
-        contentId: content.id,
-        contentTitle: content.title,
-        isBook,
-        loadingStartedAtMs,
-        sharedCacheDiscoverItemId: content.id,
-      })
+      const submit = () =>
+        handleTextSubmit(sourceText, {
+          populateLandingDraft: false,
+          contentId: content.id,
+          contentTitle: content.title,
+          isBook,
+          loadingStartedAtMs,
+          sharedCacheDiscoverItemId: content.id,
+          savedLayout,
+          layoutCacheVersion: content.updatedAt ?? null,
+        })
+      if (savedLayout) await openWithoutLoadingOverlay(submit)
+      else await submit()
     },
-    [handleTextSubmit, isEffectivelyFreeUser, isGuest],
+    [
+      handleTextSubmit,
+      isEffectivelyFreeUser,
+      isGuest,
+      findSavedBookLayout,
+      openWithoutLoadingOverlay,
+    ],
   )
 
   /** Landing's Discover picks: no preview dialog to host the sign-in prompt, so open the auth modal. */
@@ -1117,6 +1247,35 @@ export default function App() {
 
   const handleLibraryStartReading = useCallback(
     async (book: LibraryEpub) => {
+      // Skip the front matter (see parse-epub.ts's storyStartOffset) on a first-ever open only --
+      // handleTextSubmit itself prefers a real saved reading position over this whenever one
+      // exists. Expressed as a fraction of `book.charCount` (the length storyStartOffset was
+      // measured against at parse/save time), not the raw offset -- the text handleTextSubmit
+      // actually paginates has since been through dedupeConsecutiveDuplicateLines, which can
+      // shift absolute character positions.
+      const initialPageRatio =
+        book.storyStartOffset > 0 && book.charCount > 0
+          ? Math.min(1, book.storyStartOffset / book.charCount)
+          : null
+      const layoutCacheVersion = String(book.updatedAt)
+
+      // Opened before on this device: its pages are already saved, so there's no text to fetch
+      // and nothing to paginate -- see book-layout-cache.ts.
+      const savedLayout = await findSavedBookLayout(book.id, layoutCacheVersion, book.title)
+      if (savedLayout) {
+        await openWithoutLoadingOverlay(() =>
+          handleTextSubmit("", {
+            populateLandingDraft: false,
+            contentId: book.id,
+            contentTitle: book.title,
+            initialPageRatio,
+            isBook: true,
+            savedLayout,
+          }),
+        )
+        return
+      }
+
       // Same reasoning as handleDiscoverStartReading: flip the loading overlay on before the
       // getUser/getUserEpubText fetches below rather than after, so a slow connection doesn't
       // leave a tapped card looking unresponsive for however long those calls take.
@@ -1140,17 +1299,6 @@ export default function App() {
       // charsPerSubmission here (see `isBook` on handleTextSubmit) -- a free user can
       // open any book regardless of its total length, and instead gets stopped by the page cap
       // once they've read as far as the free plan allows (see `goToArticlePage`).
-      //
-      // Skip the detected front matter (see parse-epub.ts's storyStartOffset) on a first-ever
-      // open only -- handleTextSubmit itself prefers a real saved reading position over this
-      // whenever one exists. Expressed as a fraction of `book.charCount` (the length
-      // storyStartOffset was measured against at parse/save time), not the raw offset -- the
-      // text handleTextSubmit actually paginates has since been through
-      // dedupeConsecutiveDuplicateLines, which can shift absolute character positions.
-      const initialPageRatio =
-        book.storyStartOffset > 0 && book.charCount > 0
-          ? Math.min(1, book.storyStartOffset / book.charCount)
-          : null
       await handleTextSubmit(sourceText, {
         populateLandingDraft: false,
         contentId: book.id,
@@ -1158,9 +1306,10 @@ export default function App() {
         initialPageRatio,
         isBook: true,
         loadingStartedAtMs,
+        layoutCacheVersion,
       })
     },
-    [handleTextSubmit],
+    [handleTextSubmit, findSavedBookLayout, openWithoutLoadingOverlay],
   )
 
   const handleBack = useCallback(() => {

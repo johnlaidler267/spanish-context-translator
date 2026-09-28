@@ -1,5 +1,8 @@
 /// <reference types="vite/client" />
 
+/** Build-time fingerprint of the pagination source files -- see vite.config.js. */
+declare const __PAGINATION_SOURCE_HASH__: string
+
 interface ImportMetaEnv {
   /** `groq` (default) or `gemini` — which backend translates + learn flows use. */
   readonly VITE_TRANSLATION_LLM_PROVIDER?: string
