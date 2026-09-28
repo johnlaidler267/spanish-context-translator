@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState, useCallback, useEffect, useLayoutEffect, useRef } from "react"
+import { Suspense, useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import { lazyRoute } from "@/lib/lazy-route"
 
@@ -215,8 +215,7 @@ export default function App() {
   const [landingDraft, setLandingDraft] = useState(() => getStoredLandingDraft())
 
   useEffect(() => {
-    if (typeof landingDraft !== "string") { setLandingDraft(""); return }
-    setStoredLandingDraft(landingDraft)
+    setStoredLandingDraft(typeof landingDraft === "string" ? landingDraft : "")
   }, [landingDraft])
   const [viewMode, setViewMode] = useState<ViewMode>("article")
   const [hoverTtsEnabled, setHoverTtsEnabled] = useState(false)
@@ -234,8 +233,11 @@ export default function App() {
   /** Same breakpoint as the rest of the reading UI (see `readLayoutMobile` below). */
   const isMobileToolbar = useMediaQuery("(max-width: 767px)")
   const [readingTheme, setReadingTheme] = useState<ReadingTheme>(() => getStoredReadingTheme())
-  const [displayName, setDisplayName] = useState(() =>
-    getEffectiveDisplayName(null),
+  // Re-read on every navigation too: Settings saves the name to storage, not to this component.
+  const displayName = useMemo(
+    () => getEffectiveDisplayName(user),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pathname is the "re-read storage" signal
+    [user, location.pathname],
   )
   const appTheme = readingTheme
 
@@ -244,17 +246,13 @@ export default function App() {
     setStoredReadingTheme(appTheme)
   }, [appTheme])
 
-  useEffect(() => {
-    setDisplayName(getEffectiveDisplayName(user))
-  }, [user, location.pathname])
-
   // If the user navigates away from "/" while in a reading session, exit reading mode.
   // Otherwise the router is intentionally restricted and it feels like navigation is broken.
-  useEffect(() => {
-    if (appState === "reading" && location.pathname !== "/") {
-      setAppState("landing")
-    }
-  }, [appState, location.pathname])
+  // Adjusted during render (not in an effect) so the other route never paints a frame
+  // underneath a reading session that's about to close.
+  if (appState === "reading" && location.pathname !== "/") {
+    setAppState("landing")
+  }
 
   /**
    * Set together with `pendingReadingTransitionRef` below: when a translation started from a
@@ -471,9 +469,8 @@ export default function App() {
    */
   const libraryPrefetchedForUserRef = useRef<string | null>(null)
 
-  useEffect(() => {
-    if (user) setGuestSignupOpen(false)
-  }, [user])
+  // Signing in closes the guest signup prompt (adjusted during render, not in an effect).
+  if (user && guestSignupOpen) setGuestSignupOpen(false)
 
   useEffect(() => {
     usagePreflightRef.current = null
