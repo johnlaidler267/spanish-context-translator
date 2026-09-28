@@ -96,6 +96,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     // result when it lands, so a paid user is never left asserted as "free".
     const pending = checkSubscriptionStatus().then((result) => {
       if (requestSeqRef.current !== seq) return
+      // A failed check (null) says nothing about the plan -- keep whatever was already known
+      // (e.g. a tab-refocus recheck on a flaky connection must not demote a paid user).
+      if (result.status === null) return
       setStatus(result.status)
       if (result.status === "lapsed") {
         setPopupDismissed(readLapsedModalAck(user?.id))

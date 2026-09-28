@@ -202,6 +202,12 @@ export default function App() {
   // the separate localStorage guest-tries limit instead (see hasReachedGuestLimit above).
   const isEffectivelyFreeUser =
     user != null && (subscriptionStatus == null || subscriptionStatus === "free" || isLapsed)
+  // Narrower than isEffectivelyFreeUser: the plan check actually came back free/lapsed, rather
+  // than still loading (or having failed -- see checkSubscriptionStatus). For actions that can't
+  // be undone once taken on a wrong guess, like moving a reader's saved place back to the free
+  // preview's last page; the page-turn gate itself still uses the cautious version above.
+  const isConfirmedFreeUser =
+    user != null && (subscriptionStatus === "free" || isLapsed)
 
   const [appState, setAppState] = useState<AppState>("landing")
 
@@ -362,6 +368,14 @@ export default function App() {
    * it (see there for why this needs to be a ref rather than a plain closure). Null before any
    * reading session has started.
    */
+  /**
+   * Set when a book opened on the free preview's last page *only* because of the free-plan cap
+   * (see handleTextSubmit), not because that's where the reader actually was. While they're
+   * still sitting on that page it must not be saved as their reading position -- doing so
+   * overwrote their real place (locally and in the cloud) with the cap page, so the next visit
+   * resumed far earlier in the book. Cleared the moment they turn to any other page.
+   */
+  const clampedResumeRef = useRef<{ contentId: string; pageIndex: number } | null>(null)
   const latestReadingSnapshotRef = useRef<{
     contentId: string
     pageIndex: number
@@ -963,11 +977,18 @@ export default function App() {
         // user resuming a book they'd read further into on another device/session (or while on
         // a plan that's since lapsed) still lands within their free preview instead of reopening
         // past it — `goToArticlePage` below is what actually blocks paging in any further.
+        // Only for a *confirmed* free plan: while the plan check is still loading (or failed),
+        // a paid reader tapping a book got clamped back to the cap page too -- see
+        // isConfirmedFreeUser and clampedResumeRef.
         const freeReadingPageCap = getTier("free").limits.freeReadingPagesPerBook
         const initialPageIndex =
-          isEffectivelyFreeUser && freeReadingPageCap != null
+          isConfirmedFreeUser && freeReadingPageCap != null
             ? Math.min(rawInitialPageIndex, freeReadingPageCap - 1)
             : rawInitialPageIndex
+        clampedResumeRef.current =
+          contentId && initialPageIndex < rawInitialPageIndex
+            ? { contentId, pageIndex: initialPageIndex }
+            : null
 
         // "Where you left off" modal: only for a genuine resume past the first page —
         // reopening fresh (including a fresh open that landed past page 0 via
@@ -1107,6 +1128,7 @@ export default function App() {
     [
       user,
       isEffectivelyFreeUser,
+      isConfirmedFreeUser,
       bump,
       articlePageSplitLimits,
       refreshUsagePreflight,
@@ -1323,6 +1345,7 @@ export default function App() {
     setActiveReadingIsBook(false)
     setWhereLeftOff(null)
     pageStartSentenceIndicesRef.current = []
+    clampedResumeRef.current = null
     setPageTopFillPaddingPx([])
     setError("")
     setRateLimitMessage(null)
@@ -1371,6 +1394,14 @@ export default function App() {
    */
   useEffect(() => {
     if (appState !== "reading" || !activeReadingContentId) return
+    const clamped = clampedResumeRef.current
+    if (clamped && clamped.contentId === activeReadingContentId && clamped.pageIndex === articlePageIndex) {
+      // Still on the page the free-plan cap put them on -- not their real place; leave the
+      // saved position (and the leave-triggered recap, which is keyed to it) alone.
+      latestReadingSnapshotRef.current = null
+      return
+    }
+    clampedResumeRef.current = null
     // Sentence-index anchor for cross-device resume (see computePageStartSentenceIndices) --
     // undefined only if this page index is somehow out of range, which setReadingProgress /
     // pushReadingProgress both already treat as "no anchor, fall back to pageIndex."

@@ -24,6 +24,7 @@
  *   const diff = diffTiers("pro", "free")
  */
 
+import { isAuthSessionMissingError } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import {
   type TierId,
@@ -55,20 +56,29 @@ export function isWithinGracePeriod(pastDueSince: string): boolean {
 
 /**
  * Fetches the current user's subscription and maps it to a simplified
- * SubscriptionStatus value. Defaults to "free" on any error.
+ * SubscriptionStatus value.
+ *
+ * `null` means the check itself failed (network, auth server, query error) -- the plan is
+ * *unknown*, not "free". This used to default to "free" on any error, which made a paid user
+ * on a flaky connection look like a free one: reopening a book then clamped them back to the
+ * free preview's last page, and that clamped page got saved over their real reading position.
+ * Callers still gate free-plan limits on an unknown plan (see App.tsx's isEffectivelyFreeUser);
+ * they just don't take irreversible actions on the assumption that it's free.
  */
-export async function checkSubscriptionStatus(): Promise<{ status: SubscriptionStatus }> {
+export async function checkSubscriptionStatus(): Promise<{ status: SubscriptionStatus | null }> {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { status: "free" }
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    // No session at all is a genuine guest; any other auth failure is just a failed check.
+    if (!user) return { status: userError && !isAuthSessionMissingError(userError) ? null : "free" }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("user_subscriptions")
       .select("status, plan_id, past_due_since")
       .eq("user_id", user.id)
       .is("archived_at", null)
       .maybeSingle<{ status: string; plan_id: string; past_due_since: string | null }>()
 
+    if (error) return { status: null }
     if (!data) return { status: "free" }
 
     const { status, plan_id, past_due_since } = data
@@ -84,7 +94,7 @@ export async function checkSubscriptionStatus(): Promise<{ status: SubscriptionS
     // canceled, incomplete_expired, unpaid, etc.
     return { status: plan_id === "free" ? "free" : "lapsed" }
   } catch {
-    return { status: "free" }
+    return { status: null }
   }
 }
 
