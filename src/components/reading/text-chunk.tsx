@@ -288,7 +288,9 @@ export function TextChunk({
   const tooltipRef = useRef<HTMLDivElement>(null)
   /** transitionend must not clear coords if user re-hovered before fade finished */
   const isPopupOpenRef = useRef(isPopupOpen)
-  isPopupOpenRef.current = isPopupOpen
+  useLayoutEffect(() => {
+    isPopupOpenRef.current = isPopupOpen
+  })
   /** Consecutive tap count + time of last tap (mobile triple-tap → details). */
   const tapChainRef = useRef<{ n: number; t: number }>({ n: 0, t: 0 })
   const tapResetTimerRef = useRef<number | null>(null)
@@ -302,6 +304,10 @@ export function TextChunk({
   const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
   const measuredTooltipSizeRef = useRef<{ width: number; height: number } | null>(null)
 
+  // Plain numbers (not the per-render `chunk` object) so placeTooltip only changes when the
+  // tooltip's content does.
+  const estimatedTooltipWidth = estimateTooltipWidth(chunk)
+  const estimatedTooltipHeight = estimateTooltipHeight(chunk)
   const placeTooltip = useCallback(
     (pointerX?: number | null, pointerY?: number | null) => {
       if (!chunkRef.current) return
@@ -319,9 +325,9 @@ export function TextChunk({
       const vw = window.innerWidth
       const vh = window.innerHeight
       const tooltipWidth =
-        measuredTooltipSizeRef.current?.width ?? estimateTooltipWidth(chunk)
+        measuredTooltipSizeRef.current?.width ?? estimatedTooltipWidth
       const tooltipHeightEst =
-        measuredTooltipSizeRef.current?.height ?? estimateTooltipHeight(chunk)
+        measuredTooltipSizeRef.current?.height ?? estimatedTooltipHeight
       const gap = GAP_FROM_WORD[variant]
       const idealGapAbove = variant === "read" ? Math.max(4, gap - 2) : gap
       const edgeClearance = 16 + gap
@@ -400,7 +406,7 @@ export function TextChunk({
         return next
       })
     },
-    [variant, isCoarsePointer],
+    [variant, isCoarsePointer, estimatedTooltipWidth, estimatedTooltipHeight],
   )
 
   const flushPendingPointer = useCallback(() => {

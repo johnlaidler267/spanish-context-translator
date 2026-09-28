@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, type MutableRefObject } from "react"
  * per-chunk drag-lift ordinals and arms a ref consumed by TextChunk.
  */
 export function useExplorationDoubleTapLiftSuppress(
-  ...resetDeps: unknown[]
+  ...resetDeps: Array<string | number | null | undefined>
 ): {
   suppressDoubleTapAfterExplorationLiftRef: MutableRefObject<number | null>
   onExplorationLiftChunk: (chunkId: number | null) => void
@@ -34,10 +34,13 @@ export function useExplorationDoubleTapLiftSuppress(
     }
   }, [])
 
+  // One stable key for the caller's reset values (page, sentence, ...) so the dependency list
+  // is a fixed-size literal the hooks linter can check.
+  const resetKey = JSON.stringify(resetDeps)
   useEffect(() => {
     exploreLiftCountByChunkRef.current.clear()
     suppressDoubleTapAfterExplorationLiftRef.current = null
-  }, resetDeps)
+  }, [resetKey])
 
   return { suppressDoubleTapAfterExplorationLiftRef, onExplorationLiftChunk }
 }

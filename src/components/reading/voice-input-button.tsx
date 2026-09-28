@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Loader2, Mic } from "lucide-react"
 import { transcribeAudioWithGroq } from "@/lib/translate"
 
@@ -37,7 +37,9 @@ function useSilenceStop(
   onSilence: () => void,
 ) {
   const onSilenceRef = useRef(onSilence)
-  onSilenceRef.current = onSilence
+  useLayoutEffect(() => {
+    onSilenceRef.current = onSilence
+  })
 
   useEffect(() => {
     if (!stream || !enabled) return

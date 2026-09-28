@@ -291,13 +291,17 @@ function DetailsFooter({ headerWord }: { headerWord: string }) {
   const [trickErr, setTrickErr] = useState<string | null>(null)
   const [trickSuccessOnce, setTrickSuccessOnce] = useState(false)
 
-  useEffect(() => {
+  // Reset during render (not in an effect) when the word changes, so the previous word's
+  // memory trick is never painted under the new word for a frame.
+  const [trickWord, setTrickWord] = useState(headerWord)
+  if (trickWord !== headerWord) {
+    setTrickWord(headerWord)
     setMemoryOpen(false)
     setTrickLoading(false)
     setTrickText(null)
     setTrickErr(null)
     setTrickSuccessOnce(false)
-  }, [headerWord])
+  }
 
   const handleRemember = useCallback(async () => {
     setMemoryOpen(true)

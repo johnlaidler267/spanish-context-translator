@@ -101,9 +101,12 @@ export function ReadMode({
   hoverTtsEnabled = false,
 }: ReadModeProps) {
   const [nextPageErrorDismissed, setNextPageErrorDismissed] = useState(false)
-  useEffect(() => {
+  // Reset during render (not in an effect) so a new error is never painted as already-dismissed.
+  const [dismissedForError, setDismissedForError] = useState(nextPageError)
+  if (dismissedForError !== nextPageError) {
+    setDismissedForError(nextPageError)
     setNextPageErrorDismissed(false)
-  }, [nextPageError])
+  }
 
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
@@ -137,30 +140,36 @@ export function ReadMode({
   )
 
   const hoverTtsEnabledRef = useRef(hoverTtsEnabled)
-  hoverTtsEnabledRef.current = hoverTtsEnabled
   const sentencesRef = useRef(sentences)
-  sentencesRef.current = sentences
   const currentSentenceIndexRef = useRef(currentSentenceIndex)
-  currentSentenceIndexRef.current = currentSentenceIndex
+  // Latest values for event handlers, updated after commit rather than during render.
+  useLayoutEffect(() => {
+    hoverTtsEnabledRef.current = hoverTtsEnabled
+    sentencesRef.current = sentences
+    currentSentenceIndexRef.current = currentSentenceIndex
+  })
   const hoverTtsLastSpokenIdRef = useRef<number | null>(null)
-  const speakExploreChunkIdForTouchRef = useRef<(id: number | null) => void>(() => {})
   const { suppressDoubleTapAfterExplorationLiftRef, onExplorationLiftChunk } =
     useExplorationDoubleTapLiftSuppress(readingSessionKey, readPageKey, currentSentenceIndex)
 
-  speakExploreChunkIdForTouchRef.current = (id: number | null) => {
-    if (!hoverTtsEnabledRef.current) return
-    if (id == null) {
-      hoverTtsLastSpokenIdRef.current = null
-      cancelHoverSpeech()
-      return
-    }
-    if (id === hoverTtsLastSpokenIdRef.current) return
-    hoverTtsLastSpokenIdRef.current = id
-    const sentence =
-      sentencesRef.current[currentSentenceIndexRef.current] ?? { id: 0, chunks: [] as ChunkData[] }
-    const text = readChunkTextById(sentence, id)
-    if (text) speakHoverChunk(text)
-  }
+  /** Touch exploration speaks the chunk under the finger (reads only refs, so it never changes). */
+  const speakExploreChunkIdForTouch = useCallback(
+    (id: number | null) => {
+      if (!hoverTtsEnabledRef.current) return
+      if (id == null) {
+        hoverTtsLastSpokenIdRef.current = null
+        cancelHoverSpeech()
+        return
+      }
+      if (id === hoverTtsLastSpokenIdRef.current) return
+      hoverTtsLastSpokenIdRef.current = id
+      const sentence =
+        sentencesRef.current[currentSentenceIndexRef.current] ?? { id: 0, chunks: [] as ChunkData[] }
+      const text = readChunkTextById(sentence, id)
+      if (text) speakHoverChunk(text)
+    },
+    [],
+  )
 
   /** Touch device: word tooltips always open above the word (see TextChunk). */
   const isCoarsePointer = useMediaQuery("(pointer: coarse)")
@@ -174,7 +183,7 @@ export function ReadMode({
         tooltipFollowRef.current = pt
         if (pt) followTooltipPlaceRef.current?.(pt.x, pt.y)
       },
-      onExploreChunkId: (id) => speakExploreChunkIdForTouchRef.current(id),
+      onExploreChunkId: speakExploreChunkIdForTouch,
       onTouchExplorationStart: () => {
         if (chunkDetails.activeChunk != null) {
           chunkDetails.close()
@@ -297,7 +306,7 @@ export function ReadMode({
       pointerLastIdRef.current = null
       cancelGapClearExplore()
     }
-  }, [readStepOffset, currentSentenceIndex, cancelGapClearExplore])
+  }, [readStepOffset, currentSentenceIndex, cancelGapClearExplore, touchSurfaceRef])
 
   const currentSentence = sentences[currentSentenceIndex] ?? { id: 0, chunks: [] as ChunkData[] }
 

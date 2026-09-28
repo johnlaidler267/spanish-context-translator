@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -41,13 +40,7 @@ export function WhereYouLeftOffModal({
   excerpt,
   onDismiss,
 }: WhereYouLeftOffModalProps) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted || typeof document === "undefined") return null
+  if (typeof document === "undefined") return null
 
   const hasSummary = Boolean(summary?.trim())
 

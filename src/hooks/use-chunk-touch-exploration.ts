@@ -218,15 +218,19 @@ export function useChunkTouchExploration(
   const didDragRef = useRef(false)
   const [touchExploring, setTouchExploring] = useState(false)
   const onTouchPointerRef = useRef(options?.onTouchPointerClient)
-  onTouchPointerRef.current = options?.onTouchPointerClient
   const onExploreChunkIdRef = useRef(options?.onExploreChunkId)
-  onExploreChunkIdRef.current = options?.onExploreChunkId
   const onTouchExplorationStartRef = useRef(options?.onTouchExplorationStart)
-  onTouchExplorationStartRef.current = options?.onTouchExplorationStart
   const onBeforeTouchChunkIdChangeRef = useRef(options?.onBeforeTouchChunkIdChange)
-  onBeforeTouchChunkIdChangeRef.current = options?.onBeforeTouchChunkIdChange
   const onExplorationLiftChunkRef = useRef(options?.onExplorationLiftChunk)
-  onExplorationLiftChunkRef.current = options?.onExplorationLiftChunk
+  // Latest callbacks for the listeners below, updated after commit rather than during render.
+  // Declared before the listener effect so its handlers never see a stale callback.
+  useLayoutEffect(() => {
+    onTouchPointerRef.current = options?.onTouchPointerClient
+    onExploreChunkIdRef.current = options?.onExploreChunkId
+    onTouchExplorationStartRef.current = options?.onTouchExplorationStart
+    onBeforeTouchChunkIdChangeRef.current = options?.onBeforeTouchChunkIdChange
+    onExplorationLiftChunkRef.current = options?.onExplorationLiftChunk
+  })
 
   useLayoutEffect(() => {
     const el = ref.current

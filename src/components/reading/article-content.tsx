@@ -161,19 +161,25 @@ export function ArticleContent({
   topFillPaddingPx = 0,
 }: ArticleContentProps) {
   const [errorModalDismissed, setErrorModalDismissed] = useState(false)
-  useEffect(() => {
+  // Reset during render (not in an effect) when the page or error changes, so a new error is
+  // never painted for a frame as already-dismissed.
+  const [dismissResetKey, setDismissResetKey] = useState({ pageKey, errorMessage })
+  if (dismissResetKey.pageKey !== pageKey || dismissResetKey.errorMessage !== errorMessage) {
+    setDismissResetKey({ pageKey, errorMessage })
     setErrorModalDismissed(false)
-  }, [pageKey, errorMessage])
+  }
 
   /** "Page X" pager label doubles as a jump-to-page input — see the footer below. */
   const [pageJumpEditing, setPageJumpEditing] = useState(false)
   const [pageJumpValue, setPageJumpValue] = useState("")
   const pageJumpInputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    // Leaving edit mode whenever the page actually changes covers both a successful jump and
-    // Previous/Next while editing — always land back on the plain "Page X" label.
+  // Leaving edit mode whenever the page actually changes covers both a successful jump and
+  // Previous/Next while editing — always land back on the plain "Page X" label.
+  const [pageJumpResetKey, setPageJumpResetKey] = useState(pageKey)
+  if (pageJumpResetKey !== pageKey) {
+    setPageJumpResetKey(pageKey)
     setPageJumpEditing(false)
-  }, [pageKey])
+  }
   useEffect(() => {
     if (!pageJumpEditing) return
     pageJumpInputRef.current?.focus()
@@ -199,11 +205,13 @@ export function ArticleContent({
   const pointerPendingRef = useRef<{ x: number; y: number } | null>(null)
   const pointerLastIdRef = useRef<number | null>(null)
   const hoverTtsEnabledRef = useRef(hoverTtsEnabled)
-  hoverTtsEnabledRef.current = hoverTtsEnabled
   const itemsRef = useRef(items)
-  itemsRef.current = items
+  // Latest values for event handlers, updated after commit rather than during render.
+  useLayoutEffect(() => {
+    hoverTtsEnabledRef.current = hoverTtsEnabled
+    itemsRef.current = items
+  })
   const hoverTtsLastSpokenIdRef = useRef<number | null>(null)
-  const speakExploreChunkIdForTouchRef = useRef<(id: number | null) => void>(() => {})
   const { suppressDoubleTapAfterExplorationLiftRef, onExplorationLiftChunk } =
     useExplorationDoubleTapLiftSuppress(pageKey)
 
@@ -232,20 +240,24 @@ export function ArticleContent({
 
   useEffect(() => () => cancelExploringLeaveTimer(), [cancelExploringLeaveTimer])
 
-  speakExploreChunkIdForTouchRef.current = (id: number | null) => {
-    if (!hoverTtsEnabledRef.current) return
-    if (id == null) {
-      hoverTtsLastSpokenIdRef.current = null
-      cancelHoverSpeech()
-      return
-    }
-    if (id === hoverTtsLastSpokenIdRef.current) return
-    hoverTtsLastSpokenIdRef.current = id
-    const data = itemsRef.current
-    if (!data) return
-    const text = articleChunkTextByNumericId(data, id)
-    if (text) speakHoverChunk(text)
-  }
+  /** Touch exploration speaks the chunk under the finger (reads only refs, so it never changes). */
+  const speakExploreChunkIdForTouch = useCallback(
+    (id: number | null) => {
+      if (!hoverTtsEnabledRef.current) return
+      if (id == null) {
+        hoverTtsLastSpokenIdRef.current = null
+        cancelHoverSpeech()
+        return
+      }
+      if (id === hoverTtsLastSpokenIdRef.current) return
+      hoverTtsLastSpokenIdRef.current = id
+      const data = itemsRef.current
+      if (!data) return
+      const text = articleChunkTextByNumericId(data, id)
+      if (text) speakHoverChunk(text)
+    },
+    [],
+  )
 
   /** Touch device: word tooltips always open above the word (see TextChunk). */
   const isCoarsePointer = useMediaQuery("(pointer: coarse)")
@@ -259,7 +271,7 @@ export function ArticleContent({
         tooltipFollowRef.current = pt
         if (pt) followTooltipPlaceRef.current?.(pt.x, pt.y)
       },
-      onExploreChunkId: (id) => speakExploreChunkIdForTouchRef.current(id),
+      onExploreChunkId: speakExploreChunkIdForTouch,
       onTouchExplorationStart: () => {
         if (chunkDetails.activeChunk != null) {
           chunkDetails.close()
@@ -376,7 +388,7 @@ export function ArticleContent({
       pointerLastIdRef.current = null
       cancelExploringLeaveTimer()
     }
-  }, [pageKey, cancelExploringLeaveTimer])
+  }, [pageKey, cancelExploringLeaveTimer, touchSurfaceRef])
 
   // Details box state (used below for effectivePopupId — keep highlight + tooltip while sheet is open)
 
@@ -417,7 +429,7 @@ export function ArticleContent({
   useLayoutEffect(() => {
     const el = touchSurfaceRef.current
     if (el) el.scrollTop = 0
-  }, [pageKey])
+  }, [pageKey, touchSurfaceRef])
 
   /** Reconstruct full page text for LLM sentence context (also drives verse-style rendering below) */
   const pageText = useMemo(() => {
