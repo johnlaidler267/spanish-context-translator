@@ -92,6 +92,33 @@ export function pushReadingProgress(
 }
 
 /**
+ * Deletes this user's cloud `reading_progress` row for `contentId` (and drops any position push
+ * still waiting on its debounce, which would otherwise recreate it a moment later). Used when a
+ * Discover book is removed from the Library -- its Library entry *is* its reading progress (see
+ * LibraryPage), so forgetting the progress everywhere is what keeps it from coming back on the
+ * next cloud pull. No-ops for a null user.
+ */
+export async function deleteCloudReadingProgress(user: User | null, contentId: string): Promise<boolean> {
+  if (!user) return true
+  const key = `${user.id}:${contentId}`
+  const pending = pendingPushes.get(key)
+  if (pending) {
+    clearTimeout(pending)
+    pendingPushes.delete(key)
+  }
+  const { error } = await supabase
+    .from("reading_progress")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("content_id", contentId)
+  if (error) {
+    console.warn("[reading-progress] cloud delete failed:", error.message)
+    return false
+  }
+  return true
+}
+
+/**
  * Latched once a write fails because the `recap_*` columns don't exist -- i.e. this project
  * hasn't run 0024_reading_progress_recap.sql yet. Everything recap-related then goes quiet for
  * the rest of the session instead of firing a doomed request after every book the reader

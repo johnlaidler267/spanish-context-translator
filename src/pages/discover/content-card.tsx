@@ -14,6 +14,9 @@ interface ContentCardProps {
   /** Larger landscape treatment used by the spotlight row. */
   featured?: boolean
   onDelete?: (id: string) => void
+  /** Accessible name for the delete control -- defaults to "Delete <title>" (the curator's
+   *  catalog delete); the Library passes "Remove <title> from your library" instead. */
+  deleteLabel?: string
   onEdit?: () => void
   /** 1-100. Shown as a small pill on the cover (landing page's Continue Reading row). */
   progressPercent?: number | null
@@ -31,6 +34,7 @@ export function ContentCard({
   onClick,
   featured = false,
   onDelete,
+  deleteLabel,
   onEdit,
   progressPercent,
   eagerCover = false,
@@ -86,7 +90,7 @@ export function ContentCard({
                   event.stopPropagation()
                   onDelete(content.id)
                 }}
-                aria-label={`Delete ${content.title}`}
+                aria-label={deleteLabel ?? `Delete ${content.title}`}
               >
                 <Trash2 className="size-3.5" aria-hidden />
               </button>

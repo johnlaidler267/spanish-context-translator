@@ -29,10 +29,25 @@ import {
   readCachedLibraryEpubs,
   writeCachedLibraryEpubs,
 } from "@/lib/storage/library-catalog"
-import { publishDiscoverResource } from "@/lib/discover/discover-catalog"
+import {
+  fetchDiscoverCatalog,
+  publishDiscoverResource,
+  readCachedDiscoverItems,
+} from "@/lib/discover/discover-catalog"
 import { checkIsDiscoverCurator } from "@/lib/discover/discover-curator"
-import { getReadingProgressPercent } from "@/lib/storage/reading-progress-storage"
-import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
+import type { ContentItem } from "@/lib/discover/content-data"
+import { ContentCard } from "@/pages/discover/content-card"
+import { ContentPreviewModal, type StartReadingResult } from "@/components/discover/content-preview-modal"
+import {
+  clearReadingProgress,
+  getReadingProgressPercent,
+  getRecentlyViewedProgress,
+} from "@/lib/storage/reading-progress-storage"
+import {
+  deleteCloudReadingProgress,
+  ensureCloudReadingProgressPulled,
+} from "@/lib/storage/reading-progress-sync"
+import { deleteBookLayout } from "@/lib/storage/book-layout-cache"
 import { cn } from "@/lib/utils"
 import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
 import { LIBRARY_EYEBROW } from "@/lib/storage/language-learning-preferences"
@@ -50,7 +65,19 @@ type LibraryPageProps = {
    *  Returns once the book's text has been fetched and handed to the reading pipeline (or has
    *  failed) -- this page awaits it to know when to clear the per-card "opening" spinner below. */
   onStartReading: (book: LibraryEpub) => Promise<void> | void
+  /** Opens a Discover book from the Library -- the same handler Discover's own "Start reading"
+   *  uses (handleDiscoverStartReading in App.tsx). */
+  onStartDiscoverReading: (content: ContentItem) => Promise<StartReadingResult> | StartReadingResult
 }
+
+/** Enough to cover every Discover book a reader could have started -- the progress store itself
+ *  caps out at 300 items per user (see reading-progress-storage.ts). */
+const MAX_PROGRESS_ENTRIES = 300
+
+/** One Library grid entry: a book the reader uploaded, or a Discover book they've started. */
+type LibraryEntry =
+  | { kind: "upload"; book: LibraryEpub; lastActivity: number }
+  | { kind: "discover"; content: ContentItem; lastActivity: number }
 
 function LibrarySkeletonGrid() {
   return (
@@ -70,7 +97,7 @@ function LibrarySkeletonGrid() {
   )
 }
 
-export default function LibraryPage({ onStartReading }: LibraryPageProps) {
+export default function LibraryPage({ onStartReading, onStartDiscoverReading }: LibraryPageProps) {
   const navigate = useNavigate()
   const { learning } = useLanguageLearningPreferences()
   const { registerNewChat } = useLandingShellNewChat()
@@ -123,12 +150,30 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
   // A tap on a card now stops here first, per the user's request for a confirm step before
   // actually opening a book -- see LibraryPreviewModal.
   const [previewBook, setPreviewBook] = useState<LibraryEpub | null>(null)
+  const [previewDiscoverBook, setPreviewDiscoverBook] = useState<ContentItem | null>(null)
+
+  // Discover books join the Library automatically once the reader has started one: there's no
+  // separate "saved" list to keep in sync -- a Discover book is in your Library exactly when
+  // you have a reading position for it (reading_progress, synced across devices). Articles,
+  // songs and poems stay Discover-only; the Library is for books.
+  const [discoverCatalog, setDiscoverCatalog] = useState<ContentItem[]>(
+    () => readCachedDiscoverItems() ?? [],
+  )
+  useEffect(() => {
+    let cancelled = false
+    void fetchDiscoverCatalog().then((result) => {
+      if (!cancelled && "items" in result) setDiscoverCatalog(result.items)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Bumped once cloud-synced reading progress (reading-progress-sync.ts) has been merged into
   // the localStorage cache getReadingProgressPercent reads from -- same pattern as Discover's
   // forceRerenderForSyncedProgress -- so a book resumed on another device shows its real
   // progress here too, not just what this browser already knew about.
-  const [, forceRerenderForSyncedProgress] = useState(0)
+  const [syncedProgressVersion, forceRerenderForSyncedProgress] = useState(0)
 
   useEffect(() => {
     beginRouteTransition(560)
@@ -191,6 +236,25 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
       cancelled = true
     }
   }, [user, cachedBooks])
+
+  // Uploads and started Discover books in one grid, most recently read first -- an upload
+  // that's never been opened sorts by when it was added.
+  const entries = useMemo<LibraryEntry[]>(() => {
+    const lastReadAt = new Map(
+      getRecentlyViewedProgress(user, MAX_PROGRESS_ENTRIES).map((p) => [p.contentId, p.updatedAt]),
+    )
+    const uploads: LibraryEntry[] = books.map((book) => ({
+      kind: "upload",
+      book,
+      lastActivity: Math.max(lastReadAt.get(book.id) ?? 0, book.createdAt),
+    }))
+    const started: LibraryEntry[] = discoverCatalog
+      .filter((item) => item.type === "book" && lastReadAt.has(item.id))
+      .map((content) => ({ kind: "discover", content, lastActivity: lastReadAt.get(content.id)! }))
+    return [...uploads, ...started].sort((a, b) => b.lastActivity - a.lastActivity)
+    // syncedProgressVersion: recompute once cloud progress has been merged into local storage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [books, discoverCatalog, user, syncedProgressVersion])
 
   const [signInPromptOpen, setSignInPromptOpen] = useState(false)
 
@@ -303,6 +367,17 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
     }
   }
 
+  // Removing a Discover book from the Library forgets the reader's place in it -- that place is
+  // the Library entry (see `entries`), so it has to go everywhere, cloud included, or the next
+  // sync would put the book straight back.
+  const handleRemoveDiscoverBook = async (content: ContentItem) => {
+    clearReadingProgress(user, content.id)
+    forceRerenderForSyncedProgress((n) => n + 1)
+    if (user) void deleteBookLayout(user.id, content.id)
+    const ok = await deleteCloudReadingProgress(user, content.id)
+    if (!ok) setListError("Could not fully remove that book. Check your connection and try again.")
+  }
+
   const handlePublishClick = async (book: LibraryEpub) => {
     if (publishingBookId) return
     setPublishError(null)
@@ -347,7 +422,8 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
             <p className="discover-masthead__eyebrow">{LIBRARY_EYEBROW[learning]}</p>
             <h1 className="discover-masthead__title">My Library</h1>
             <p className="discover-masthead__lede">
-              Books you've uploaded, saved so you can pick up right where you left off.
+              Books you've uploaded or started in Discover, saved so you can pick up right where you
+              left off.
             </p>
           </div>
           <Button
@@ -396,7 +472,7 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
 
         {listLoading ? (
           <LibrarySkeletonGrid />
-        ) : books.length === 0 ? (
+        ) : entries.length === 0 ? (
           <div className="discover-empty">
             <span className="corner corner-tl" aria-hidden />
             <span className="corner corner-tr" aria-hidden />
@@ -405,7 +481,8 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
             <BookOpen className="discover-empty__icon" aria-hidden />
             <h3 className="discover-empty__title">No books yet</h3>
             <p className="discover-empty__text">
-              Upload an EPUB and it'll show up here, with your reading progress, every time you come back.
+              Upload an EPUB, or start a book in Discover, and it'll show up here with your reading
+              progress every time you come back.
             </p>
             <Button
               variant="outline"
@@ -418,19 +495,30 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
           </div>
         ) : (
           <div className="discover-grid">
-            {books.map((book) => (
-              <LibraryCard
-                key={book.id}
-                book={book}
-                progressPercent={getReadingProgressPercent(user, book.id)}
-                onOpen={() => setPreviewBook(book)}
-                onDelete={() => void handleDelete(book.id)}
-                onPublish={canManageCatalog ? () => void handlePublishClick(book) : undefined}
-                isPublishing={publishingBookId === book.id}
-                isOpening={openingBookId === book.id}
-                disabled={openingBookId != null && openingBookId !== book.id}
-              />
-            ))}
+            {entries.map((entry) =>
+              entry.kind === "upload" ? (
+                <LibraryCard
+                  key={entry.book.id}
+                  book={entry.book}
+                  progressPercent={getReadingProgressPercent(user, entry.book.id)}
+                  onOpen={() => setPreviewBook(entry.book)}
+                  onDelete={() => void handleDelete(entry.book.id)}
+                  onPublish={canManageCatalog ? () => void handlePublishClick(entry.book) : undefined}
+                  isPublishing={publishingBookId === entry.book.id}
+                  isOpening={openingBookId === entry.book.id}
+                  disabled={openingBookId != null && openingBookId !== entry.book.id}
+                />
+              ) : (
+                <ContentCard
+                  key={entry.content.id}
+                  content={entry.content}
+                  progressPercent={getReadingProgressPercent(user, entry.content.id)}
+                  onClick={() => setPreviewDiscoverBook(entry.content)}
+                  onDelete={() => void handleRemoveDiscoverBook(entry.content)}
+                  deleteLabel={`Remove ${entry.content.title} from your library`}
+                />
+              ),
+            )}
           </div>
         )}
       </main>
@@ -444,6 +532,14 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
         onStartReading={(book) => void handleOpenBook(book)}
         progressPercent={previewBook ? getReadingProgressPercent(user, previewBook.id) : null}
         isOpening={previewBook != null && openingBookId === previewBook.id}
+      />
+
+      <ContentPreviewModal
+        content={previewDiscoverBook}
+        open={previewDiscoverBook != null}
+        onClose={() => setPreviewDiscoverBook(null)}
+        onStartReading={onStartDiscoverReading}
+        hasProgress
       />
 
       {canManageCatalog && (

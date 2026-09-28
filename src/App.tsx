@@ -1911,7 +1911,12 @@ export default function App() {
             />
             <Route
               path="library"
-              element={<LibraryPage onStartReading={handleLibraryStartReading} />}
+              element={
+                <LibraryPage
+                  onStartReading={handleLibraryStartReading}
+                  onStartDiscoverReading={handleDiscoverStartReading}
+                />
+              }
             />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
