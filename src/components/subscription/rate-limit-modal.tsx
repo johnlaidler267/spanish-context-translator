@@ -1,7 +1,6 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,13 +29,7 @@ export function RateLimitModal({
   showProviderHint = true,
   extraFooter,
 }: RateLimitModalProps) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted || typeof document === "undefined") return null
+  if (typeof document === "undefined") return null
 
   return createPortal(
     <div
