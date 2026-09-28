@@ -73,6 +73,22 @@ describe("page-recap", () => {
       expect(messages.some((m) => m.role === "user" && m.content.includes("pato"))).toBe(true)
     })
 
+    it("frames the recap prompt around the language being learned", async () => {
+      localStorage.setItem(
+        "lector-language-learning-preferences",
+        JSON.stringify({ learning: "french", native: "english" }),
+      )
+      fetchGeminiChatViaEdge.mockResolvedValue(
+        jsonResponse({ choices: [{ message: { role: "assistant", content: "A duck swims." } }] }),
+      )
+      const { summarizePreviousPageForRecap } = await import("@/lib/translate/page-recap")
+      await summarizePreviousPageForRecap("Le canard a appris à nager.")
+      const [body] = fetchGeminiChatViaEdge.mock.calls[0] as [Record<string, unknown>]
+      const system = (body.messages as Array<{ role: string; content: string }>)[0]!.content
+      expect(system).toContain("French book")
+      expect(system).not.toContain("Spanish")
+    })
+
     it("does not call the network for empty text", async () => {
       const { summarizePreviousPageForRecap } = await import("@/lib/translate/page-recap")
       const result = await summarizePreviousPageForRecap("   ")

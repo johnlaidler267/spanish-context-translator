@@ -23,14 +23,20 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2"
 import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
+import { LANGUAGE_NAME, parseLanguagePair, type Language } from "../_shared/languages.ts"
 
-/** Mirrors RECAP_SYSTEM_PROMPT in src/lib/translate/page-recap.ts -- keep the two in sync. */
-const RECAP_SYSTEM_PROMPT =
-  "You help a language learner resume a Spanish book or article they stepped away from. " +
-  "They will send you the raw Spanish text of the page right before where they're about to " +
-  "continue reading. Reply with exactly one concise sentence in plain English summarizing " +
-  "what happens in it, so they're reminded what just happened before they pick back up. " +
-  "No preamble, no quotes around it, no markdown -- just the one sentence."
+/** Mirrors buildRecapSystemPrompt in src/lib/translate/page-recap.ts -- keep the two in sync. */
+function buildRecapSystemPrompt(learning: Language, native: Language): string {
+  const target = LANGUAGE_NAME[learning]
+  const nativeName = LANGUAGE_NAME[native]
+  return (
+    `You help a language learner resume a ${target} book or article they stepped away from. ` +
+    `They will send you the raw ${target} text of the page right before where they're about to ` +
+    `continue reading. Reply with exactly one concise sentence in plain ${nativeName} summarizing ` +
+    "what happens in it, so they're reminded what just happened before they pick back up. " +
+    "No preamble, no quotes around it, no markdown -- just the one sentence."
+  )
+}
 
 /** Mirrors RECAP_MODEL / RECAP_MAX_OUTPUT_TOKENS in page-recap.ts. */
 const RECAP_MODEL = "gemini-2.5-flash-lite"
@@ -40,6 +46,8 @@ const MAX_PAGE_TEXT_LENGTH = 20000
 
 interface RecapBeaconBody {
   access_token?: string
+  learning?: unknown
+  native?: unknown
   contentId?: string
   previousPageSourceText?: string
   forPageIndex?: number
@@ -121,6 +129,8 @@ Deno.serve(async (req: Request) => {
     return new Response("Service misconfigured", { status: 500, headers: corsHeaders })
   }
 
+  const { learning, native } = parseLanguagePair(body.learning, body.native)
+
   let summary = ""
   try {
     const geminiRes = await fetch(
@@ -130,7 +140,7 @@ Deno.serve(async (req: Request) => {
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text }] }],
-          systemInstruction: { parts: [{ text: RECAP_SYSTEM_PROMPT }] },
+          systemInstruction: { parts: [{ text: buildRecapSystemPrompt(learning, native) }] },
           generationConfig: { maxOutputTokens: RECAP_MAX_OUTPUT_TOKENS, temperature: 0.3 },
           safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },

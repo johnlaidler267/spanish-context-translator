@@ -16,6 +16,7 @@ import { X, BookOpen, Loader2, ChevronRight } from "lucide-react"
 import { chunkTextForWordDisplay } from "@/lib/translate/chunk-text"
 import { cn } from "@/lib/utils"
 import { fetchMemoryTrickViaEdge } from "@/lib/groq-edge"
+import { getStoredLanguageLearningPreferences } from "@/lib/storage/language-learning-preferences"
 import { type DetailState } from "@/hooks/use-chunk-details"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
@@ -304,8 +305,11 @@ function DetailsFooter({ headerWord }: { headerWord: string }) {
     setTrickErr(null)
     setTrickText(null)
     try {
+      const { learning, native } = getStoredLanguageLearningPreferences()
       const res = await fetchMemoryTrickViaEdge({
         word: headerWord.trim(),
+        learning,
+        native,
       })
       if (!res.ok) {
         let msg = `HTTP ${res.status}`

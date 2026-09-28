@@ -1,16 +1,17 @@
 /**
  * chunk-memory-trick Edge Function
  *
- * POST { word }
- * → { "trick": "<plain English, 2–4 short sentences>" }
+ * POST { word, learning?, native? }   (language pair defaults to spanish/english)
+ * → { "trick": "<2–3 short sentences in the learner's native language>" }
  *
- * Only the Spanish word/phrase is sent to the model (no article or grammar context).
+ * Only the word/phrase is sent to the model (no article or grammar context).
  * Uses Gemini Flash (controlled JSON). Requires a valid Supabase JWT.
  * Set GEMINI_API_KEY in Supabase secrets. Optional: GEMINI_MEMORY_TRICK_MODEL (default gemini-2.5-flash-lite).
  */
 
 import { requireAuthUser, jsonError } from "../_shared/auth-user.ts"
 import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
+import { LANGUAGE_NAME, parseLanguagePair, type Language } from "../_shared/languages.ts"
 
 const GEMINI_GENERATE =
   "https://generativelanguage.googleapis.com/v1beta/models"
@@ -24,17 +25,21 @@ const TRICK_RESPONSE_SCHEMA = {
   properties: {
     trick: {
       type: "string",
-      description: "Plain-English memory hook for the Spanish word or phrase.",
+      description: "Plain-language memory hook for the word or phrase.",
     },
   },
   required: ["trick"],
 } as const
 
-const SYSTEM_PROMPT = `You are a vocabulary coach helping English speakers learning Spanish.
+function buildSystemPrompt(learning: Language, native: Language): string {
+  const target = LANGUAGE_NAME[learning]
+  const nativeName = LANGUAGE_NAME[native]
+  return `You are a vocabulary coach helping ${nativeName} speakers learning ${target}.
 
-The learner will send only a Spanish word or short phrase — no definition and no surrounding sentence. Use your own knowledge of Spanish to briefly explain the word's origin or internal logic: etymology, root, or the conceptual link between form and meaning.
+The learner will send only a ${target} word or short phrase — no definition and no surrounding sentence. Use your own knowledge of ${target} to briefly explain the word's origin or internal logic: etymology, root, or the conceptual link between form and meaning.
 
-The structured output field "trick" must be 2–3 sentences in plain English. No preamble or label. Do not use HTML or markdown — plain text only.`
+The structured output field "trick" must be 2–3 sentences in plain ${nativeName}. No preamble or label. Do not use HTML or markdown — plain text only.`
+}
 
 function extractTrickLenient(raw: string): string | null {
   const needle = '"trick":"'
@@ -69,7 +74,7 @@ Deno.serve(async (req: Request) => {
 
   const model = (Deno.env.get("GEMINI_MEMORY_TRICK_MODEL") ?? "").trim() || DEFAULT_MODEL
 
-  let body: { word?: string }
+  let body: { word?: string; learning?: unknown; native?: unknown }
   try {
     body = await req.json()
   } catch {
@@ -88,12 +93,13 @@ Deno.serve(async (req: Request) => {
     )
   }
 
-  const userMessage = `Spanish word or phrase: "${word}"`
+  const { learning, native } = parseLanguagePair(body.learning, body.native)
+  const userMessage = `${LANGUAGE_NAME[learning]} word or phrase: "${word}"`
 
   const url = `${GEMINI_GENERATE}/${model}:generateContent`
 
   const geminiBody: Record<string, unknown> = {
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    systemInstruction: { parts: [{ text: buildSystemPrompt(learning, native) }] },
     contents: [{ role: "user", parts: [{ text: userMessage }] }],
     generationConfig: {
       maxOutputTokens: MAX_OUTPUT_TOKENS,

@@ -142,6 +142,8 @@ export async function fetchChunkDetailsViaEdge(
 
 export type MemoryTrickRequestBody = {
   word: string
+  learning: LanguageLearningPreferences["learning"]
+  native: LanguageLearningPreferences["native"]
 }
 
 /** One creative memory tip (Supabase `chunk-memory-trick` → Gemini Flash, server-side). */

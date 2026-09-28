@@ -12,22 +12,11 @@
 
 import { requireAuthUser, jsonError } from "../_shared/auth-user.ts"
 import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
+import { LANGUAGE_NAME, parseLanguagePair, type Language } from "../_shared/languages.ts"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const MODEL = "openai/gpt-oss-20b"
 const MAX_TOKENS = 280
-
-type Language = "spanish" | "french" | "english"
-
-const LANGUAGE_NAME: Record<Language, string> = {
-  spanish: "Spanish",
-  french: "French",
-  english: "English",
-}
-
-function isLanguage(v: unknown): v is Language {
-  return v === "spanish" || v === "french" || v === "english"
-}
 
 /** Per target language: what counts as a verb form, and few-shot examples in that language. */
 const TARGET_GUIDANCE: Record<Language, { verbForms: string; examples: string }> = {
@@ -131,9 +120,7 @@ Deno.serve(async (req: Request) => {
 
   const chunk    = (body.chunk    ?? "").trim()
   const sentence = (body.sentence ?? "").trim()
-  const learning: Language = isLanguage(body.learning) ? body.learning : "spanish"
-  let native: Language = isLanguage(body.native) ? body.native : "english"
-  if (native === learning) native = learning === "english" ? "spanish" : "english"
+  const { learning, native } = parseLanguagePair(body.learning, body.native)
 
   if (!chunk) {
     return new Response(

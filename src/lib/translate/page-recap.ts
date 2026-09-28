@@ -5,6 +5,12 @@ import { parseChatJsonErrorBody, stringifyMessageContent } from "@/lib/translate
 import { pageSourceText } from "@/lib/translate/page-split"
 import { getCachedPageRecap, setCachedPageRecap } from "@/lib/storage/reading-recap-storage"
 import { pushPageRecap } from "@/lib/storage/reading-progress-sync"
+import {
+  getStoredLanguageLearningPreferences,
+  LEARNING_LANGUAGE_LABEL,
+  NATIVE_LANGUAGE_LABEL,
+  type LanguageLearningPreferences,
+} from "@/lib/storage/language-learning-preferences"
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
@@ -18,20 +24,27 @@ const RECAP_MODEL = "gemini-2.5-flash-lite"
 const RECAP_MAX_OUTPUT_TOKENS = 120
 
 /**
- * English output (not Spanish) to match `chunk-memory-trick`'s convention for this kind of
- * secondary, orienting-not-translating text aimed at an English-speaking learner -- the point
- * is to be instantly understood on glance, not to be more reading practice.
+ * Output in the learner's native language (not the language they're reading) to match
+ * `chunk-memory-trick`'s convention for this kind of secondary, orienting-not-translating
+ * text -- the point is to be instantly understood on glance, not to be more reading practice.
+ *
+ * Mirrored by buildRecapSystemPrompt in supabase/functions/recap-beacon -- keep the two in sync.
  */
-const RECAP_SYSTEM_PROMPT =
-  "You help a language learner resume a Spanish book or article they stepped away from. " +
-  "They will send you the raw Spanish text of the page right before where they're about to " +
-  "continue reading. Reply with exactly one concise sentence in plain English summarizing " +
-  "what happens in it, so they're reminded what just happened before they pick back up. " +
-  "No preamble, no quotes around it, no markdown -- just the one sentence."
+export function buildRecapSystemPrompt(prefs: LanguageLearningPreferences): string {
+  const target = LEARNING_LANGUAGE_LABEL[prefs.learning]
+  const native = NATIVE_LANGUAGE_LABEL[prefs.native]
+  return (
+    `You help a language learner resume a ${target} book or article they stepped away from. ` +
+    `They will send you the raw ${target} text of the page right before where they're about to ` +
+    `continue reading. Reply with exactly one concise sentence in plain ${native} summarizing ` +
+    "what happens in it, so they're reminded what just happened before they pick back up. " +
+    "No preamble, no quotes around it, no markdown -- just the one sentence."
+  )
+}
 
 /**
- * Calls `gemini-chat` (gemini-2.5-flash-lite) once for a one-sentence English recap of
- * `previousPageSourceText` -- raw Spanish. Never throws: any failure (network, non-2xx,
+ * Calls `gemini-chat` (gemini-2.5-flash-lite) once for a one-sentence recap, in the learner's
+ * native language, of `previousPageSourceText` -- raw text in the language being learned. Never throws: any failure (network, non-2xx,
  * blocked/empty response) resolves to "" so a failed call is silently absorbed and the
  * "Where you left off" modal just falls back to the free verbatim excerpt instead of
  * surfacing an error for what is a nice-to-have.
@@ -46,7 +59,10 @@ export async function summarizePreviousPageForRecap(
       {
         model: RECAP_MODEL,
         messages: [
-          { role: "system", content: RECAP_SYSTEM_PROMPT },
+          {
+            role: "system",
+            content: buildRecapSystemPrompt(getStoredLanguageLearningPreferences()),
+          },
           { role: "user", content: text },
         ],
         max_tokens: RECAP_MAX_OUTPUT_TOKENS,
@@ -223,8 +239,11 @@ export function sendPageRecapBeaconOnLeave(params: RecapLeaveParams): void {
   const key = `${user?.id ?? "guest"}:${contentId}:${previousPageIndex}`
   if (beaconSent.has(key)) return
 
+  const prefs = getStoredLanguageLearningPreferences()
   const payload = {
     access_token: accessToken,
+    learning: prefs.learning,
+    native: prefs.native,
     contentId,
     previousPageSourceText: previousPageText,
     forPageIndex: previousPageIndex,
