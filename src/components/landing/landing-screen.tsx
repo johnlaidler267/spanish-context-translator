@@ -384,7 +384,7 @@ export function LandingScreen({
     // signed-in Continue Reading row uses) -- falls back further to the plain sign-in
     // invite only if the catalog hasn't loaded/is empty.
     fallback: !isGuest ? (
-      <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
+      <div className="sample-text w-full order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
         <p className="sample-excerpt-label text-center">Sample text</p>
         <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
           <p className="sample-paragraph font-serif text-ui-base overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
@@ -397,7 +397,7 @@ export function LandingScreen({
         </button>
       </div>
     ) : featuredCatalog.length > 0 ? (
-      <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
+      <div className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
         <p className="sample-excerpt-label text-center">Featured reads</p>
         <div className="continue-reading__row">
           {featuredCatalog.slice(0, 4).map((item) => (
@@ -411,7 +411,7 @@ export function LandingScreen({
         </div>
       </div>
     ) : (
-      <div className="sample-text w-full entry-4 order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
+      <div className="sample-text w-full order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
         <p className="sample-excerpt-label text-center">Welcome</p>
         <button type="button" onClick={() => openAuthModal()} className="sample-excerpt-btn text-left w-full group">
           <p className="sample-paragraph font-serif text-ui-base overflow-hidden">Sign in to save your place in every story and pick up right where you left off, on any device.</p>
@@ -492,7 +492,7 @@ export function LandingScreen({
             the Continue Reading cards it introduces. mt-auto rather than justify-end because an
             auto margin collapses to 0 when the hero overflows on a short phone, where
             justify-end would push the top of the art out of reach of its own scroll. */}
-        <div className="hero-mark hero-mark--literary text-center relative entry-1 order-1 flex flex-col flex-1 justify-center max-md:justify-start items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block pt-2 md:pt-0 pb-[clamp(0.75rem,5dvh,2.5rem)] md:pb-6">
+        <div className="hero-mark hero-mark--literary text-center relative order-1 flex flex-col flex-1 justify-center max-md:justify-start items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block pt-2 md:pt-0 pb-[clamp(0.75rem,5dvh,2.5rem)] md:pb-6">
           <img
             src="/landing-hero-books.webp"
             alt=""
@@ -549,7 +549,7 @@ export function LandingScreen({
             aria-hidden
           />
           {mobileRow}
-          <div className="entry-2 order-3 md:order-1 flex flex-col gap-2 w-full">
+          <div className="order-3 md:order-1 flex flex-col gap-2 w-full">
             <form
               ref={composerFormRef}
               className="contents"

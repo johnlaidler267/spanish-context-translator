@@ -776,12 +776,6 @@ html.lector-reading-session .global-corner-letter {
   will-change: transform, height;
 }
 
-/* Staggered page entry — same 200ms cap */
-.entry-1 { animation: fade-in-up 0.2s ease-out both; }
-.entry-2 { animation: fade-in-up 0.2s 0.04s ease-out both; }
-.entry-3 { animation: fade-in-up 0.2s 0.08s ease-out both; }
-.entry-4 { animation: fade-in-up 0.2s 0.12s ease-out both; }
-
 /* Editorial typography — body opacity & line-height.
    Heading tracking is NOT set globally: it comes paired with size from the
    type scale (text-display-*). The old blanket `letter-spacing: 0.03em` here

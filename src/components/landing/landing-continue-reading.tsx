@@ -276,7 +276,7 @@ export function useLandingContinueReading({
     return isMobile
       ? {
           mobileRow: (
-            <div className="continue-reading-mobile w-full entry-4 order-1" aria-busy="true">
+            <div className="continue-reading-mobile w-full order-1" aria-busy="true">
               <div className="continue-reading-mobile__row">
                 {placeholders(Math.min(reservedCount, MAX_MOBILE_CONTINUE_READING_ITEMS))}
               </div>
@@ -288,7 +288,7 @@ export function useLandingContinueReading({
           mobileRow: null,
           desktopRow: (
             <div
-              className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1"
+              className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1"
               aria-busy="true"
             >
               <p className="sample-excerpt-label text-center">Continue reading</p>
@@ -317,7 +317,7 @@ export function useLandingContinueReading({
       // their shared flex wrapper (see landing-screen.tsx) -- order-1 puts it above the divider
       // (order-2), which then separates it from the composer (order-3).
       mobileRow: (
-        <div className="continue-reading-mobile w-full entry-4 order-1">
+        <div className="continue-reading-mobile w-full order-1">
           <div className="continue-reading-mobile__row">
             {mobileItems.map((item) =>
               item.kind === "discover" ? (
@@ -348,7 +348,7 @@ export function useLandingContinueReading({
     mobileRow: null,
     // Desktop: sits where the sample excerpt normally does, below the composer.
     desktopRow: (
-      <div className="continue-reading w-full entry-4 order-3 md:order-3 mt-0 md:mt-1">
+      <div className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1">
         <p className="sample-excerpt-label text-center">Continue reading</p>
         <div className={continueReadingRowClass(items.length)}>
           {items.map((item) =>
