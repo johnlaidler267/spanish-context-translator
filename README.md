@@ -1,6 +1,6 @@
-# Lector — Spanish Reading Companion
+# Lector — Language Reading Companion
 
-A Vite + React SPA for reading and translating Spanish content, with full subscription billing powered by Stripe and Supabase.
+A Vite + React SPA for reading and translating content in the language you're learning (Spanish, French, English), with full subscription billing powered by Stripe and Supabase.
 
 ---
 

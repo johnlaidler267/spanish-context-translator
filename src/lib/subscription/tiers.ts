@@ -184,7 +184,7 @@ export const TIERS: Record<TierId, TierConfig> = {
     id: "free",
     name: "Free",
     tagline: "Try it out",
-    description: "Get a feel for in-context Spanish translation at no cost.",
+    description: "Get a feel for in-context translation at no cost.",
     suggestedUseCase: "Casual readers exploring the tool for the first time.",
     pricing: {
       monthly: { amountCents: 0, stripePriceId: null },
@@ -223,7 +223,7 @@ export const TIERS: Record<TierId, TierConfig> = {
     tagline: "",
     description:
       "Unlimited submissions with generous fair-use character limits — monthly or annual billing.",
-    suggestedUseCase: "Anyone reading Spanish regularly: learners, translators, and power users.",
+    suggestedUseCase: "Anyone reading in another language regularly: learners, translators, and power users.",
     pricing: {
       monthly: { amountCents: 700,  stripePriceId: STRIPE_PRICE.proMonthly },
       annual:  { amountCents: 5_900, stripePriceId: STRIPE_PRICE.proAnnual, savingsPercent: 30 },

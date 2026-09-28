@@ -22,7 +22,8 @@ import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscrip
 import { LandingQuickFillControls } from "@/components/landing/landing-quick-fill-controls"
 import { useLandingContinueReading } from "@/components/landing/landing-continue-reading"
 import { ContentCard } from "@/pages/discover/content-card"
-import { fetchDiscoverCatalog, readCachedDiscoverItems } from "@/lib/discover/discover-catalog"
+import { fetchDiscoverCatalog, itemsForLearningLanguage, readCachedDiscoverItems } from "@/lib/discover/discover-catalog"
+import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
 import type { ContentItem } from "@/lib/discover/content-data"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
 import {
@@ -30,13 +31,7 @@ import {
   fetchLearnRandomParagraph,
   generateRandomLearningParagraph,
 } from "@/lib/translate"
-import {
-  getStoredLanguageLearningPreferences,
-  landingGreetingWord,
-  LANGUAGE_LEARNING_PREFS_UPDATED_EVENT,
-  LANGUAGE_LEARNING_PREFERENCES_KEY,
-  type LanguageLearningPreferences,
-} from "@/lib/storage/language-learning-preferences"
+import { landingGreetingWord } from "@/lib/storage/language-learning-preferences"
 import { VoiceInputButton } from "@/components/reading/voice-input-button"
 import { AppErrorModal } from "@/components/app-error-modal"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
@@ -143,22 +138,7 @@ export function LandingScreen({
   const [charLimitTipHoverEnabled, setCharLimitTipHoverEnabled] = useState(false)
   const charLimitTipWrapRef = useRef<HTMLDivElement>(null)
 
-  const [langPrefs, setLangPrefs] = useState<LanguageLearningPreferences>(() =>
-    getStoredLanguageLearningPreferences(),
-  )
-
-  useEffect(() => {
-    const sync = () => setLangPrefs(getStoredLanguageLearningPreferences())
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LANGUAGE_LEARNING_PREFERENCES_KEY) sync()
-    }
-    window.addEventListener(LANGUAGE_LEARNING_PREFS_UPDATED_EVENT, sync)
-    window.addEventListener("storage", onStorage)
-    return () => {
-      window.removeEventListener(LANGUAGE_LEARNING_PREFS_UPDATED_EVENT, sync)
-      window.removeEventListener("storage", onStorage)
-    }
-  }, [])
+  const langPrefs = useLanguageLearningPreferences()
 
   useEffect(() => {
     if (!user) {
@@ -370,6 +350,11 @@ export function LandingScreen({
     }
   }, [])
 
+  const featuredForLearner = useMemo(
+    () => itemsForLearningLanguage(featuredCatalog, langPrefs.learning),
+    [featuredCatalog, langPrefs.learning],
+  )
+
   // Continue Reading: one data fetch, two placements in the tree below (mobileRow lands above
   // the filigree divider, which separates it from the composer form; desktopRow replaces the sample-excerpt fallback
   // below the composer) -- see useLandingContinueReading for why this is a hook and not a
@@ -396,11 +381,11 @@ export function LandingScreen({
           </span>
         </button>
       </div>
-    ) : featuredCatalog.length > 0 ? (
+    ) : featuredForLearner.length > 0 ? (
       <div className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
         <p className="sample-excerpt-label text-center">Featured reads</p>
         <div className="continue-reading__row">
-          {featuredCatalog.slice(0, 4).map((item) => (
+          {featuredForLearner.slice(0, 4).map((item) => (
             <ContentCard
               key={`landing-featured-${item.id}`}
               content={item}

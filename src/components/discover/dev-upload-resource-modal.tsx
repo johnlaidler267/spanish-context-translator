@@ -14,6 +14,10 @@ import {
 import { Input } from "@/components/ui/input"
 import type { ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 import {
+  getStoredLanguageLearningPreferences,
+  LEARNING_LANGUAGE_LABEL,
+} from "@/lib/storage/language-learning-preferences"
+import {
   CoverImageCropPanel,
   type DiscoverCoverAspect,
 } from "@/components/discover/cover-image-crop-panel"
@@ -173,7 +177,7 @@ type DevUploadResourceModalProps = {
 export function DevUploadResourceModal({ open, onClose, onPublish, initial }: DevUploadResourceModalProps) {
   const [title, setTitle] = useState("")
   const [author, setAuthor] = useState("")
-  const [language, setLanguage] = useState<string>("Spanish")
+  const [language, setLanguage] = useState<string>(() => LEARNING_LANGUAGE_LABEL[getStoredLanguageLearningPreferences().learning])
   const [type, setType] = useState<ContentType>("article")
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("beginner")
   const [tagsText, setTagsText] = useState("")
@@ -223,7 +227,7 @@ export function DevUploadResourceModal({ open, onClose, onPublish, initial }: De
   const resetForm = () => {
     setTitle("")
     setAuthor("")
-    setLanguage("Spanish")
+    setLanguage(LEARNING_LANGUAGE_LABEL[getStoredLanguageLearningPreferences().learning])
     setType("article")
     setDifficulty("beginner")
     setTagsText("")

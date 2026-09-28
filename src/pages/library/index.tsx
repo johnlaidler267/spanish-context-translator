@@ -34,6 +34,8 @@ import { checkIsDiscoverCurator } from "@/lib/discover/discover-curator"
 import { getReadingProgressPercent } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import { cn } from "@/lib/utils"
+import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
+import { LIBRARY_EYEBROW } from "@/lib/storage/language-learning-preferences"
 
 // Local dev always sees the "Publish to Discover" control; production shows it only for a real
 // curator (see discover_curators / supabase/migrations/0023_restore_discover_curators.sql) --
@@ -70,6 +72,7 @@ function LibrarySkeletonGrid() {
 
 export default function LibraryPage({ onStartReading }: LibraryPageProps) {
   const navigate = useNavigate()
+  const { learning } = useLanguageLearningPreferences()
   const { registerNewChat } = useLandingShellNewChat()
   const { user, isGuest } = useAuth()
   // Cache-first paint: if App.tsx's landing-page background prefetch (or a previous visit
@@ -341,7 +344,7 @@ export default function LibraryPage({ onStartReading }: LibraryPageProps) {
       <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-16 pt-6 sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
         <header className="discover-masthead">
           <div className="min-w-0 flex-1">
-            <p className="discover-masthead__eyebrow">Tu biblioteca</p>
+            <p className="discover-masthead__eyebrow">{LIBRARY_EYEBROW[learning]}</p>
             <h1 className="discover-masthead__title">My Library</h1>
             <p className="discover-masthead__lede">
               Books you've uploaded, saved so you can pick up right where you left off.

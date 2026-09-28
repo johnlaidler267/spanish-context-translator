@@ -114,3 +114,16 @@ export const LANGUAGE_OPTION_FLAG_EMOJI: Record<LearningLanguage, string> = {
 export function languageOptionFlagEmoji(id: LearningLanguage | NativeLanguage): string {
   return LANGUAGE_OPTION_FLAG_EMOJI[id]
 }
+
+/** Page eyebrows written in the language being learned (e.g. above "Discover"). */
+export const DISCOVER_EYEBROW: Record<LearningLanguage, string> = {
+  spanish: "Descubre",
+  french: "Découvre",
+  english: "Discover",
+}
+
+export const LIBRARY_EYEBROW: Record<LearningLanguage, string> = {
+  spanish: "Tu biblioteca",
+  french: "Ta bibliothèque",
+  english: "Your library",
+}

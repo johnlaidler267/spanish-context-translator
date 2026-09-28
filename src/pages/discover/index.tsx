@@ -25,10 +25,13 @@ import { hasReadingProgress } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import {
   fetchDiscoverCatalog,
+  itemsForLearningLanguage,
   publishDiscoverResource,
   readCachedDiscoverItems,
   writeCachedDiscoverItems,
 } from "@/lib/discover/discover-catalog"
+import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
+import { DISCOVER_EYEBROW, LEARNING_LANGUAGE_LABEL } from "@/lib/storage/language-learning-preferences"
 import { checkIsDiscoverCurator } from "@/lib/discover/discover-curator"
 import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 
@@ -57,6 +60,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
   const cachedItems = useMemo(() => readCachedDiscoverItems(), [])
 
   const [discoverItems, setDiscoverItems] = useState<ContentItem[]>(() => cachedItems ?? [])
+  const langPrefs = useLanguageLearningPreferences()
   const [listLoading, setListLoading] = useState(() => cachedItems == null)
   const [listError, setListError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -160,8 +164,13 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     setSelectedContent(null)
   }, [discoverItems, selectedContent])
 
+  const learnerItems = useMemo(
+    () => itemsForLearningLanguage(discoverItems, langPrefs.learning),
+    [discoverItems, langPrefs.learning],
+  )
+
   const filteredContent = useMemo(() => {
-    return discoverItems.filter((item) => {
+    return learnerItems.filter((item) => {
       const matchesSearch =
         searchQuery === "" ||
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -174,7 +183,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
 
       return matchesSearch && matchesType && matchesDifficulty
     })
-  }, [discoverItems, searchQuery, selectedTypes, selectedDifficulties])
+  }, [learnerItems, searchQuery, selectedTypes, selectedDifficulties])
 
   // `preview` now comes with the list load (see discover-catalog.ts), so the modal opens with
   // its final content already in hand — no click-triggered fetch, no post-open resize.
@@ -258,7 +267,7 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
     ? hasReadingProgress(user, selectedContent.id)
     : false
 
-  const featuredContent = discoverItems.slice(0, 4)
+  const featuredContent = learnerItems.slice(0, 4)
 
   return (
     <>
@@ -269,10 +278,10 @@ export default function DiscoverPage({ onStartReading }: DiscoverPageProps) {
         <main className="animate-fade-in-up mx-auto w-full max-w-7xl px-4 pb-16 pt-6 sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
           <header className="discover-masthead">
             <div className="min-w-0 flex-1">
-              <p className="discover-masthead__eyebrow">Descubre</p>
+              <p className="discover-masthead__eyebrow">{DISCOVER_EYEBROW[langPrefs.learning]}</p>
               <h1 className="discover-masthead__title">Discover</h1>
               <p className="discover-masthead__lede">
-                Books, articles, songs, and poems — matched to the Spanish you already know.
+                Books, articles, songs, and poems — matched to the {LEARNING_LANGUAGE_LABEL[langPrefs.learning]} you already know.
               </p>
             </div>
             {canManageCatalog && (

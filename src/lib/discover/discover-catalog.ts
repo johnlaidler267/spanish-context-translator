@@ -3,6 +3,10 @@ import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover/d
 import { getRecentlyViewedContentIdsAllScopes } from "@/lib/storage/reading-progress-storage"
 import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 import type { DiscoverItemInsert } from "@/lib/db-types"
+import {
+  LEARNING_LANGUAGE_LABEL,
+  type LearningLanguage,
+} from "@/lib/storage/language-learning-preferences"
 
 const LIST_SELECT =
   "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at, updated_at"
@@ -62,6 +66,12 @@ export function writeCachedDiscoverItems(items: ContentItem[]) {
       /* still too big / private mode */
     }
   }
+}
+
+/** Catalog items written in the language being learned -- each learner sees only their own flavor. */
+export function itemsForLearningLanguage(items: ContentItem[], learning: LearningLanguage): ContentItem[] {
+  const want = LEARNING_LANGUAGE_LABEL[learning].toLowerCase()
+  return items.filter((item) => item.language.trim().toLowerCase() === want)
 }
 
 export type DiscoverCatalogResult = { items: ContentItem[] } | { error: string }

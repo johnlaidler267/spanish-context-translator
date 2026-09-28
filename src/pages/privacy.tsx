@@ -8,7 +8,7 @@ export default function PrivacyPage() {
     <LegalPageShell title="Privacy Policy" lastUpdated="April 2, 2026">
       <p className="text-muted-foreground">
         This Privacy Policy describes how LexaLens (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) collects, uses,
-        and shares information when you use our Spanish reading and translation companion (the &quot;Service&quot;).
+        and shares information when you use our language reading and translation companion (the &quot;Service&quot;).
       </p>
 
       <Section title="1. Information we collect">

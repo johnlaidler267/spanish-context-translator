@@ -84,7 +84,7 @@ export function SiteFooter({
           <div className="space-y-2.5">
             <BrandWordmark />
             <p className="max-w-[17rem] text-sm leading-relaxed text-muted-foreground">
-              Read Spanish with translations and explanations grounded in the text you&apos;re reading.
+              Read in the language you&apos;re learning, with translations and explanations grounded in the text in front of you.
             </p>
           </div>
 

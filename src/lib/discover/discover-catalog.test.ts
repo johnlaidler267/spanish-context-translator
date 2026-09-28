@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
+import type { ContentItem } from "@/lib/discover/content-data"
 
 /**
  * Covers `publishDiscoverResource` -- the insert shared by the Discover page's own "Upload
@@ -136,5 +137,22 @@ describe("publishDiscoverResource", () => {
     const { publishDiscoverResource } = await import("@/lib/discover/discover-catalog")
     const result = await publishDiscoverResource(BASE_RESOURCE)
     expect(result).toEqual({ error: "new row violates row-level security policy" })
+  })
+})
+
+describe("itemsForLearningLanguage", () => {
+  const item = (id: string, language: string) => ({ id, language }) as ContentItem
+
+  it("keeps only items written in the language being learned", async () => {
+    const { itemsForLearningLanguage } = await import("@/lib/discover/discover-catalog")
+    const items = [item("es", "Spanish"), item("fr", "French"), item("en", "English"), item("pt", "Portuguese")]
+    expect(itemsForLearningLanguage(items, "spanish").map((i) => i.id)).toEqual(["es"])
+    expect(itemsForLearningLanguage(items, "french").map((i) => i.id)).toEqual(["fr"])
+    expect(itemsForLearningLanguage(items, "english").map((i) => i.id)).toEqual(["en"])
+  })
+
+  it("tolerates case and stray whitespace in curator-entered languages", async () => {
+    const { itemsForLearningLanguage } = await import("@/lib/discover/discover-catalog")
+    expect(itemsForLearningLanguage([item("a", " french ")], "french")).toHaveLength(1)
   })
 })
