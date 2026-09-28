@@ -1811,16 +1811,30 @@ article span {
 /* Landing header: centered pill chip under logo row (mobile only) */
 @media (max-width: 767px) {
   .plan-badge--mobile-chip {
-    width: min(100%, 14.25rem);
+    width: auto;
     margin-inline: auto;
-    max-width: none;
-    justify-content: space-between;
+    max-width: 100%;
+    justify-content: center;
     align-items: center;
     gap: 12px;
     border-radius: 0.65rem;
-    padding: 8px 12px;
+    padding: 8px 16px;
     background: rgba(58, 51, 46, 0.1);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+  /* Same gap on both sides of the divider so it sits centered between "Free" and "Upgrade". */
+  .plan-badge--mobile-chip .plan-badge-lead {
+    gap: 12px;
+  }
+  /* The "·" glyph stays in the DOM (aria-hidden) but renders as a thin vertical rule. */
+  .plan-badge--mobile-chip .plan-badge-dot {
+    display: block;
+    flex-shrink: 0;
+    width: 1px;
+    height: 0.95rem;
+    font-size: 0;
+    color: transparent;
+    background: rgba(58, 51, 46, 0.22);
   }
   .plan-badge--mobile-chip .plan-badge-upgrade {
     flex-shrink: 0;
@@ -1830,7 +1844,6 @@ article span {
     text-underline-offset: unset;
   }
   .plan-badge--mobile-chip .plan-badge-plan,
-  .plan-badge--mobile-chip .plan-badge-dot,
   .plan-badge--mobile-chip .plan-badge-upgrade {
     font-size: var(--text-ui-sm);
     letter-spacing: var(--track-ui-sm);
@@ -1845,6 +1858,11 @@ article span {
 }
 .dark .plan-badge--mobile-chip .plan-badge-upgrade {
   color: #d4a088;
+}
+@media (max-width: 767px) {
+  .dark .plan-badge--mobile-chip .plan-badge-dot {
+    background: rgba(234, 224, 213, 0.22);
+  }
 }
 .dark .plan-badge--mobile-chip .plan-badge-upgrade:hover {
   color: #e8b89a;
