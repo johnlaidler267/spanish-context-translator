@@ -82,9 +82,11 @@ export async function fetchGeminiChatViaEdge(
   })
 }
 
+/** `language` is an ISO-639-1 code for Whisper (e.g. "es", "fr"). */
 export async function transcribeAudioViaEdge(
   audioBlob: Blob,
   filename = "recording.webm",
+  language = "es",
 ): Promise<string> {
   await ensureSessionForGroq()
   const { data: { session } } = await supabase.auth.getSession()
@@ -92,7 +94,7 @@ export async function transcribeAudioViaEdge(
   const form = new FormData()
   form.append("file", audioBlob, filename)
   form.append("model", "whisper-large-v3-turbo")
-  form.append("language", "es")
+  form.append("language", language)
   form.append("response_format", "json")
   const res = await fetch(`${supabaseUrl}/functions/v1/groq-transcribe`, {
     method: "POST",

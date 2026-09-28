@@ -41,6 +41,7 @@ Deno.serve(async (req: Request) => {
   const out = new FormData()
   out.append("file", file, file.name || "audio.webm")
   out.append("model", (form.get("model") as string) || "whisper-large-v3-turbo")
+  // App sends the learner's language; older clients omit it and were Spanish-only.
   out.append("language", (form.get("language") as string) || "es")
   out.append("response_format", (form.get("response_format") as string) || "json")
 
