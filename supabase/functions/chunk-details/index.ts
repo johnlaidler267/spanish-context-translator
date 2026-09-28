@@ -1,7 +1,8 @@
 /**
  * chunk-details Edge Function
  *
- * POST { chunk: string, sentence?: string }
+ * POST { chunk: string, sentence?: string, learning?: "spanish"|"french"|"english", native?: same }
+ *   (learning defaults to "spanish", native to "english" — older clients omit them)
  * → JSON body: either
  *   { "kind":"verb", "infinitive", "tense", "person", "contextNote" }
  *   or { "kind":"other", "explanation" }
@@ -16,31 +17,75 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const MODEL = "openai/gpt-oss-20b"
 const MAX_TOKENS = 280
 
-const SYSTEM_PROMPT = `You are a Spanish grammar assistant for English speakers reading native Spanish.
+type Language = "spanish" | "french" | "english"
 
-You MUST respond with a single JSON object only — no markdown, no code fences, no text before or after.
+const LANGUAGE_NAME: Record<Language, string> = {
+  spanish: "Spanish",
+  french: "French",
+  english: "English",
+}
 
-Use kind "verb" for any Spanish verb form that maps to an infinitive lemma — including finite tenses, gerunds (-ando/-iendo), infinitives, and participles when they are verb forms in context (not when the same word is purely a noun/adjective, e.g. "vino" the drink → other).
+function isLanguage(v: unknown): v is Language {
+  return v === "spanish" || v === "french" || v === "english"
+}
 
-Shape for verb:
-{"kind":"verb","infinitive":"…","tense":"…","person":"…","contextNote":"…"}
-- person: clear labels for finite verbs ("third person singular"). For gerunds, infinitives, non-finite participles use "non-finite".
-- tense: e.g. "preterite", "present indicative", "imperfect subjunctive", "gerund", "infinitive", "past participle".
-
-Examples (format only — answer the actual user click):
-- "fue" → {"kind":"verb","infinitive":"ser","tense":"preterite","person":"third person singular","contextNote":"…"}
+/** Per target language: what counts as a verb form, and few-shot examples in that language. */
+const TARGET_GUIDANCE: Record<Language, { verbForms: string; examples: string }> = {
+  spanish: {
+    verbForms:
+      `finite tenses, gerunds (-ando/-iendo), infinitives, and participles when they are verb forms in context (not when the same word is purely a noun/adjective, e.g. "vino" the drink → other)`,
+    examples: `- "fue" → {"kind":"verb","infinitive":"ser","tense":"preterite","person":"third person singular","contextNote":"…"}
 - "creyendo" → {"kind":"verb","infinitive":"creer","tense":"gerund","person":"non-finite","contextNote":"…"}
 - "diciendo" → {"kind":"verb","infinitive":"decir","tense":"gerund","person":"non-finite","contextNote":"…"}
 - "habrían" → {"kind":"verb","infinitive":"haber","tense":"conditional","person":"third person plural","contextNote":"…"}
-- "mesa" → {"kind":"other","explanation":"…"}
+- "mesa" → {"kind":"other","explanation":"…"}`,
+  },
+  french: {
+    verbForms:
+      `finite tenses (including passé composé and other compound tenses — lemma is the main verb, not the auxiliary), present participles (-ant), infinitives, and past participles when they are verb forms in context (not when the same word is purely a noun/adjective, e.g. "été" the summer → other)`,
+    examples: `- "fut" → {"kind":"verb","infinitive":"être","tense":"passé simple","person":"third person singular","contextNote":"…"}
+- "a pris" → {"kind":"verb","infinitive":"prendre","tense":"passé composé","person":"third person singular","contextNote":"…"}
+- "croyant" → {"kind":"verb","infinitive":"croire","tense":"present participle","person":"non-finite","contextNote":"…"}
+- "auraient" → {"kind":"verb","infinitive":"avoir","tense":"conditional","person":"third person plural","contextNote":"…"}
+- "table" → {"kind":"other","explanation":"…"}`,
+  },
+  english: {
+    verbForms:
+      `finite tenses, -ing forms used as verbs, infinitives, and participles when they are verb forms in context (not when the same word is purely a noun/adjective, e.g. "saw" the tool → other)`,
+    examples: `- "went" → {"kind":"verb","infinitive":"go","tense":"simple past","person":"third person singular","contextNote":"…"}
+- "believing" → {"kind":"verb","infinitive":"believe","tense":"present participle","person":"non-finite","contextNote":"…"}
+- "would have" → {"kind":"verb","infinitive":"have","tense":"conditional","person":"third person plural","contextNote":"…"}
+- "table" → {"kind":"other","explanation":"…"}`,
+  },
+}
+
+function buildSystemPrompt(learning: Language, native: Language): string {
+  const target = LANGUAGE_NAME[learning]
+  const nativeName = LANGUAGE_NAME[native]
+  const g = TARGET_GUIDANCE[learning]
+  return `You are a ${target} grammar assistant for ${nativeName} speakers reading native ${target}.
+
+You MUST respond with a single JSON object only — no markdown, no code fences, no text before or after.
+
+Use kind "verb" for any ${target} verb form that maps to an infinitive lemma — including ${g.verbForms}.
+
+Shape for verb:
+{"kind":"verb","infinitive":"…","tense":"…","person":"…","contextNote":"…"}
+- person: clear labels for finite verbs ("third person singular"). For participles, infinitives and other non-finite forms use "non-finite".
+- tense: the standard grammatical name for the form.
+- Write tense, person and contextNote in ${nativeName}; the infinitive stays in ${target}.
+
+Examples (format only — answer the actual user click; labels shown in English):
+${g.examples}
 
 Shape for non-verb tokens:
-{"kind":"other","explanation":"<2–3 short sentences in plain English — no bullets, under 120 words>"}
+{"kind":"other","explanation":"<2–3 short sentences in plain ${nativeName} — no bullets, under 120 words>"}
 
 Rules:
-- Correct lemma (hizo→hacer, creyendo→creer).
-- JSON must be valid. Escape any double quotes inside string values, or avoid them: use single quotes for glosses (e.g. 'arabesco') instead of double quotes around foreign words.
+- Correct lemma for the ${target} form.
+- JSON must be valid. Escape any double quotes inside string values, or avoid them: use single quotes for glosses instead of double quotes around foreign words.
 - No trailing commas.`
+}
 
 /** When the model omits escapes inside explanation, JSON.parse fails; recover prose if the tail still closes with "}. */
 function extractOtherExplanationLenient(raw: string): string | null {
@@ -74,7 +119,7 @@ Deno.serve(async (req: Request) => {
     return jsonError("Service misconfigured", 500)
   }
 
-  let body: { chunk?: string; sentence?: string }
+  let body: { chunk?: string; sentence?: string; learning?: unknown; native?: unknown }
   try {
     body = await req.json()
   } catch {
@@ -86,6 +131,9 @@ Deno.serve(async (req: Request) => {
 
   const chunk    = (body.chunk    ?? "").trim()
   const sentence = (body.sentence ?? "").trim()
+  const learning: Language = isLanguage(body.learning) ? body.learning : "spanish"
+  let native: Language = isLanguage(body.native) ? body.native : "english"
+  if (native === learning) native = learning === "english" ? "spanish" : "english"
 
   if (!chunk) {
     return new Response(
@@ -107,7 +155,7 @@ Deno.serve(async (req: Request) => {
     body: JSON.stringify({
       model: MODEL,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: buildSystemPrompt(learning, native) },
         { role: "user",   content: userMessage },
       ],
       max_tokens: MAX_TOKENS,

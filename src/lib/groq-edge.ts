@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "@/lib/supabase"
+import type { LanguageLearningPreferences } from "@/lib/storage/language-learning-preferences"
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -127,6 +128,7 @@ export async function transcribeAudioViaEdge(
 export async function fetchChunkDetailsViaEdge(
   chunk: string,
   sentence: string,
+  prefs: LanguageLearningPreferences,
 ): Promise<Response> {
   await ensureSessionForGroq()
   const { data: { session } } = await supabase.auth.getSession()
@@ -134,7 +136,7 @@ export async function fetchChunkDetailsViaEdge(
   return fetch(`${supabaseUrl}/functions/v1/chunk-details`, {
     method: "POST",
     headers: jsonHeaders(session),
-    body: JSON.stringify({ chunk, sentence }),
+    body: JSON.stringify({ chunk, sentence, learning: prefs.learning, native: prefs.native }),
   })
 }
 

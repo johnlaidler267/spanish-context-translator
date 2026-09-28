@@ -11,6 +11,10 @@
 
 import { useCallback, useRef, useState } from "react"
 import { fetchChunkDetailsViaEdge } from "@/lib/groq-edge"
+import {
+  getStoredLanguageLearningPreferences,
+  type LanguageLearningPreferences,
+} from "@/lib/storage/language-learning-preferences"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,7 +29,7 @@ export type DetailState =
   | { type: "llm"; text: string }
 
 export interface ChunkDetailsState {
-  /** The raw Spanish text of the currently selected chunk. */
+  /** The raw target-language text of the currently selected chunk. */
   activeChunk: string | null
   detail:      DetailState | null
   loading:     boolean
@@ -171,8 +175,12 @@ function cacheValueToDetail(cached: string): DetailState {
 const llmCache = new Map<string, string>()
 
 /** Grammar details: Supabase Edge Function `chunk-details` (Groq key server-side only). */
-async function fetchDetailsFromEdge(chunk: string, sentence: string): Promise<DetailState> {
-  const res = await fetchChunkDetailsViaEdge(chunk, sentence)
+async function fetchDetailsFromEdge(
+  chunk: string,
+  sentence: string,
+  prefs: LanguageLearningPreferences,
+): Promise<DetailState> {
+  const res = await fetchChunkDetailsViaEdge(chunk, sentence, prefs)
   if (!res.ok) {
     let msg = `HTTP ${res.status}`
     try {
@@ -207,7 +215,10 @@ export function useChunkDetails(): ChunkDetailsState {
     setActiveChunk(chunk)
     setError(null)
 
-    const cacheKey = `${chunk}|${sentence}`
+    const prefs = getStoredLanguageLearningPreferences()
+    // Language pair is part of the key: the same string can be a different word (and explained
+    // in a different language) after the learner switches languages.
+    const cacheKey = `${prefs.learning}|${prefs.native}|${chunk}|${sentence}`
     const cached = llmCache.get(cacheKey)
     if (cached) {
       setDetail(cacheValueToDetail(cached))
@@ -218,7 +229,7 @@ export function useChunkDetails(): ChunkDetailsState {
     setDetail(null)
     setLoading(true)
 
-    fetchDetailsFromEdge(chunk, sentence)
+    fetchDetailsFromEdge(chunk, sentence, prefs)
       .then(result => {
         if (requestIdRef.current !== reqId) return
         llmCache.set(cacheKey, detailToCacheValue(result))

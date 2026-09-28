@@ -1,5 +1,22 @@
 /** Web Speech API — browser TTS for hover exploration (no API key). */
-export const HOVER_TTS_LANG = "es-MX"
+import {
+  getStoredLanguageLearningPreferences,
+  type LearningLanguage,
+} from "@/lib/storage/language-learning-preferences"
+
+/** Fallback BCP-47 tag when no matching installed voice is found. */
+export const HOVER_TTS_LANG: Record<LearningLanguage, string> = {
+  spanish: "es-MX",
+  french: "fr-FR",
+  english: "en-US",
+}
+
+/** Preferred voice-locale prefixes, most preferred first; the bare prefix catches any region. */
+const VOICE_LANG_PREFIXES: Record<LearningLanguage, string[]> = {
+  spanish: ["es-mx", "es-es", "es"],
+  french: ["fr-fr", "fr-ca", "fr"],
+  english: ["en-us", "en-gb", "en"],
+}
 
 let voicesListenerAttached = false
 let cachedVoices: SpeechSynthesisVoice[] = []
@@ -38,13 +55,18 @@ function normalizeSpanishYConjunctionForTts(text: string): string {
 }
 
 /** Mobile Safari often needs an explicit installed voice; `lang` alone can be silent. */
-function pickSpanishVoice(): SpeechSynthesisVoice | undefined {
-  refreshSpeechVoices()
-  const v = cachedVoices
-  if (v.length === 0) return undefined
-  const pick = (prefix: string) =>
-    v.find((voice) => normalizeLang(voice.lang).startsWith(prefix))
-  return pick("es-mx") ?? pick("es-es") ?? pick("es") ?? v.find((voice) => /^es\b/i.test(voice.lang))
+export function pickVoiceForLanguage(
+  voices: SpeechSynthesisVoice[],
+  learning: LearningLanguage,
+): SpeechSynthesisVoice | undefined {
+  for (const prefix of VOICE_LANG_PREFIXES[learning]) {
+    const match = voices.find((voice) => {
+      const l = normalizeLang(voice.lang)
+      return l === prefix || l.startsWith(`${prefix}-`)
+    })
+    if (match) return match
+  }
+  return undefined
 }
 
 export function cancelHoverSpeech(): void {
@@ -81,9 +103,13 @@ export function speechUnlockForTouchGesture(): void {
   s.speak(new SpeechSynthesisUtterance(""))
 }
 
-export function speakHoverChunk(text: string, lang: string = HOVER_TTS_LANG): void {
+export function speakHoverChunk(
+  text: string,
+  learning: LearningLanguage = getStoredLanguageLearningPreferences().learning,
+): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return
-  const t = normalizeSpanishYConjunctionForTts(text.trim())
+  const trimmed = text.trim()
+  const t = learning === "spanish" ? normalizeSpanishYConjunctionForTts(trimmed) : trimmed
   if (!t) return
   attachVoicesChangedOnce()
   refreshSpeechVoices()
@@ -91,12 +117,12 @@ export function speakHoverChunk(text: string, lang: string = HOVER_TTS_LANG): vo
   const s = window.speechSynthesis
   s.cancel()
   const u = new SpeechSynthesisUtterance(t)
-  const voice = pickSpanishVoice()
+  const voice = pickVoiceForLanguage(cachedVoices, learning)
   if (voice) {
     u.voice = voice
     u.lang = voice.lang
   } else {
-    u.lang = lang
+    u.lang = HOVER_TTS_LANG[learning]
   }
   u.rate = 0.85
   u.pitch = 1
