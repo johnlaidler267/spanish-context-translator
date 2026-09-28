@@ -531,7 +531,7 @@ export function ArticleContent({
             // one bold sans line on the page. One line; a long title truncates rather than wraps.
             "max-md:font-reading max-md:text-[0.8125rem] max-md:font-medium max-md:uppercase",
             "max-md:tracking-[0.16em] max-md:text-reading-folio max-md:truncate",
-            "max-md:absolute max-md:inset-x-6 max-md:top-[calc(env(safe-area-inset-top,0px)+0.75rem)] max-md:mb-0",
+            "max-md:absolute max-md:inset-x-6 max-md:top-[calc(env(safe-area-inset-top,0px)+1.25rem)] max-md:mb-0",
             // Mobile: the reading toolbar occupies this same strip while it's showing, so the
             // running head steps aside for it (and comes back when the toolbar idles out) rather
             // than peeking out from behind the control rail.
