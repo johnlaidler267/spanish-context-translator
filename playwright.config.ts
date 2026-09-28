@@ -38,8 +38,10 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `./scripts/run-with-nvm.sh vite --port ${PORT} --strictPort`,
-    port: PORT,
+    // Bound to 127.0.0.1 explicitly, matching baseURL: on GitHub's runners Vite's default
+    // "localhost" resolves to IPv6 (::1) only, so every page.goto to 127.0.0.1 was refused.
+    command: `./scripts/run-with-nvm.sh vite --host 127.0.0.1 --port ${PORT} --strictPort`,
+    url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
     env: {
