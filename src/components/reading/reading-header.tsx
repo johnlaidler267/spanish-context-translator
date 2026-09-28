@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 import { ChevronLeft, Moon, Sun, Volume2, VolumeX, Sparkles } from "lucide-react"
 import { ModeToggle, type ViewMode } from "@/components/reading/mode-toggle"
 import { type ReadingTheme } from "@/components/reading/theme-toggle"
-import { READING_HEADER_BAND_REM } from "@/lib/reading/reading-layout"
+import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
 import { cn } from "@/lib/utils"
 import { primeSpeechSynthesisFromUserGesture } from "@/lib/reading/hover-tts"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
@@ -35,8 +35,12 @@ interface ReadingHeaderProps {
   freeEbookPreview?: { pagesRemaining: number; pageCap: number } | null
 }
 
-/** Mobile band height — inline minHeight on the mobile gradient/img so rem tweaks always apply (Tailwind var() on children was unreliable). */
-const HEADER_BAND_MOBILE = `calc(${READING_HEADER_BAND_REM}rem + env(safe-area-inset-top, 0px))`
+/**
+ * Mobile band height — ends exactly where the article text begins, so the backdrop fades out above
+ * the first line instead of washing over it. Inline minHeight on the mobile gradient so rem tweaks
+ * always apply (Tailwind var() on children was unreliable).
+ */
+const HEADER_BAND_MOBILE = `calc(${READING_CONTENT_TOP_MOBILE_REM}rem + env(safe-area-inset-top, 0px))`
 
 export function ReadingHeader({
   mode,

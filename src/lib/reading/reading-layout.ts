@@ -1,6 +1,6 @@
 /**
- * Mobile reading chrome — keep band + body offset in sync.
- * Band = texture + gradient height (the header's own decorative backdrop, not article spacing).
+ * Mobile reading chrome — the article body's top offset, which is also where the header's
+ * backdrop gradient ends (see reading-header.tsx), so the gradient never washes over the first line.
  *
  * Single source of truth for the article body's top offset — ArticleContent's mobile padding-top
  * is driven by this (via `--reading-content-top`), and reading-page-measure.ts uses the same
@@ -41,7 +41,6 @@
  * article-content.tsx), and a first-line tooltip card gets exactly the same clearance either way
  * — title or no title — since the title was never what that clearance was ever really for.
  */
-export const READING_HEADER_BAND_REM = 10
 export const READING_CONTENT_TOP_MOBILE_REM = 4.75
 
 /** Slide texture bitmap up inside the band (px) — shows a lower slice of the asset, can extend past top (clipped). */
