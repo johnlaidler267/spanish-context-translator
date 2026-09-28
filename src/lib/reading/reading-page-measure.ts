@@ -10,6 +10,7 @@ import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
 import type { PageSplitLimits } from "@/lib/translate"
 import {
   looksLikeLineBreakHeavySource,
+  opensMidParagraph,
   pageSourceText,
   PARAGRAPH_BREAK_MARKER,
   resolvePageSplitLimits,
@@ -344,6 +345,10 @@ function setRealFitProbeText(probe: HTMLDivElement, text: string, isFirstPage: b
   // No drop cap when the page opens with a chapter heading (see ArticleContent's showDropCap).
   let dropCapPending =
     isFirstPage && segments[0]?.kind === "text" && canShowDropCap(segments[0].text)
+  // A later page opening mid-paragraph renders that paragraph unindented (see ArticleContent's
+  // firstParagraphContinues).
+  let continuationPending =
+    !isFirstPage && segments[0]?.kind === "text" && opensMidParagraph(segments[0].text)
   for (const seg of segments) {
     if (seg.kind === "chapter") {
       probe.appendChild(createChapterHeadingProbe(seg.label))
@@ -352,8 +357,9 @@ function setRealFitProbeText(probe: HTMLDivElement, text: string, isFirstPage: b
     for (const part of seg.text.split(PARAGRAPH_BREAK_MARKER)) {
       if (part.length === 0) continue
       const p = document.createElement("p")
-      p.className = dropCapPending ? "article-drop-cap" : "indent-5 md:indent-7"
+      p.className = dropCapPending ? "article-drop-cap" : continuationPending ? "" : "indent-5 md:indent-7"
       dropCapPending = false
+      continuationPending = false
       p.textContent = part
       probe.appendChild(p)
     }

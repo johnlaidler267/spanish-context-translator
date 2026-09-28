@@ -14,6 +14,7 @@ import {
   PAGE_SIZE_WORDS_MOBILE,
   PAGE_SIZE_WORDS_DESKTOP,
   PARAGRAPH_BREAK_MARKER,
+  opensMidParagraph,
 } from "@/lib/translate/page-split"
 
 describe("pageCharCapForWordLimit / resolvePageSplitLimits", () => {
@@ -317,5 +318,23 @@ describe("computePageStartSentenceIndices / findPageIndexForSentenceIndex", () =
     for (let i = 0; i < starts.length; i++) {
       expect(findPageIndexForSentenceIndex(starts, starts[i]!)).toBe(i)
     }
+  })
+})
+
+describe("opensMidParagraph", () => {
+  it("is true for a page whose first sentence continues the previous page's paragraph", () => {
+    const sentences = splitSourceIntoSentences(
+      "Primera frase del libro. Segunda frase larga.\n\nOtro párrafo empieza aquí. Y sigue.",
+    )
+    // A page starting on "Segunda…" is mid-paragraph; one starting on "Otro…" opens a new one.
+    expect(opensMidParagraph(pageSourceText(sentences.slice(1)))).toBe(true)
+    expect(opensMidParagraph(pageSourceText(sentences.slice(2)))).toBe(false)
+    expect(opensMidParagraph(pageSourceText(sentences.slice(3)))).toBe(true)
+  })
+
+  it("looks past leading whitespace and is false for an empty page", () => {
+    expect(opensMidParagraph(`  ${PARAGRAPH_BREAK_MARKER}Hola`)).toBe(false)
+    expect(opensMidParagraph("  enseñado»), o lo")).toBe(true)
+    expect(opensMidParagraph("   ")).toBe(false)
   })
 })

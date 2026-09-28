@@ -74,6 +74,17 @@ export function looksLikeLineBreakHeavySource(t: string): boolean {
  */
 export const PARAGRAPH_BREAK_MARKER = "⁣"
 
+/**
+ * Whether a page (not the book's first) opens partway through a paragraph carried over from the
+ * previous page. Every paragraph after the book's first starts with {@link PARAGRAPH_BREAK_MARKER}
+ * and that marker survives page splitting, so a page whose text doesn't open with it is mid-
+ * paragraph -- and shouldn't get a first-line indent, which would read as a new paragraph.
+ */
+export function opensMidParagraph(pageText: string): boolean {
+  const first = pageText.match(/\S/u)?.[0]
+  return first != null && first !== PARAGRAPH_BREAK_MARKER
+}
+
 /** The sentence-segmenting half of {@link splitSourceIntoSentences} — no paragraph awareness. */
 function splitParagraphIntoSentences(t: string): string[] {
   try {

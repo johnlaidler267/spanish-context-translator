@@ -33,6 +33,7 @@ export {
   findPageIndexForSentenceIndex,
   looksLikeLineBreakHeavySource,
   mergeArticlePagesIfWholeTextFitsLimits,
+  opensMidParagraph,
   pageCharCapForWordLimit,
   pageSourceText,
   PARAGRAPH_BREAK_MARKER,

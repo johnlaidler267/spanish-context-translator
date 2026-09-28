@@ -1763,6 +1763,7 @@ export default function App() {
                   pageKey={articlePageIndex}
                   hoverTtsEnabled={hoverTtsEnabled}
                   bookTitle={activeReadingTitle}
+                  runningHeadHidden={toolbarVisible}
                   topFillPaddingPx={pageTopFillPaddingPx[articlePageIndex]}
                   pagination={
                     totalPages > 1
@@ -1812,6 +1813,7 @@ export default function App() {
                   pageKey={articlePageIndex}
                   hoverTtsEnabled={hoverTtsEnabled}
                   bookTitle={activeReadingTitle}
+                  runningHeadHidden={toolbarVisible}
                   topFillPaddingPx={pageTopFillPaddingPx[articlePageIndex]}
                   pagination={null}
                 />

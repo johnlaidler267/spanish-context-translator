@@ -15,6 +15,7 @@ import { canShowDropCap } from "@/lib/reading/drop-cap"
 import {
   gapBetweenReconciledChunks,
   looksLikeLineBreakHeavySource,
+  opensMidParagraph,
   PARAGRAPH_BREAK_MARKER,
   type ReconciledChapter,
   type ReconciledChunk,
@@ -70,6 +71,9 @@ interface ArticleContentProps {
   /** Title of the book/piece being read (Discover item or Library book) — shown at the top of
    * the page in article mode. Null/omitted for a plain pasted-text reading, which has no title. */
   bookTitle?: string | null
+  /** Mobile only: fade the running head out while the reading toolbar (which sits in the same
+   * strip) is showing. Desktop keeps the title in flow below the toolbar, so it's unaffected. */
+  runningHeadHidden?: boolean
   /** Desktop vertical-fill polish (see measurePageTopFillPaddingPx): extra top padding, in px,
    * for a page whose content doesn't fill the box — nudges it down a little instead of always
    * sitting flush against the top with a large empty gap below. 0/undefined on mobile and for a
@@ -153,6 +157,7 @@ export function ArticleContent({
   pageKey = 0,
   hoverTtsEnabled = false,
   bookTitle = null,
+  runningHeadHidden = false,
   topFillPaddingPx = 0,
 }: ArticleContentProps) {
   const [errorModalDismissed, setErrorModalDismissed] = useState(false)
@@ -447,6 +452,12 @@ export function ArticleContent({
     !loading && !errorMessage && isFirstPage && !isVerseLike && items != null && items[0]?.type !== "chapter" &&
     canShowDropCap(pageText)
 
+  /** A later page that opens mid-paragraph (the previous page's paragraph carrying over) gets no
+   * first-line indent on that opening paragraph — an indent there reads as a new paragraph. */
+  const firstParagraphContinues =
+    !isFirstPage && !isVerseLike && items != null && items[0]?.type !== "chapter" &&
+    opensMidParagraph(pageText)
+
   const handleGlobalClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement
     if (target.closest("[data-app-error-modal]")) return
@@ -514,8 +525,18 @@ export function ArticleContent({
         */
         <p
           className={cn(
-            "text-center font-sans text-sm md:text-base font-bold text-muted-foreground",
+            "text-center md:font-sans md:text-base md:font-bold md:text-muted-foreground",
+            // Mobile: a book running head in the page's own Garamond — spaced caps in the folio's
+            // colour, so it pairs with the serif "Page X of Y" at the bottom instead of being the
+            // one bold sans line on the page. One line; a long title truncates rather than wraps.
+            "max-md:font-reading max-md:text-[0.8125rem] max-md:font-medium max-md:uppercase",
+            "max-md:tracking-[0.16em] max-md:text-reading-folio max-md:truncate",
             "max-md:absolute max-md:inset-x-6 max-md:top-[calc(env(safe-area-inset-top,0px)+0.75rem)] max-md:mb-0",
+            // Mobile: the reading toolbar occupies this same strip while it's showing, so the
+            // running head steps aside for it (and comes back when the toolbar idles out) rather
+            // than peeking out from behind the control rail.
+            "transition-opacity duration-[280ms] ease-out motion-reduce:transition-none",
+            runningHeadHidden && "max-md:pointer-events-none max-md:opacity-0",
             // Short centred rule under the running head — the book-typography way of closing a
             // head, and quieter than a full-measure rule, which drew a line across the page and
             // then left a visible void under it. Out of flow with the title, so it can't move the
@@ -667,7 +688,13 @@ export function ArticleContent({
             return (
               <p
                 key={block.key}
-                className={isDropCapParagraph ? "article-drop-cap" : "indent-5 md:indent-7"}
+                className={
+                  isDropCapParagraph
+                    ? "article-drop-cap"
+                    : bi === 0 && firstParagraphContinues
+                      ? undefined
+                      : "indent-5 md:indent-7"
+                }
               >
                 {block.entries.map((entry, ei) =>
                   renderFlowItem(entry.item, entry.key, ei > 0 ? block.entries[ei - 1]!.item : null),

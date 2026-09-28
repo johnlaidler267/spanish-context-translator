@@ -126,9 +126,11 @@ export function ReadingHeader({
         {/* Right side: one quiet control rail so mode + reader actions feel like a single toolset. */}
         <div
           className={cn(
-            "flex items-center gap-0.5 rounded-[0.85rem] border px-1 py-0.5",
-            "border-border/30 bg-background/45 shadow-[0_1px_6px_rgba(58,51,46,0.03)] backdrop-blur-sm",
-            "dark:border-white/6 dark:bg-[rgba(26,26,26,0.4)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.1)]",
+            "flex items-center gap-0.5 rounded-[0.85rem] px-1 py-0.5",
+            // Desktop: a framed rail. Mobile: just the icons floating on the header gradient — a
+            // boxed widget in the top-right corner looked heavier than the page it sits over.
+            "md:border md:border-border/30 md:bg-background/45 md:shadow-[0_1px_6px_rgba(58,51,46,0.03)] md:backdrop-blur-sm",
+            "dark:md:border-white/6 dark:md:bg-[rgba(26,26,26,0.4)] dark:md:shadow-[0_2px_10px_rgba(0,0,0,0.1)]",
             visible ? "pointer-events-auto" : "pointer-events-none",
           )}
         >
