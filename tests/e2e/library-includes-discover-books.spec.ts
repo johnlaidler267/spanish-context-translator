@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from "@playwright/test"
-import { setupMocks } from "../e2e-mocks/supabase-mock"
+import { CHAT_EDGE_FUNCTIONS_GLOB, setupMocks } from "../e2e-mocks/supabase-mock"
 
 const BOOK_TEXT = Array.from(
   { length: 200 },
@@ -61,6 +61,28 @@ test("a Discover book shows up in My Library once it's been read, and can be rem
       body: JSON.stringify([DISCOVER_BOOK]),
     }),
   )
+  // Echo each page back as one chunk so translation succeeds for this long book -- the harness's
+  // fixed two-chunk reply doesn't reconcile against it, and the "Translation failed" dialog it
+  // raises would sit over the reader's Back button.
+  await page.route(CHAT_EDGE_FUNCTIONS_GLOB, async (route) => {
+    const body = route.request().postDataJSON() as { messages?: Array<{ role: string; content: string }> }
+    const userContent = body?.messages?.find((m) => m.role === "user")?.content ?? ""
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: JSON.stringify([{ c: userContent.split("TEXT:\n").pop() ?? userContent, m: "Translation." }]),
+            },
+            finish_reason: "stop",
+          },
+        ],
+      }),
+    })
+  })
   const progressDeletes: string[] = []
   page.on("request", (req) => {
     if (req.url().includes("/rest/v1/reading_progress") && req.method() === "DELETE") progressDeletes.push(req.url())

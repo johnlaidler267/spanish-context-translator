@@ -327,7 +327,8 @@ export interface SetupMocksOptions {
    * treats this as the free tier, same as a real just-signed-up account).
    */
   subscription?: Record<string, unknown> | Record<string, unknown>[] | null
-  /** Extra PostgREST table mocks beyond discover_items/user_subscriptions: table name -> rows. */
+  /** Extra PostgREST table mocks beyond the defaults (discover_items, user_subscriptions,
+   *  translation_cache, user_epubs): table name -> rows. Also overrides those defaults. */
   restTables?: Record<string, unknown[]>
   /** Overrides the groq-chat/gemini-chat mocks' `choices[0].message.content` (see buildGroqChatResponse doc above). */
   groqChatContent?: string
@@ -365,6 +366,13 @@ export async function setupMocks(
 
   await mockRestTable(page, "discover_items", options.discoverItems ?? SAMPLE_DISCOVER_ITEMS, { supabaseUrl })
   await mockRestTable(page, "user_subscriptions", subscriptionRows, { supabaseUrl })
+  // Tables every Discover read touches: the shared translation cache (checked, claimed and filled
+  // for each page -- see shared-translation-cache.ts) and the reader's EPUB library. Left
+  // unmocked, these requests go to the fake Supabase host and fail only after a slow network
+  // timeout, which holds page translation up long enough for page-turn clicks to be ignored.
+  // Empty by default (cache miss, empty library); override either via `restTables`.
+  await mockRestTable(page, "translation_cache", [], { supabaseUrl })
+  await mockRestTable(page, "user_epubs", [], { supabaseUrl })
   for (const [table, rows] of Object.entries(options.restTables ?? {})) {
     await mockRestTable(page, table, rows, { supabaseUrl })
   }
