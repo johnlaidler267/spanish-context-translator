@@ -770,7 +770,13 @@ export default function App() {
         pageStartSentenceIndicesRef.current =
           sents.length > 1 ? computePageStartSentenceIndices(sents, pages) : []
 
-        if (user) {
+        // Only the user's own text (landing composer, no contentId) counts as a submission.
+        // Discover items and Library books always carry a contentId, and used to be charged a
+        // `texts_submitted` on every open -- so simply reopening a book you were already reading
+        // burned one of the free plan's daily texts each time. Those have their own free-plan
+        // gates instead (charsPerSubmission for Discover articles, freeReadingPagesPerBook for
+        // books), and per-page fair-use characters are still charged in translatePageWithUsage.
+        if (user && contentId == null) {
           try {
             if (ENFORCE_USAGE_LIMITS) {
               try {
