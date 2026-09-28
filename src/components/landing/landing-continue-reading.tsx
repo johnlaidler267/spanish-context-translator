@@ -231,10 +231,13 @@ export function useLandingContinueReading({
   // far: the three disagree about both membership and order while they land, and mobile shows
   // only two cards, so each partial answer visibly swapped a book out — catalog cache alone,
   // then the library listing displacing it, then cloud progress reordering the result.
-  // Covers count too, so a card doesn't land with its placeholder art and then swap in the real
-  // cover a beat later.
+  // Covers count too on a cold start, so a card doesn't land with its placeholder art and then
+  // swap in the real cover a beat later. Not on a warm start: the cache normally carries the
+  // row's covers, and when it couldn't (a full localStorage), a card showing placeholder art
+  // for a moment beats holding the whole row on skeletons for the network.
   const ready =
-    ((warmStart || (libraryLoaded && catalogLoaded && progressSynced)) && missingCoverIds.length === 0) ||
+    warmStart ||
+    (libraryLoaded && catalogLoaded && progressSynced && missingCoverIds.length === 0) ||
     settleTimedOut
   // Latched: once shown, a book arriving later (e.g. from cloud progress) whose cover isn't in
   // yet must not flip the whole row back to placeholders.
