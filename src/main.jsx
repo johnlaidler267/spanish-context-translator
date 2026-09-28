@@ -11,6 +11,7 @@ import App from '@/App'
 import { warmDiscoverFirstPaint } from '@/lib/discover/discover-catalog'
 import { warmReadingProgressFirstPaint } from '@/lib/storage/reading-progress-sync'
 import { warmContinueReadingLibraryFirstPaint } from '@/lib/storage/continue-reading-library'
+import { warmLandingArtFirstPaint } from '@/lib/landing-art-warmup'
 
 /*
   Discover catalog first-paint warm-up, started before React mounts anything.
@@ -39,6 +40,7 @@ if (CATALOG_ROUTES.includes(path) || isLandingRoute) {
 if (isLandingRoute) {
   warmReadingProgressFirstPaint()
   warmContinueReadingLibraryFirstPaint()
+  warmLandingArtFirstPaint()
 }
 
 createRoot(document.getElementById('root')).render(

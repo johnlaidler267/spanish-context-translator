@@ -54,6 +54,7 @@ import type { ViewMode } from "@/components/reading/mode-toggle"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
 import { getStoredLandingDraft, setStoredLandingDraft } from "@/lib/storage/landing-draft-storage"
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
+import { isLandingArtReady, whenLandingArtReady } from "@/lib/landing-art-warmup"
 import { getReadingProgressEntry, setReadingProgress } from "@/lib/storage/reading-progress-storage"
 import {
   ensureCloudReadingProgressPulled,
@@ -158,6 +159,13 @@ export default function App() {
   const location = useLocation()
   const { status: subscriptionStatus, isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
   const { user, isGuest, isLoading: authLoading, isSigningIn, openAuthModal } = useAuth()
+  // Holds the loading bar until the landing art warmed in main.jsx is decoded (capped there),
+  // so the page doesn't paint and then have its artwork pop in a beat later.
+  const [landingArtReady, setLandingArtReady] = useState(isLandingArtReady)
+  useEffect(() => {
+    if (landingArtReady) return
+    void whenLandingArtReady().then(() => setLandingArtReady(true))
+  }, [landingArtReady])
   // Shared by every free-plan gate below (char-limit-per-submission, free-preview page cap, …):
   // a signed-in user counts as "free" whenever they have no active paid status, including a
   // lapsed subscription — a guest (no `user` yet) isn't covered by this, since they're gated by
@@ -1386,7 +1394,10 @@ export default function App() {
   const viewportMain =
     "min-h-app flex flex-col max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden overflow-hidden"
 
-  if ((authLoading || subscriptionLoading) && location.pathname !== "/discover") {
+  if (
+    (authLoading || subscriptionLoading || (!landingArtReady && location.pathname === "/")) &&
+    location.pathname !== "/discover"
+  ) {
     return (
       <main className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden">
         <div className="flex flex-col items-center gap-3 w-40">

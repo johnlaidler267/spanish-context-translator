@@ -15,24 +15,52 @@ const LIST_SELECT =
 // the cache updated, so new content still shows up -- just without blocking first paint.
 const DISCOVER_CACHE_KEY = "lexa.discover.catalog.v2"
 
+/**
+ * This session's copy of the catalog, so remounting a catalog-backed page (e.g. tapping back
+ * to landing from My Library) doesn't depend on localStorage -- which may not hold the catalog
+ * at all when it didn't fit (see writeCachedDiscoverItems) -- or re-parse it on every read.
+ */
+let sessionItems: ContentItem[] | null = null
+
 export function readCachedDiscoverItems(): ContentItem[] | null {
+  if (sessionItems) return sessionItems
   if (typeof window === "undefined") return null
   try {
     const raw = localStorage.getItem(DISCOVER_CACHE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as ContentItem[]
-    return Array.isArray(parsed) ? parsed : null
+    if (!Array.isArray(parsed)) return null
+    sessionItems = parsed
+    return parsed
   } catch {
     return null
   }
 }
 
+/** Embedded covers bigger than this are left out of the localStorage copy if it won't fit. */
+const MAX_STORED_DATA_URL_COVER_CHARS = 20_000
+
 export function writeCachedDiscoverItems(items: ContentItem[]) {
+  sessionItems = items
   if (typeof window === "undefined") return
   try {
     localStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items))
   } catch {
-    /* ignore quota/private mode */
+    // Quota (iOS Safari's ~5MB is shared with the translation cache): an item published from
+    // a reader's library can carry its cover as an embedded data URL of hundreds of KB, and a
+    // failed write left no cached catalog at all -- so every landing visit held Continue
+    // Reading on placeholders until the catalog re-downloaded. Keep everything else; a card
+    // shows its generated art until the fresh catalog brings the real cover back.
+    try {
+      const slim = items.map((item) =>
+        item.coverImage?.startsWith("data:") && item.coverImage.length > MAX_STORED_DATA_URL_COVER_CHARS
+          ? { ...item, coverImage: "" }
+          : item,
+      )
+      localStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(slim))
+    } catch {
+      /* still too big / private mode */
+    }
   }
 }
 
