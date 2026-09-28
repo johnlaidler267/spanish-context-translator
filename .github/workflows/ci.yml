@@ -3,7 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+    # Docs-only pushes (README, CLAUDE.md, ...) can't break any check below.
+    paths-ignore: ["**/*.md"]
   pull_request:
+    paths-ignore: ["**/*.md"]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -44,3 +47,35 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  e2e:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    env:
+      # Same reason as the checks job above.
+      NVM_DIR: /opt/no-nvm-here
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Mocked backend (tests/e2e-mocks) -- no Supabase or model API secrets needed.
+      - name: Browser tests
+        run: npm run test:e2e
+
+      - name: Upload traces from failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
