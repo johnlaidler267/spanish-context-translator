@@ -20,14 +20,14 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { SiteFooter } from "@/components/site-footer"
 import { getTranslationLlmDisplayInfo } from "@/lib/translate"
+import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
+import { chooseLanguageLearningPreferences } from "@/lib/storage/language-learning-account"
 import {
-  getStoredLanguageLearningPreferences,
   languageOptionFlagEmoji,
   LEARNING_LANGUAGE_LABEL,
   NATIVE_LANGUAGE_LABEL,
   nativeOptionsForLearning,
   normalizeLanguageLearningPreferences,
-  setStoredLanguageLearningPreferences,
   type LearningLanguage,
   type LanguageLearningPreferences,
   type NativeLanguage,
@@ -193,9 +193,7 @@ export default function SettingsPage() {
   const [nameSavedNotice, setNameSavedNotice] = useState(false)
   const [nameSaveError, setNameSaveError] = useState<string | null>(null)
   const [nameSaving, setNameSaving] = useState(false)
-  const [languagePrefs, setLanguagePrefs] = useState<LanguageLearningPreferences>(() =>
-    getStoredLanguageLearningPreferences(),
-  )
+  const languagePrefs = useLanguageLearningPreferences()
   const displayNameUserKeyRef = useRef<string | undefined>(undefined)
   const { user, signOut, openAuthModal } = useAuth()
 
@@ -216,8 +214,7 @@ export default function SettingsPage() {
   const nameDirty = normalizedNameInput !== savedName
 
   const persistLanguagePrefs = (next: LanguageLearningPreferences) => {
-    const saved = setStoredLanguageLearningPreferences(next)
-    setLanguagePrefs(saved)
+    chooseLanguageLearningPreferences(next, user)
   }
 
   const setLearningLanguage = (learning: LearningLanguage) => {

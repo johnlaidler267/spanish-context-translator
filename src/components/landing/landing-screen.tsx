@@ -31,7 +31,17 @@ import {
   fetchLearnRandomParagraph,
   generateRandomLearningParagraph,
 } from "@/lib/translate"
-import { landingGreetingWord } from "@/lib/storage/language-learning-preferences"
+import {
+  hasStoredLanguageLearningPreferences,
+  landingGreetingWord,
+  normalizeLanguageLearningPreferences,
+  type LearningLanguage,
+} from "@/lib/storage/language-learning-preferences"
+import {
+  chooseLanguageLearningPreferences,
+  languagePrefsFromAccount,
+} from "@/lib/storage/language-learning-account"
+import { LanguagePickerModal } from "@/components/landing/language-picker-modal"
 import { VoiceInputButton } from "@/components/reading/voice-input-button"
 import { AppErrorModal } from "@/components/app-error-modal"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
@@ -114,7 +124,7 @@ export function LandingScreen({
   onContinueReading,
   onContinueLibraryBook,
 }: LandingScreenProps) {
-  const { user, isGuest, openAuthModal } = useAuth()
+  const { user, isGuest, isLoading: authLoading, openAuthModal } = useAuth()
   const { status: subscriptionStatus } = useSubscription()
   const cachedSubscriptionRow = useMemo(
     () => (user?.id ? readCachedSubscriptionRow(user.id) : undefined),
@@ -139,6 +149,16 @@ export function LandingScreen({
   const charLimitTipWrapRef = useRef<HTMLDivElement>(null)
 
   const langPrefs = useLanguageLearningPreferences()
+  // First visit: ask which language they're learning. Waits for auth so a signed-in reader whose
+  // account already has a choice (applied by App's account sync) is never asked. `langPrefs` in
+  // the deps re-reads storage once a choice is saved.
+  const needsLanguagePick = useMemo(
+    () => !authLoading && !hasStoredLanguageLearningPreferences() && languagePrefsFromAccount(user) == null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- langPrefs changes when storage does
+    [authLoading, user, langPrefs],
+  )
+  const chooseFirstVisitLanguage = (learning: LearningLanguage) =>
+    chooseLanguageLearningPreferences(normalizeLanguageLearningPreferences({ learning }), user)
 
   useEffect(() => {
     if (!user) {
@@ -673,6 +693,12 @@ export function LandingScreen({
         </div>
       </div>
       </div>
+      {needsLanguagePick && (
+        <LanguagePickerModal
+          onChoose={chooseFirstVisitLanguage}
+          onSkip={() => chooseFirstVisitLanguage("spanish")}
+        />
+      )}
       {learnError && (
         <AppErrorModal
           title="Couldn’t load text"

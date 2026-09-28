@@ -64,6 +64,7 @@ import { getStoredLandingDraft, setStoredLandingDraft } from "@/lib/storage/land
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
 import { isLandingArtReady, whenLandingArtReady } from "@/lib/landing-art-warmup"
 import { getReadingProgressEntry, setReadingProgress } from "@/lib/storage/reading-progress-storage"
+import { syncLanguageLearningPreferencesWithAccount } from "@/lib/storage/language-learning-account"
 import {
   ensureCloudReadingProgressPulled,
   pushReadingProgress,
@@ -189,6 +190,12 @@ export default function App() {
   const location = useLocation()
   const { status: subscriptionStatus, isLapsed, popupDismissed, dismissPopup, isLoading: subscriptionLoading } = useSubscription()
   const { user, isGuest, isLoading: authLoading, isSigningIn, openAuthModal } = useAuth()
+
+  // The learning language follows the account across devices: apply it once auth has settled.
+  useEffect(() => {
+    if (authLoading) return
+    syncLanguageLearningPreferencesWithAccount(user)
+  }, [authLoading, user])
   // Holds the loading bar until the landing art warmed in main.jsx is decoded (capped there),
   // so the page doesn't paint and then have its artwork pop in a beat later.
   const [landingArtReady, setLandingArtReady] = useState(isLandingArtReady)

@@ -28,6 +28,8 @@ export const MOCK_SUPABASE_ANON_KEY = "test-anon-key"
 export interface MockUser {
   id: string
   email: string
+  /** Supabase Auth user_metadata (display name, saved learning language, ...). Default: {}. */
+  user_metadata?: Record<string, unknown>
 }
 
 export const DEFAULT_MOCK_USER: MockUser = {
@@ -57,7 +59,7 @@ function buildFakeSession(user: MockUser) {
     email: user.email,
     phone: "",
     app_metadata: { provider: "email", providers: ["email"] },
-    user_metadata: {},
+    user_metadata: user.user_metadata ?? {},
     identities: [],
     created_at: nowIso,
     updated_at: nowIso,
@@ -113,13 +115,22 @@ export async function mockAuthRoutes(
   const base = opts.supabaseUrl ?? MOCK_SUPABASE_URL
   // `supabase.auth.getUser()` — unlike getSession(), this always makes a network call
   // to validate the token server-side. checkSubscriptionStatus() calls it on every load.
-  await page.route(`${base}/auth/v1/user**`, (route) =>
-    route.fulfill({
+  // `supabase.auth.updateUser({ data })` PUTs here too: merge `data` into user_metadata and
+  // return the updated user, like GoTrue does, so the app sees its own write land.
+  await page.route(`${base}/auth/v1/user**`, (route) => {
+    if (route.request().method() === "PUT") {
+      const body = route.request().postDataJSON() as { data?: Record<string, unknown> } | null
+      if (body?.data) {
+        const u = session.user as { user_metadata: Record<string, unknown> }
+        u.user_metadata = { ...u.user_metadata, ...body.data }
+      }
+    }
+    return route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(session.user),
-    }),
-  )
+    })
+  })
   // Token refresh (grant_type=refresh_token/password/etc). Shouldn't normally fire given
   // the long expiry above, but mocked defensively so an unexpected refresh doesn't hang
   // the test on a real network request.
@@ -337,6 +348,13 @@ export interface SetupMocksOptions {
   /** Overrides the track-usage mock response body. */
   trackUsage?: Record<string, unknown>
   supabaseUrl?: string
+  /**
+   * "I'm learning" choice seeded into localStorage before the app loads, so the landing page's
+   * first-visit language picker doesn't cover the page. Default: Spanish/English. Pass null to
+   * start as a first-time visitor (picker shown). A spec's own addInitScript runs after this one
+   * and can still overwrite it.
+   */
+  languagePrefs?: { learning: string; native: string } | null
 }
 
 /**
@@ -354,9 +372,23 @@ export async function setupMocks(
 ): Promise<{ user: MockUser | null }> {
   const { signedIn = true, supabaseUrl } = options
 
+  const languagePrefs =
+    options.languagePrefs === undefined ? { learning: "spanish", native: "english" } : options.languagePrefs
+  if (languagePrefs) {
+    await page.addInitScript((prefs) => {
+      const key = "lector-language-learning-preferences"
+      if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(prefs))
+    }, languagePrefs)
+  }
+
   let user: MockUser | null = null
   if (signedIn) {
     user = { ...DEFAULT_MOCK_USER, ...options.user }
+    // Mirror the seeded browser choice on the account (as for any reader who has already chosen),
+    // so the app's account sync has nothing to copy up on load.
+    if (languagePrefs && options.user?.user_metadata === undefined) {
+      user.user_metadata = { learning_language: languagePrefs.learning, native_language: languagePrefs.native }
+    }
     const session = await mockSignedInSession(page, { user, supabaseUrl })
     await mockAuthRoutes(page, session, { supabaseUrl })
   }

@@ -53,6 +53,16 @@ export function normalizeLanguageLearningPreferences(
   return { learning, native }
 }
 
+/** Whether this browser has an explicit choice saved (vs. silently falling back to the default). */
+export function hasStoredLanguageLearningPreferences(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    return Boolean(localStorage.getItem(LANGUAGE_LEARNING_PREFERENCES_KEY)?.trim())
+  } catch {
+    return false
+  }
+}
+
 export function getStoredLanguageLearningPreferences(): LanguageLearningPreferences {
   if (typeof window === "undefined") return { ...DEFAULT }
   try {
