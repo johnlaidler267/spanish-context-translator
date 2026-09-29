@@ -25,7 +25,7 @@ import Stripe from "npm:stripe@17"
 import { createClient } from "npm:@supabase/supabase-js@2"
 import {
   corsHeaders,
-  handleCorsPreflightRequest,
+  serveWithCors,
 } from "../_shared/cors.ts"
 import { resolvePriceId, type BillingInterval, type TierId } from "../_shared/tiers.ts"
 import { castStatus, fromUnix } from "../_shared/webhook-processor.ts"
@@ -64,8 +64,7 @@ async function subscriptionFromSession(
   return null
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return handleCorsPreflightRequest()
+serveWithCors(async (req: Request) => {
   if (req.method !== "POST") return err("Method not allowed", 405)
 
   const stripeKey   = Deno.env.get("STRIPE_SECRET_KEY")

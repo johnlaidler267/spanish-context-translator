@@ -30,7 +30,7 @@ import Stripe from "npm:stripe@17"
 import { createClient } from "npm:@supabase/supabase-js@2"
 import {
   corsHeaders,
-  handleCorsPreflightRequest,
+  serveWithCors,
 } from "../_shared/cors.ts"
 import {
   getAllPriceIds,
@@ -79,9 +79,8 @@ const MANAGEABLE_STATUSES = new Set(["active", "trialing", "past_due", "paused"]
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
+serveWithCors(async (req: Request) => {
   // CORS preflight
-  if (req.method === "OPTIONS") return handleCorsPreflightRequest()
   if (req.method !== "POST") return err("Method not allowed", 405)
 
   // ── Environment ────────────────────────────────────────────────────────────

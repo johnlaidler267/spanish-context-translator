@@ -11,7 +11,7 @@
  */
 
 import { requireAuthUser, jsonError } from "../_shared/auth-user.ts"
-import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
+import { corsHeaders, serveWithCors } from "../_shared/cors.ts"
 import { LANGUAGE_NAME, parseLanguagePair, type Language } from "../_shared/languages.ts"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -93,8 +93,7 @@ function extractOtherExplanationLenient(raw: string): string | null {
   return inner || null
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return handleCorsPreflightRequest()
+serveWithCors(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders })
   }

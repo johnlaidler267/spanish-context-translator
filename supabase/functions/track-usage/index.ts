@@ -32,7 +32,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
 import {
   corsHeaders,
-  handleCorsPreflightRequest,
+  serveWithCors,
 } from "../_shared/cors.ts"
 import { getTierLimits, type TierId } from "../_shared/tiers.ts"
 import {
@@ -92,8 +92,7 @@ function resolvePeriod(sub: SubscriptionRow | null): { start: Date; end: Date } 
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return handleCorsPreflightRequest()
+serveWithCors(async (req: Request) => {
   if (req.method !== "POST")    return err("Method not allowed", 405)
 
   // ── Environment ────────────────────────────────────────────────────────────

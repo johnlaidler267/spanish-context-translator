@@ -1,0 +1,23 @@
+# Weekly dependency update PRs. CI (lint, typecheck, test, build, browser tests)
+# runs on each one, so a bump that breaks something shows up red before merging.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Patch/minor bumps land together as one PR; majors stay separate since
+      # they're the ones likely to need code changes.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

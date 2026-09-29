@@ -59,7 +59,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'supabase/functions/_shared/**/*.test.ts'],
     env: {
       // Several lib modules import supabase.ts transitively, which throws
       // at module load without these — dummy values, no real network

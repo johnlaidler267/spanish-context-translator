@@ -47,7 +47,7 @@
 import Stripe from "npm:stripe@17"
 import { createClient } from "npm:@supabase/supabase-js@2"
 import { processEvent, MAX_RETRIES } from "../_shared/webhook-processor.ts"
-import { corsHeaders } from "../_shared/cors.ts"
+import { corsHeaders, serveWithCors } from "../_shared/cors.ts"
 
 interface WebhookEventRow {
   id:              string
@@ -58,11 +58,7 @@ interface WebhookEventRow {
   error_message:   string | null
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders })
-  }
-
+serveWithCors(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 })
   }

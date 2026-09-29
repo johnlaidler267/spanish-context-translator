@@ -93,7 +93,11 @@ npx supabase@latest secrets set PAST_DUE_GRACE_DAYS=3   # optional, defaults to 
 npx supabase@latest secrets set GROQ_API_KEY=gsk_...    # Groq — used only by Edge Functions (voice, chunk details; translation/Learn if provider=groq)
 # Gemini — default translation/Learn provider (via `gemini-chat`):
 npx supabase@latest secrets set GEMINI_API_KEY=...
+# Optional extra browser origins allowed to call the functions (comma-separated; `*` matches one label):
+npx supabase@latest secrets set ALLOWED_ORIGINS=https://staging.example.com,https://*-yourteam.vercel.app
 ```
+
+**CORS:** browser calls to the Edge Functions are only accepted from `APP_URL` (plus its `www.`/apex twin), `ALLOWED_ORIGINS`, and `localhost`. Other origins get a 403 before the function runs (see `supabase/functions/_shared/cors.ts`). If neither secret is set, every origin is allowed. Make sure `APP_URL` exactly matches the production site's origin, or production requests will be refused.
 
 **Auth (required for translation):** In Supabase → **Authentication** → **Providers**, enable **Anonymous** sign-ins. Guests get an anonymous JWT so Edge Functions can authorize requests without exposing `GROQ_API_KEY` in the client bundle.
 

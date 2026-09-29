@@ -22,7 +22,7 @@
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2"
-import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
+import { corsHeaders, serveWithCors } from "../_shared/cors.ts"
 import { LANGUAGE_NAME, parseLanguagePair, type Language } from "../_shared/languages.ts"
 
 /** Mirrors buildRecapSystemPrompt in src/lib/translate/page-recap.ts -- keep the two in sync. */
@@ -70,8 +70,7 @@ function noContent(): Response {
   return new Response(null, { status: 204, headers: corsHeaders })
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return handleCorsPreflightRequest()
+serveWithCors(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders })
   }
