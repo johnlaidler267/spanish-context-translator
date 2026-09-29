@@ -45,7 +45,8 @@ export function LandingShellLayout({
   // src/pages/library/index.tsx), so it needs the same treatment.
   const isDiscover = location.pathname === "/discover"
   const isLibrary = location.pathname === "/library"
-  const isCardGridPage = isDiscover || isLibrary
+  const isWords = location.pathname === "/words"
+  const isCardGridPage = isDiscover || isLibrary || isWords
   const headerVariant = isCardGridPage ? "stacked" : "fixed"
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarInsetPx, setSidebarInsetPx] = useState(0)

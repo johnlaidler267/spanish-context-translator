@@ -28,6 +28,8 @@ import {
 } from "@/hooks/use-chunk-touch-exploration"
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { sentenceAround, type SavedWordDraft } from "@/lib/saved-words"
+import { chunkTextForWordDisplay } from "@/lib/translate/chunk-text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { READING_CONTENT_TOP_MOBILE_REM } from "@/lib/reading/reading-layout"
@@ -195,6 +197,8 @@ export function ArticleContent({
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
   const [menuOnlyChunkId, setMenuOnlyChunkId] = useState<number | null>(null)
+  /** What the details sheet's Save button stores for the word being looked at. */
+  const [detailsSaveDraft, setDetailsSaveDraft] = useState<SavedWordDraft | null>(null)
   const chunkDetails = useChunkDetails()
   const { sidebarInsetPx } = useLandingShellNewChat()
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
@@ -660,6 +664,13 @@ export function ArticleContent({
                     commitExploringChunkId(null)
                     setPinnedChunkId(null)
                     setMenuOnlyChunkId(id)
+                    setDetailsSaveDraft({
+                      word: chunkTextForWordDisplay(item.chunk),
+                      meaning: item.meaning,
+                      literal: item.literal,
+                      sentence: sentenceAround(pageText, item.chunk),
+                      sourceTitle: bookTitle,
+                    })
                     chunkDetails.fetchDetails(item.chunk, pageText)
                   }}
                   onDoubleClickMenuOnly={() => {
@@ -849,6 +860,7 @@ export function ArticleContent({
         error={chunkDetails.error}
         onClose={handleDetailsClose}
         sidebarInsetPx={sidebarInsetPx}
+        saveDraft={chunkDetails.activeChunk ? detailsSaveDraft : null}
       />
     </div>
     {showTranslationErrorModal && (

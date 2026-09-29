@@ -19,6 +19,8 @@ import {
 } from "@/hooks/use-chunk-touch-exploration"
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { sentenceAround, type SavedWordDraft } from "@/lib/saved-words"
+import { chunkTextForWordDisplay } from "@/lib/translate/chunk-text"
 import { DetailsBoxLazy } from "@/components/reading/details-box-lazy"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
@@ -112,6 +114,8 @@ export function ReadMode({
   const [exploringChunkId, setExploringChunkId] = useState<number | null>(null)
   const [pinnedChunkId, setPinnedChunkId] = useState<number | null>(null)
   const [menuOnlyChunkId, setMenuOnlyChunkId] = useState<number | null>(null)
+  /** What the details sheet's Save button stores for the word being looked at. */
+  const [detailsSaveDraft, setDetailsSaveDraft] = useState<SavedWordDraft | null>(null)
   const chunkDetails = useChunkDetails()
   const { sidebarInsetPx } = useLandingShellNewChat()
   /** Desktop hover: viewport position for tooltip arrow (read mode delegates pointer to parent) */
@@ -579,6 +583,12 @@ export function ReadMode({
                     commitExploringChunkId(null)
                     setPinnedChunkId(null)
                     setMenuOnlyChunkId(chunk.id)
+                    setDetailsSaveDraft({
+                      word: chunkTextForWordDisplay(chunk.text),
+                      meaning: chunk.meaning,
+                      literal: chunk.literal,
+                      sentence: sentenceAround(currentSentenceText, chunk.text),
+                    })
                     chunkDetails.fetchDetails(chunk.text, currentSentenceText)
                   }}
                   onDoubleClickMenuOnly={() => {
@@ -670,6 +680,7 @@ export function ReadMode({
         error={chunkDetails.error}
         onClose={handleDetailsClose}
         sidebarInsetPx={sidebarInsetPx}
+        saveDraft={chunkDetails.activeChunk ? detailsSaveDraft : null}
       />
     </div>
   )

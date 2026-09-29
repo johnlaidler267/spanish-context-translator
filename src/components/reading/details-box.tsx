@@ -12,13 +12,16 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { GiBrain } from "react-icons/gi"
-import { X, BookOpen, Loader2, ChevronRight } from "lucide-react"
+import { X, BookOpen, Bookmark, BookmarkCheck, Loader2, ChevronRight } from "lucide-react"
 import { chunkTextForWordDisplay } from "@/lib/translate/chunk-text"
 import { cn } from "@/lib/utils"
 import { fetchMemoryTrickViaEdge } from "@/lib/groq-edge"
 import { getStoredLanguageLearningPreferences } from "@/lib/storage/language-learning-preferences"
 import { type DetailState } from "@/hooks/use-chunk-details"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { useSavedWords } from "@/hooks/use-saved-words"
+import { useAuth } from "@/contexts/auth-context"
+import type { SavedWordDraft } from "@/lib/saved-words"
 
 /** Deceleration — quick start, soft settle (supplementary UI, not a drawer). */
 const EASE_OUT_DECEL: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -44,6 +47,8 @@ export interface DetailsBoxProps {
   className?:  string
   /** Desktop sidebar rail width (px), so the sheet centers in the remaining content area. */
   sidebarInsetPx?: number
+  /** Gloss + sentence for the word being looked at; enables the Save button. */
+  saveDraft?: SavedWordDraft | null
 }
 
 export function DetailsBox({
@@ -54,6 +59,7 @@ export function DetailsBox({
   onClose,
   className,
   sidebarInsetPx = 0,
+  saveDraft = null,
 }: DetailsBoxProps) {
   const open = Boolean(activeChunk?.trim())
   const headerWord =
@@ -197,6 +203,7 @@ export function DetailsBox({
               >
                 {headerWord}
               </span>
+              {saveDraft && <SaveWordButton draft={saveDraft} />}
               <button
                 type="button"
                 onClick={onClose}
@@ -281,6 +288,46 @@ function DetailContent({ detail }: { detail: DetailState }) {
     <p className="text-sm font-sans text-foreground/85 leading-relaxed">
       {detail.text}
     </p>
+  )
+}
+
+/** Save / unsave the word to the reader's Words list; signed-out readers are offered sign-in. */
+function SaveWordButton({ draft }: { draft: SavedWordDraft }) {
+  const { openAuthModal } = useAuth()
+  const { canSave, findSaved, save, remove } = useSavedWords()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const saved = findSaved(draft.word)
+
+  const onClick = async () => {
+    if (!canSave) {
+      openAuthModal()
+      return
+    }
+    setBusy(true)
+    setError(null)
+    const result = saved ? await remove(saved.id) : await save(draft)
+    setBusy(false)
+    setError(result.error)
+  }
+
+  const label = saved ? "Remove from saved words" : "Save word"
+  return (
+    <button
+      type="button"
+      onClick={() => void onClick()}
+      disabled={busy}
+      aria-label={label}
+      aria-pressed={Boolean(saved)}
+      title={error ?? label}
+      className={cn(
+        "shrink-0 rounded-full p-1.5 transition-colors hover:bg-secondary disabled:opacity-60",
+        saved ? "text-reading-warm" : "text-muted-foreground hover:text-foreground",
+        error && "text-destructive",
+      )}
+    >
+      {saved ? <BookmarkCheck className="h-4 w-4 block" /> : <Bookmark className="h-4 w-4 block" />}
+    </button>
   )
 }
 

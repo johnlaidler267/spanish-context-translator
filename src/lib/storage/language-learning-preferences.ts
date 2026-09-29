@@ -137,3 +137,9 @@ export const LIBRARY_EYEBROW: Record<LearningLanguage, string> = {
   french: "Ta bibliothèque",
   english: "Your library",
 }
+
+export const WORDS_EYEBROW: Record<LearningLanguage, string> = {
+  spanish: "Tus palabras",
+  french: "Tes mots",
+  english: "Your words",
+}

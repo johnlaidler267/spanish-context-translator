@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { Compass, Home, Library } from "lucide-react"
+import { Bookmark, Compass, Home, Library } from "lucide-react"
 import { BsTranslate } from "react-icons/bs"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { to: "/", label: "Home", Icon: Home },
   { to: "/discover", label: "Discover", Icon: Compass },
   { to: "/library", label: "My Library", Icon: Library },
+  { to: "/words", label: "Words", Icon: Bookmark },
 ] as const
 
 export type LandingSidebarLayout = {
@@ -87,12 +88,14 @@ export function LandingSidebar({
   /** Home composer puts submit bottom-right; same corner as this FAB — hide FAB there only. */
   const discoverActive = pathname === "/discover"
   const libraryActive = pathname === "/library"
-  const showMobileNewChatFab = !isMdUp && pathname !== "/" && !discoverActive && !libraryActive
+  const wordsActive = pathname === "/words"
+  const showMobileNewChatFab =
+    !isMdUp && pathname !== "/" && !discoverActive && !libraryActive && !wordsActive
 
-  const navActiveIndex = homeActive ? 0 : discoverActive ? 1 : libraryActive ? 2 : -1
+  const navActiveIndex = homeActive ? 0 : discoverActive ? 1 : libraryActive ? 2 : wordsActive ? 3 : -1
 
   const navWrapRef = useRef<HTMLDivElement>(null)
-  const navItemRefs = useRef<(HTMLAnchorElement | null)[]>([null, null, null])
+  const navItemRefs = useRef<(HTMLAnchorElement | null)[]>([null, null, null, null])
   const previousPathnameRef = useRef(pathname)
   const [navIndicator, setNavIndicator] = useState({ top: 0, height: 0, opacity: 0 })
 

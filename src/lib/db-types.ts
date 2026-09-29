@@ -1,6 +1,6 @@
 /**
  * TypeScript types mirroring the Supabase database schema.
- * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql, 0024_reading_progress_recap.sql, 0026_shared_translation_cache.sql).
+ * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql, 0024_reading_progress_recap.sql, 0026_shared_translation_cache.sql, 0027_saved_words.sql).
  *
  * Usage with the Supabase client:
  *   import { createClient } from '@supabase/supabase-js'
@@ -302,6 +302,23 @@ export type DiscoverItemUpdate     = Partial<Omit<DiscoverItemInsert, "id">>
 export type ReadingProgressUpdate  = Partial<Omit<ReadingProgressInsert, "id">>
 export type UserEpubUpdate         = Partial<Omit<UserEpubInsert, "id">>
 
+/** Row from `public.saved_words` (supabase/migrations/0027_saved_words.sql). */
+export type SavedWordRow = {
+  id: string
+  user_id: string
+  language: string
+  word: string
+  meaning: string | null
+  literal: string | null
+  sentence: string | null
+  source_title: string | null
+  created_at: string
+}
+
+export type SavedWordInsert = Omit<SavedWordRow, "id" | "user_id" | "created_at"> & {
+  user_id?: string
+}
+
 // ─── Supabase Database shape (pass to createClient<Database>) ─────────────────
 
 export interface Database {
@@ -353,6 +370,12 @@ export interface Database {
         Row:    TranslationCacheRow
         Insert: Omit<TranslationCacheRow, "id" | "created_at" | "updated_at">
         Update: Partial<Omit<TranslationCacheRow, "id" | "created_at" | "updated_at">>
+        Relationships: []
+      }
+      saved_words: {
+        Row:    SavedWordRow
+        Insert: SavedWordInsert
+        Update: Partial<SavedWordInsert>
         Relationships: []
       }
       beta_pro_grants: {
