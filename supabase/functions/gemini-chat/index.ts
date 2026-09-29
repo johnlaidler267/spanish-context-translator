@@ -10,6 +10,7 @@ import { corsHeaders, serveWithCors } from "../_shared/cors.ts"
 /** Allowlist — keep in sync with `translate.ts` Gemini model env defaults. */
 const ALLOWED_MODELS = new Set([
   "gemini-3-flash",
+  "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash-001",
   "gemini-1.5-flash",
@@ -127,6 +128,13 @@ serveWithCors(async (req: Request) => {
   const generationConfig: Record<string, unknown> = {
     maxOutputTokens: maxOut,
     ...(typeof body.temperature === "number" ? { temperature: body.temperature } : {}),
+  }
+  // 2.5 Flash "thinks" before answering by default. Page translation is a structured
+  // rewrite, not a reasoning task: thinking only adds seconds per page and extra billed output
+  // tokens, and its tokens count against maxOutputTokens -- enough to cut a long page's chunk
+  // list off mid-way. Flash-Lite already defaults to no thinking.
+  if (body.model === "gemini-2.5-flash") {
+    generationConfig.thinkingConfig = { thinkingBudget: 0 }
   }
   if (body.gemini_response_schema === "chunk_rows") {
     generationConfig.responseMimeType = "application/json"
