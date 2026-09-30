@@ -170,6 +170,38 @@ function cacheValueToDetail(cached: string): DetailState {
   return salvageLlmJsonBlob(parseChunkDetailJson(cached))
 }
 
+// ─── Errors ───────────────────────────────────────────────────────────────────
+
+/** A non-OK response from the chunk-details function (status kept for the user-facing message). */
+export class DetailsRequestError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
+/**
+ * What the details sheet says when a lookup fails. Every failure used to read "Check your
+ * connection", which hid rate limits, expired sessions and server errors behind a network hint.
+ */
+export function detailsErrorMessage(err: unknown): string {
+  if (err instanceof DetailsRequestError) {
+    const msg = err.message.toLowerCase()
+    if (err.status === 429 || msg.includes("429") || msg.includes("rate limit")) {
+      return "Too many lookups right now. Wait a moment and tap the word again."
+    }
+    if (err.status === 401) return "Your session expired. Refresh the page and try again."
+    return `Couldn't load details (${err.message}). Try again in a moment.`
+  }
+  if (err instanceof TypeError) {
+    // fetch() itself rejected: offline, DNS, or the server refused the browser's origin (CORS).
+    return "Couldn't reach the details service. Check your connection and try again."
+  }
+  const msg = err instanceof Error && err.message ? err.message : "unknown error"
+  return `Couldn't load details (${msg}).`
+}
+
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
 const llmCache = new Map<string, string>()
@@ -189,7 +221,7 @@ async function fetchDetailsFromEdge(
     } catch {
       /* ignore */
     }
-    throw new Error(msg)
+    throw new DetailsRequestError(msg, res.status)
   }
   const data = (await res.json()) as Record<string, unknown>
   if (data.kind === "verb" || data.kind === "other") {
@@ -239,7 +271,7 @@ export function useChunkDetails(): ChunkDetailsState {
       .catch(err => {
         if (requestIdRef.current !== reqId) return
         console.error("[useChunkDetails]", err)
-        setError("Could not load details. Check your connection.")
+        setError(detailsErrorMessage(err))
         setLoading(false)
       })
   }, [])

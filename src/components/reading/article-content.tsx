@@ -674,7 +674,10 @@ export function ArticleContent({
                       sentence: sentenceAround(pageText, item.chunk),
                       sourceTitle: bookTitle,
                     })
-                    chunkDetails.fetchDetails(item.chunk, pageText)
+                    // Just the sentence around the word, not the whole page: a page is thousands of
+                    // characters per tap, which ate into the details model's per-minute token limit
+                    // (lookups then failed) and diluted the explanation.
+                    chunkDetails.fetchDetails(item.chunk, sentenceAround(pageText, item.chunk))
                   }}
                   onDoubleClickMenuOnly={() => {
                     setExploringChunkId(null)
