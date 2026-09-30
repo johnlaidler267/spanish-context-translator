@@ -174,10 +174,10 @@ export default function WordsPracticePage() {
 
   return (
     <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
-      <main className="animate-fade-in-up mx-auto w-full max-w-2xl px-4 pb-16 pt-6 sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
+      <main className="animate-fade-in-up mx-auto w-full max-w-2xl px-4 pb-16 pt-3 sm:px-6 sm:pt-6 md:pt-10 lg:px-8 lg:pt-12">
         <Link
           to="/words"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="mb-3 inline-flex items-center gap-1.5 sm:mb-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden /> Words
         </Link>
@@ -218,8 +218,6 @@ function PracticeCard({
   const [hinted, setHinted] = useState(false)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const cardRef = useRef<HTMLDivElement>(null)
-  useKeepCardAboveKeyboard(cardRef, inputRef)
   const continueRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -245,15 +243,15 @@ function PracticeCard({
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="mb-2 flex items-center justify-between text-xs sm:mb-3 text-muted-foreground">
         <span>{progress}</span>
         {card.retry && <span>You missed this one earlier</span>}
       </div>
-      <div className="mb-6 h-1 w-full overflow-hidden rounded-full bg-secondary">
+      <div className="mb-4 h-1 w-full sm:mb-6 overflow-hidden rounded-full bg-secondary">
         <div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${progressValue * 100}%` }} />
       </div>
 
-      <div ref={cardRef} className="rounded-xl border border-border bg-card p-4 sm:p-7">
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-7">
         {cloze ? (
           <p className="font-serif text-lg leading-relaxed text-foreground sm:text-2xl" data-testid="practice-sentence">
             {cloze.before}
@@ -362,56 +360,6 @@ function PracticeCard({
       </form>
     </div>
   )
-}
-
-/**
- * When the on-screen keyboard opens for the answer box, iOS Safari scrolls just far enough to
- * show the box, which pushes the sentence above it off the top of the screen. Once the keyboard
- * has settled (visualViewport resize), scroll so the card starts at the top of what's visible
- * instead -- as long as the answer box still fits below it; otherwise keep the box in view.
- */
-function useKeepCardAboveKeyboard(
-  cardRef: React.RefObject<HTMLElement | null>,
-  inputRef: React.RefObject<HTMLElement | null>,
-) {
-  useEffect(() => {
-    const vv = window.visualViewport
-    const input = inputRef.current
-    if (!vv || !input || !window.matchMedia("(max-width: 767px)").matches) return
-    const GAP = 8
-
-    const align = () => {
-      const card = cardRef.current
-      if (!card || document.activeElement !== input) return
-      // Positions relative to the visible area (the visual viewport), converted to page scroll.
-      const cardTop = card.getBoundingClientRect().top - vv.offsetTop
-      const inputBottom = input.getBoundingClientRect().bottom - vv.offsetTop
-      // The app's top bar stays pinned while scrolling; start the card below it, not under it.
-      const topBar = Math.max(
-        0,
-        ...Array.from(document.querySelectorAll("header"))
-          .filter((h) => /^(sticky|fixed)$/.test(getComputedStyle(h).position))
-          .map((h) => h.getBoundingClientRect().height),
-      )
-      let delta = cardTop - topBar - GAP
-      if (inputBottom - delta > vv.height - GAP) delta = inputBottom - (vv.height - GAP)
-      if (Math.abs(delta) > 1) window.scrollBy({ top: delta })
-    }
-
-    let timer = 0
-    const schedule = () => {
-      window.clearTimeout(timer)
-      // Let Safari finish its own scroll-into-view (and the keyboard animation) first.
-      timer = window.setTimeout(align, 120)
-    }
-    input.addEventListener("focus", schedule)
-    vv.addEventListener("resize", schedule)
-    return () => {
-      window.clearTimeout(timer)
-      input.removeEventListener("focus", schedule)
-      vv.removeEventListener("resize", schedule)
-    }
-  }, [cardRef, inputRef])
 }
 
 function RoundSummary({
