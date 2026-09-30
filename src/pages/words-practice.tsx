@@ -239,10 +239,44 @@ function PracticeCard({
   }
 
   const right = feedback != null && feedback.match !== "wrong"
-  const blankWidth = `${Math.max(answer.length, 4) + 1}ch`
+
+  // The answer box sits in the blank itself. On phones the keyboard scrolls the focused box
+  // to the middle of what's left of the screen; with the box inside the sentence, the words
+  // around the blank stay in view instead of being pushed off the top.
+  const answerInput = (className: string, style?: React.CSSProperties) => (
+    <input
+      id="practice-answer"
+      ref={inputRef}
+      aria-label="Your answer"
+      value={typed}
+      onChange={(e) => setTyped(e.target.value)}
+      placeholder={hinted ? answer[0] : undefined}
+      autoComplete="off"
+      autoCapitalize="off"
+      autoCorrect="off"
+      spellCheck={false}
+      enterKeyHint="done"
+      lang={lang}
+      className={cn(
+        "border-0 border-b-2 border-foreground/40 bg-transparent px-1 text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none",
+        className,
+      )}
+      style={style}
+    />
+  )
+  const revealed = (
+    <span
+      className={cn(
+        "rounded px-1 font-semibold",
+        right ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-700 dark:text-red-300",
+      )}
+    >
+      {answer}
+    </span>
+  )
 
   return (
-    <div>
+    <form onSubmit={submit}>
       <div className="mb-2 flex items-center justify-between text-xs sm:mb-3 text-muted-foreground">
         <span>{progress}</span>
         {card.retry && <span>You missed this one earlier</span>}
@@ -252,113 +286,84 @@ function PracticeCard({
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4 sm:p-7">
+        {word.meaning && (
+          <p className="mb-3 text-sm text-foreground/90">
+            <span className="text-muted-foreground">{cloze ? "Missing word: " : `The ${languageLabel} for `}</span>
+            <span data-testid="practice-meaning">&ldquo;{word.meaning}&rdquo;</span>
+          </p>
+        )}
         {cloze ? (
           <p className="font-serif text-lg leading-relaxed text-foreground sm:text-2xl" data-testid="practice-sentence">
             {cloze.before}
-            {feedback ? (
-              <span
-                className={cn(
-                  "rounded px-1 font-semibold",
-                  right ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-700 dark:text-red-300",
-                )}
-              >
-                {cloze.answer}
-              </span>
-            ) : (
-              <span
-                aria-label="blank"
-                className="inline-block border-b-2 border-foreground/40 align-baseline"
-                style={{ width: blankWidth }}
-              >
-                {hinted && <span className="text-muted-foreground">{answer[0]}</span>}
-                &nbsp;
-              </span>
-            )}
+            {feedback
+              ? revealed
+              : answerInput("inline-block max-w-full text-center font-serif leading-tight", {
+                  width: `${Math.max(answer.length, 4) + 2}ch`,
+                  fontSize: "inherit",
+                })}
             {cloze.after}
           </p>
         ) : (
           <p className="font-serif text-lg text-foreground sm:text-2xl">
-            {feedback ? answer : `The ${languageLabel} for…`}
-          </p>
-        )}
-
-        {word.meaning && (
-          <p className="mt-4 text-sm text-foreground/90">
-            <span className="text-muted-foreground">{cloze ? "The missing word means " : ""}</span>
-            <span data-testid="practice-meaning">&ldquo;{word.meaning}&rdquo;</span>
+            {feedback ? revealed : answerInput("block w-full font-serif", { fontSize: "inherit" })}
           </p>
         )}
         {word.source_title && (
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-3 text-xs text-muted-foreground">
             From <span className="italic">{word.source_title}</span>
           </p>
         )}
       </div>
 
-      <form onSubmit={submit} className="mt-5">
-        <label htmlFor="practice-answer" className="sr-only">
-          Your answer
-        </label>
-        <input
-          id="practice-answer"
-          ref={inputRef}
-          value={typed}
-          onChange={(e) => setTyped(e.target.value)}
-          disabled={feedback != null}
-          placeholder={hinted ? `Starts with “${answer[0]}”` : `Type the missing ${languageLabel} word`}
-          autoComplete="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          lang={lang}
-          className="h-12 w-full rounded-lg border border-border bg-background px-4 text-lg text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-80"
-        />
-
-        {feedback ? (
-          <div className="mt-4">
-            <p
-              role="status"
-              className={cn(
-                "flex items-start gap-2 text-sm",
-                right ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300",
-              )}
-            >
-              {right ? <Check className="mt-0.5 h-4 w-4 shrink-0" /> : <X className="mt-0.5 h-4 w-4 shrink-0" />}
-              <span>
-                {feedback.match === "exact" && "Correct!"}
-                {feedback.match === "accent" && <>Right — watch the accents: <strong>{feedback.answer}</strong></>}
-                {feedback.match === "typo" && <>Almost — it&apos;s spelled <strong>{feedback.answer}</strong></>}
-                {feedback.match === "wrong" && <>The answer was <strong>{feedback.answer}</strong>. It&apos;ll come back at the end of the round.</>}
-              </span>
-            </p>
-            <Button ref={continueRef} type="button" className="mt-4 w-full sm:w-auto" onClick={() => onContinue(feedback.outcome)}>
-              Continue
-            </Button>
-          </div>
-        ) : (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button type="submit" disabled={!typed.trim()}>
-              Check
-            </Button>
-            {!hinted && answer.length > 1 && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setHinted(true)
-                  inputRef.current?.focus()
-                }}
-              >
-                <Lightbulb className="mr-1.5 h-4 w-4" aria-hidden /> Hint
-              </Button>
+      {feedback ? (
+        <div className="mt-4">
+          <p
+            role="status"
+            className={cn(
+              "flex items-start gap-2 text-sm",
+              right ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300",
             )}
-            <Button type="button" variant="ghost" className="ml-auto text-muted-foreground" onClick={() => finish("wrong")}>
-              Show answer
+          >
+            {right ? <Check className="mt-0.5 h-4 w-4 shrink-0" /> : <X className="mt-0.5 h-4 w-4 shrink-0" />}
+            <span>
+              {feedback.match === "exact" && "Correct!"}
+              {feedback.match === "accent" && <>Right — watch the accents: <strong>{feedback.answer}</strong></>}
+              {feedback.match === "typo" && <>Almost — it&apos;s spelled <strong>{feedback.answer}</strong></>}
+              {feedback.match === "wrong" && (
+                <>
+                  {typed.trim() && <>You wrote &ldquo;{typed.trim()}&rdquo;. </>}
+                  The answer was <strong>{feedback.answer}</strong>. It&apos;ll come back at the end of the round.
+                </>
+              )}
+            </span>
+          </p>
+          <Button ref={continueRef} type="button" className="mt-4 w-full sm:w-auto" onClick={() => onContinue(feedback.outcome)}>
+            Continue
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button type="submit" disabled={!typed.trim()}>
+            Check
+          </Button>
+          {!hinted && answer.length > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setHinted(true)
+                inputRef.current?.focus()
+              }}
+            >
+              <Lightbulb className="mr-1.5 h-4 w-4" aria-hidden /> Hint
             </Button>
-          </div>
-        )}
-      </form>
-    </div>
+          )}
+          <Button type="button" variant="ghost" className="ml-auto text-muted-foreground" onClick={() => finish("wrong")}>
+            Show answer
+          </Button>
+        </div>
+      )}
+    </form>
   )
 }
 
