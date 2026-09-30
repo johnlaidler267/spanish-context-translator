@@ -181,7 +181,8 @@ export default function WordsPracticePage() {
         >
           <ArrowLeft className="h-4 w-4" aria-hidden /> Words
         </Link>
-        <header className="discover-masthead !mb-8">
+        {/* Hidden on phones mid-round so the sentence and answer box fit above the keyboard. */}
+        <header className={cn("discover-masthead !mb-8", queue && queue.length > 0 && "max-sm:hidden")}>
           <div className="min-w-0 flex-1">
             <p className="discover-masthead__eyebrow">{WORDS_EYEBROW[language]}</p>
             <h1 className="discover-masthead__title">Practice</h1>
@@ -217,6 +218,8 @@ function PracticeCard({
   const [hinted, setHinted] = useState(false)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  useKeepCardAboveKeyboard(cardRef, inputRef)
   const continueRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -250,9 +253,9 @@ function PracticeCard({
         <div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${progressValue * 100}%` }} />
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5 sm:p-7">
+      <div ref={cardRef} className="rounded-xl border border-border bg-card p-4 sm:p-7">
         {cloze ? (
-          <p className="font-serif text-xl leading-relaxed text-foreground sm:text-2xl" data-testid="practice-sentence">
+          <p className="font-serif text-lg leading-relaxed text-foreground sm:text-2xl" data-testid="practice-sentence">
             {cloze.before}
             {feedback ? (
               <span
@@ -276,7 +279,7 @@ function PracticeCard({
             {cloze.after}
           </p>
         ) : (
-          <p className="font-serif text-xl text-foreground sm:text-2xl">
+          <p className="font-serif text-lg text-foreground sm:text-2xl">
             {feedback ? answer : `The ${languageLabel} for…`}
           </p>
         )}
@@ -359,6 +362,56 @@ function PracticeCard({
       </form>
     </div>
   )
+}
+
+/**
+ * When the on-screen keyboard opens for the answer box, iOS Safari scrolls just far enough to
+ * show the box, which pushes the sentence above it off the top of the screen. Once the keyboard
+ * has settled (visualViewport resize), scroll so the card starts at the top of what's visible
+ * instead -- as long as the answer box still fits below it; otherwise keep the box in view.
+ */
+function useKeepCardAboveKeyboard(
+  cardRef: React.RefObject<HTMLElement | null>,
+  inputRef: React.RefObject<HTMLElement | null>,
+) {
+  useEffect(() => {
+    const vv = window.visualViewport
+    const input = inputRef.current
+    if (!vv || !input || !window.matchMedia("(max-width: 767px)").matches) return
+    const GAP = 8
+
+    const align = () => {
+      const card = cardRef.current
+      if (!card || document.activeElement !== input) return
+      // Positions relative to the visible area (the visual viewport), converted to page scroll.
+      const cardTop = card.getBoundingClientRect().top - vv.offsetTop
+      const inputBottom = input.getBoundingClientRect().bottom - vv.offsetTop
+      // The app's top bar stays pinned while scrolling; start the card below it, not under it.
+      const topBar = Math.max(
+        0,
+        ...Array.from(document.querySelectorAll("header"))
+          .filter((h) => /^(sticky|fixed)$/.test(getComputedStyle(h).position))
+          .map((h) => h.getBoundingClientRect().height),
+      )
+      let delta = cardTop - topBar - GAP
+      if (inputBottom - delta > vv.height - GAP) delta = inputBottom - (vv.height - GAP)
+      if (Math.abs(delta) > 1) window.scrollBy({ top: delta })
+    }
+
+    let timer = 0
+    const schedule = () => {
+      window.clearTimeout(timer)
+      // Let Safari finish its own scroll-into-view (and the keyboard animation) first.
+      timer = window.setTimeout(align, 120)
+    }
+    input.addEventListener("focus", schedule)
+    vv.addEventListener("resize", schedule)
+    return () => {
+      window.clearTimeout(timer)
+      input.removeEventListener("focus", schedule)
+      vv.removeEventListener("resize", schedule)
+    }
+  }, [cardRef, inputRef])
 }
 
 function RoundSummary({
