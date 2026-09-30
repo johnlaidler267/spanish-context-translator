@@ -32,6 +32,8 @@ interface TextChunkProps {
   isTouchHighlight: boolean
   /** Triple-tap (touch) / double-click pin — terracotta highlight + tooltip stays after lift */
   isPinned: boolean
+  /** In the reader's saved words — a resting dotted underline so it stands out in the text. */
+  isSaved?: boolean
   onActivate: () => void
   onDeactivate: () => void
   /** Pin / unpin on triple-tap (touch) or double-click (desktop) */
@@ -258,6 +260,7 @@ export function TextChunk({
   popupChunkId,
   isTouchHighlight,
   isPinned,
+  isSaved = false,
   onActivate,
   onDeactivate,
   onPinToggle,
@@ -810,8 +813,11 @@ export function TextChunk({
               ? "decoration-[#c97a5a]/75"
               : isTouchHighlight
                 ? "decoration-[#c97a5a]/60"
-                : "decoration-transparent",
+                : isSaved
+                  ? "decoration-dotted decoration-[#c97a5a]/90"
+                  : "decoration-transparent",
           )}
+          data-saved-word={isSaved || undefined}
         >
           {underlineText}
         </span>

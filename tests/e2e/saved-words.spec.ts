@@ -10,8 +10,8 @@ import { setupMocks } from "../e2e-mocks/supabase-mock"
 type Row = Record<string, unknown>
 
 /** A tiny in-memory `saved_words` table: list, upsert (returns the row), delete by id. */
-async function mockSavedWordsTable(page: Page) {
-  const rows: Row[] = []
+async function mockSavedWordsTable(page: Page, initial: Row[] = []) {
+  const rows: Row[] = [...initial]
   await page.route("**/rest/v1/saved_words**", async (route) => {
     const req = route.request()
     const method = req.method()
@@ -57,6 +57,8 @@ test("save a word while reading, find it on the Words page, and remove it", asyn
   await page.locator("[data-chunk]").first().click()
   await page.getByRole("button", { name: "Save word" }).click()
   await expect(page.getByRole("button", { name: "Remove from saved words" })).toHaveAttribute("aria-pressed", "true")
+  // ...and the word is marked in the text straight away.
+  await expect(page.locator("[data-chunk]").first().locator("[data-saved-word]")).toHaveCount(1)
   expect(rows).toHaveLength(1)
   expect(rows[0]).toMatchObject({ language: "spanish", meaning: "Hello.", sentence: "Hola." })
 
@@ -78,4 +80,31 @@ test("signed-out visitors are asked to sign in on the Words page", async ({ page
   await setupMocks(page, { signedIn: false })
   await page.goto("/words")
   await expect(page.getByText("Sign in to save words while you read")).toBeVisible({ timeout: 20_000 })
+})
+
+test("words saved earlier are marked in the text when you read", async ({ page }) => {
+  await setupMocks(page, {
+    groqChatContent: JSON.stringify([
+      { c: "Hola.", m: "Hello." },
+      { c: "Adiós.", m: "Goodbye." },
+    ]),
+  })
+  await mockSavedWordsTable(page, [
+    {
+      id: "word-1",
+      user_id: "00000000-0000-4000-8000-000000000001",
+      language: "spanish",
+      word: "adiós",
+      meaning: "Goodbye.",
+      created_at: "2026-01-01T00:00:00.000Z",
+    },
+  ])
+
+  await page.goto("/")
+  await page.locator("textarea").fill("Hola. Adiós.")
+  await page.getByRole("button", { name: "Start reading" }).click()
+
+  const chunks = page.locator("[data-chunk]")
+  await expect(chunks.nth(1).locator("[data-saved-word]")).toHaveCount(1, { timeout: 20_000 })
+  await expect(chunks.nth(0).locator("[data-saved-word]")).toHaveCount(0)
 })

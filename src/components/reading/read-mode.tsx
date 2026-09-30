@@ -20,6 +20,7 @@ import {
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { sentenceAround, type SavedWordDraft } from "@/lib/saved-words"
+import { useSavedWords } from "@/hooks/use-saved-words"
 import { chunkTextForWordDisplay } from "@/lib/translate/chunk-text"
 import { DetailsBoxLazy } from "@/components/reading/details-box-lazy"
 import { useChunkDetails } from "@/hooks/use-chunk-details"
@@ -116,6 +117,7 @@ export function ReadMode({
   const [menuOnlyChunkId, setMenuOnlyChunkId] = useState<number | null>(null)
   /** What the details sheet's Save button stores for the word being looked at. */
   const [detailsSaveDraft, setDetailsSaveDraft] = useState<SavedWordDraft | null>(null)
+  const { isSaved: isWordSaved } = useSavedWords()
   const chunkDetails = useChunkDetails()
   const { sidebarInsetPx } = useLandingShellNewChat()
   /** Desktop hover: viewport position for tooltip arrow (read mode delegates pointer to parent) */
@@ -572,6 +574,7 @@ export function ReadMode({
                     (chunkDetails.activeChunk != null && chunkDetails.activeChunk === chunk.text)
                   }
                   isPinned={pinnedChunkId === chunk.id}
+                  isSaved={isWordSaved(chunkTextForWordDisplay(chunk.text))}
                   onActivate={() => commitExploringChunkId(chunk.id)}
                   onDeactivate={() => {
                     if (pinnedChunkId !== chunk.id) commitExploringChunkId(null)

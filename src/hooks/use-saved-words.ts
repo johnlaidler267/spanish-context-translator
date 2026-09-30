@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
 import {
@@ -22,10 +22,8 @@ export function useSavedWords() {
     void loadSavedWords(user, learning)
   }, [user, learning])
 
-  const isSaved = useCallback(
-    (word: string) => state.words.some((w) => savedWordKey(w.word) === savedWordKey(word)),
-    [state.words],
-  )
+  const savedKeys = useMemo(() => new Set(state.words.map((w) => savedWordKey(w.word))), [state.words])
+  const isSaved = useCallback((word: string) => savedKeys.has(savedWordKey(word)), [savedKeys])
   const findSaved = useCallback(
     (word: string) => state.words.find((w) => savedWordKey(w.word) === savedWordKey(word)) ?? null,
     [state.words],

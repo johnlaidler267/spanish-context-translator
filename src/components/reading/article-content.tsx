@@ -29,6 +29,7 @@ import {
 import { useExplorationDoubleTapLiftSuppress } from "@/hooks/use-exploration-double-tap-suppress"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { sentenceAround, type SavedWordDraft } from "@/lib/saved-words"
+import { useSavedWords } from "@/hooks/use-saved-words"
 import { chunkTextForWordDisplay } from "@/lib/translate/chunk-text"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -199,6 +200,7 @@ export function ArticleContent({
   const [menuOnlyChunkId, setMenuOnlyChunkId] = useState<number | null>(null)
   /** What the details sheet's Save button stores for the word being looked at. */
   const [detailsSaveDraft, setDetailsSaveDraft] = useState<SavedWordDraft | null>(null)
+  const { isSaved: isWordSaved } = useSavedWords()
   const chunkDetails = useChunkDetails()
   const { sidebarInsetPx } = useLandingShellNewChat()
   const [tooltipPointer, setTooltipPointer] = useState<{ x: number; y: number } | null>(null)
@@ -650,6 +652,7 @@ export function ArticleContent({
                     (chunkDetails.activeChunk != null && chunkDetails.activeChunk === item.chunk)
                   }
                   isPinned={pinnedChunkId === id}
+                  isSaved={isWordSaved(chunkTextForWordDisplay(item.chunk))}
                   onActivate={() => commitExploringChunkId(id)}
                   onDeactivate={() => {
                     if (pinnedChunkId !== id) scheduleExploringLeave()
