@@ -1,8 +1,8 @@
 "use client"
 
 import { useLayoutEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Bookmark, Loader2, X } from "lucide-react"
+import { Link, useNavigate } from "react-router-dom"
+import { Bookmark, Brain, Loader2, X } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -100,6 +100,14 @@ export default function WordsPage() {
               {languageLabel} words and phrases you&apos;ve saved while reading, with the sentence you found them in.
             </p>
           </div>
+          {canSave && words.length > 0 && (
+            <Link
+              to="/words/practice"
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Brain className="h-4 w-4" aria-hidden /> Practice
+            </Link>
+          )}
         </header>
         {removeError && <p className="mb-3 text-sm text-destructive">{removeError}</p>}
         {body}

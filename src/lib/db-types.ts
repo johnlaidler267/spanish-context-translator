@@ -1,6 +1,6 @@
 /**
  * TypeScript types mirroring the Supabase database schema.
- * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql, 0024_reading_progress_recap.sql, 0026_shared_translation_cache.sql, 0027_saved_words.sql).
+ * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql, 0024_reading_progress_recap.sql, 0026_shared_translation_cache.sql, 0027_saved_words.sql, 0028_saved_words_practice.sql).
  *
  * Usage with the Supabase client:
  *   import { createClient } from '@supabase/supabase-js'
@@ -315,9 +315,19 @@ export type SavedWordRow = {
   created_at: string
 }
 
+/** Spaced-repetition columns on `public.saved_words` (0028_saved_words_practice.sql); see src/lib/practice.ts. */
+export type SavedWordReviewRow = {
+  id: string
+  review_stage: number
+  due_at: string | null
+  last_reviewed_at: string | null
+  review_count: number
+  lapse_count: number
+}
+
 export type SavedWordInsert = Omit<SavedWordRow, "id" | "user_id" | "created_at"> & {
   user_id?: string
-}
+} & Partial<Omit<SavedWordReviewRow, "id">>
 
 // ─── Supabase Database shape (pass to createClient<Database>) ─────────────────
 
@@ -373,7 +383,7 @@ export interface Database {
         Relationships: []
       }
       saved_words: {
-        Row:    SavedWordRow
+        Row:    SavedWordRow & Omit<SavedWordReviewRow, "id">
         Insert: SavedWordInsert
         Update: Partial<SavedWordInsert>
         Relationships: []

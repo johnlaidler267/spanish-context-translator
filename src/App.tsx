@@ -11,6 +11,7 @@ const SettingsPage = lazyRoute(() => import("@/pages/settings"))
 const DiscoverPage = lazyRoute(() => import("@/pages/discover"))
 const LibraryPage = lazyRoute(() => import("@/pages/library"))
 const WordsPage = lazyRoute(() => import("@/pages/words"))
+const WordsPracticePage = lazyRoute(() => import("@/pages/words-practice"))
 const UpgradePage = lazyRoute(() => import("@/pages/upgrade"))
 const TermsPage = lazyRoute(() => import("@/pages/terms"))
 const PrivacyPage = lazyRoute(() => import("@/pages/privacy"))
@@ -1924,6 +1925,7 @@ export default function App() {
               }
             />
             <Route path="words" element={<WordsPage />} />
+            <Route path="words/practice" element={<WordsPracticePage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
