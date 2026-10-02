@@ -200,7 +200,7 @@ export default function WordsPracticePage() {
       <main className="animate-fade-in-up mx-auto w-full max-w-2xl px-4 pb-16 pt-3 sm:px-6 sm:pt-6 md:pt-10 lg:px-8 lg:pt-12">
         <Link
           to="/words"
-          className="mb-3 inline-flex items-center gap-1.5 sm:mb-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="mb-3 inline-flex items-center gap-1.5 sm:mb-8 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden /> Words
         </Link>
