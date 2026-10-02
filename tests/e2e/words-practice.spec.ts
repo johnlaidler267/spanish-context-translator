@@ -52,7 +52,7 @@ test("practice a round: blanks in context, missed words come back, then start a 
   const updates = await mockSavedWords(page)
 
   await page.goto("/words")
-  await page.getByRole("link", { name: "Practice" }).click()
+  await page.getByRole("link", { name: "Practice", exact: true }).click()
   await expect(page).toHaveURL(/\/words\/practice$/)
   await expect(page.getByText("1 of 3")).toBeVisible({ timeout: 20_000 })
   await page.screenshot({ path: "test-results/practice-card.png" })
@@ -178,4 +178,31 @@ test("a wrong answer can be marked right, explained, and the round ends with con
   const saved = updates.filter((u) => u.id === firstId)
   expect(saved).toHaveLength(2)
   expect(saved[1].review_stage).toBe(1)
+})
+
+test("the Words page groups words by source, and Practice these practices only that source", async ({ page }) => {
+  await setupMocks(page)
+  await mockSavedWords(page)
+
+  await page.goto("/words")
+  const book = page.getByRole("region", { name: "Cuentos de la selva" })
+  await expect(book.getByText("2 words")).toBeVisible({ timeout: 20_000 })
+  await expect(book.getByRole("button", { name: "Remove zorro" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "Other" }).getByRole("button", { name: "Remove Adiós." })).toBeVisible()
+
+  // Search narrows the groups, too.
+  await page.getByLabel("Search saved words").fill("adios")
+  await expect(page.getByRole("region", { name: "Cuentos de la selva" })).toHaveCount(0)
+  await expect(page.getByRole("region", { name: "Other" })).toBeVisible()
+  await page.getByLabel("Search saved words").fill("")
+
+  // Any other sort is one flat list.
+  await page.getByLabel("Sort words").selectOption("alpha")
+  await expect(page.getByRole("region")).toHaveCount(0)
+  await page.getByLabel("Sort words").selectOption("source")
+
+  await book.getByRole("link", { name: "Practice these" }).click()
+  await expect(page).toHaveURL(/\/words\/practice\?source=Cuentos/)
+  await expect(page.getByText("Words from Cuentos de la selva")).toBeVisible()
+  await expect(page.getByText("1 of 2")).toBeVisible({ timeout: 20_000 })
 })

@@ -37,9 +37,11 @@ export function withStatus(words: SavedWord[], reviews: Map<string, ReviewState>
 }
 
 export type StatusFilter = "all" | WordStatus
-export type WordSort = "newest" | "alpha" | "missed"
+export type WordSort = "source" | "newest" | "alpha" | "missed"
 
+/** "source" lists newest first, grouped under each book/article by `groupBySource`. */
 export const SORT_LABEL: Record<WordSort, string> = {
+  source: "By source",
   newest: "Newest",
   alpha: "A–Z",
   missed: "Most missed",
@@ -75,4 +77,28 @@ export function countByStatus(words: ListedWord[]): Record<WordStatus, number> {
   }
   for (const w of words) counts[w.status]++
   return counts
+}
+
+export type WordGroup<W extends SavedWord> = {
+  /** The saved `source_title`, or null for words saved without one (shown as "Other"). */
+  source: string | null
+  words: W[]
+}
+
+/**
+ * Words split by the book/article they were saved from, keeping their order inside each group.
+ * The source saved to most recently comes first; words with no source go last.
+ */
+export function groupBySource<W extends SavedWord>(words: W[]): WordGroup<W>[] {
+  const groups = new Map<string | null, W[]>()
+  for (const w of words) {
+    const source = w.source_title?.trim() || null
+    const list = groups.get(source)
+    if (list) list.push(w)
+    else groups.set(source, [w])
+  }
+  const latest = (list: W[]) => Math.max(...list.map((w) => Date.parse(w.created_at) || 0))
+  return [...groups]
+    .map(([source, list]) => ({ source, words: list }))
+    .sort((a, b) => (a.source == null ? 1 : b.source == null ? -1 : latest(b.words) - latest(a.words)))
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { NEW_REVIEW_STATE, type ReviewState } from "@/lib/practice"
 import type { SavedWord } from "@/lib/saved-words"
-import { countByStatus, filterWords, withStatus, wordStatus } from "@/lib/word-list"
+import { countByStatus, filterWords, groupBySource, withStatus, wordStatus } from "@/lib/word-list"
 
 const now = new Date("2026-10-02T12:00:00Z")
 const review = (patch: Partial<ReviewState>): ReviewState => ({
@@ -90,5 +90,25 @@ describe("filterWords", () => {
       learning: 0,
       learned: 1,
     })
+  })
+})
+
+describe("groupBySource", () => {
+  const words = [
+    saved("1", "por lo que", { source_title: "Maniac", created_at: "2026-09-30T00:00:00Z" }),
+    saved("2", "a raíz de", { source_title: "El País", created_at: "2026-09-20T00:00:00Z" }),
+    saved("3", "adiós", { created_at: "2026-10-01T00:00:00Z" }),
+    saved("4", "el telar", { source_title: "Maniac ", created_at: "2026-09-01T00:00:00Z" }),
+    saved("5", "vislumbrar", { source_title: "  ", created_at: "2026-08-01T00:00:00Z" }),
+  ]
+
+  it("puts the most recently saved-to source first and keeps the given order inside each group", () => {
+    const groups = groupBySource(words)
+    expect(groups.map((g) => g.source)).toEqual(["Maniac", "El País", null])
+    expect(groups[0].words.map((w) => w.id)).toEqual(["1", "4"])
+  })
+
+  it("collects words with no (or a blank) source last, even when they're the newest", () => {
+    expect(groupBySource(words).at(-1)!.words.map((w) => w.id)).toEqual(["3", "5"])
   })
 })

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowLeft, Check, Loader2, Lightbulb, Sparkles, X } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
 import { Button } from "@/components/ui/button"
@@ -54,6 +54,8 @@ export default function WordsPracticePage() {
   const { openAuthModal } = useAuth()
   const { words, loaded, loading, error, canSave, language } = useSavedWords()
   const languageLabel = LEARNING_LANGUAGE_LABEL[language]
+  // "Practice these" on the Words page limits the rounds to one book/article's words.
+  const source = useSearchParams()[0].get("source")
 
   useLayoutEffect(() => {
     document.documentElement.classList.add("mobile-scroll-discover")
@@ -83,11 +85,12 @@ export default function WordsPracticePage() {
     if (!reviews || reviews.language !== language) return []
     return (
       words
+        .filter((w) => source == null || w.source_title?.trim() === source)
         .map((w) => ({ ...w, review: reviews.states.get(w.id) ?? NEW_REVIEW_STATE }))
         // Needs something to cue the answer: the sentence to blank it in, or its meaning.
         .filter((w) => makeCloze(w.sentence, w.word) || w.meaning)
     )
-  }, [words, reviews, language])
+  }, [words, reviews, language, source])
 
   const [queue, setQueue] = useState<Card[] | null>(null)
   const [results, setResults] = useState<Result[]>([])
@@ -209,6 +212,7 @@ export default function WordsPracticePage() {
           <div className="min-w-0 flex-1">
             <p className="discover-masthead__eyebrow">{WORDS_EYEBROW[language]}</p>
             <h1 className="discover-masthead__title">Practice</h1>
+            {source && <p className="discover-masthead__lede">Words from {source}</p>}
           </div>
         </header>
         {body}

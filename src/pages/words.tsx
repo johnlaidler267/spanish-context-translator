@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 import {
   countByStatus,
   filterWords,
+  groupBySource,
   SORT_LABEL,
   STATUS_LABEL,
   withStatus,
@@ -87,7 +88,16 @@ function Sentence({ sentence, word }: { sentence: string; word: string }) {
   )
 }
 
-function WordRow({ word, onRemove }: { word: ListedWord; onRemove: () => void }) {
+function WordRow({
+  word,
+  onRemove,
+  showSource = true,
+}: {
+  word: ListedWord
+  onRemove: () => void
+  /** Off when the row already sits under its book's heading. */
+  showSource?: boolean
+}) {
   return (
     <li className="group flex items-start gap-3 px-4 py-3.5 sm:px-5">
       <div className="min-w-0 flex-1">
@@ -109,7 +119,7 @@ function WordRow({ word, onRemove }: { word: ListedWord; onRemove: () => void })
           >
             {STATUS_LABEL[word.status]}
           </span>
-          {word.source_title && <span className="truncate">{word.source_title}</span>}
+          {showSource && word.source_title && <span className="truncate">{word.source_title}</span>}
         </div>
       </div>
       {/* On devices that can hover, keep the remove button out of the way until the row is hovered or focused. */}
@@ -135,7 +145,7 @@ export default function WordsPage() {
   const [reviews, setReviews] = useState<Map<string, ReviewState>>(new Map())
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState<StatusFilter>("all")
-  const [sort, setSort] = useState<WordSort>("newest")
+  const [sort, setSort] = useState<WordSort>("source")
   const [pending, setPending] = useState<SavedWord | null>(null)
   const pendingRef = useRef<{
     id: string
@@ -297,6 +307,37 @@ export default function WordsPage() {
           <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             No words match.
           </p>
+        ) : sort === "source" ? (
+          <div className="flex flex-col gap-8">
+            {groupBySource(shown).map((g) => (
+              <section key={g.source ?? ""} aria-label={g.source ?? "Other"}>
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+                  <h2 className="min-w-0 font-serif text-xl font-semibold leading-snug text-foreground">
+                    {g.source ?? "Other"}
+                  </h2>
+                  <p className="text-[13px] text-muted-foreground">
+                    {g.words.length} {g.words.length === 1 ? "word" : "words"}
+                    {g.source && (
+                      <>
+                        {" · "}
+                        <Link
+                          to={`/words/practice?source=${encodeURIComponent(g.source)}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          Practice these
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+                  {g.words.map((w) => (
+                    <WordRow key={w.id} word={w} onRemove={() => handleRemove(w)} showSource={false} />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
         ) : (
           <ul className="divide-y divide-border rounded-xl border border-border bg-card">
             {shown.map((w) => (
