@@ -50,7 +50,7 @@ function SentenceWithWord({ sentence, word }: { sentence: string; word: string }
   )
 }
 
-/** The saved sentence, clamped to two lines; tapping a clamped one shows it in full. */
+/** The saved sentence, clamped to one line (two on phones); tapping a clamped one shows it in full. */
 function Sentence({ sentence, word }: { sentence: string; word: string }) {
   // Held in state (not a ref): switching to the tappable version remounts the paragraph, and the
   // measurement has to follow the new element rather than keep watching the detached one.
@@ -68,20 +68,20 @@ function Sentence({ sentence, word }: { sentence: string; word: string }) {
   }, [el, expanded, sentence])
 
   const text = (
-    <p ref={setEl} className={cn("text-sm italic leading-relaxed text-muted-foreground", !expanded && "line-clamp-2")}>
+    <p ref={setEl} className={cn("text-sm italic leading-relaxed text-muted-foreground", !expanded && "line-clamp-2 sm:line-clamp-1")}>
       &ldquo;
       <SentenceWithWord sentence={sentence} word={word} />
       &rdquo;
     </p>
   )
-  if (!clamped && !expanded) return <div className="mt-1">{text}</div>
+  if (!clamped && !expanded) return <div>{text}</div>
   return (
     <button
       type="button"
       onClick={() => setExpanded((v) => !v)}
       aria-expanded={expanded}
       aria-label={expanded ? "Show less of the sentence" : "Show the whole sentence"}
-      className="mt-1 block w-full rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="block w-full rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {text}
     </button>
@@ -98,28 +98,28 @@ function WordRow({
   /** Off when the row already sits under its book's heading. */
   showSource?: boolean
 }) {
+  // One line per word on wider screens: word | meaning | sentence | status. Phones put the
+  // word, meaning and status on one line with the sentence underneath.
   return (
-    <li className="group flex items-start gap-3 px-4 py-3.5 sm:px-5">
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <p className="font-serif text-lg leading-snug text-foreground">{word.word}</p>
-          {word.meaning && (
-            <p className="text-sm text-foreground/80">
-              <span aria-hidden className="mr-2 text-muted-foreground/60">
-                —
-              </span>
-              {word.meaning}
-            </p>
-          )}
+    <li className="group flex items-start gap-2 py-2.5">
+      <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 sm:grid-cols-[minmax(0,10rem)_minmax(0,9rem)_minmax(0,1fr)_auto] sm:gap-x-4">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 sm:contents">
+          <p className="min-w-0 break-words font-serif text-lg leading-snug text-foreground">{word.word}</p>
+          <p className="min-w-0 break-words text-sm text-foreground/80">{word.meaning}</p>
         </div>
-        {word.sentence && <Sentence sentence={word.sentence} word={word.word} />}
-        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span
-            className={cn("rounded-full px-2 py-0.5 text-[0.7rem] font-medium leading-4", STATUS_CHIP[word.status])}
-          >
-            {STATUS_LABEL[word.status]}
-          </span>
-          {showSource && word.source_title && <span className="truncate">{word.source_title}</span>}
+        <span
+          className={cn(
+            "w-max rounded-full px-2 py-0.5 text-[0.7rem] font-medium leading-4 sm:order-last",
+            STATUS_CHIP[word.status],
+          )}
+        >
+          {STATUS_LABEL[word.status]}
+        </span>
+        <div className="col-span-2 min-w-0 sm:col-span-1">
+          {word.sentence && <Sentence sentence={word.sentence} word={word.word} />}
+          {showSource && word.source_title && (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{word.source_title}</p>
+          )}
         </div>
       </div>
       {/* On devices that can hover, keep the remove button out of the way until the row is hovered or focused. */}
@@ -330,7 +330,7 @@ export default function WordsPage() {
                     )}
                   </p>
                 </div>
-                <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+                <ul className="divide-y divide-dotted divide-border">
                   {g.words.map((w) => (
                     <WordRow key={w.id} word={w} onRemove={() => handleRemove(w)} showSource={false} />
                   ))}
@@ -339,7 +339,7 @@ export default function WordsPage() {
             ))}
           </div>
         ) : (
-          <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+          <ul className="divide-y divide-dotted divide-border">
             {shown.map((w) => (
               <WordRow key={w.id} word={w} onRemove={() => handleRemove(w)} />
             ))}
