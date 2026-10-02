@@ -74,10 +74,12 @@ test("practice a round: blanks in context, missed words come back, then start a 
   await page.screenshot({ path: "test-results/practice-missed.png" })
   await page.getByRole("button", { name: "Continue" }).click()
 
+  // Enter checks the answer, and Enter again moves on.
   await expect(page.getByText("3 of 3")).toBeVisible()
   await input.fill(await currentAnswer(page))
   await input.press("Enter")
-  await page.getByRole("button", { name: "Continue" }).click()
+  await expect(page.getByRole("status")).toBeVisible()
+  await page.keyboard.press("Enter")
 
   await expect(page.getByText("Once more")).toBeVisible()
   expect(await currentAnswer(page)).toBe(missed)
@@ -154,7 +156,8 @@ test("a wrong answer can be marked right, explained, and the round ends with con
   await expect(page.getByRole("status")).toContainText("Marked as right")
   await expect(page.getByRole("button", { name: "I was right" })).toHaveCount(0)
   await page.screenshot({ path: "test-results/practice-overridden.png" })
-  await page.getByRole("button", { name: "Continue" }).click()
+  // Enter still moves on after clicking around the feedback.
+  await page.keyboard.press("Enter")
 
   for (const n of [2, 3]) {
     await expect(page.getByText(`${n} of 3`)).toBeVisible()

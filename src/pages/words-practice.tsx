@@ -247,12 +247,25 @@ function PracticeCard({
   const [hinted, setHinted] = useState(false)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const continueRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    if (feedback) continueRef.current?.focus()
-    else inputRef.current?.focus()
+    if (!feedback) inputRef.current?.focus()
   }, [feedback])
+
+  // Once the answer is showing, Enter anywhere on the page moves on -- even after clicking
+  // Explain or the page. (Continue isn't focused for this: its focus ring, in the button's own
+  // blue, made it look bigger than the buttons beside it.) A focused button or link keeps Enter.
+  useEffect(() => {
+    if (!feedback) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || e.repeat || e.isComposing || e.defaultPrevented) return
+      if (e.target instanceof Element && e.target.closest("button, a, input, textarea, select")) return
+      e.preventDefault()
+      onContinue(feedback.outcome)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [feedback, onContinue])
 
   const finish = (match: AnswerMatch) => {
     const outcome: Outcome = match === "wrong" ? "missed" : hinted ? "hinted" : "correct"
@@ -412,7 +425,7 @@ function PracticeCard({
           )}
           {/* Same shape as the row before answering: primary action, a helper, and a quiet override on the right. */}
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button ref={continueRef} type="button" onClick={() => onContinue(feedback.outcome)}>
+            <Button type="button" onClick={() => onContinue(feedback.outcome)}>
               Continue
             </Button>
             {feedback.match === "wrong" && explanation.status !== "done" && (
