@@ -68,7 +68,9 @@ test("save a word while reading, find it on the Words page, and remove it", asyn
   await expect(page).toHaveURL(/\/words$/)
   await expect(page.getByRole("heading", { name: "Words" })).toBeVisible()
   const word = String(rows[0].word)
-  await expect(page.getByText(word, { exact: true })).toBeVisible()
+  // The word shows twice: as the row's headword and bolded inside its saved sentence.
+  await expect(page.getByText(word, { exact: true }).first()).toBeVisible()
+  await expect(page.locator("strong", { hasText: word })).toBeVisible()
   await expect(page.getByText("Hello.")).toBeVisible()
 
   await page.getByRole("button", { name: `Remove ${word}` }).click()
