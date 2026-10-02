@@ -279,6 +279,8 @@ function PracticeCard({
     })
   }
 
+  const { state: explanation, explain } = useExplanation(answerText(word.word), learning)
+
   const markRight = () => {
     if (!feedback) return
     const outcome: Outcome = hinted ? "hinted" : "correct"
@@ -404,13 +406,27 @@ function PracticeCard({
               )}
             </span>
           </p>
-          {feedback.match === "wrong" && <Explanation word={answerText(word.word)} learning={learning} />}
+          {explanation.status === "done" && <MemoryTrick text={explanation.text} />}
+          {explanation.status === "error" && (
+            <p className="mt-3 text-sm text-muted-foreground">Couldn&apos;t load an explanation. Try again?</p>
+          )}
+          {/* Same shape as the row before answering: primary action, a helper, and a quiet override on the right. */}
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button ref={continueRef} type="button" className="w-full sm:w-auto" onClick={() => onContinue(feedback.outcome)}>
+            <Button ref={continueRef} type="button" onClick={() => onContinue(feedback.outcome)}>
               Continue
             </Button>
+            {feedback.match === "wrong" && explanation.status !== "done" && (
+              <Button type="button" variant="ghost" disabled={explanation.status === "loading"} onClick={() => void explain()}>
+                {explanation.status === "loading" ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Sparkles className="mr-1.5 h-4 w-4" aria-hidden />
+                )}
+                Explain
+              </Button>
+            )}
             {feedback.match === "wrong" && !feedback.overridden && typed.trim() && (
-              <Button type="button" variant="ghost" className="max-sm:w-full text-muted-foreground" onClick={markRight}>
+              <Button type="button" variant="ghost" className="ml-auto text-muted-foreground" onClick={markRight}>
                 I was right
               </Button>
             )}
@@ -445,9 +461,8 @@ function PracticeCard({
 type ExplainState = { status: "idle" | "loading" | "error" } | { status: "done"; text: string }
 
 /** "Explain" for a missed word: a short memory hook (origin, root, or the logic behind it) from the model. */
-function Explanation({ word, learning }: { word: string; learning: LearningLanguage }) {
+function useExplanation(word: string, learning: LearningLanguage) {
   const [state, setState] = useState<ExplainState>({ status: "idle" })
-
   const explain = async () => {
     setState({ status: "loading" })
     try {
@@ -462,28 +477,19 @@ function Explanation({ word, learning }: { word: string; learning: LearningLangu
       setState({ status: "error" })
     }
   }
+  return { state, explain }
+}
 
-  if (state.status === "done") {
-    return (
-      <div className="mt-4 rounded-r-lg border border-l-[2.5px] border-reading-note-border border-l-reading-warn bg-reading-note px-4 py-3 dark:border-reading-warm/20">
-        <div className="mb-1.5 font-sans text-label-2xs font-medium uppercase text-reading-warn-ink">memory trick</div>
-        <p className="whitespace-pre-wrap font-serif text-sm leading-[1.72] text-reading-note-ink dark:text-foreground/90" data-testid="practice-explanation">
-          {state.text}
-        </p>
-      </div>
-    )
-  }
+function MemoryTrick({ text }: { text: string }) {
   return (
-    <div className="mt-3 flex items-center gap-3">
-      <Button type="button" variant="outline" size="sm" disabled={state.status === "loading"} onClick={() => void explain()}>
-        {state.status === "loading" ? (
-          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden />
-        ) : (
-          <Sparkles className="mr-1.5 h-4 w-4" aria-hidden />
-        )}
-        Explain
-      </Button>
-      {state.status === "error" && <span className="text-sm text-muted-foreground">Couldn&apos;t load an explanation. Try again?</span>}
+    <div className="details-memory-bubble-in mt-4 rounded-r-lg border border-l-[2.5px] border-reading-note-border border-l-reading-warn bg-reading-note px-4 py-3 dark:border-reading-warm/20">
+      <div className="mb-1.5 font-sans text-label-2xs font-medium uppercase text-reading-warn-ink">memory trick</div>
+      <p
+        className="whitespace-pre-wrap font-serif text-sm leading-[1.72] text-reading-note-ink dark:text-foreground/90"
+        data-testid="practice-explanation"
+      >
+        {text}
+      </p>
     </div>
   )
 }
