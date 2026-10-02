@@ -357,7 +357,7 @@ export default function WordsPage() {
 
   return (
     <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
-      <main className="animate-fade-in-up mx-auto w-full max-w-3xl px-4 pb-16 pt-6 sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
+      <main className="animate-fade-in-up mx-auto w-full max-w-5xl px-4 pb-16 pt-6 sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
         <header className="discover-masthead !mb-6">
           <div className="min-w-0 flex-1">
             <p className="discover-masthead__eyebrow">{WORDS_EYEBROW[language]}</p>
