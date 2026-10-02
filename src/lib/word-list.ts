@@ -1,0 +1,78 @@
+/**
+ * Words page list logic: each saved word's practice status (from its spaced-repetition state in
+ * src/lib/practice.ts), plus the search / status filter / sort the page offers and its summary counts.
+ */
+import { NEW_REVIEW_STATE, type ReviewState } from "@/lib/practice"
+import type { SavedWord } from "@/lib/saved-words"
+
+/** New: never practiced. Due: up for review now. Learned: due again in 16+ days. Learning: the rest. */
+export type WordStatus = "new" | "due" | "learning" | "learned"
+
+/** Stage whose interval is 16 days (STAGE_INTERVAL_DAYS[4]) -- far enough out to call a word learned. */
+const LEARNED_STAGE = 4
+
+export const STATUS_LABEL: Record<WordStatus, string> = {
+  new: "New",
+  due: "Due",
+  learning: "Learning",
+  learned: "Learned",
+}
+
+export function wordStatus(review: ReviewState, now: Date): WordStatus {
+  if (review.due_at == null) return "new"
+  if (Date.parse(review.due_at) <= now.getTime()) return "due"
+  return review.review_stage >= LEARNED_STAGE ? "learned" : "learning"
+}
+
+export type ListedWord = SavedWord & {
+  status: WordStatus
+  review: ReviewState
+}
+
+export function withStatus(words: SavedWord[], reviews: Map<string, ReviewState>, now: Date): ListedWord[] {
+  return words.map((w) => {
+    const review = reviews.get(w.id) ?? NEW_REVIEW_STATE
+    return { ...w, review, status: wordStatus(review, now) }
+  })
+}
+
+export type StatusFilter = "all" | WordStatus
+export type WordSort = "newest" | "alpha" | "missed"
+
+export const SORT_LABEL: Record<WordSort, string> = {
+  newest: "Newest",
+  alpha: "A–Z",
+  missed: "Most missed",
+}
+
+/** Lowercase without accents, so "adios" finds "adiós". */
+function fold(s: string): string {
+  return s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()
+}
+
+/** Words matching the search (word, meaning, sentence or book) and status, in the chosen order. */
+export function filterWords(
+  words: ListedWord[],
+  { query, status, sort }: { query: string; status: StatusFilter; sort: WordSort },
+): ListedWord[] {
+  const q = fold(query.trim())
+  const out = words.filter(
+    (w) =>
+      (status === "all" || w.status === status) &&
+      (!q || [w.word, w.meaning, w.sentence, w.source_title].some((f) => f != null && fold(f).includes(q))),
+  )
+  if (sort === "alpha") return out.sort((a, b) => a.word.localeCompare(b.word, "es", { sensitivity: "base" }))
+  if (sort === "missed") return out.sort((a, b) => b.review.lapse_count - a.review.lapse_count)
+  return out.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+}
+
+export function countByStatus(words: ListedWord[]): Record<WordStatus, number> {
+  const counts: Record<WordStatus, number> = {
+    new: 0,
+    due: 0,
+    learning: 0,
+    learned: 0,
+  }
+  for (const w of words) counts[w.status]++
+  return counts
+}

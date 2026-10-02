@@ -73,9 +73,72 @@ test("save a word while reading, find it on the Words page, and remove it", asyn
   await expect(page.locator("strong", { hasText: word })).toBeVisible()
   await expect(page.getByText("Hello.")).toBeVisible()
 
+  // Removing hides the word straight away but holds off deleting it so it can be undone...
   await page.getByRole("button", { name: `Remove ${word}` }).click()
   await expect(page.getByText(/No saved Spanish words yet/)).toBeVisible()
-  expect(rows).toHaveLength(0)
+  await page.getByRole("button", { name: "Undo" }).click()
+  await expect(page.locator("strong", { hasText: word })).toBeVisible()
+  expect(rows).toHaveLength(1)
+
+  // ...and deletes it for real once the undo window runs out.
+  await page.getByRole("button", { name: `Remove ${word}` }).click()
+  await expect(page.getByText(/No saved Spanish words yet/)).toBeVisible()
+  await expect.poll(() => rows.length, { timeout: 10_000 }).toBe(0)
+  await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0)
+})
+
+test("the Words page shows practice status, and can be searched and filtered", async ({ page }) => {
+  await setupMocks(page)
+  const base = {
+    user_id: "00000000-0000-4000-8000-000000000001",
+    language: "spanish",
+    review_count: 0,
+    lapse_count: 0,
+  }
+  const day = 24 * 60 * 60 * 1000
+  await mockSavedWordsTable(page, [
+    {
+      ...base,
+      id: "w1",
+      word: "por lo que",
+      meaning: "which is why",
+      source_title: "Maniac",
+      created_at: "2026-03-01T00:00:00.000Z",
+      review_stage: 1,
+      due_at: new Date(Date.now() - day).toISOString(),
+    },
+    {
+      ...base,
+      id: "w2",
+      word: "adiós",
+      meaning: "goodbye",
+      created_at: "2026-02-01T00:00:00.000Z",
+      review_stage: 5,
+      due_at: new Date(Date.now() + 30 * day).toISOString(),
+    },
+    {
+      ...base,
+      id: "w3",
+      word: "quedarse con",
+      meaning: "keep",
+      created_at: "2026-01-01T00:00:00.000Z",
+      review_stage: 0,
+      due_at: null,
+    },
+  ])
+
+  await page.goto("/words")
+  await expect(page.getByTestId("words-stats")).toHaveText("3 words · 1 due · 1 learned", { timeout: 20_000 })
+
+  const rows = page.locator("main li")
+  await page.getByRole("button", { name: /^Due/ }).click()
+  await expect(rows).toHaveCount(1)
+  await expect(rows.first()).toContainText("por lo que")
+
+  await page.getByRole("button", { name: /^All/ }).click()
+  await page.getByRole("searchbox", { name: "Search saved words" }).fill("adios")
+  await expect(rows).toHaveCount(1)
+  await expect(rows.first()).toContainText("Learned")
 })
 
 test("signed-out visitors are asked to sign in on the Words page", async ({ page }) => {
@@ -107,6 +170,8 @@ test("words saved earlier are marked in the text when you read", async ({ page }
   await page.getByRole("button", { name: "Start reading" }).click()
 
   const chunks = page.locator("[data-chunk]")
-  await expect(chunks.nth(1).locator("[data-saved-word]")).toHaveCount(1, { timeout: 20_000 })
+  await expect(chunks.nth(1).locator("[data-saved-word]")).toHaveCount(1, {
+    timeout: 20_000,
+  })
   await expect(chunks.nth(0).locator("[data-saved-word]")).toHaveCount(0)
 })
