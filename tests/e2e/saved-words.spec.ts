@@ -128,7 +128,10 @@ test("the Words page shows practice status, and can be searched and filtered", a
   ])
 
   await page.goto("/words")
-  await expect(page.getByTestId("words-stats")).toHaveText("3 words · 1 due · 1 learned", { timeout: 20_000 })
+  const statusFilter = page.getByRole("group", { name: "Filter by practice status" })
+  await expect(statusFilter.getByRole("button")).toHaveText(["All 3", "Due 1", "New 1", "Learning 0", "Learned 1"], {
+    timeout: 20_000,
+  })
 
   const rows = page.locator("main li")
   await page.getByRole("button", { name: /^Due/ }).click()

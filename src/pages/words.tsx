@@ -251,9 +251,9 @@ export default function WordsPage() {
   } else {
     body = (
       <>
-        <div className="mb-4 flex flex-col gap-3">
-          <div className="flex gap-2">
-            <div className="relative min-w-0 flex-1">
+        <div className="mb-6 flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-[1_1_14rem]">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
@@ -267,20 +267,26 @@ export default function WordsPage() {
                 className="pl-9"
               />
             </div>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as WordSort)}
-              aria-label="Sort words"
-              className="h-10 shrink-0 rounded-md border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
+            <div role="group" aria-label="Sort words" className="flex flex-wrap gap-1.5">
               {(Object.keys(SORT_LABEL) as WordSort[]).map((s) => (
-                <option key={s} value={s}>
+                <button
+                  key={s}
+                  type="button"
+                  aria-pressed={sort === s}
+                  onClick={() => setSort(s)}
+                  className={cn(
+                    "h-8 rounded-full border px-3 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    sort === s
+                      ? "border-foreground/40 bg-secondary text-foreground"
+                      : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                >
                   {SORT_LABEL[s]}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by practice status">
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1" role="group" aria-label="Filter by practice status">
             {STATUS_FILTERS.map((s) => {
               const count = s === "all" ? listed.length : counts[s]
               const active = status === s
@@ -291,10 +297,10 @@ export default function WordsPage() {
                   aria-pressed={active}
                   onClick={() => setStatus(s)}
                   className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    "rounded-full px-2.5 py-0.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     active
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
+                      ? "bg-secondary font-medium text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {s === "all" ? "All" : STATUS_LABEL[s]} <span className="opacity-70">{count}</span>
@@ -349,8 +355,6 @@ export default function WordsPage() {
     )
   }
 
-  const showStats = canSave && loaded && !error && listed.length > 0
-
   return (
     <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
       <main className="animate-fade-in-up mx-auto w-full max-w-3xl px-4 pb-16 pt-6 sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
@@ -361,16 +365,6 @@ export default function WordsPage() {
             <p className="discover-masthead__lede">
               {languageLabel} words and phrases you&apos;ve saved while reading, with the sentence you found them in.
             </p>
-            {showStats && (
-              <p className="mt-3 text-sm text-muted-foreground" data-testid="words-stats">
-                <span className="font-medium text-foreground">{listed.length}</span>{" "}
-                {listed.length === 1 ? "word" : "words"}
-                {" · "}
-                <span className={cn(counts.due > 0 && "font-medium text-primary")}>{counts.due} due</span>
-                {" · "}
-                {counts.learned} learned
-              </p>
-            )}
           </div>
           {canSave && listed.length > 0 && (
             <Link

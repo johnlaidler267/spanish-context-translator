@@ -42,7 +42,7 @@ export type WordSort = "source" | "newest" | "alpha" | "missed"
 /** "source" lists newest first, grouped under each book/article by `groupBySource`. */
 export const SORT_LABEL: Record<WordSort, string> = {
   source: "By source",
-  newest: "Newest",
+  newest: "Recent",
   alpha: "A–Z",
   missed: "Most missed",
 }

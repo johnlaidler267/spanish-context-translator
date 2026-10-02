@@ -197,9 +197,9 @@ test("the Words page groups words by source, and Practice these practices only t
   await page.getByLabel("Search saved words").fill("")
 
   // Any other sort is one flat list.
-  await page.getByLabel("Sort words").selectOption("alpha")
+  await page.getByRole("group", { name: "Sort words" }).getByRole("button", { name: "A–Z" }).click()
   await expect(page.getByRole("region")).toHaveCount(0)
-  await page.getByLabel("Sort words").selectOption("source")
+  await page.getByRole("group", { name: "Sort words" }).getByRole("button", { name: "By source" }).click()
 
   await book.getByRole("link", { name: "Practice these" }).click()
   await expect(page).toHaveURL(/\/words\/practice\?source=Cuentos/)
