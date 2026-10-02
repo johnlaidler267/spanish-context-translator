@@ -251,7 +251,7 @@ export default function WordsPage() {
   } else {
     body = (
       <>
-        <div className="mb-6 flex flex-col gap-3">
+        <div className="mb-6 flex flex-col gap-3 border-b border-border pb-5">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-0 flex-[1_1_14rem]">
               <Search
@@ -314,9 +314,9 @@ export default function WordsPage() {
             No words match.
           </p>
         ) : sort === "source" ? (
-          <div className="flex flex-col gap-8">
+          <div className="divide-y divide-border">
             {groupBySource(shown).map((g) => (
-              <section key={g.source ?? ""} aria-label={g.source ?? "Other"}>
+              <section key={g.source ?? ""} aria-label={g.source ?? "Other"} className="py-6 first:pt-0">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
                   <h2 className="min-w-0 font-serif text-xl font-semibold leading-snug text-foreground">
                     {g.source ?? "Other"}
@@ -358,7 +358,7 @@ export default function WordsPage() {
   return (
     <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
       <main className="animate-fade-in-up mx-auto w-full max-w-3xl px-4 pb-16 pt-6 sm:px-6 md:pt-10 lg:px-8 lg:pt-12">
-        <header className="discover-masthead">
+        <header className="discover-masthead !mb-6">
           <div className="min-w-0 flex-1">
             <p className="discover-masthead__eyebrow">{WORDS_EYEBROW[language]}</p>
             <h1 className="discover-masthead__title">Words</h1>
