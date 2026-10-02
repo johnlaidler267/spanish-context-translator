@@ -2,11 +2,13 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowLeft, Check, Loader2, Lightbulb, X } from "lucide-react"
+import { ArrowLeft, Check, Loader2, Lightbulb, Sparkles, X } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
 import { Button } from "@/components/ui/button"
+import { Confetti } from "@/components/words/confetti"
 import { useAuth } from "@/contexts/auth-context"
 import { useSavedWords } from "@/hooks/use-saved-words"
+import { fetchMemoryTrickViaEdge } from "@/lib/groq-edge"
 import {
   answerText,
   checkAnswer,
@@ -22,7 +24,12 @@ import {
   type PracticeWord,
   type ReviewState,
 } from "@/lib/practice"
-import { LEARNING_LANGUAGE_LABEL, WORDS_EYEBROW, type LearningLanguage } from "@/lib/storage/language-learning-preferences"
+import {
+  getStoredLanguageLearningPreferences,
+  LEARNING_LANGUAGE_LABEL,
+  WORDS_EYEBROW,
+  type LearningLanguage,
+} from "@/lib/storage/language-learning-preferences"
 import { cn } from "@/lib/utils"
 
 const INPUT_LANG: Record<LearningLanguage, string> = { spanish: "es", french: "fr", english: "en" }
@@ -37,7 +44,8 @@ const ACCENT_KEYS: Record<LearningLanguage, string[]> = {
 
 type Card = { word: PracticeWord; retry: boolean }
 type Result = { word: PracticeWord; outcome: Outcome }
-type Feedback = { match: AnswerMatch; outcome: Outcome; answer: string }
+// `overridden`: marked wrong, but the reader said they knew it (a slip of the keyboard).
+type Feedback = { match: AnswerMatch; outcome: Outcome; answer: string; overridden?: boolean }
 
 /** Fill-in-the-blank practice over the reader's saved words, in rounds of ten. */
 export default function WordsPracticePage() {
@@ -102,10 +110,14 @@ export default function WordsPracticePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only the first round starts on its own
   }, [ready, practiceWords.length])
 
-  const record = (card: Card, outcome: Outcome) => {
+  // `replace`: the reader overrode a wrong mark, so the card's result is swapped rather than
+  // added. The schedule is recomputed from the review state the round started with.
+  const record = (card: Card, outcome: Outcome, replace = false) => {
     if (card.retry) return
     const next = scheduleReview(card.word.review, outcome, new Date())
-    setResults((r) => [...r, { word: card.word, outcome }])
+    setResults((r) =>
+      replace ? r.map((x) => (x.word.id === card.word.id ? { ...x, outcome } : x)) : [...r, { word: card.word, outcome }],
+    )
     setReviews((prev) => {
       if (!prev) return prev
       const states = new Map(prev.states)
@@ -160,10 +172,12 @@ export default function WordsPracticePage() {
         card={card}
         languageLabel={languageLabel}
         lang={INPUT_LANG[language]}
+        learning={language}
         accentKeys={ACCENT_KEYS[language]}
         progress={card.retry ? "Once more" : `${position} of ${roundSize}`}
         progressValue={card.retry ? 1 : (position - 1) / Math.max(roundSize, 1)}
         onAnswered={(outcome) => record(card, outcome)}
+        onOverride={(outcome) => record(card, outcome, true)}
         onContinue={(outcome) => advance(card, outcome === "missed")}
       />
     )
@@ -207,19 +221,23 @@ function PracticeCard({
   card,
   languageLabel,
   lang,
+  learning,
   accentKeys,
   progress,
   progressValue,
   onAnswered,
+  onOverride,
   onContinue,
 }: {
   card: Card
   languageLabel: string
   lang: string
+  learning: LearningLanguage
   accentKeys: string[]
   progress: string
   progressValue: number
   onAnswered: (outcome: Outcome) => void
+  onOverride: (outcome: Outcome) => void
   onContinue: (outcome: Outcome) => void
 }) {
   const { word } = card
@@ -261,7 +279,14 @@ function PracticeCard({
     })
   }
 
-  const right = feedback != null && feedback.match !== "wrong"
+  const markRight = () => {
+    if (!feedback) return
+    const outcome: Outcome = hinted ? "hinted" : "correct"
+    setFeedback({ ...feedback, outcome, overridden: true })
+    onOverride(outcome)
+  }
+
+  const right = feedback != null && (feedback.match !== "wrong" || feedback.overridden === true)
 
   // The answer box sits in the blank itself. On phones the keyboard scrolls the focused box
   // to the middle of what's left of the screen; with the box inside the sentence, the words
@@ -370,7 +395,8 @@ function PracticeCard({
               {feedback.match === "exact" && "Correct!"}
               {feedback.match === "accent" && <>Right — watch the accents: <strong>{feedback.answer}</strong></>}
               {feedback.match === "typo" && <>Almost — it&apos;s spelled <strong>{feedback.answer}</strong></>}
-              {feedback.match === "wrong" && (
+              {feedback.overridden && <>Marked as right. The answer is <strong>{feedback.answer}</strong>.</>}
+              {feedback.match === "wrong" && !feedback.overridden && (
                 <>
                   {typed.trim() && <>You wrote &ldquo;{typed.trim()}&rdquo;. </>}
                   The answer was <strong>{feedback.answer}</strong>. It&apos;ll come back at the end of the round.
@@ -378,9 +404,17 @@ function PracticeCard({
               )}
             </span>
           </p>
-          <Button ref={continueRef} type="button" className="mt-4 w-full sm:w-auto" onClick={() => onContinue(feedback.outcome)}>
-            Continue
-          </Button>
+          {feedback.match === "wrong" && <Explanation word={answerText(word.word)} learning={learning} />}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button ref={continueRef} type="button" className="w-full sm:w-auto" onClick={() => onContinue(feedback.outcome)}>
+              Continue
+            </Button>
+            {feedback.match === "wrong" && !feedback.overridden && typed.trim() && (
+              <Button type="button" variant="ghost" className="max-sm:w-full text-muted-foreground" onClick={markRight}>
+                I was right
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -408,6 +442,52 @@ function PracticeCard({
   )
 }
 
+type ExplainState = { status: "idle" | "loading" | "error" } | { status: "done"; text: string }
+
+/** "Explain" for a missed word: a short memory hook (origin, root, or the logic behind it) from the model. */
+function Explanation({ word, learning }: { word: string; learning: LearningLanguage }) {
+  const [state, setState] = useState<ExplainState>({ status: "idle" })
+
+  const explain = async () => {
+    setState({ status: "loading" })
+    try {
+      const { native } = getStoredLanguageLearningPreferences()
+      const res = await fetchMemoryTrickViaEdge({ word, learning, native })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const trick = (((await res.json()) as { trick?: string }).trick ?? "").trim()
+      if (!trick) throw new Error("Empty trick")
+      setState({ status: "done", text: trick })
+    } catch (e) {
+      console.error("[WordsPractice] explain", e)
+      setState({ status: "error" })
+    }
+  }
+
+  if (state.status === "done") {
+    return (
+      <div className="mt-4 rounded-r-lg border border-l-[2.5px] border-reading-note-border border-l-reading-warn bg-reading-note px-4 py-3 dark:border-reading-warm/20">
+        <div className="mb-1.5 font-sans text-label-2xs font-medium uppercase text-reading-warn-ink">memory trick</div>
+        <p className="whitespace-pre-wrap font-serif text-sm leading-[1.72] text-reading-note-ink dark:text-foreground/90" data-testid="practice-explanation">
+          {state.text}
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div className="mt-3 flex items-center gap-3">
+      <Button type="button" variant="outline" size="sm" disabled={state.status === "loading"} onClick={() => void explain()}>
+        {state.status === "loading" ? (
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden />
+        ) : (
+          <Sparkles className="mr-1.5 h-4 w-4" aria-hidden />
+        )}
+        Explain
+      </Button>
+      {state.status === "error" && <span className="text-sm text-muted-foreground">Couldn&apos;t load an explanation. Try again?</span>}
+    </div>
+  )
+}
+
 function RoundSummary({
   results,
   dueLeft,
@@ -424,6 +504,7 @@ function RoundSummary({
   const firstTry = results.filter((r) => r.outcome === "correct").length
   return (
     <div>
+      <Confetti />
       <div className="rounded-xl border border-border bg-card p-5 sm:p-7">
         <p className="font-serif text-2xl text-foreground">Round complete</p>
         <p className="mt-1 text-sm text-muted-foreground">

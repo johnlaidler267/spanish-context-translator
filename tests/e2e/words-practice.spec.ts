@@ -124,3 +124,55 @@ test("accent keys type the letter at the caret without taking focus off the answ
   await page.getByRole("button", { name: "Show answer" }).click()
   await expect(keys).toHaveCount(0)
 })
+
+test("a wrong answer can be marked right, explained, and the round ends with confetti", async ({ page }) => {
+  await setupMocks(page)
+  const updates = await mockSavedWords(page)
+  const trickRequests: Row[] = []
+  await page.route("**/functions/v1/chunk-memory-trick", async (route) => {
+    trickRequests.push(route.request().postDataJSON() as Row)
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ trick: "Think of a sly fox called Zorro slipping through the woods." }),
+    })
+  })
+
+  await page.goto("/words/practice")
+  await expect(page.getByText("1 of 3")).toBeVisible({ timeout: 20_000 })
+  const input = page.getByLabel("Your answer")
+
+  // A slip of the keyboard: marked wrong, then overridden.
+  const first = await currentAnswer(page)
+  await input.fill("qqqq")
+  await input.press("Enter")
+  await expect(page.getByRole("status")).toContainText("The answer was")
+  await page.getByRole("button", { name: "Explain" }).click()
+  await expect(page.getByTestId("practice-explanation")).toContainText("sly fox")
+  expect(trickRequests[0]).toMatchObject({ learning: "spanish" })
+  await page.getByRole("button", { name: "I was right" }).click()
+  await expect(page.getByRole("status")).toContainText("Marked as right")
+  await expect(page.getByRole("button", { name: "I was right" })).toHaveCount(0)
+  await page.screenshot({ path: "test-results/practice-overridden.png" })
+  await page.getByRole("button", { name: "Continue" }).click()
+
+  for (const n of [2, 3]) {
+    await expect(page.getByText(`${n} of 3`)).toBeVisible()
+    await input.fill(await currentAnswer(page))
+    await input.press("Enter")
+    await page.getByRole("button", { name: "Continue" }).click()
+  }
+
+  // The overridden word didn't come back for a retry and counts as right first time.
+  await expect(page.getByText("Round complete")).toBeVisible()
+  await expect(page.getByText("3 of 3 right on the first try.")).toBeVisible()
+  await expect(page.getByTestId("confetti")).toBeAttached()
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: "test-results/practice-confetti.png" })
+
+  // Its saved schedule is the overridden one (wrong first, then right).
+  const firstId = WORDS.find((w) => ANSWER_BY_MEANING[w.meaning as string] === first)!.id
+  const saved = updates.filter((u) => u.id === firstId)
+  expect(saved).toHaveLength(2)
+  expect(saved[1].review_stage).toBe(1)
+})
