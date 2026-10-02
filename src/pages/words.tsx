@@ -16,6 +16,7 @@ import {
   countByStatus,
   filterWords,
   groupBySource,
+  practiceSummary,
   SORT_LABEL,
   STATUS_LABEL,
   withStatus,
@@ -50,63 +51,62 @@ function SentenceWithWord({ sentence, word }: { sentence: string; word: string }
   )
 }
 
-/** The saved sentence, clamped to one line (two on phones); tapping a clamped one shows it in full. */
-function Sentence({ sentence, word }: { sentence: string; word: string }) {
-  // Held in state (not a ref): switching to the tappable version remounts the paragraph, and the
-  // measurement has to follow the new element rather than keep watching the detached one.
-  const [el, setEl] = useState<HTMLParagraphElement | null>(null)
-  const [expanded, setExpanded] = useState(false)
-  const [clamped, setClamped] = useState(false)
-
-  useLayoutEffect(() => {
-    if (!el || expanded) return
-    const measure = () => setClamped(el.scrollHeight > el.clientHeight + 1)
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [el, expanded, sentence])
-
-  const text = (
-    <p ref={setEl} className={cn("text-sm italic leading-relaxed text-muted-foreground", !expanded && "line-clamp-2 sm:line-clamp-1")}>
-      &ldquo;
-      <SentenceWithWord sentence={sentence} word={word} />
-      &rdquo;
-    </p>
-  )
-  if (!clamped && !expanded) return <div>{text}</div>
-  return (
-    <button
-      type="button"
-      onClick={() => setExpanded((v) => !v)}
-      aria-expanded={expanded}
-      aria-label={expanded ? "Show less of the sentence" : "Show the whole sentence"}
-      className="block w-full rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      {text}
-    </button>
-  )
-}
-
+/**
+ * One line per word on wider screens: word | meaning | sentence | status (phones put the word,
+ * meaning and status on one line with the sentence underneath). Clicking the row opens it: the
+ * whole sentence, how practice has gone, and Edit translation / Remove.
+ */
 function WordRow({
   word,
+  open,
+  editing,
+  onToggle,
+  onEditingChange,
   onRemove,
+  onSaveMeaning,
   showSource = true,
 }: {
   word: ListedWord
+  open: boolean
+  /** Whether the translation is being edited (only one row at a time). */
+  editing: boolean
+  onToggle: () => void
+  onEditingChange: (editing: boolean) => void
   onRemove: () => void
+  onSaveMeaning: (meaning: string) => Promise<string | null>
   /** Off when the row already sits under its book's heading. */
   showSource?: boolean
 }) {
-  // One line per word on wider screens: word | meaning | sentence | status. Phones put the
-  // word, meaning and status on one line with the sentence underneath.
+  const [draft, setDraft] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  const startEdit = () => {
+    setDraft(word.meaning ?? "")
+    setEditError(null)
+    onEditingChange(true)
+  }
+  const submitEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    const err = await onSaveMeaning(draft)
+    setSaving(false)
+    if (err) setEditError(err)
+    else onEditingChange(false)
+  }
+
   return (
-    <li className="group flex items-start gap-2 py-2.5">
-      <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 sm:grid-cols-[minmax(0,10rem)_minmax(0,9rem)_minmax(0,1fr)_auto] sm:gap-x-4">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 sm:contents">
-          <p className="min-w-0 break-words font-serif text-lg leading-snug text-foreground">{word.word}</p>
-          <p className="min-w-0 break-words text-sm text-foreground/80">{word.meaning}</p>
-        </div>
+    <li className={cn("transition-colors", open && "relative z-[1] -mx-3 rounded-lg bg-card px-3")}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 rounded-lg py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[minmax(0,10rem)_minmax(0,9rem)_minmax(0,1fr)_auto] sm:gap-x-4"
+      >
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 sm:contents">
+          <span className="min-w-0 break-words font-serif text-lg leading-snug text-foreground">{word.word}</span>
+          <span className="min-w-0 break-words text-sm text-foreground/80">{word.meaning}</span>
+        </span>
         <span
           className={cn(
             "w-max rounded-full px-2 py-0.5 text-[0.7rem] font-medium leading-4 sm:order-last",
@@ -115,22 +115,57 @@ function WordRow({
         >
           {STATUS_LABEL[word.status]}
         </span>
-        <div className="col-span-2 min-w-0 sm:col-span-1">
-          {word.sentence && <Sentence sentence={word.sentence} word={word.word} />}
+        <span className="col-span-2 min-w-0 sm:col-span-1">
+          {word.sentence && (
+            <span
+              className={cn(
+                "block text-sm italic leading-relaxed text-muted-foreground",
+                !open && "line-clamp-2 sm:line-clamp-1",
+              )}
+            >
+              &ldquo;
+              <SentenceWithWord sentence={word.sentence} word={word.word} />
+              &rdquo;
+            </span>
+          )}
           {showSource && word.source_title && (
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">{word.source_title}</p>
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{word.source_title}</span>
+          )}
+        </span>
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2 pb-3 text-[13px]">
+          <p className="text-muted-foreground">{practiceSummary(word.review, new Date())}</p>
+          {open && editing ? (
+            <form onSubmit={(e) => void submitEdit(e)} className="flex flex-wrap items-center gap-2">
+              <Input
+                id={`meaning-${word.id}`}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                aria-label={`Translation of ${word.word}`}
+                autoFocus
+                className="h-8 max-w-xs flex-[1_1_12rem] text-sm"
+              />
+              <Button type="submit" size="sm" className="h-8" disabled={saving}>
+                {saving ? "Saving…" : "Save"}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => onEditingChange(false)}>
+                Cancel
+              </Button>
+              {editError && <p className="basis-full text-destructive">{editError}</p>}
+            </form>
+          ) : (
+            <div className="flex flex-wrap gap-x-5 gap-y-1 font-medium">
+              <button type="button" onClick={startEdit} className="text-primary hover:underline">
+                Edit translation
+              </button>
+              <button type="button" onClick={onRemove} className="text-editorial hover:underline">
+                Remove
+              </button>
+            </div>
           )}
         </div>
-      </div>
-      {/* On devices that can hover, keep the remove button out of the way until the row is hovered or focused. */}
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`Remove ${word.word}`}
-        className="shrink-0 rounded-full p-1.5 text-muted-foreground transition-[opacity,color,background-color] hover:bg-secondary hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:hover)]:opacity-0"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      )}
     </li>
   )
 }
@@ -140,7 +175,9 @@ export default function WordsPage() {
   const navigate = useNavigate()
   const { registerNewChat } = useLandingShellNewChat()
   const { openAuthModal } = useAuth()
-  const { words, loaded, loading, error, canSave, remove, language } = useSavedWords()
+  const { words, loaded, loading, error, canSave, remove, save, language } = useSavedWords()
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<Map<string, ReviewState>>(new Map())
   const [query, setQuery] = useState("")
@@ -207,6 +244,29 @@ export default function WordsPage() {
     pendingRef.current = { id: word.id, timer }
     setPending(word)
   }
+
+  const saveMeaning = async (word: SavedWord, meaning: string) => {
+    const { error: err } = await save({
+      word: word.word,
+      meaning,
+      literal: word.literal,
+      sentence: word.sentence,
+      sourceTitle: word.source_title,
+    })
+    return err
+  }
+
+  const rowProps = (w: ListedWord) => ({
+    open: openId === w.id,
+    editing: editingId === w.id,
+    onToggle: () => {
+      setEditingId(null)
+      setOpenId((id) => (id === w.id ? null : w.id))
+    },
+    onEditingChange: (on: boolean) => setEditingId(on ? w.id : null),
+    onRemove: () => handleRemove(w),
+    onSaveMeaning: (meaning: string) => saveMeaning(w, meaning),
+  })
 
   const handleUndo = () => {
     if (pendingRef.current) clearTimeout(pendingRef.current.timer)
@@ -338,7 +398,7 @@ export default function WordsPage() {
                 </div>
                 <ul className="divide-y divide-dotted divide-border">
                   {g.words.map((w) => (
-                    <WordRow key={w.id} word={w} onRemove={() => handleRemove(w)} showSource={false} />
+                    <WordRow key={w.id} word={w} {...rowProps(w)} showSource={false} />
                   ))}
                 </ul>
               </section>
@@ -347,7 +407,7 @@ export default function WordsPage() {
         ) : (
           <ul className="divide-y divide-dotted divide-border">
             {shown.map((w) => (
-              <WordRow key={w.id} word={w} onRemove={() => handleRemove(w)} />
+              <WordRow key={w.id} word={w} {...rowProps(w)} />
             ))}
           </ul>
         )}

@@ -73,15 +73,29 @@ test("save a word while reading, find it on the Words page, and remove it", asyn
   await expect(page.locator("strong", { hasText: word })).toBeVisible()
   await expect(page.getByText("Hello.")).toBeVisible()
 
+  // Clicking the row opens it: practice so far, and Edit translation / Remove.
+  const row = page.getByRole("button", { name: new RegExp(`^${word}`) })
+  await expect(row).toHaveAttribute("aria-expanded", "false")
+  await row.click()
+  await expect(row).toHaveAttribute("aria-expanded", "true")
+  await expect(page.getByText("Not practiced yet")).toBeVisible()
+
+  await page.getByRole("button", { name: "Edit translation" }).click()
+  await page.getByLabel(`Translation of ${word}`).fill("Hi there.")
+  await page.getByRole("button", { name: "Save" }).click()
+  await expect(page.getByText("Hi there.")).toBeVisible()
+  expect(rows).toHaveLength(1)
+  expect(rows[0]).toMatchObject({ meaning: "Hi there.", sentence: "Hola." })
+
   // Removing hides the word straight away but holds off deleting it so it can be undone...
-  await page.getByRole("button", { name: `Remove ${word}` }).click()
+  await page.getByRole("button", { name: "Remove", exact: true }).click()
   await expect(page.getByText(/No saved Spanish words yet/)).toBeVisible()
   await page.getByRole("button", { name: "Undo" }).click()
   await expect(page.locator("strong", { hasText: word })).toBeVisible()
   expect(rows).toHaveLength(1)
 
-  // ...and deletes it for real once the undo window runs out.
-  await page.getByRole("button", { name: `Remove ${word}` }).click()
+  // ...and deletes it for real once the undo window runs out. (The row is still open after Undo.)
+  await page.getByRole("button", { name: "Remove", exact: true }).click()
   await expect(page.getByText(/No saved Spanish words yet/)).toBeVisible()
   await expect.poll(() => rows.length, { timeout: 10_000 }).toBe(0)
   await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0)

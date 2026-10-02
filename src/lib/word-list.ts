@@ -102,3 +102,14 @@ export function groupBySource<W extends SavedWord>(words: W[]): WordGroup<W>[] {
     .map(([source, list]) => ({ source, words: list }))
     .sort((a, b) => (a.source == null ? 1 : b.source == null ? -1 : latest(b.words) - latest(a.words)))
 }
+
+/** One line on a word's practice so far, e.g. "Practiced 3 times · next review in 4 days · missed once". */
+export function practiceSummary(review: ReviewState, now: Date): string {
+  if (review.review_count === 0 || review.due_at == null) return "Not practiced yet"
+  const times = review.review_count === 1 ? "once" : `${review.review_count} times`
+  const days = Math.ceil((Date.parse(review.due_at) - now.getTime()) / 86_400_000)
+  const next = days <= 0 ? "due for review now" : days === 1 ? "next review tomorrow" : `next review in ${days} days`
+  const missed =
+    review.lapse_count === 0 ? "" : ` · missed ${review.lapse_count === 1 ? "once" : `${review.lapse_count} times`}`
+  return `Practiced ${times} · ${next}${missed}`
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { NEW_REVIEW_STATE, type ReviewState } from "@/lib/practice"
 import type { SavedWord } from "@/lib/saved-words"
-import { countByStatus, filterWords, groupBySource, withStatus, wordStatus } from "@/lib/word-list"
+import { countByStatus, filterWords, groupBySource, practiceSummary, withStatus, wordStatus } from "@/lib/word-list"
 
 const now = new Date("2026-10-02T12:00:00Z")
 const review = (patch: Partial<ReviewState>): ReviewState => ({
@@ -110,5 +110,23 @@ describe("groupBySource", () => {
 
   it("collects words with no (or a blank) source last, even when they're the newest", () => {
     expect(groupBySource(words).at(-1)!.words.map((w) => w.id)).toEqual(["3", "5"])
+  })
+})
+
+describe("practiceSummary", () => {
+  it("says when a word hasn't been practiced", () => {
+    expect(practiceSummary(NEW_REVIEW_STATE, now)).toBe("Not practiced yet")
+  })
+
+  it("counts practice, says when it's next due, and how often it was missed", () => {
+    expect(
+      practiceSummary(review({ review_count: 3, lapse_count: 1, due_at: "2026-10-06T12:00:00Z", review_stage: 2 }), now),
+    ).toBe("Practiced 3 times · next review in 4 days · missed once")
+    expect(practiceSummary(review({ review_count: 1, due_at: "2026-10-03T08:00:00Z", review_stage: 1 }), now)).toBe(
+      "Practiced once · next review tomorrow",
+    )
+    expect(
+      practiceSummary(review({ review_count: 5, lapse_count: 2, due_at: "2026-10-01T00:00:00Z", review_stage: 3 }), now),
+    ).toBe("Practiced 5 times · due for review now · missed 2 times")
   })
 })

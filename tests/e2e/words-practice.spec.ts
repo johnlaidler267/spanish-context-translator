@@ -187,8 +187,8 @@ test("the Words page groups words by source, and Practice these practices only t
   await page.goto("/words")
   const book = page.getByRole("region", { name: "Cuentos de la selva" })
   await expect(book.getByText("2 words")).toBeVisible({ timeout: 20_000 })
-  await expect(book.getByRole("button", { name: "Remove zorro" })).toBeVisible()
-  await expect(page.getByRole("region", { name: "Other" }).getByRole("button", { name: "Remove Adiós." })).toBeVisible()
+  await expect(book.getByRole("button", { name: /^zorro/ })).toBeVisible()
+  await expect(page.getByRole("region", { name: "Other" }).getByRole("button", { name: /^Adiós/ })).toBeVisible()
 
   // Search narrows the groups, too.
   await page.getByLabel("Search saved words").fill("adios")
