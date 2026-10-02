@@ -27,6 +27,14 @@ import { cn } from "@/lib/utils"
 
 const INPUT_LANG: Record<LearningLanguage, string> = { spanish: "es", french: "fr", english: "en" }
 
+// Letters most keyboards make awkward to type. Lowercase only -- answers are checked
+// case-insensitively, and ¿/¡ are ignored by the checker so they aren't offered.
+const ACCENT_KEYS: Record<LearningLanguage, string[]> = {
+  spanish: ["á", "é", "í", "ó", "ú", "ñ", "ü"],
+  french: ["é", "è", "ê", "à", "â", "ç", "ë", "î", "ï", "ô", "û", "ù", "œ"],
+  english: [],
+}
+
 type Card = { word: PracticeWord; retry: boolean }
 type Result = { word: PracticeWord; outcome: Outcome }
 type Feedback = { match: AnswerMatch; outcome: Outcome; answer: string }
@@ -152,6 +160,7 @@ export default function WordsPracticePage() {
         card={card}
         languageLabel={languageLabel}
         lang={INPUT_LANG[language]}
+        accentKeys={ACCENT_KEYS[language]}
         progress={card.retry ? "Once more" : `${position} of ${roundSize}`}
         progressValue={card.retry ? 1 : (position - 1) / Math.max(roundSize, 1)}
         onAnswered={(outcome) => record(card, outcome)}
@@ -198,6 +207,7 @@ function PracticeCard({
   card,
   languageLabel,
   lang,
+  accentKeys,
   progress,
   progressValue,
   onAnswered,
@@ -206,6 +216,7 @@ function PracticeCard({
   card: Card
   languageLabel: string
   lang: string
+  accentKeys: string[]
   progress: string
   progressValue: number
   onAnswered: (outcome: Outcome) => void
@@ -236,6 +247,18 @@ function PracticeCard({
     if (feedback) return
     if (!typed.trim()) return
     finish(checkAnswer(typed, [answer, answerText(word.word)]))
+  }
+
+  // Puts the letter where the caret is (replacing any selection) and keeps the caret after it.
+  const insertLetter = (letter: string) => {
+    const input = inputRef.current
+    const start = input?.selectionStart ?? typed.length
+    const end = input?.selectionEnd ?? typed.length
+    setTyped(typed.slice(0, start) + letter + typed.slice(end))
+    requestAnimationFrame(() => {
+      input?.focus()
+      input?.setSelectionRange(start + letter.length, start + letter.length)
+    })
   }
 
   const right = feedback != null && feedback.match !== "wrong"
@@ -314,6 +337,24 @@ function PracticeCard({
           </p>
         )}
       </div>
+
+      {!feedback && accentKeys.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Insert accented letter">
+          {accentKeys.map((letter) => (
+            <button
+              key={letter}
+              type="button"
+              tabIndex={-1}
+              // Stop the tap from taking focus off the answer box, which would close the phone keyboard.
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => insertLetter(letter)}
+              className="h-9 min-w-[2.25rem] rounded-md border border-border bg-card px-2 font-serif text-lg leading-none text-foreground transition-colors hover:bg-secondary active:bg-secondary"
+            >
+              {letter}
+            </button>
+          ))}
+        </div>
+      )}
 
       {feedback ? (
         <div className="mt-4">

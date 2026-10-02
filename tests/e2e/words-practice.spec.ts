@@ -97,3 +97,30 @@ test("practice a round: blanks in context, missed words come back, then start a 
   await page.getByRole("button", { name: "Start a new round" }).click()
   await expect(page.getByText("1 of 3")).toBeVisible()
 })
+
+test("accent keys type the letter at the caret without taking focus off the answer", async ({ page }) => {
+  await setupMocks(page)
+  await mockSavedWords(page)
+
+  await page.goto("/words/practice")
+  await expect(page.getByText("1 of 3")).toBeVisible({ timeout: 20_000 })
+  const input = page.getByLabel("Your answer")
+  const keys = page.getByRole("group", { name: "Insert accented letter" })
+  await expect(keys.getByRole("button")).toHaveText(["á", "é", "í", "ó", "ú", "ñ", "ü"])
+
+  await input.pressSequentially("ni")
+  await keys.getByRole("button", { name: "ñ" }).click()
+  await expect(input).toHaveValue("niñ")
+  await expect(input).toBeFocused()
+
+  // Inserts where the caret is, not just at the end.
+  await input.press("Home")
+  await keys.getByRole("button", { name: "á" }).click()
+  await input.pressSequentially("x")
+  await expect(input).toHaveValue("áxniñ")
+  await page.screenshot({ path: "test-results/practice-accent-keys.png" })
+
+  // Gone once the answer is checked.
+  await page.getByRole("button", { name: "Show answer" }).click()
+  await expect(keys).toHaveCount(0)
+})
