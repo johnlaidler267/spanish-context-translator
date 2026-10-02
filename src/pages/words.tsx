@@ -454,7 +454,7 @@ export default function WordsPage() {
             <p className="discover-masthead__eyebrow">{WORDS_EYEBROW[language]}</p>
             <h1 className="discover-masthead__title">Words</h1>
             <p className="discover-masthead__lede">
-              {languageLabel} words and phrases you&apos;ve saved while reading, with the sentence you found them in.
+              {languageLabel} words and phrases you&apos;ve saved while reading, grouped by where you found them.
             </p>
           </div>
           {canSave && listed.length > 0 && (
