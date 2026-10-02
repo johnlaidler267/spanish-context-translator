@@ -5,7 +5,7 @@
  */
 
 import { test, expect, type Page } from "@playwright/test"
-import { setupMocks } from "../e2e-mocks/supabase-mock"
+import { mockRestTable, setupMocks } from "../e2e-mocks/supabase-mock"
 
 type Row = Record<string, unknown>
 
@@ -183,9 +183,12 @@ test("a wrong answer can be marked right, explained, and the round ends with con
 test("the Words page groups words by source, and Practice these practices only that source", async ({ page }) => {
   await setupMocks(page)
   await mockSavedWords(page)
+  // The author comes from the reader's library book with the same title.
+  await mockRestTable(page, "user_epubs", [{ title: "Cuentos de la selva", author: "Horacio Quiroga" }])
 
   await page.goto("/words")
   const book = page.getByRole("region", { name: "Cuentos de la selva" })
+  await expect(book.getByRole("heading")).toHaveText("Cuentos de la selvaHoracio Quiroga", { timeout: 20_000 })
   await expect(book.getByText("2 words")).toBeVisible({ timeout: 20_000 })
   await expect(book.getByRole("button", { name: /^zorro/ })).toBeVisible()
   await expect(page.getByRole("region", { name: "Other" }).getByRole("button", { name: /^Adiós/ })).toBeVisible()

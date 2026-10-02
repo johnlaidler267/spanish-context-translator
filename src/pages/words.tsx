@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useSavedWords } from "@/hooks/use-saved-words"
+import { loadSourceAuthors } from "@/lib/source-authors"
 import { loadReviewStates, makeCloze, type ReviewState } from "@/lib/practice"
 import type { SavedWord } from "@/lib/saved-words"
 import { LEARNING_LANGUAGE_LABEL, WORDS_EYEBROW } from "@/lib/storage/language-learning-preferences"
@@ -96,76 +97,85 @@ function WordRow({
   }
 
   return (
-    <li className={cn("transition-colors", open && "relative z-[1] -mx-3 rounded-lg bg-card px-3")}>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 rounded-lg py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[minmax(0,10rem)_minmax(0,9rem)_minmax(0,1fr)_auto] sm:gap-x-4"
-      >
-        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 sm:contents">
-          <span className="min-w-0 break-words font-serif text-lg leading-snug text-foreground">{word.word}</span>
-          <span className="min-w-0 break-words text-sm text-foreground/80">{word.meaning}</span>
-        </span>
-        <span
-          className={cn(
-            "w-max rounded-full px-2 py-0.5 text-[0.7rem] font-medium leading-4 sm:order-last",
-            STATUS_CHIP[word.status],
-          )}
-        >
-          {STATUS_LABEL[word.status]}
-        </span>
-        <span className="col-span-2 min-w-0 sm:col-span-1">
-          {word.sentence && (
-            <span
-              className={cn(
-                "block text-sm italic leading-relaxed text-muted-foreground",
-                !open && "line-clamp-2 sm:line-clamp-1",
-              )}
-            >
-              &ldquo;
-              <SentenceWithWord sentence={word.sentence} word={word.word} />
-              &rdquo;
-            </span>
-          )}
-          {showSource && word.source_title && (
-            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{word.source_title}</span>
-          )}
-        </span>
-      </button>
-      {open && (
-        <div className="flex flex-col gap-2 pb-3 text-[13px]">
-          <p className="text-muted-foreground">{practiceSummary(word.review, new Date())}</p>
-          {open && editing ? (
-            <form onSubmit={(e) => void submitEdit(e)} className="flex flex-wrap items-center gap-2">
-              <Input
-                id={`meaning-${word.id}`}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                aria-label={`Translation of ${word.word}`}
-                autoFocus
-                className="h-8 max-w-xs flex-[1_1_12rem] text-sm"
-              />
-              <Button type="submit" size="sm" className="h-8" disabled={saving}>
-                {saving ? "Saving…" : "Save"}
-              </Button>
-              <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => onEditingChange(false)}>
-                Cancel
-              </Button>
-              {editError && <p className="basis-full text-destructive">{editError}</p>}
-            </form>
-          ) : (
-            <div className="flex flex-wrap gap-x-5 gap-y-1 font-medium">
-              <button type="button" onClick={startEdit} className="text-primary hover:underline">
-                Edit translation
-              </button>
-              <button type="button" onClick={onRemove} className="text-editorial hover:underline">
-                Remove
-              </button>
-            </div>
-          )}
-        </div>
+    // The divider sits on an inner wrapper so the row's hover/open background can reach a little
+    // past the text without widening the dotted lines between rows.
+    <li
+      className={cn(
+        "-mx-3 rounded-lg px-3 transition-colors [&:not(:first-child)>div]:border-t",
+        open ? "bg-card" : "[@media(hover:hover)]:hover:bg-card/70",
       )}
+    >
+      <div className="border-dotted border-border">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 rounded-lg py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[minmax(0,10rem)_minmax(0,9rem)_minmax(0,1fr)_auto] sm:gap-x-4"
+        >
+          <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 sm:contents">
+            <span className="min-w-0 break-words font-serif text-lg leading-snug text-foreground">{word.word}</span>
+            <span className="min-w-0 break-words text-sm text-foreground/80">{word.meaning}</span>
+          </span>
+          <span
+            className={cn(
+              "w-max rounded-full px-2 py-0.5 text-[0.7rem] font-medium leading-4 sm:order-last",
+              STATUS_CHIP[word.status],
+            )}
+          >
+            {STATUS_LABEL[word.status]}
+          </span>
+          <span className="col-span-2 min-w-0 sm:col-span-1">
+            {word.sentence && (
+              <span
+                className={cn(
+                  "block text-sm italic leading-relaxed text-muted-foreground",
+                  !open && "line-clamp-2 sm:line-clamp-1",
+                )}
+              >
+                &ldquo;
+                <SentenceWithWord sentence={word.sentence} word={word.word} />
+                &rdquo;
+              </span>
+            )}
+            {showSource && word.source_title && (
+              <span className="mt-0.5 block truncate text-xs text-muted-foreground">{word.source_title}</span>
+            )}
+          </span>
+        </button>
+        {open && (
+          <div className="flex flex-col gap-2 pb-3 text-[13px]">
+            <p className="text-muted-foreground">{practiceSummary(word.review, new Date())}</p>
+            {open && editing ? (
+              <form onSubmit={(e) => void submitEdit(e)} className="flex flex-wrap items-center gap-2">
+                <Input
+                  id={`meaning-${word.id}`}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  aria-label={`Translation of ${word.word}`}
+                  autoFocus
+                  className="h-8 max-w-xs flex-[1_1_12rem] text-sm"
+                />
+                <Button type="submit" size="sm" className="h-8" disabled={saving}>
+                  {saving ? "Saving…" : "Save"}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => onEditingChange(false)}>
+                  Cancel
+                </Button>
+                {editError && <p className="basis-full text-destructive">{editError}</p>}
+              </form>
+            ) : (
+              <div className="flex flex-wrap gap-x-5 gap-y-1 font-medium">
+                <button type="button" onClick={startEdit} className="text-primary hover:underline">
+                  Edit translation
+                </button>
+                <button type="button" onClick={onRemove} className="text-editorial hover:underline">
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </li>
   )
 }
@@ -281,6 +291,22 @@ export default function WordsPage() {
   const counts = useMemo(() => countByStatus(listed), [listed])
   const shown = useMemo(() => filterWords(listed, { query, status, sort }), [listed, query, status, sort])
 
+  // Authors for the group headings, looked up by book title (saved words only keep the title).
+  const titlesKey = useMemo(
+    () => [...new Set(words.map((w) => w.source_title?.trim()).filter((t): t is string => !!t))].sort().join("\n"),
+    [words],
+  )
+  const [authors, setAuthors] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    let cancelled = false
+    void loadSourceAuthors(titlesKey ? titlesKey.split("\n") : []).then((found) => {
+      if (!cancelled) setAuthors(found)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [titlesKey])
+
   let body: React.ReactNode
   if (!canSave) {
     body = (
@@ -380,6 +406,11 @@ export default function WordsPage() {
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
                   <h2 className="min-w-0 font-serif text-xl font-semibold leading-snug text-foreground">
                     {g.source ?? "Other"}
+                    {g.source && authors.get(g.source) && (
+                      <span className="ml-2 text-base font-normal italic text-muted-foreground">
+                        {authors.get(g.source)}
+                      </span>
+                    )}
                   </h2>
                   <p className="text-[13px] text-muted-foreground">
                     {g.words.length} {g.words.length === 1 ? "word" : "words"}
@@ -396,7 +427,7 @@ export default function WordsPage() {
                     )}
                   </p>
                 </div>
-                <ul className="divide-y divide-dotted divide-border">
+                <ul>
                   {g.words.map((w) => (
                     <WordRow key={w.id} word={w} {...rowProps(w)} showSource={false} />
                   ))}
@@ -405,7 +436,7 @@ export default function WordsPage() {
             ))}
           </div>
         ) : (
-          <ul className="divide-y divide-dotted divide-border">
+          <ul>
             {shown.map((w) => (
               <WordRow key={w.id} word={w} {...rowProps(w)} />
             ))}
