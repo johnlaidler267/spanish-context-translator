@@ -7,7 +7,21 @@ import { useLandingShellNewChat } from "@/components/landing/landing-shell-layou
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { useSavedWords } from "@/hooks/use-saved-words"
+import { makeCloze } from "@/lib/practice"
 import { LEARNING_LANGUAGE_LABEL, WORDS_EYEBROW } from "@/lib/storage/language-learning-preferences"
+
+/** The saved sentence with the saved word bolded (plain text if the word isn't found in it). */
+function SentenceWithWord({ sentence, word }: { sentence: string; word: string }) {
+  const parts = makeCloze(sentence, word)
+  if (!parts) return <>{sentence}</>
+  return (
+    <>
+      {parts.before}
+      <strong className="font-semibold text-foreground">{parts.answer}</strong>
+      {parts.after}
+    </>
+  )
+}
 
 /** Words the reader saved from the word-details sheet, for their current learning language. */
 export default function WordsPage() {
@@ -71,7 +85,9 @@ export default function WordsPage() {
               <p className="font-serif text-lg leading-snug text-foreground">{w.word}</p>
               {w.meaning && <p className="text-sm text-foreground/90">{w.meaning}</p>}
               {w.sentence && (
-                <p className="mt-1 text-sm italic text-muted-foreground">&ldquo;{w.sentence}&rdquo;</p>
+                <p className="mt-1 text-sm italic text-muted-foreground">
+                  &ldquo;<SentenceWithWord sentence={w.sentence} word={w.word} />&rdquo;
+                </p>
               )}
               {w.source_title && <p className="mt-1 text-xs text-muted-foreground">{w.source_title}</p>}
             </div>
