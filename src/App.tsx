@@ -369,6 +369,9 @@ export default function App() {
    * Library books) -- those translate page by page as before. Read by translatePageWithUsage.
    */
   const pageTranslatorRef = useRef<BatchedPageTranslator | null>(null)
+  /** Page the reader most recently asked to jump to. A slow load only navigates if it's still the
+   *  latest ask, so rapid Next/Prev taps can't be overridden by an older load finishing late. */
+  const pendingPageNavRef = useRef<number | null>(null)
   /**
    * Latest "which book, which page, which user" as of the last page turn — kept fresh by the
    * progress-persisting effect below, and read by the leave-triggered recap effect right after
@@ -1697,6 +1700,7 @@ export default function App() {
         })
         return
       }
+      pendingPageNavRef.current = target
       if (cache.getPage(target) != null || cache.getError(target) != null) {
         setArticlePageIndex(target)
         return
@@ -1705,7 +1709,7 @@ export default function App() {
       void cache
         .loadPage(target, pageSourceText(sourcePages[target]!), translatePageWithUsage)
         .then(() => {
-          setArticlePageIndex(target)
+          if (pendingPageNavRef.current === target) setArticlePageIndex(target)
           bump()
         })
         .catch(bump)

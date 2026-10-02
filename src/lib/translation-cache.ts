@@ -113,21 +113,29 @@ export class TranslationCache {
       }
     }
 
-    const p = translateWithAutoRetries(() => translateFn(pageText))
+    // clearPage (retry) drops the in-flight entry but can't cancel the request, so an older
+    // request can settle after a newer one started for the same index. Only the request that
+    // still owns the in-flight slot may write results/errors; otherwise a late failure would
+    // wipe a good page (or flag it errored) and a late success would overwrite the retry.
+    const p: Promise<ReconciledItem[]> = translateWithAutoRetries(() => translateFn(pageText))
       .then((items) => {
-        this.resolved.set(index, items)
-        this.errors.delete(index)
-        this.inFlight.delete(index)
-        if (this.persist) {
-          setCachedTranslationPage(this.persist.user, this.persist.cacheKey, index, pageText, items)
+        if (this.inFlight.get(index) === p) {
+          this.resolved.set(index, items)
+          this.errors.delete(index)
+          this.inFlight.delete(index)
+          if (this.persist) {
+            setCachedTranslationPage(this.persist.user, this.persist.cacheKey, index, pageText, items)
+          }
         }
         return items
       })
       .catch((e) => {
-        this.inFlight.delete(index)
-        this.resolved.delete(index)
-        const msg = e instanceof Error ? e.message : String(e)
-        this.errors.set(index, msg)
+        if (this.inFlight.get(index) === p) {
+          this.inFlight.delete(index)
+          this.resolved.delete(index)
+          const msg = e instanceof Error ? e.message : String(e)
+          this.errors.set(index, msg)
+        }
         throw e
       })
 

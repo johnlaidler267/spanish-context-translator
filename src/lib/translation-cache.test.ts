@@ -97,3 +97,20 @@ describe("TranslationCache persistence", () => {
     expect(result).toEqual(items("libro B"))
   })
 })
+
+describe("TranslationCache retry race", () => {
+  it("a stale request that fails after clearPage+retry doesn't wipe the retried page", async () => {
+    const { TranslationCache } = await import("@/lib/translation-cache")
+    const cache = new TranslationCache()
+    let rejectStale!: (e: Error) => void
+    const stale = new Promise<ReconciledItem[]>((_, rej) => (rejectStale = rej))
+    const first = cache.loadPage(3, "x", () => stale)
+    first.catch(() => {})
+    cache.clearPage(3)
+    await cache.loadPage(3, "x", () => Promise.resolve(items("ok")))
+    rejectStale(new Error("Chunking was cut off mid-page"))
+    await first.catch(() => {})
+    expect(cache.getPage(3)).toEqual(items("ok"))
+    expect(cache.getError(3)).toBeUndefined()
+  })
+})
