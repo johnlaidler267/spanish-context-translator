@@ -36,7 +36,7 @@ export function LearnPageShell({
     <div className="discover-scroll-surface flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden [-webkit-overflow-scrolling:touch] font-sans">
       <main
         className={cn(
-          "animate-fade-in-up mx-auto w-full max-w-xl px-4 pb-16 pt-3 sm:px-6 sm:pt-6 md:pt-10 lg:pt-12",
+          "animate-fade-in-up mx-auto w-full max-w-2xl px-4 pb-16 pt-3 sm:px-6 sm:pt-6 md:pt-10 lg:pt-12",
           className,
         )}
       >

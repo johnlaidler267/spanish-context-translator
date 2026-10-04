@@ -144,8 +144,9 @@ export function LearnChoiceCard({
         <span className="learn-ribbon" aria-hidden />
       )}
       <span className="block pr-20 font-serif text-[1.55rem] font-medium leading-tight tracking-tight text-foreground">{title}</span>
-      <span className="mt-1 block pr-20 text-[0.95rem] text-muted-foreground">{description}</span>
-      <span className="mt-4 flex items-center gap-3 border-t border-border pt-3.5 text-sm text-muted-foreground">
+      <span className="mb-4 mt-1 block pr-20 text-[0.95rem] text-muted-foreground">{description}</span>
+      {/* mt-auto: cards share a row on desktop, so this footer lines up at the bottom of both. */}
+      <span className="mt-auto flex items-center gap-3 border-t border-border pt-3.5 text-sm text-muted-foreground">
         <span className="min-w-0 flex-1">{next}</span>
         <span className="learn-choice__action shrink-0 font-medium">{action} →</span>
       </span>

@@ -21,30 +21,36 @@ export default function LearnPage() {
   const lessonCount = LESSONS.length + UPCOMING_LESSONS.length
 
   return (
-    <LearnPageShell>
-      <p className="discover-masthead__eyebrow">Aprende</p>
-      <VerbWheel />
-      <h1 className="text-balance font-serif text-[2rem] font-medium leading-[1.05] tracking-tight text-foreground sm:text-[2.4rem]">
-        One verb, every way you&apos;ll meet it.
-      </h1>
-      <p className="mt-2.5 max-w-md text-[0.98rem] text-muted-foreground">
-        A few focused minutes on the forms and grammar behind what you read.
-      </p>
+    // Wider than the other Learn pages: on desktop the intro and warm-up sit side by side, and
+    // the two cards share a row, instead of one narrow column down the middle of the window.
+    <LearnPageShell className="max-w-5xl">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-center lg:gap-14">
+        <div>
+          <p className="discover-masthead__eyebrow">Aprende</p>
+          <VerbWheel />
+          <h1 className="text-balance font-serif text-[2rem] font-medium leading-[1.05] tracking-tight text-foreground sm:text-[2.4rem]">
+            One verb, every way you&apos;ll meet it.
+          </h1>
+          <p className="mt-2.5 max-w-md text-[0.98rem] text-muted-foreground">
+            A few focused minutes on the forms and grammar behind what you read.
+          </p>
+        </div>
 
-      <div className="mt-8">
-        <WarmUpCard
-          key={warmUpKey}
-          warmUp={warmUp}
-          onAnswer={(right) => setStats((s) => recordTenseAnswer(s, warmUp.sentence.tense, right))}
-          onAnother={() => {
-            setWarmUp(buildWarmUp())
-            setWarmUpKey((k) => k + 1)
-          }}
-          onKeepGoing={() => navigate("/learn/conjugation?start=1")}
-        />
+        <div className="mt-8 lg:mt-0">
+          <WarmUpCard
+            key={warmUpKey}
+            warmUp={warmUp}
+            onAnswer={(right) => setStats((s) => recordTenseAnswer(s, warmUp.sentence.tense, right))}
+            onAnother={() => {
+              setWarmUp(buildWarmUp())
+              setWarmUpKey((k) => k + 1)
+            }}
+            onKeepGoing={() => navigate("/learn/conjugation?start=1")}
+          />
+        </div>
       </div>
 
-      <div className="mt-8 flex flex-col gap-3.5">
+      <div className="mt-8 grid gap-3.5 md:grid-cols-2 lg:mt-12 lg:gap-5">
         <LearnChoiceCard
           to="/learn/conjugation"
           variant="conjugation"

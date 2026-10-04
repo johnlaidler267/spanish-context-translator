@@ -3707,7 +3707,8 @@ article span {
 
 .learn-choice {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 1.1rem;
