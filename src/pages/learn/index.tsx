@@ -4,8 +4,8 @@ import { LearnPageShell } from "@/components/learn/learn-page-shell"
 import { LearnChoiceCard, VerbWheel, WarmUpCard } from "@/components/learn/learn-hub-parts"
 import { listTenses } from "@/lib/learn/conjugation"
 import { buildWarmUp, weakestTense } from "@/lib/learn/drill-round"
-import { LESSONS, UPCOMING_LESSONS } from "@/lib/learn/lessons"
-import { loadDrillSettings, loadTenseStats, recordTenseAnswer } from "@/lib/learn/progress-storage"
+import { LESSONS } from "@/lib/learn/lessons"
+import { loadCompletedLessons, loadDrillSettings, loadTenseStats, recordTenseAnswer } from "@/lib/learn/progress-storage"
 
 /** Learn landing: a warm-up question, then the way into conjugation drills or mini lessons. */
 export default function LearnPage() {
@@ -17,8 +17,8 @@ export default function LearnPage() {
   const [warmUpKey, setWarmUpKey] = useState(0)
 
   const weak = weakestTense(settings.tenses, stats)
-  const nextLesson = LESSONS[0]
-  const lessonCount = LESSONS.length + UPCOMING_LESSONS.length
+  const [completed] = useState(loadCompletedLessons)
+  const nextLesson = LESSONS.find((l) => !completed.includes(l.id))
 
   return (
     // Wider than the other Learn pages: on desktop the intro and warm-up sit side by side, and
@@ -74,11 +74,15 @@ export default function LearnPage() {
           title="Mini lessons"
           description="One grammar idea, explained simply, then practiced."
           next={
-            <>
-              Up next: <span className="font-medium text-foreground">{nextLesson.title}</span> · {nextLesson.minutes} min
-            </>
+            nextLesson ? (
+              <>
+                Up next: <span className="font-medium text-foreground">{nextLesson.title}</span> · {nextLesson.minutes} min
+              </>
+            ) : (
+              <>All {LESSONS.length} done. Revisit any of them.</>
+            )
           }
-          action={`${lessonCount} lessons`}
+          action={`${LESSONS.length} lessons`}
         />
       </div>
     </LearnPageShell>

@@ -5,6 +5,7 @@ import { BlankSentence, ConjugationInput, DrillTopBar, GradeFeedback } from "@/c
 import { LearnPageShell } from "@/components/learn/learn-page-shell"
 import { gradeConjugation, isRight, PERSON_SHORT, TENSE_NAME, type Grade } from "@/lib/learn/conjugation"
 import { findLesson, parseInline, type LessonStep, type TeachBlock } from "@/lib/learn/lessons"
+import { markLessonCompleted } from "@/lib/learn/progress-storage"
 import { cn } from "@/lib/utils"
 
 /** Plays one mini lesson: teaching screens, then choices and typed practice, then a recap. */
@@ -21,6 +22,7 @@ export default function LearnLessonPage() {
   const done = index >= total
   const record = (right: boolean) => setScore((s) => ({ right: s.right + (right ? 1 : 0), asked: s.asked + 1 }))
   const next = () => {
+    if (index + 1 === total) markLessonCompleted(lesson.id)
     setIndex((i) => i + 1)
     document.querySelector(".discover-scroll-surface")?.scrollTo(0, 0)
   }
@@ -47,7 +49,7 @@ export default function LearnLessonPage() {
             </ul>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               {lesson.finish.drill && (
-                <Button className="rounded-full px-7" onClick={() => navigate(`/learn/conjugation?tense=${lesson.finish.drill!.tense}`)}>
+                <Button className="rounded-full px-7" onClick={() => navigate(`/learn/conjugation?tense=${lesson.finish.drill!.tenses.join(",")}`)}>
                   {lesson.finish.drill.label}
                 </Button>
               )}

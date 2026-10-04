@@ -13,8 +13,10 @@ import {
 import {
   DEFAULT_DRILL_SETTINGS,
   LEARN_SETTINGS_KEY,
+  loadCompletedLessons,
   loadDrillSettings,
   loadTenseStats,
+  markLessonCompleted,
   recordTenseAnswer,
 } from "@/lib/learn/progress-storage"
 
@@ -134,5 +136,13 @@ describe("progress storage", () => {
     stats = recordTenseAnswer(stats, "future", false)
     expect(stats.future).toEqual({ right: 1, total: 2 })
     expect(loadTenseStats()).toEqual({ future: { right: 1, total: 2 } })
+  })
+
+  it("remembers finished lessons once each", () => {
+    expect(loadCompletedLessons()).toEqual([])
+    markLessonCompleted("por-para")
+    markLessonCompleted("por-para")
+    markLessonCompleted("ojala")
+    expect(loadCompletedLessons()).toEqual(["por-para", "ojala"])
   })
 })

@@ -25,7 +25,8 @@ export type Lesson = {
   sample: string
   minutes: number
   steps: LessonStep[]
-  finish: { title: string; recap: string[]; drill?: { tense: TenseId; label: string } }
+  /** `drill` hands off to a one-off conjugation round of these tenses. */
+  finish: { title: string; recap: string[]; drill?: { tenses: TenseId[]; label: string } }
 }
 
 const SI_CLAUSES: Lesson = {
@@ -91,19 +92,305 @@ const SI_CLAUSES: Lesson = {
       "Possible: _si_ + present, then future or present.",
       "Never put the conditional right after _si_.",
     ],
-    drill: { tense: "impsubj", label: "Drill the imperfect subjunctive" },
+    drill: { tenses: ["impsubj"], label: "Drill the imperfect subjunctive" },
   },
 }
 
-export const LESSONS: Lesson[] = [SI_CLAUSES]
+const SER_ESTAR: Lesson = {
+  id: "ser-estar",
+  title: "Ser or estar",
+  sample: "Es aburrido / está aburrido.",
+  minutes: 5,
+  steps: [
+    {
+      kind: "teach",
+      title: "Two verbs for “to be”",
+      blocks: [
+        {
+          type: "text",
+          text: "Spanish splits “to be” in two. **Ser** says what something is: identity, origin, job, time, what it's made of. **Estar** says where it is or how it is right now.",
+        },
+        { type: "example", label: "Ser", es: "Mi madre **es** médica.", en: "My mother is a doctor." },
+        { type: "example", label: "Estar", es: "Mi madre **está** cansada.", en: "My mother is tired." },
+        { type: "note", text: "A quick test: is it what the thing is, or how it's doing?" },
+      ],
+    },
+    {
+      kind: "teach",
+      title: "Same word, different meaning",
+      blocks: [
+        { type: "text", text: "Some adjectives change meaning depending on which verb they follow." },
+        { type: "example", es: "La película **es** aburrida.", en: "The film is boring." },
+        { type: "example", es: "**Estoy** aburrido.", en: "I'm bored." },
+        { type: "example", es: "Juan **es** listo. / Juan **está** listo.", en: "Juan is clever. / Juan is ready." },
+        {
+          type: "note",
+          text: "Two exceptions to memorize: where an event takes place uses ser (_La fiesta es en mi casa_), and _muerto_ takes estar (_El pez está muerto_).",
+        },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Madrid ___ en España.",
+      options: [
+        { text: "está", right: true, why: "Where a place is: estar." },
+        { text: "es", why: "Ser says what something is. For where something is, use estar." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "La fiesta ___ en mi casa el sábado.",
+      options: [
+        { text: "es", right: true, why: "Where an event takes place uses ser. It's the classic exception." },
+        { text: "está", why: "Estar is for where things and people are. Events are the exception: they take ser." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "No puedo salir hoy, ___ enferma.",
+      options: [
+        { text: "estoy", right: true, why: "Being sick is a condition, so estar." },
+        { text: "soy", why: "Ser would make being sick part of who you are. A condition takes estar." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Mi hermano ___ muy listo: siempre saca buenas notas.",
+      options: [
+        { text: "es", right: true, why: "Ser + listo means clever, which fits the good grades." },
+        { text: "está", why: "Estar + listo means ready. Good grades point to clever, which takes ser." },
+      ],
+    },
+    { kind: "type", prompt: "Your turn", text: "Mis padres ___ de Colombia.", verb: "ser", tense: "present", person: 5 },
+    { kind: "type", prompt: "Your turn", text: "¿Dónde ___ las llaves?", verb: "estar", tense: "present", person: 5 },
+  ],
+  finish: {
+    title: "You can choose between ser and estar",
+    recap: [
+      "_Ser_: identity, origin, job, time, and where events happen.",
+      "_Estar_: location and how things are right now.",
+      "Some adjectives change meaning: _es listo_ (clever), _está listo_ (ready).",
+    ],
+    drill: { tenses: ["present"], label: "Drill the present tense" },
+  },
+}
 
-/** Shown in the list as coming soon, so the shape of the series is visible. */
-export const UPCOMING_LESSONS: { title: string; sample: string }[] = [
-  { title: "Ser or estar", sample: "Es aburrido / está aburrido." },
-  { title: "Preterite or imperfect", sample: "Llovía cuando salí." },
-  { title: "Por or para", sample: "Gracias por todo. Es para ti." },
-  { title: "Wishes and hopes", sample: "Ojalá que llueva." },
-]
+const PRETERITE_IMPERFECT: Lesson = {
+  id: "preterite-imperfect",
+  title: "Preterite or imperfect",
+  sample: "Llovía cuando salí.",
+  minutes: 5,
+  steps: [
+    {
+      kind: "teach",
+      title: "Two pasts, two jobs",
+      blocks: [
+        {
+          type: "text",
+          text: "Spanish has two simple past tenses. The **preterite** tells what happened: finished events. The **imperfect** sets the scene: what was going on, what used to happen, what things were like.",
+        },
+        { type: "example", label: "Preterite", es: "Ayer **comí** paella.", en: "Yesterday I ate paella." },
+        {
+          type: "example",
+          label: "Imperfect",
+          es: "De niño **comía** paella los domingos.",
+          en: "As a kid I used to eat paella on Sundays.",
+        },
+        { type: "note", text: "Think of a film: the imperfect is the background, the preterite is the action." },
+      ],
+    },
+    {
+      kind: "teach",
+      title: "Together in one sentence",
+      blocks: [
+        { type: "text", text: "They often meet: the imperfect sets up what was going on, and the preterite interrupts it." },
+        { type: "example", es: "**Llovía** cuando **salí** de casa.", en: "It was raining when I left the house." },
+        { type: "example", es: "Mientras **leía**, **sonó** el teléfono.", en: "While I was reading, the phone rang." },
+        {
+          type: "note",
+          text: "Clue words help: _ayer, anoche, de repente_ point to the preterite; _siempre, de niño, mientras_ to the imperfect.",
+        },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Cuando era pequeña, ___ en un pueblo.",
+      options: [
+        { text: "vivía", right: true, why: "How things used to be is background, so imperfect." },
+        { text: "viví", why: "The preterite makes it one finished event. Cuando era pequeña describes a stretch of time." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Anoche ___ una película muy buena.",
+      options: [
+        { text: "vi", right: true, why: "Anoche marks one finished event: preterite." },
+        { text: "veía", why: "The imperfect describes something ongoing or habitual, not one film last night." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Mientras yo ___, mi hermano cocinaba.",
+      options: [
+        { text: "trabajaba", right: true, why: "Two actions in progress side by side: both imperfect." },
+        { text: "trabajé", why: "The preterite would make your work a finished event. Mientras sets up something in progress." },
+      ],
+    },
+    { kind: "type", prompt: "Your turn", text: "De repente, alguien ___ a la puerta.", verb: "llamar", tense: "preterite", person: 2 },
+    { kind: "type", prompt: "Your turn", text: "Todos los veranos mis abuelos nos ___ a la playa.", verb: "llevar", tense: "imperfect", person: 5 },
+    { kind: "type", prompt: "Your turn", text: "Ayer ___ tarde al trabajo.", verb: "llegar", tense: "preterite", person: 0 },
+  ],
+  finish: {
+    title: "You can tell the two pasts apart",
+    recap: [
+      "Preterite: finished events, often with a clear time (_ayer, anoche_).",
+      "Imperfect: background, habits and descriptions (_siempre, de niño, mientras_).",
+      "Together: the imperfect sets the scene, the preterite interrupts it.",
+    ],
+    drill: { tenses: ["preterite", "imperfect"], label: "Drill both pasts" },
+  },
+}
+
+const POR_PARA: Lesson = {
+  id: "por-para",
+  title: "Por or para",
+  sample: "Gracias por todo. Es para ti.",
+  minutes: 4,
+  steps: [
+    {
+      kind: "teach",
+      title: "Two ways to say “for”",
+      blocks: [
+        {
+          type: "text",
+          text: "**Para** points ahead: a goal, a recipient, a destination, a deadline. **Por** explains why or how: a cause, an exchange, a route, a means.",
+        },
+        { type: "example", label: "Para", es: "Este regalo es **para** ti.", en: "This gift is for you." },
+        { type: "example", label: "Para", es: "Estudio **para** aprender.", en: "I study (in order) to learn." },
+        { type: "example", label: "Por", es: "Gracias **por** todo.", en: "Thanks for everything." },
+        { type: "example", label: "Por", es: "Caminamos **por** el parque.", en: "We walked through the park." },
+      ],
+    },
+    {
+      kind: "teach",
+      title: "A few more of each",
+      blocks: [
+        { type: "example", label: "Exchange", es: "Pagué diez euros **por** el libro.", en: "I paid ten euros for the book." },
+        { type: "example", label: "Means", es: "Te llamo **por** teléfono.", en: "I'll call you on the phone." },
+        { type: "example", label: "Deadline", es: "El informe es **para** el lunes.", en: "The report is due Monday." },
+        { type: "example", label: "Destination", es: "Mañana salgo **para** Lima.", en: "Tomorrow I leave for Lima." },
+        { type: "note", text: "Quick check: is it pointing ahead (_para_) or explaining why or how (_por_)?" },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Salimos ___ Madrid mañana por la mañana.",
+      options: [
+        { text: "para", right: true, why: "A destination: para." },
+        { text: "por", why: "Por Madrid would mean through or around Madrid, not heading there." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Muchas gracias ___ tu ayuda.",
+      options: [
+        { text: "por", right: true, why: "Thanks look back at the cause: por." },
+        { text: "para", why: "Para points to a goal or recipient. What you're thankful for is a cause, so por." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Necesito el informe ___ el viernes.",
+      options: [
+        { text: "para", right: true, why: "A deadline: para." },
+        { text: "por", why: "Por with a time gives a rough period, not a deadline. “By Friday” is para." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Cambié mi bicicleta ___ una guitarra.",
+      options: [
+        { text: "por", right: true, why: "A swap or exchange: por." },
+        { text: "para", why: "Para would mean the bike was meant for a guitar. An exchange takes por." },
+      ],
+    },
+  ],
+  finish: {
+    title: "You can choose between por and para",
+    recap: [
+      "_Para_: goals, recipients, destinations, deadlines.",
+      "_Por_: causes and thanks, exchanges, routes, means.",
+      "Pointing ahead is _para_; explaining why or how is _por_.",
+    ],
+  },
+}
+
+const OJALA: Lesson = {
+  id: "ojala",
+  title: "Wishes and hopes",
+  sample: "Ojalá que llueva.",
+  minutes: 4,
+  steps: [
+    {
+      kind: "teach",
+      title: "Ojalá: I hope, if only",
+      blocks: [
+        {
+          type: "text",
+          text: "_Ojalá_ means “I hope” or “if only.” It comes from Arabic (“God willing”), it never changes form, and the verb after it is always subjunctive.",
+        },
+        { type: "example", es: "Ojalá **llueva** mañana.", en: "I hope it rains tomorrow." },
+        { type: "example", es: "Ojalá que **puedas** venir.", en: "I hope you can come." },
+        { type: "note", text: "The _que_ is optional: _Ojalá venga_ and _Ojalá que venga_ mean the same." },
+      ],
+    },
+    {
+      kind: "teach",
+      title: "A hope or a wish?",
+      blocks: [
+        { type: "text", text: "The subjunctive's tense shows how likely you think it is." },
+        { type: "example", label: "Possible", es: "Ojalá **tenga** tiempo.", en: "I hope I have time." },
+        { type: "example", label: "Unlikely", es: "Ojalá **tuviera** tiempo.", en: "I wish I had time." },
+        {
+          type: "note",
+          text: "_Espero que_ (I hope that) works the same way for real hopes: _Espero que estés bien._",
+        },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Ojalá ___ buen tiempo el fin de semana.",
+      options: [
+        { text: "haga", right: true, why: "Ojalá always takes the subjunctive, and this is a real hope, so present." },
+        { text: "hace", why: "Hace is indicative. After ojalá the verb is always subjunctive." },
+        { text: "hará", why: "The future is indicative too. Ojalá needs the subjunctive." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "No tengo coche. ¡Ojalá ___ uno!",
+      options: [
+        { text: "tuviera", right: true, why: "You don't have one, so it's a wish about what isn't so: imperfect subjunctive." },
+        { text: "tenga", why: "Tenga hopes for something possible. You've just said you don't have a car." },
+      ],
+    },
+    { kind: "type", prompt: "Your turn", text: "Espero que ___ bien.", verb: "estar", tense: "subj", person: 1 },
+    { kind: "type", prompt: "Your turn", text: "Ojalá que ellos ___ pronto.", verb: "volver", tense: "subj", person: 5 },
+    { kind: "type", prompt: "Now a wish", text: "Ojalá ___ hablar japonés.", verb: "saber", tense: "impsubj", person: 0 },
+  ],
+  finish: {
+    title: "You can hope and wish in Spanish",
+    recap: [
+      "_Ojalá (que)_ is always followed by the subjunctive.",
+      "Present subjunctive for real hopes: _Ojalá tenga tiempo._",
+      "Imperfect subjunctive for wishes about what isn't so: _Ojalá tuviera tiempo._",
+    ],
+    drill: { tenses: ["subj", "impsubj"], label: "Drill the subjunctive" },
+  },
+}
+
+/** In the order they're suggested: the "Up next" lesson is the first one not finished yet. */
+export const LESSONS: Lesson[] = [SER_ESTAR, PRETERITE_IMPERFECT, POR_PARA, OJALA, SI_CLAUSES]
 
 export function findLesson(id: string | undefined): Lesson | undefined {
   return LESSONS.find((l) => l.id === id)

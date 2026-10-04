@@ -73,3 +73,16 @@ export function recordTenseAnswer(stats: TenseStats, tense: TenseId, right: bool
   writeJson(LEARN_STATS_KEY, next)
   return next
 }
+
+export const LEARN_LESSONS_DONE_KEY = "lexalens-learn-lessons-done"
+
+/** Ids of the mini lessons the reader has finished. */
+export function loadCompletedLessons(): string[] {
+  const raw = readJson(LEARN_LESSONS_DONE_KEY)
+  return Array.isArray(raw) ? raw.filter((v): v is string => typeof v === "string") : []
+}
+
+export function markLessonCompleted(id: string) {
+  const done = loadCompletedLessons()
+  if (!done.includes(id)) writeJson(LEARN_LESSONS_DONE_KEY, [...done, id])
+}

@@ -18,9 +18,19 @@ describe("lessons", () => {
     }
   })
 
-  it("the si-clause lesson's typed answers are the forms it teaches", () => {
-    const typed = findLesson("si-clauses")!.steps.flatMap((s) => (s.kind === "type" ? [conjugate(s.verb, s.tense, s.person)] : []))
-    expect(typed).toEqual(["viviéramos", "pudiera", "comería"])
+  it("typed answers are the forms each lesson teaches", () => {
+    const typed = (id: string) =>
+      findLesson(id)!.steps.flatMap((s) => (s.kind === "type" ? [conjugate(s.verb, s.tense, s.person)] : []))
+    expect(typed("ser-estar")).toEqual(["son", "están"])
+    expect(typed("preterite-imperfect")).toEqual(["llamó", "llevaban", "llegué"])
+    expect(typed("por-para")).toEqual([])
+    expect(typed("ojala")).toEqual(["estés", "vuelvan", "supiera"])
+    expect(typed("si-clauses")).toEqual(["viviéramos", "pudiera", "comería"])
+  })
+
+  it("lesson ids are unique, and each opens by teaching", () => {
+    expect(new Set(LESSONS.map((l) => l.id)).size).toBe(LESSONS.length)
+    for (const l of LESSONS) expect(l.steps[0].kind, l.id).toBe("teach")
   })
 
   it("parseInline splits highlight and Spanish markup", () => {

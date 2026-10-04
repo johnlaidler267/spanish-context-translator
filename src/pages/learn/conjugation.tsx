@@ -42,12 +42,12 @@ export default function LearnConjugationPage() {
   const [settings, setSettings] = useState(loadDrillSettings)
   const [stats, setStats] = useState(loadTenseStats)
   const [editing, setEditing] = useState(false)
-  // `?start=1` (from the warm-up) opens straight into a round. `?tense=…` (from a lesson) starts a
-  // one-off round of that tense without changing the reader's saved tense picks.
+  // `?start=1` (from the warm-up) opens straight into a round. `?tense=a,b` (from a lesson) starts
+  // a one-off round of those tenses without changing the reader's saved tense picks.
   const [phase, setPhase] = useState<Phase>(() => {
-    const tense = params.get("tense")
-    if (params.get("start") == null && !isTenseId(tense)) return { name: "setup" }
-    const round = buildRound(isTenseId(tense) ? { ...settings, tenses: [tense] } : settings, stats)
+    const tenses = (params.get("tense") ?? "").split(",").filter(isTenseId)
+    if (params.get("start") == null && tenses.length === 0) return { name: "setup" }
+    const round = buildRound(tenses.length > 0 ? { ...settings, tenses } : settings, stats)
     return { name: "drill", round, index: 0, answered: [] }
   })
   // Drop the link params so a reload or "back" lands on the setup screen, not another round.

@@ -124,6 +124,28 @@ test("the si-clause lesson runs end to end and hands off to a one-off drill", as
   expect(await page.evaluate(() => localStorage.getItem("lexalens-learn-drill-settings"))).toBeNull()
 })
 
+test("a choice-only lesson finishes, is ticked in the list, and moves Up next along", async ({ page }) => {
+  await setupMocks(page)
+  await page.goto("/learn")
+  await expect(page.getByRole("link", { name: /Mini lessons/ })).toContainText("Up next: Ser or estar")
+
+  await page.goto("/learn/lessons/por-para")
+  await page.getByRole("button", { name: "Continue" }).click()
+  await page.getByRole("button", { name: "Continue" }).click()
+  for (const pick of ["para", "por", "para", "por"]) {
+    await page.getByRole("button", { name: pick, exact: true }).click()
+    await expect(page.getByRole("status")).toContainText("Correct")
+    await page.getByRole("button", { name: "Continue" }).click()
+  }
+  await expect(page.getByText("4 of 4 right on the first try.")).toBeVisible()
+  // No conjugation drill follows a por/para lesson.
+  await expect(page.getByRole("button", { name: /^Drill/ })).toHaveCount(0)
+
+  await page.getByRole("button", { name: "Back to lessons" }).click()
+  await expect(page.getByRole("link", { name: /Por or para/ })).toContainText("Done")
+  await expect(page.getByRole("link", { name: /Ser or estar/ })).toContainText("Start")
+})
+
 test("Learn is in the sidebar", async ({ page }) => {
   await setupMocks(page)
   await page.goto("/discover")
