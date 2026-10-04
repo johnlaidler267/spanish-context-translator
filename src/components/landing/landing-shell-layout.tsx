@@ -46,7 +46,8 @@ export function LandingShellLayout({
   const isDiscover = location.pathname === "/discover"
   const isLibrary = location.pathname === "/library"
   const isWords = location.pathname === "/words" || location.pathname === "/words/practice"
-  const isCardGridPage = isDiscover || isLibrary || isWords
+  const isLearn = location.pathname === "/learn" || location.pathname.startsWith("/learn/")
+  const isCardGridPage = isDiscover || isLibrary || isWords || isLearn
   const headerVariant = isCardGridPage ? "stacked" : "fixed"
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarInsetPx, setSidebarInsetPx] = useState(0)

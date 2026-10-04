@@ -12,6 +12,10 @@ const DiscoverPage = lazyRoute(() => import("@/pages/discover"))
 const LibraryPage = lazyRoute(() => import("@/pages/library"))
 const WordsPage = lazyRoute(() => import("@/pages/words"))
 const WordsPracticePage = lazyRoute(() => import("@/pages/words-practice"))
+const LearnPage = lazyRoute(() => import("@/pages/learn"))
+const LearnConjugationPage = lazyRoute(() => import("@/pages/learn/conjugation"))
+const LearnLessonsPage = lazyRoute(() => import("@/pages/learn/lessons"))
+const LearnLessonPage = lazyRoute(() => import("@/pages/learn/lesson"))
 const UpgradePage = lazyRoute(() => import("@/pages/upgrade"))
 const TermsPage = lazyRoute(() => import("@/pages/terms"))
 const PrivacyPage = lazyRoute(() => import("@/pages/privacy"))
@@ -1926,6 +1930,10 @@ export default function App() {
             />
             <Route path="words" element={<WordsPage />} />
             <Route path="words/practice" element={<WordsPracticePage />} />
+            <Route path="learn" element={<LearnPage />} />
+            <Route path="learn/conjugation" element={<LearnConjugationPage />} />
+            <Route path="learn/lessons" element={<LearnLessonsPage />} />
+            <Route path="learn/lessons/:lessonId" element={<LearnLessonPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
