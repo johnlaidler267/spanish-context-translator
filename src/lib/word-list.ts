@@ -79,6 +79,16 @@ export function countByStatus(words: ListedWord[]): Record<WordStatus, number> {
   return counts
 }
 
+const WEEK_MS = 7 * 86_400_000
+
+/** How many of these words were saved in the 7 days up to `now`. */
+export function savedThisWeek(words: Pick<SavedWord, "created_at">[], now: Date): number {
+  return words.filter((w) => {
+    const age = now.getTime() - Date.parse(w.created_at)
+    return age >= 0 && age < WEEK_MS
+  }).length
+}
+
 export type WordGroup<W extends SavedWord> = {
   /** The saved `source_title`, or null for words saved without one (shown as "Other"). */
   source: string | null

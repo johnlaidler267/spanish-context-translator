@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { NEW_REVIEW_STATE, type ReviewState } from "@/lib/practice"
 import type { SavedWord } from "@/lib/saved-words"
-import { countByStatus, filterWords, groupBySource, practiceSummary, withStatus, wordStatus } from "@/lib/word-list"
+import { countByStatus, filterWords, groupBySource, practiceSummary, savedThisWeek, withStatus, wordStatus } from "@/lib/word-list"
 
 const now = new Date("2026-10-02T12:00:00Z")
 const review = (patch: Partial<ReviewState>): ReviewState => ({
@@ -128,5 +128,13 @@ describe("practiceSummary", () => {
     expect(
       practiceSummary(review({ review_count: 5, lapse_count: 2, due_at: "2026-10-01T00:00:00Z", review_stage: 3 }), now),
     ).toBe("Practiced 5 times · due for review now · missed 2 times")
+  })
+})
+
+describe("savedThisWeek", () => {
+  it("counts words saved in the last 7 days only", () => {
+    const at = (daysAgo: number) => ({ created_at: new Date(now.getTime() - daysAgo * 86_400_000).toISOString() })
+    expect(savedThisWeek([at(0), at(1), at(6.9), at(7), at(30)], now)).toBe(3)
+    expect(savedThisWeek([], now)).toBe(0)
   })
 })

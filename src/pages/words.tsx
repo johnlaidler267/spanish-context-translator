@@ -13,6 +13,7 @@ import { loadReviewStates, makeCloze, type ReviewState } from "@/lib/practice"
 import type { SavedWord } from "@/lib/saved-words"
 import { LEARNING_LANGUAGE_LABEL, WORDS_EYEBROW } from "@/lib/storage/language-learning-preferences"
 import { cn } from "@/lib/utils"
+import { WordsProgress } from "@/components/words/words-progress"
 import {
   countByStatus,
   filterWords,
@@ -337,6 +338,7 @@ export default function WordsPage() {
   } else {
     body = (
       <>
+        <WordsProgress words={listed} counts={counts} />
         <div className="mb-6 flex flex-col gap-3 border-b border-border pb-5">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-0 flex-[1_1_14rem]">
