@@ -137,6 +137,15 @@ function tryUnwrapEmbeddedReconciledJson(
   }
 }
 
+/** The model's reply stopped before the end of the page: its output limit, or it just stopped
+ *  early. translatePageText retries such a page in two smaller halves. */
+export class ChunkingCutOffError extends Error {
+  constructor() {
+    super("This page didn't finish translating. Tap Retry to try again.")
+    this.name = "ChunkingCutOffError"
+  }
+}
+
 /**
  * Last-line guard when a completion is still truncated (verbose model, cap mis-tuned, or missing `finish_reason`).
  * Distinct from viewport pagination: {@link LLM_CHUNK_INPUT_CHAR_CAP} should keep batches small enough that this rarely fires.
@@ -149,9 +158,7 @@ function assertReconcileDidNotLeaveLongPlainTail(items: ReconciledItem[], source
   if (!/[\p{L}]/u.test(tail)) return
   const minSuspicious = Math.max(160, Math.floor(sourceLen * 0.09))
   if (tail.length >= minSuspicious) {
-    throw new Error(
-      "Chunking was cut off mid-page (model output limit). Tap Retry on this article page; if it keeps happening, lower LLM_CHUNK_INPUT_CHAR_CAP or raise TRANSLATE_MAX_COMPLETION_TOKENS.",
-    )
+    throw new ChunkingCutOffError()
   }
 }
 

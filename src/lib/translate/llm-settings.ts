@@ -50,6 +50,16 @@ export function getTranslationLlmDisplayInfo(): {
 export const TRANSLATE_MAX_COMPLETION_TOKENS = 6000
 
 /**
+ * Output budget for one page-translation call. Gemini has no such TPM squeeze and only bills
+ * the tokens it actually writes, so it gets the gemini-chat proxy's cap (MAX_OUTPUT_TOKENS_CAP):
+ * a dense 1800-character page glossed word by word (m + l + n per row) can run past 6000 tokens,
+ * which cut the reply off mid-page.
+ */
+export function translateMaxCompletionTokens(): number {
+  return translationProvider() === "gemini" ? 8192 : TRANSLATE_MAX_COMPLETION_TOKENS
+}
+
+/**
  * Spanish character budget for a single `translatePageText` completion.
  * {@link PageSplitLimits.maxChars} comes from viewport fill and can be several thousand; per-word
  * chunk JSON is far larger than the source, so one “screen-sized” paste must not always mean one API call.

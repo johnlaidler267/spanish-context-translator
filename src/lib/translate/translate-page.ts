@@ -10,6 +10,7 @@ import { buildChunkSortMessages } from "@/lib/translate/chunk-sort-prompt"
 import { extractChunkJsonArrayFromText } from "@/lib/translate/chunk-json"
 import {
   assertReconcileDidNotLeaveLongPlainTail,
+  ChunkingCutOffError,
   coerceLlmChunkRow,
   coalesceGlueablePunctuationReconciledItems,
   hasLargeUntranslatedStretch,
@@ -20,15 +21,66 @@ import {
   UntranslatedStretchError,
 } from "@/lib/translate/chunk-reconcile"
 import { insertChapterMarkers, stripStandaloneRomanChapterLines } from "@/lib/translate/roman-chapters"
-import { TRANSLATE_MAX_COMPLETION_TOKENS, translateModel, translationProvider } from "@/lib/translate/llm-settings"
+import { translateMaxCompletionTokens, translateModel, translationProvider } from "@/lib/translate/llm-settings"
 import type { RawChunk, ReconciledItem, RomanChapterMarker } from "@/lib/translate/types"
 
+/** How many times a cut-off page may be halved: up to four pieces. */
+const MAX_CUT_OFF_SPLITS = 2
+
 /**
- * LLM call(s) for one page of source text → reconciled items. Normally a single call; a reply
+ * LLM call(s) for one page of source text → reconciled items. Normally a single call. A reply
  * that leaves a large part of the page untranslated (see hasLargeUntranslatedStretch) is retried
- * once without the substring hints, which is what that reply answered instead of the page.
+ * once without the substring hints, which is what that reply answered instead of the page. A
+ * reply cut off before the end of the page ({@link ChunkingCutOffError}) is retried as two halves
+ * split at a sentence break, since retrying the same text at temperature 0 just stops in the same
+ * place again.
  */
 export async function translatePageText(input: string): Promise<ReconciledItem[]> {
+  return translateSplittingIfCutOff(input, MAX_CUT_OFF_SPLITS)
+}
+
+async function translateSplittingIfCutOff(input: string, splitsLeft: number): Promise<ReconciledItem[]> {
+  try {
+    return await translateOnce(input)
+  } catch (e) {
+    const halves = e instanceof ChunkingCutOffError && splitsLeft > 0 ? splitNearMiddle(input) : null
+    if (!halves) throw e
+    console.warn("[translatePageText] reply was cut off; translating the page in two halves")
+    const [first, gap, second] = halves
+    const [a, b] = await Promise.all([
+      translateSplittingIfCutOff(first, splitsLeft - 1),
+      translateSplittingIfCutOff(second, splitsLeft - 1),
+    ])
+    return [...a, { type: "text", text: gap }, ...b]
+  }
+}
+
+/**
+ * `[before, whitespace, after]` cut at the sentence break nearest the middle of `text` (or the
+ * nearest space when it's one long sentence), so the whitespace between the halves -- including a
+ * paragraph break -- survives as its own text item. Null when there's nowhere sensible to cut.
+ */
+export function splitNearMiddle(text: string): [string, string, string] | null {
+  const mid = text.length / 2
+  const minPiece = text.length * 0.2
+  const best = (re: RegExp): [number, number] | null => {
+    let pick: [number, number] | null = null
+    for (const m of text.matchAll(re)) {
+      const ws = m[1]!
+      const start = m.index! + m[0].length - ws.length
+      const end = start + ws.length
+      if (start < minPiece || text.length - end < minPiece) continue
+      if (!/\p{L}/u.test(text.slice(0, start)) || !/\p{L}/u.test(text.slice(end))) continue
+      if (!pick || Math.abs(start - mid) < Math.abs(pick[0] - mid)) pick = [start, end]
+    }
+    return pick
+  }
+  const cut = best(/[.!?…]["'»”’)\]]*(\s+)/gu) ?? best(/\S(\s+)/gu)
+  if (!cut) return null
+  return [text.slice(0, cut[0]), text.slice(cut[0], cut[1]), text.slice(cut[1])]
+}
+
+async function translateOnce(input: string): Promise<ReconciledItem[]> {
   const { stripped, markers: romanChapterMarkers } = stripStandaloneRomanChapterLines(input)
   const canonical = normalizeChunkingSource(stripped)
   if (!canonical) {
@@ -56,7 +108,7 @@ async function requestPageChunks(
     model: translateModel(),
     messages: [{ role: "system", content: systemContent }, { role: "user", content: userContent }],
     temperature: 0,
-    max_tokens: TRANSLATE_MAX_COMPLETION_TOKENS,
+    max_tokens: translateMaxCompletionTokens(),
   }
   const res = await fetchChatCompletion(
     translationProvider() === "groq"
@@ -76,9 +128,7 @@ async function requestPageChunks(
   const data = await res.json()
   const finish = chatFinishReasonFromOpenAiStylePayload(data)
   if (finish === "length") {
-    throw new Error(
-      "The model hit its output limit before finishing chunking this page. Tap Retry, or adjust LLM_CHUNK_INPUT_CHAR_CAP / TRANSLATE_MAX_COMPLETION_TOKENS if this is frequent.",
-    )
+    throw new ChunkingCutOffError()
   }
   const raw = combineAssistantPayloadsForChunkParse(data)
   console.log("[translatePageText] final LLM reply:", raw)
