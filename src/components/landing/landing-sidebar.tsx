@@ -274,13 +274,16 @@ export function LandingSidebar({
                   (compactRail ? (
                     index > 0 && <div aria-hidden className="mx-3 my-2 border-t border-border/60" />
                   ) : (
+                    // Same italic editorial voice as the page eyebrows (.discover-masthead__eyebrow),
+                    // with a hairline trailing off to the right.
                     <p
                       className={cn(
-                        "px-3 pb-1 font-sans text-label-xs font-bold uppercase text-muted-foreground",
-                        index === 0 ? "pt-1" : "pt-4",
+                        "flex items-center gap-2.5 px-3 pb-1.5 font-reading text-[0.95rem] italic leading-none text-[color:var(--editorial)]",
+                        index === 0 ? "pt-1" : "pt-5",
                       )}
                     >
-                      {group}
+                      <span className="opacity-90">{group}</span>
+                      <span aria-hidden className="h-px flex-1 bg-border/70" />
                     </p>
                   ))}
                 <Link
