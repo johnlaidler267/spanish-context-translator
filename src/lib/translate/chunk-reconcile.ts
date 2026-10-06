@@ -155,6 +155,40 @@ function assertReconcileDidNotLeaveLongPlainTail(items: ReconciledItem[], source
   }
 }
 
+/** Thrown when a reply leaves a large part of the page as plain text (no hover meaning). */
+export class UntranslatedStretchError extends Error {
+  constructor() {
+    super("Part of this page came back untranslated. Tap Retry to translate it again.")
+    this.name = "UntranslatedStretchError"
+  }
+}
+
+function countLetters(s: string | undefined): number {
+  return s?.match(/\p{L}/gu)?.length ?? 0
+}
+
+/**
+ * True when a large share of the page's words sit in plain `type: "text"` gaps -- words the
+ * model's reply never covered, so they render with no hover meaning. Gaps are normally only
+ * spaces and punctuation, plus the odd skipped word or heading.
+ *
+ * Unlike {@link assertReconcileDidNotLeaveLongPlainTail} this looks at the whole page, not just
+ * its end: Gemini once answered a page with a single row for the hinted "sin embargo", which
+ * reconciled to the whole paragraph as plain text before it -- a short tail, so it passed, and
+ * the result was stored in the shared translation cache for every reader of that book.
+ */
+export function hasLargeUntranslatedStretch(items: ReconciledItem[]): boolean {
+  let plain = 0
+  let total = 0
+  for (const item of items) {
+    if (item.type === "chapter") continue
+    const n = countLetters(item.type === "text" ? item.text : item.chunk)
+    total += n
+    if (item.type === "text") plain += n
+  }
+  return plain >= 80 && plain > total * 0.2
+}
+
 /**
  * If the model matched the inner word of a markdown-style **…** span, extend the match to include
  * those pairs. Does not absorb a lone * (e.g. multiplication or footnote markers between words).

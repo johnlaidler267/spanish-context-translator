@@ -206,15 +206,17 @@ function hintsSection(canonical: string): string {
 /**
  * System + user messages for translate chunking. The system message holds the fixed rules and
  * worked example for the language pair; the user message holds optional substring hints from
- * {@link formatSubstringChunkRulesForPrompt} followed by `TEXT:`.
+ * {@link formatSubstringChunkRulesForPrompt} followed by `TEXT:`. `hints: false` leaves those out
+ * (see translatePageText's retry).
  */
 export function buildChunkSortMessages(
   canonical: string,
   prefs: LanguageLearningPreferences = getStoredLanguageLearningPreferences(),
+  { hints = true }: { hints?: boolean } = {},
 ): { system: string; user: string } {
   return {
     system: buildChunkSortSystemPrompt(variantFor(prefs)),
-    user: `${hintsSection(canonical)}TEXT:\n${canonical}`,
+    user: `${hints ? hintsSection(canonical) : ""}TEXT:\n${canonical}`,
   }
 }
 

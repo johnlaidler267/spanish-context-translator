@@ -12,16 +12,22 @@ import {
   assertReconcileDidNotLeaveLongPlainTail,
   coerceLlmChunkRow,
   coalesceGlueablePunctuationReconciledItems,
+  hasLargeUntranslatedStretch,
   normalizeChunkingSource,
   normalizeRawChunk,
   reconcileChunks,
   tryUnwrapEmbeddedReconciledJson,
+  UntranslatedStretchError,
 } from "@/lib/translate/chunk-reconcile"
 import { insertChapterMarkers, stripStandaloneRomanChapterLines } from "@/lib/translate/roman-chapters"
 import { TRANSLATE_MAX_COMPLETION_TOKENS, translateModel, translationProvider } from "@/lib/translate/llm-settings"
 import type { RawChunk, ReconciledItem, RomanChapterMarker } from "@/lib/translate/types"
 
-/** Single LLM call: chunk JSON → reconciled items for one page of source text. */
+/**
+ * LLM call(s) for one page of source text → reconciled items. Normally a single call; a reply
+ * that leaves a large part of the page untranslated (see hasLargeUntranslatedStretch) is retried
+ * once without the substring hints, which is what that reply answered instead of the page.
+ */
 export async function translatePageText(input: string): Promise<ReconciledItem[]> {
   const { stripped, markers: romanChapterMarkers } = stripStandaloneRomanChapterLines(input)
   const canonical = normalizeChunkingSource(stripped)
@@ -29,7 +35,21 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
     throw new Error("No text to translate.")
   }
 
-  const { system: systemContent, user: userContent } = buildChunkSortMessages(canonical)
+  try {
+    return await requestPageChunks(canonical, romanChapterMarkers, { hints: true })
+  } catch (e) {
+    if (!(e instanceof UntranslatedStretchError)) throw e
+    console.warn("[translatePageText] reply left part of the page untranslated; retrying without hints")
+    return requestPageChunks(canonical, romanChapterMarkers, { hints: false })
+  }
+}
+
+async function requestPageChunks(
+  canonical: string,
+  romanChapterMarkers: RomanChapterMarker[],
+  { hints }: { hints: boolean },
+): Promise<ReconciledItem[]> {
+  const { system: systemContent, user: userContent } = buildChunkSortMessages(canonical, undefined, { hints })
   console.log("[translatePageText] LLM user prompt:", userContent)
 
   const base = {
@@ -67,7 +87,8 @@ export async function translatePageText(input: string): Promise<ReconciledItem[]
 
 /**
  * Model reply text → reconciled items for `canonical` (the exact TEXT sent in the prompt).
- * Throws when the reply has no usable chunk rows or leaves a long untranslated tail.
+ * Throws when the reply has no usable chunk rows or leaves a long untranslated tail, or
+ * {@link UntranslatedStretchError} when it leaves a large part of the page untranslated anywhere.
  */
 export function chunkReplyToItems(
   raw: string,
@@ -90,6 +111,7 @@ export function chunkReplyToItems(
           "Model returned no usable chunk rows: each object needs source \"c\" and gloss \"m\". Without them the UI would show plain text only (one big type:text span).",
         )
       }
+      if (hasLargeUntranslatedStretch(unwrapped)) throw new UntranslatedStretchError()
       return insertChapterMarkers(
         coalesceGlueablePunctuationReconciledItems(unwrapped),
         romanChapterMarkers,
@@ -104,6 +126,7 @@ export function chunkReplyToItems(
     )
   }
   assertReconcileDidNotLeaveLongPlainTail(reconciled, canonical.length)
+  if (hasLargeUntranslatedStretch(reconciled)) throw new UntranslatedStretchError()
   return insertChapterMarkers(
     coalesceGlueablePunctuationReconciledItems(reconciled),
     romanChapterMarkers,

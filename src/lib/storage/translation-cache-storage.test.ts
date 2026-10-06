@@ -54,6 +54,19 @@ describe("translation-cache-storage", () => {
     expect(getCachedTranslationPage(user, "book-1", 0, "adios mundo")).toBeNull()
   })
 
+  it("misses a stored page that is mostly untranslated, so it's translated again", async () => {
+    const { getCachedTranslationPage, setCachedTranslationPage } = await import(
+      "@/lib/storage/translation-cache-storage"
+    )
+    const text = "Una máquina de escribir reventó mi destino. ".repeat(4)
+    const untranslated: ReconciledItem[] = [
+      { type: "text", text },
+      { type: "chunk", chunk: "sin embargo", meaning: "however" },
+    ]
+    setCachedTranslationPage(user, "book-1", 0, text, untranslated)
+    expect(getCachedTranslationPage(user, "book-1", 0, text)).toBeNull()
+  })
+
   it("keeps each user's cache separate", async () => {
     const otherUser = { id: "user-2" } as User
     const { getCachedTranslationPage, setCachedTranslationPage } = await import(

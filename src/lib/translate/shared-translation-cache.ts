@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase"
+import { hasLargeUntranslatedStretch } from "@/lib/translate/chunk-reconcile"
 import { translateModel, translationProvider } from "@/lib/translate/llm-settings"
 import type { ReconciledItem } from "@/lib/translate/types"
 
@@ -48,6 +49,14 @@ async function hashSourceText(text: string): Promise<string> {
 }
 
 type CacheRow = { status: "pending" | "ready"; chunks: ReconciledItem[] | null; createdAt: string }
+
+/** A finished row worth reusing. Rows stored before replies were checked for coverage can hold a
+ *  page that's mostly untranslated (see hasLargeUntranslatedStretch) -- those are skipped and the
+ *  batch is translated fresh, as if nothing were cached. */
+function usableChunks(row: CacheRow | null): ReconciledItem[] | null {
+  if (row?.status !== "ready" || !row.chunks) return null
+  return hasLargeUntranslatedStretch(row.chunks) ? null : row.chunks
+}
 
 async function fetchRow(discoverItemId: string, sourceHash: string): Promise<CacheRow | null> {
   const { data, error } = await supabase
@@ -120,7 +129,7 @@ async function pollForReady(discoverItemId: string, sourceHash: string): Promise
   for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
     await sleep(POLL_INTERVAL_MS)
     const row = await fetchRow(discoverItemId, sourceHash)
-    if (row?.status === "ready" && row.chunks) return row.chunks
+    if (row?.status === "ready") return usableChunks(row)
     if (!row) return null
   }
   return null
@@ -147,7 +156,8 @@ export async function loadBatchWithSharedCache(
     return translate(sourceText)
   }
 
-  if (existing?.status === "ready" && existing.chunks) return existing.chunks
+  const cached = usableChunks(existing)
+  if (cached) return cached
 
   if (existing?.status === "pending") {
     const age = Date.now() - new Date(existing.createdAt).getTime()

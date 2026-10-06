@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js"
 import type { ReconciledItem } from "@/lib/translate"
+import { hasLargeUntranslatedStretch } from "@/lib/translate/chunk-reconcile"
 
 /**
  * Persists translated pages (the same `ReconciledItem[]` shape TranslationCache holds in
@@ -131,6 +132,9 @@ export function getCachedTranslationPage(
   const scoped = readAll()[scopeKeyFor(user)]
   const page = scoped?.[cacheKey]?.pages[pageIndex]
   if (!page || page.textHash !== hashPageText(pageText)) return null
+  // A page saved before replies were checked for coverage may be mostly untranslated -- treat it
+  // as missing so it's translated again instead of showing words with no meanings.
+  if (hasLargeUntranslatedStretch(page.items)) return null
   return page.items
 }
 

@@ -105,6 +105,16 @@ describe("loadBatchWithSharedCache", () => {
     expect(upserts).not.toHaveBeenCalled()
   })
 
+  it("ignores a stored row that is mostly untranslated and translates the batch fresh", async () => {
+    const text = "Una máquina de escribir reventó mi destino. ".repeat(4)
+    const untranslated: ReconciledItem[] = [{ type: "text", text }, { type: "chunk", chunk: "sin embargo", meaning: "however" }]
+    await loadBatchWithSharedCache({ discoverItemId: "d1", writerUserId: "u1" }, text, async () => untranslated)
+    await flush()
+    const fresh = vi.fn(async () => items("Una"))
+    expect(await loadBatchWithSharedCache({ discoverItemId: "d1", writerUserId: "u2" }, text, fresh)).toEqual(items("Una"))
+    expect(fresh).toHaveBeenCalledTimes(1)
+  })
+
   it("still translates if the cache itself is unreachable", async () => {
     const { supabase } = await import("@/lib/supabase")
     const spy = vi.spyOn(supabase, "from").mockImplementation(() => {
