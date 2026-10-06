@@ -1,11 +1,12 @@
 "use client"
 
-import type { KeyboardEvent } from "react"
+import type { CSSProperties, KeyboardEvent } from "react"
 import { Pencil, Trash2 } from "lucide-react"
 import { DiscoverCoverArt } from "@/components/discover/discover-cover-art"
 import { DifficultyMark, normalizeDifficulty } from "@/components/discover/difficulty-mark"
 import { contentTypeLabels } from "@/lib/discover/content-data"
 import type { ContentItem } from "@/lib/discover/content-data"
+import { readingProgressLabel } from "@/lib/discover/continue-reading"
 import { cn } from "@/lib/utils"
 
 interface ContentCardProps {
@@ -102,9 +103,9 @@ export function ContentCard({
       <div className="discover-card__body">
         <p className="discover-card__author">{content.author}</p>
         {progressPercent != null && (
-          // Only shown in the mobile Continue Reading row -- see .continue-reading-mobile__row in index.css.
-          <span className="discover-card__progress-inline">
-            {progressPercent}%<span className="sr-only"> read</span>
+          // Only shown in the landing page's Continue Reading row -- see .cr-covers in index.css.
+          <span className="discover-card__progress-inline" style={{ "--progress": `${progressPercent}%` } as CSSProperties}>
+            {readingProgressLabel(progressPercent)}
           </span>
         )}
         <h3 className="discover-card__title">{content.title}</h3>

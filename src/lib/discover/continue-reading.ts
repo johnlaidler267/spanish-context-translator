@@ -10,6 +10,12 @@ function percentFor(entry: RecentlyViewedEntry): number | null {
   return Math.min(100, Math.max(1, Math.round(((entry.pageIndex + 1) / entry.totalPages) * 100)))
 }
 
+/** The Continue Reading caption: "14% in", or "Just started" for the first few percent, where
+ *  a bare "1%" read like a rounding glitch. */
+export function readingProgressLabel(percent: number): string {
+  return percent < 5 ? "Just started" : `${percent}% in`
+}
+
 /** Loose "is this the same book" key -- case, whitespace and curly-vs-straight apostrophes
  *  differ between an EPUB's own metadata and a hand-typed Discover publish form. */
 function bookKey(title: string, author: string | null): string {

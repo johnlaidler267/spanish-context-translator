@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { buildContinueReadingItems } from "@/lib/discover/continue-reading"
+import { buildContinueReadingItems, readingProgressLabel } from "@/lib/discover/continue-reading"
 import type { ContentItem } from "@/lib/discover/content-data"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
 import type { RecentlyViewedEntry } from "@/lib/storage/reading-progress-storage"
@@ -128,5 +128,14 @@ describe("buildContinueReadingItems", () => {
       { kind: "library", book: library[1], percent: 30 },
       { kind: "library", book: library[2], percent: 30 },
     ])
+  })
+})
+
+describe("readingProgressLabel", () => {
+  it("says Just started for the first few percent instead of a bare 1%", () => {
+    expect(readingProgressLabel(1)).toBe("Just started")
+    expect(readingProgressLabel(4)).toBe("Just started")
+    expect(readingProgressLabel(5)).toBe("5% in")
+    expect(readingProgressLabel(86)).toBe("86% in")
   })
 })

@@ -5,6 +5,7 @@ import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } 
 import { BookOpen, Loader2, Trash2, UploadCloud } from "lucide-react"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
 import { coverClothColor } from "@/lib/discover/cover-cloth"
+import { readingProgressLabel } from "@/lib/discover/continue-reading"
 import { cn } from "@/lib/utils"
 
 /**
@@ -252,9 +253,9 @@ export function LibraryCard({
       <div className="discover-card__body">
         {book.author && <p className="discover-card__author">{book.author}</p>}
         {progressPercent != null && (
-          // Only shown in the mobile Continue Reading row -- see .continue-reading-mobile__row in index.css.
-          <span className="discover-card__progress-inline">
-            {progressPercent}%<span className="sr-only"> read</span>
+          // Only shown in the landing page's Continue Reading row -- see .cr-covers in index.css.
+          <span className="discover-card__progress-inline" style={{ "--progress": `${progressPercent}%` } as CSSProperties}>
+            {readingProgressLabel(progressPercent)}
           </span>
         )}
         <h3 className="discover-card__title">{book.title}</h3>

@@ -50,14 +50,11 @@ const RECENT_LOOKBACK_ITEMS = 25
 const SETTLE_TIMEOUT_MS = 2500
 
 /**
- * A lone portrait card under the full-width composer reads as a stray tile, so a single item
- * switches the desktop row to a landscape "shelf" card instead (see
- * .continue-reading__row--solo in index.css). Applied to the placeholders too, keyed on the
- * reserved count, so a one-book reader doesn't see a portrait skeleton swap to landscape.
+ * Compact rows (see .cr-covers in index.css): a small cover with title, author and progress
+ * beside it. A lone book is just the first slot of the same grid, so it no longer needs the
+ * old landscape "solo" card.
  */
-function continueReadingRowClass(count: number) {
-  return count === 1 ? "continue-reading__row continue-reading__row--solo" : "continue-reading__row cr-covers"
-}
+const CONTINUE_READING_ROW_CLASS = "continue-reading__row cr-covers"
 
 interface UseLandingContinueReadingOptions {
   user: User | null
@@ -293,7 +290,7 @@ export function useLandingContinueReading({
               aria-busy="true"
             >
               <ContinueReadingHeading />
-              <div className={continueReadingRowClass(reservedCount)}>
+              <div className={CONTINUE_READING_ROW_CLASS}>
                 {placeholders(Math.min(reservedCount, MAX_CONTINUE_READING_ITEMS))}
               </div>
             </div>
@@ -351,7 +348,7 @@ export function useLandingContinueReading({
     desktopRow: (
       <div className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1">
         <ContinueReadingHeading />
-        <div className={continueReadingRowClass(items.length)}>
+        <div className={CONTINUE_READING_ROW_CLASS}>
           {items.map((item) =>
             item.kind === "discover" ? (
               <ContentCard
