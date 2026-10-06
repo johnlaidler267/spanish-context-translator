@@ -9,8 +9,8 @@ import {
   gradeConjugation,
   isRight,
   listTenses,
-  PERSON_LABEL,
-  PERSON_SHORT,
+  personLabel,
+  personShort,
   TENSE_IDS,
   TENSE_NAME,
   TENSES,
@@ -183,6 +183,7 @@ function DrillOptions({ settings, onChange }: { settings: DrillSettings; onChang
   const presets: [string, TenseId[]][] = [
     ["Past tenses", ["preterite", "imperfect", "perfect"]],
     ["Subjunctive", ["subj", "impsubj"]],
+    ["Commands", ["imperative"]],
     ["Everything", [...TENSE_IDS]],
   ]
   return (
@@ -344,7 +345,7 @@ function DrillCard({
             {meaning && <p className="mt-1.5 text-[0.95rem] text-muted-foreground">{meaning}</p>}
             <p className="mt-5 font-reading text-[1.35rem] text-foreground">
               <span className="font-medium" data-testid="drill-person">
-                {PERSON_LABEL[item.person]}
+                {personLabel(item.tense, item.person)}
               </span>{" "}
               …
             </p>
@@ -358,7 +359,7 @@ function DrillCard({
               className="mt-2.5"
             />
             <p className="mt-1.5 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{item.verb}</span> · {PERSON_SHORT[item.person]}
+              <span className="font-medium text-foreground">{item.verb}</span> · {personShort(item.tense, item.person)}
               {meaning && <> · {meaning}</>}
             </p>
           </>
@@ -432,7 +433,7 @@ function RoundResults({
           {missed.map(({ item, grade, typed }, i) => (
             <li key={i} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border py-3">
               <span className="text-sm text-muted-foreground">
-                {item.verb} · {TENSE_NAME[item.tense].toLowerCase()} · {PERSON_SHORT[item.person]}
+                {item.verb} · {TENSE_NAME[item.tense].toLowerCase()} · {personShort(item.tense, item.person)}
               </span>
               <span className="font-reading text-lg">
                 {typed && <span className="mr-2 text-red-700 line-through dark:text-red-300">{typed}</span>}

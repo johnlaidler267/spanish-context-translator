@@ -49,6 +49,13 @@ describe("buildRound", () => {
     expect(sentences).toHaveLength(ROUND_SIZE)
   })
 
+  it("drills the imperative only in persons that have a command", () => {
+    const round = buildRound({ tenses: ["imperative"], verbs: "common", mode: "bare" }, {}, seeded(6))
+    expect(round).toHaveLength(ROUND_SIZE)
+    expect(round.every((i) => i.tense === "imperative" && i.person !== 0 && i.person !== 4)).toBe(true)
+    expect(round.some((i) => i.verb === "poder")).toBe(false)
+  })
+
   it("never drills vosotros", () => {
     const round = buildRound({ ...DEFAULT_DRILL_SETTINGS, mode: "bare" }, {}, seeded(4))
     expect(round.some((i) => i.person === 4)).toBe(false)

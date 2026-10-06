@@ -2,7 +2,7 @@ import { forwardRef, useImperativeHandle, useRef } from "react"
 import { Check, X } from "lucide-react"
 import {
   isRight,
-  PERSON_SHORT,
+  personShort,
   TENSE_NAME,
   type Grade,
   type Person,
@@ -99,7 +99,7 @@ export function GradeFeedback({
       head = `That's the ${TENSE_NAME[grade.tense].toLowerCase()}`
       break
     case "wrong-person":
-      head = `That's the ${PERSON_SHORT[grade.person]} form`
+      head = `That's the ${personShort(tense, grade.person)} form`
       break
     default:
       head = revealed ? "Here's the answer" : "Not quite"
@@ -119,7 +119,7 @@ export function GradeFeedback({
       </p>
       {grade.kind !== "correct" && (
         <p className="text-sm text-foreground">
-          {TENSE_NAME[tense]}, {PERSON_SHORT[person]}: <span className="font-reading text-lg">{grade.answer}</span>
+          {TENSE_NAME[tense]}, {personShort(tense, person)}: <span className="font-reading text-lg">{grade.answer}</span>
         </p>
       )}
       {children}

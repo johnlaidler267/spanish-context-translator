@@ -18,12 +18,16 @@ export const TENSE_IDS = [
   "conditional",
   "subj",
   "impsubj",
+  "imperative",
 ] as const
 export type TenseId = (typeof TENSE_IDS)[number]
 
 export type TenseInfo = { id: TenseId; name: string; example: string }
 
-/** In teaching order. `example` is hablar in the yo form, shown under each tense in the picker. */
+/**
+ * In teaching order. `example` is hablar in the yo form (tú for the imperative, which has no yo),
+ * shown under each tense in the picker.
+ */
 export const TENSES: TenseInfo[] = [
   { id: "present", name: "Present", example: "hablo" },
   { id: "preterite", name: "Preterite", example: "hablé" },
@@ -33,6 +37,7 @@ export const TENSES: TenseInfo[] = [
   { id: "conditional", name: "Conditional", example: "hablaría" },
   { id: "subj", name: "Present subjunctive", example: "hable" },
   { id: "impsubj", name: "Imperfect subjunctive", example: "hablara" },
+  { id: "imperative", name: "Imperative", example: "¡habla!" },
 ]
 
 export const TENSE_NAME = Object.fromEntries(TENSES.map((t) => [t.id, t.name])) as Record<TenseId, string>
@@ -61,7 +66,33 @@ export const PERSON_SHORT: Record<Person, string> = {
 /** Vosotros is left out of drills for now; most learners don't use it. */
 export const DRILL_PERSONS: Person[] = [0, 1, 2, 3, 5]
 
-/** Each drill verb's forms: tense -> [yo, tú, él, nosotros, vosotros, ellos]. */
+/**
+ * Affirmative commands: tú, usted, nosotros, ustedes. There's no yo command, and slot 2/5 means
+ * usted/ustedes only (you don't command él or ellos), so the imperative has its own labels.
+ */
+export const IMPERATIVE_PERSONS: Person[] = [1, 2, 3, 5]
+
+const IMPERATIVE_LABEL: Partial<Record<Person, string>> = { 2: "usted", 5: "ustedes" }
+
+/** Which persons a tense is drilled in. */
+export function drillPersons(tense: TenseId): Person[] {
+  return tense === "imperative" ? IMPERATIVE_PERSONS : DRILL_PERSONS
+}
+
+/** "él / ella / usted", or just "usted" in the imperative. */
+export function personLabel(tense: TenseId, person: Person): string {
+  return (tense === "imperative" && IMPERATIVE_LABEL[person]) || PERSON_LABEL[person]
+}
+
+/** "él", or "usted" in the imperative. */
+export function personShort(tense: TenseId, person: Person): string {
+  return (tense === "imperative" && IMPERATIVE_LABEL[person]) || PERSON_SHORT[person]
+}
+
+/**
+ * Each drill verb's forms: tense -> [yo, tú, él, nosotros, vosotros, ellos]. The imperative's yo
+ * slot is "" (no such form) and its él/ellos slots hold the usted/ustedes commands.
+ */
 export type VerbForms = Record<TenseId, string[]>
 
 const TABLE = VERB_FORMS as Record<string, VerbForms>
@@ -94,6 +125,9 @@ export function stripAccents(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "")
 }
 
+/** Forms people actually say that the library's answer key doesn't: "¡vamos!" over "vayamos". */
+const ALSO_ACCEPTED: Record<string, string> = { "ir|imperative|3": "vamos" }
+
 export type Grade =
   | { kind: "correct"; answer: string }
   | { kind: "accent"; answer: string }
@@ -115,14 +149,17 @@ export function gradeConjugation(verb: string, tense: TenseId, person: Person, t
   const answer = forms[tense][person]
   const got = normalizeAnswer(typed)
   if (!got) return { kind: "wrong", answer }
-  if (got === answer) return { kind: "correct", answer }
+  if (got === answer || ALSO_ACCEPTED[`${verb}|${tense}|${person}`] === got) return { kind: "correct", answer }
   const bare = stripAccents(got)
   if (bare === stripAccents(answer)) return { kind: "accent", answer }
   for (const t of TENSE_IDS) {
+    // Skipped as a guess: its forms mostly copy the present (habla) or subjunctive (hable), and
+    // "that's the él form" or "that's the subjunctive" is the likelier slip.
+    if (t === "imperative") continue
     if (t !== tense && stripAccents(forms[t][person]) === bare) return { kind: "wrong-tense", answer, tense: t }
   }
   for (let p = 0; p < 6; p++) {
-    if (p !== person && stripAccents(forms[tense][p]) === bare) {
+    if (p !== person && forms[tense][p] && stripAccents(forms[tense][p]) === bare) {
       return { kind: "wrong-person", answer, person: p as Person }
     }
   }

@@ -104,4 +104,10 @@ export const SENTENCE_BANK: DrillSentence[] = [
   { tense: "impsubj", verb: "volver", person: 0, text: "Mi madre me pidió que ___ temprano.", why: "Pedir que triggers the subjunctive; since pidió is past, it becomes imperfect subjunctive." },
   { tense: "impsubj", verb: "saber", person: 2, text: "Habla como si lo ___ todo.", why: "Como si (“as if”) always takes the imperfect subjunctive." },
   { tense: "impsubj", verb: "estar", person: 5, text: "Ojalá ___ aquí ahora.", why: "Ojalá + imperfect subjunctive wishes for something that isn't the case right now." },
+  { tense: "imperative", verb: "venir", person: 1, text: "¡___ aquí ahora mismo!", why: "A direct command to tú. Venir is one of the short irregular tú commands: ven." },
+  { tense: "imperative", verb: "hablar", person: 2, text: "Señora, ___ más despacio, por favor.", why: "Señora calls for usted, and usted commands borrow the present subjunctive: hable." },
+  { tense: "imperative", verb: "poner", person: 1, text: "___ la mesa, que ya vamos a comer.", why: "A tú command. Poner's tú command drops to the bare stem: pon." },
+  { tense: "imperative", verb: "salir", person: 5, text: "Niños, ___ al jardín a jugar.", why: "Speaking to a group (in Latin America, always ustedes): the command is the subjunctive form, salgan." },
+  { tense: "imperative", verb: "empezar", person: 3, text: "Bueno, ___ por el principio.", why: "A nosotros command means “let's…”, and it uses the subjunctive form. Note the spelling change: empecemos." },
+  { tense: "imperative", verb: "decir", person: 1, text: "___ la verdad, por favor.", why: "A tú command. Decir is irregular here: di." },
 ]

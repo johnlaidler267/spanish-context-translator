@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { BlankSentence, ConjugationInput, DrillTopBar, GradeFeedback } from "@/components/learn/conjugation-answer"
 import { LearnPageShell } from "@/components/learn/learn-page-shell"
-import { gradeConjugation, isRight, PERSON_SHORT, TENSE_NAME, type Grade } from "@/lib/learn/conjugation"
+import { gradeConjugation, isRight, personShort, TENSE_NAME, type Grade } from "@/lib/learn/conjugation"
 import { findLesson, parseInline, type LessonStep, type TeachBlock } from "@/lib/learn/lessons"
 import { markLessonCompleted } from "@/lib/learn/progress-storage"
 import { cn } from "@/lib/utils"
@@ -224,7 +224,7 @@ function TypeStep({ step, onAnswered }: { step: Extract<LessonStep, { kind: "typ
       <BlankSentence text={step.text} filled={grade?.answer} right={grade ? isRight(grade) : undefined} className="mt-2.5" />
       <p className="mt-1.5 text-sm text-muted-foreground">
         <span className="font-medium text-foreground">{step.verb}</span> · {TENSE_NAME[step.tense].toLowerCase()} ·{" "}
-        {PERSON_SHORT[step.person]}
+        {personShort(step.tense, step.person)}
       </p>
       <ConjugationInput ref={inputRef} value={typed} onChange={setTyped} readOnly={grade != null} />
       {grade ? (

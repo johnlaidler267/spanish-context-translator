@@ -6,7 +6,7 @@
  */
 import {
   conjugate,
-  DRILL_PERSONS,
+  drillPersons,
   stripAccents,
   TENSE_IDS,
   TENSES,
@@ -17,6 +17,9 @@ import {
 import { DRILL_VERBS, SENTENCE_BANK, type DrillSentence } from "@/lib/learn/drill-content"
 
 export const ROUND_SIZE = 10
+
+/** Grammatical but almost never said as commands (¡puede!, ¡deba!), so not worth drilling. */
+const NO_COMMAND = new Set(["poder", "deber", "parecer"])
 
 export type VerbSet = "common" | "irregular"
 export type QuestionMode = "mixed" | "bare" | "sentences"
@@ -87,8 +90,8 @@ export function buildRound(settings: DrillSettings, stats: TenseStats, rng: Rng 
       }
       // Ran out of sentences for this tense; fall through to a bare form.
     }
-    const verb = pick(verbs, rng)
-    const person = pick(DRILL_PERSONS, rng)
+    const verb = pick(tense === "imperative" ? verbs.filter((v) => !NO_COMMAND.has(v)) : verbs, rng)
+    const person = pick(drillPersons(tense), rng)
     const key = `${verb}|${tense}|${person}`
     if (used.has(key)) continue
     used.add(key)
@@ -125,6 +128,8 @@ export function buildWarmUp(rng: Rng = Math.random): WarmUp {
   for (const t of shuffle([...TENSE_IDS], rng)) {
     if (options.length >= 3) break
     const form = conjugate(sentence.verb, t, sentence.person)
+    // No yo command, and an imperative form is never right in a non-command sentence anyway.
+    if (!form || t === "imperative") continue
     if (seen.has(stripAccents(form))) continue
     seen.add(stripAccents(form))
     options.push(form)

@@ -2,14 +2,14 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { BlankSentence } from "@/components/learn/conjugation-answer"
-import { conjugate, PERSON_SHORT, TENSE_NAME, TENSES } from "@/lib/learn/conjugation"
+import { conjugate, personShort, TENSE_NAME, TENSES } from "@/lib/learn/conjugation"
 import type { WarmUp } from "@/lib/learn/drill-round"
 import { cn } from "@/lib/utils"
 
 const WHEEL_VERB = "tener"
 const WHEEL_STEPS = [
   { form: WHEEL_VERB, label: "the infinitive" },
-  ...TENSES.filter((t) => t.id !== "perfect").map((t) => ({ form: conjugate(WHEEL_VERB, t.id, 0), label: t.name.toLowerCase() })),
+  ...TENSES.filter((t) => t.id !== "perfect" && t.id !== "imperative").map((t) => ({ form: conjugate(WHEEL_VERB, t.id, 0), label: t.name.toLowerCase() })),
 ]
 const WHEEL_INTERVAL_MS = 2200
 
@@ -70,7 +70,7 @@ export function WarmUpCard({
       </div>
       <BlankSentence text={sentence.text} filled={chosen ? answer : undefined} right={right} className="text-xl sm:text-2xl" />
       <p className="mt-1 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">{sentence.verb}</span> · {PERSON_SHORT[sentence.person]}
+        <span className="font-medium text-foreground">{sentence.verb}</span> · {personShort(sentence.tense, sentence.person)}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {options.map((o) => (
