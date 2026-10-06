@@ -44,11 +44,11 @@ test("the Words page shows how many words are learned, by status, and saved this
   )
   await page.goto("/words")
 
-  const card = page.getByRole("region", { name: "Your progress" })
+  const card = page.getByTestId("words-progress")
   await expect(card).toBeVisible({ timeout: 20_000 })
   await expect(card).toContainText("2of 6 words learned")
   await expect(card).toContainText("+2 this week")
   for (const part of ["2 learned", "1 learning", "1 due", "2 new"]) {
-    await expect(card.getByRole("listitem").filter({ hasText: part })).toHaveCount(1)
+    await expect(card).toContainText(part)
   }
 })

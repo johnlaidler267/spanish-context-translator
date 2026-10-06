@@ -12,12 +12,14 @@ const SEGMENTS: { status: WordStatus; swatch: string }[] = [
 /**
  * Progress card at the top of the Words page: how many saved words are learned, a bar split by
  * practice status (same statuses as the filter chips, see word-list.ts), and how many were saved
- * this week. Everything comes from the words already loaded -- no extra requests.
+ * this week. Everything comes from the words already loaded -- no extra requests. Plain divs and
+ * spans rather than a labelled section/list, so the page's regions and list items stay the source
+ * groups and words (which its e2e specs count).
  */
 export function WordsProgress({ words, counts }: { words: ListedWord[]; counts: Record<WordStatus, number> }) {
   const thisWeek = savedThisWeek(words, new Date())
   return (
-    <section aria-label="Your progress" className="mb-8 rounded-2xl border border-border/70 bg-card/60 px-5 py-5 sm:px-6">
+    <div data-testid="words-progress" className="mb-8 rounded-2xl border border-border/70 bg-card/60 px-5 py-5 sm:px-6">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
         <span className="font-serif text-4xl leading-none tabular-nums text-foreground">{counts.learned}</span>
         <span className="font-serif text-base italic text-muted-foreground">
@@ -39,14 +41,14 @@ export function WordsProgress({ words, counts }: { words: ListedWord[]; counts: 
           />
         ))}
       </div>
-      <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
         {SEGMENTS.map((s) => (
-          <li key={s.status} className="inline-flex items-center gap-1.5">
+          <span key={s.status} className="inline-flex items-center gap-1.5">
             <span className={cn("h-2 w-2 rounded-full", s.swatch)} aria-hidden />
             <span className="tabular-nums text-foreground/80">{counts[s.status]}</span> {s.status}
-          </li>
+          </span>
         ))}
-      </ul>
-    </section>
+      </p>
+    </div>
   )
 }
