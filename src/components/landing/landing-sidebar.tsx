@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Bookmark, Compass, GraduationCap, Home, Library } from "lucide-react"
 import { BsTranslate } from "react-icons/bs"
@@ -20,12 +20,15 @@ const navIconStroke = 1.65
 // Labeled "My Library" (not "Library") so it reads as distinct from Discover's own "The
 // library" section heading (see src/pages/discover/index.tsx) -- that's the shared catalog,
 // this is the reader's personal shelf of uploaded EPUBs.
+//
+// Grouped by what the reader is doing (reading vs. studying) so the list stays scannable as
+// pages get added. Indices into this flat list drive the active indicator below.
 const NAV_ITEMS = [
-  { to: "/", label: "Home", Icon: Home },
-  { to: "/discover", label: "Discover", Icon: Compass },
-  { to: "/library", label: "My Library", Icon: Library },
-  { to: "/words", label: "Words", Icon: Bookmark },
-  { to: "/learn", label: "Learn", Icon: GraduationCap },
+  { to: "/", label: "Home", Icon: Home, group: "Read" },
+  { to: "/discover", label: "Discover", Icon: Compass, group: "Read" },
+  { to: "/library", label: "My Library", Icon: Library, group: "Read" },
+  { to: "/words", label: "Words", Icon: Bookmark, group: "Study" },
+  { to: "/learn", label: "Learn", Icon: GraduationCap, group: "Study" },
 ] as const
 
 export type LandingSidebarLayout = {
@@ -249,11 +252,6 @@ export function LandingSidebar({
         className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-3", compactRail && "px-2")}
         aria-label="Main"
       >
-        {!compactRail ? (
-          <p className="px-3 pb-2 pt-1 font-sans text-label-xs font-bold uppercase text-muted-foreground">
-            Browse
-          </p>
-        ) : null}
         <div ref={navWrapRef} className="relative flex min-h-0 flex-col gap-1">
           <div
             aria-hidden
@@ -267,30 +265,45 @@ export function LandingSidebar({
               transform: `translateY(${navIndicator.top}px)`,
             }}
           />
-          {NAV_ITEMS.map(({ to, label, Icon }, index) => {
+          {NAV_ITEMS.map(({ to, label, Icon, group }, index) => {
             const active = index === navActiveIndex
+            const startsGroup = index === 0 || NAV_ITEMS[index - 1].group !== group
             return (
-              <Link
-                key={to}
-                ref={(el) => {
-                  navItemRefs.current[index] = el
-                }}
-                to={to}
-                onClick={to === "/" ? handleGoHome : undefined}
-                aria-current={active ? "page" : undefined}
-                title={compactRail ? label : undefined}
-                className={navItemClass(active)}
-              >
-                <span
-                  className={cn(
-                    "shrink-0 transition-colors duration-200 ease-out",
-                    active ? "text-primary" : "text-foreground group-hover:text-foreground/85",
-                  )}
+              <Fragment key={to}>
+                {startsGroup &&
+                  (compactRail ? (
+                    index > 0 && <div aria-hidden className="mx-3 my-2 border-t border-border/60" />
+                  ) : (
+                    <p
+                      className={cn(
+                        "px-3 pb-1 font-sans text-label-xs font-bold uppercase text-muted-foreground",
+                        index === 0 ? "pt-1" : "pt-4",
+                      )}
+                    >
+                      {group}
+                    </p>
+                  ))}
+                <Link
+                  ref={(el) => {
+                    navItemRefs.current[index] = el
+                  }}
+                  to={to}
+                  onClick={to === "/" ? handleGoHome : undefined}
+                  aria-current={active ? "page" : undefined}
+                  title={compactRail ? label : undefined}
+                  className={navItemClass(active)}
                 >
-                  <Icon className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
-                </span>
-                <span className={cn("truncate", compactRail && "sr-only")}>{label}</span>
-              </Link>
+                  <span
+                    className={cn(
+                      "shrink-0 transition-colors duration-200 ease-out",
+                      active ? "text-primary" : "text-foreground group-hover:text-foreground/85",
+                    )}
+                  >
+                    <Icon className={navIconClass} strokeWidth={navIconStroke} aria-hidden />
+                  </span>
+                  <span className={cn("truncate", compactRail && "sr-only")}>{label}</span>
+                </Link>
+              </Fragment>
             )
           })}
         </div>
