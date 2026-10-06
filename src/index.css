@@ -3503,10 +3503,16 @@ article span {
 }
 /* Desktop: the hover lift needs no extra headroom for a card shadow now, but the cover's own
    shadow still needs room below inside the scroll box. */
+/* Covers line up with the heading's left edge; a full row of four also spans to its right
+   edge (and the composer's), instead of sitting inset in the middle of the column. */
 .continue-reading__row.cr-covers {
+  justify-content: flex-start;
   gap: clamp(0.9rem, 2vw, 1.5rem);
   padding: 0.5rem 0 1.6rem;
   margin: -0.5rem 0 -1.4rem;
+}
+.continue-reading__row.cr-covers:has(> :nth-child(4)) {
+  justify-content: space-between;
 }
 .continue-reading__row.cr-covers .discover-card {
   min-width: 7.5rem;
