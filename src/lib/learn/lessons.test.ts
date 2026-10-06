@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { conjugate } from "@/lib/learn/conjugation"
-import { findLesson, LESSONS, parseInline } from "@/lib/learn/lessons"
+import { findLesson, LESSON_LEVELS, LESSONS, parseInline } from "@/lib/learn/lessons"
 
 describe("lessons", () => {
   it("every step is answerable: one blank, one right choice, typed answers that conjugate", () => {
@@ -31,6 +31,11 @@ describe("lessons", () => {
   it("lesson ids are unique, and each opens by teaching", () => {
     expect(new Set(LESSONS.map((l) => l.id)).size).toBe(LESSONS.length)
     for (const l of LESSONS) expect(l.steps[0].kind, l.id).toBe("teach")
+  })
+
+  it("lessons run easiest first, so each level's group stays in suggested order", () => {
+    const ranks = LESSONS.map((l) => LESSON_LEVELS.indexOf(l.level))
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b))
   })
 
   it("parseInline splits highlight and Spanish markup", () => {

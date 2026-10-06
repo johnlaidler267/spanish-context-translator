@@ -18,9 +18,19 @@ export type LessonStep =
   | { kind: "choice"; text: string; options: { text: string; right?: boolean; why: string }[] }
   | { kind: "type"; prompt: string; text: string; verb: string; tense: TenseId; person: Person }
 
+export const LESSON_LEVELS = ["beginner", "intermediate", "advanced"] as const
+export type LessonLevel = (typeof LESSON_LEVELS)[number]
+
+export const LESSON_LEVEL_NAME: Record<LessonLevel, string> = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
+}
+
 export type Lesson = {
   id: string
   title: string
+  level: LessonLevel
   /** One Spanish line that shows what the lesson is about. */
   sample: string
   minutes: number
@@ -31,6 +41,7 @@ export type Lesson = {
 
 const SI_CLAUSES: Lesson = {
   id: "si-clauses",
+  level: "advanced",
   title: "If I had…",
   sample: "Si tuviera tiempo, viajaría.",
   minutes: 4,
@@ -98,6 +109,7 @@ const SI_CLAUSES: Lesson = {
 
 const SER_ESTAR: Lesson = {
   id: "ser-estar",
+  level: "beginner",
   title: "Ser or estar",
   sample: "Es aburrido / está aburrido.",
   minutes: 5,
@@ -177,6 +189,7 @@ const SER_ESTAR: Lesson = {
 
 const PRETERITE_IMPERFECT: Lesson = {
   id: "preterite-imperfect",
+  level: "intermediate",
   title: "Preterite or imperfect",
   sample: "Llovía cuando salí.",
   minutes: 5,
@@ -253,6 +266,7 @@ const PRETERITE_IMPERFECT: Lesson = {
 
 const POR_PARA: Lesson = {
   id: "por-para",
+  level: "beginner",
   title: "Por or para",
   sample: "Gracias por todo. Es para ti.",
   minutes: 4,
@@ -327,6 +341,7 @@ const POR_PARA: Lesson = {
 
 const OJALA: Lesson = {
   id: "ojala",
+  level: "intermediate",
   title: "Wishes and hopes",
   sample: "Ojalá que llueva.",
   minutes: 4,
@@ -390,7 +405,8 @@ const OJALA: Lesson = {
 }
 
 /** In the order they're suggested: the "Up next" lesson is the first one not finished yet. */
-export const LESSONS: Lesson[] = [SER_ESTAR, PRETERITE_IMPERFECT, POR_PARA, OJALA, SI_CLAUSES]
+/** Suggested order: easiest first, so the list's level groups read top to bottom in this order. */
+export const LESSONS: Lesson[] = [SER_ESTAR, POR_PARA, PRETERITE_IMPERFECT, OJALA, SI_CLAUSES]
 
 export function findLesson(id: string | undefined): Lesson | undefined {
   return LESSONS.find((l) => l.id === id)
