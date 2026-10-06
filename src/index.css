@@ -3323,6 +3323,43 @@ article span {
   display: none;
 }
 
+/* Continue Reading heading (desktop): same italic editorial voice as the sidebar's section
+   labels and the page eyebrows, a hairline, then a link to the whole shelf. */
+.cr-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.9rem;
+}
+.cr-heading__label {
+  margin: 0;
+  font-family: var(--font-reading);
+  font-size: var(--text-ui-lg);
+  font-style: italic;
+  line-height: 1;
+  color: var(--editorial);
+}
+.cr-heading__rule {
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+}
+.cr-heading__link {
+  font-family: var(--font-sans);
+  font-size: var(--text-ui-xs);
+  color: var(--primary);
+  white-space: nowrap;
+  text-underline-offset: 3px;
+}
+.cr-heading__link:hover {
+  text-decoration: underline;
+}
+.cr-heading__link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
 /* Continue Reading as bare covers (.cr-covers, desktop strip and mobile scroller alike). The
    cover is the object: no card box around it, the title shown once (on the cover itself),
    and a thin progress bar + percentage underneath instead of the BOOK / "50% READ" pills.
@@ -3339,10 +3376,19 @@ article span {
 }
 .cr-covers .discover-card__frame,
 .dark .cr-covers .discover-card__frame {
+  flex: none;
+  min-height: 0;
   aspect-ratio: 2 / 3;
   overflow: visible;
   border: none;
   background: transparent;
+}
+/* The frame holds the 2:3 book shape and the cover fills it absolutely. In flow, a cover
+   image's own proportions leaked into the frame's height (overflow: visible gives it an
+   automatic min-height), so covers came out at slightly different heights. */
+.cr-covers .discover-card__frame > .discover-cover {
+  position: absolute;
+  inset: 0;
 }
 .cr-covers .discover-cover,
 .cr-covers .discover-card--skeleton .discover-card__frame > * {

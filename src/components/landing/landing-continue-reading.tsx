@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import type { User } from "@supabase/supabase-js"
 import { ContentCard } from "@/pages/discover/content-card"
+import { ContinueReadingHeading } from "@/components/landing/continue-reading-heading"
 import { LibraryCard } from "@/components/library/library-card"
 import { DiscoverSkeletonCard } from "@/components/discover/discover-loading-state"
 import { fetchDiscoverCatalog, readCachedDiscoverItems } from "@/lib/discover/discover-catalog"
@@ -291,7 +292,7 @@ export function useLandingContinueReading({
               className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1"
               aria-busy="true"
             >
-              <p className="sample-excerpt-label text-center">Continue reading</p>
+              <ContinueReadingHeading />
               <div className={continueReadingRowClass(reservedCount)}>
                 {placeholders(Math.min(reservedCount, MAX_CONTINUE_READING_ITEMS))}
               </div>
@@ -349,7 +350,7 @@ export function useLandingContinueReading({
     // Desktop: sits where the sample excerpt normally does, below the composer.
     desktopRow: (
       <div className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1">
-        <p className="sample-excerpt-label text-center">Continue reading</p>
+        <ContinueReadingHeading />
         <div className={continueReadingRowClass(items.length)}>
           {items.map((item) =>
             item.kind === "discover" ? (
