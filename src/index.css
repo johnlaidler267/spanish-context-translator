@@ -2996,7 +2996,7 @@ article span {
    the same "book" object as Discover instead of a one-off tile style.
    A grid with auto-fill/auto-fit tracks (like .discover-grid above) wraps to as many rows
    as it takes to lay out every item -- fine for a full shelf, but this row is capped at
-   MAX_CONTINUE_READING_ITEMS (4) and is meant to read as a single strip, so it's a
+   MAX_CONTINUE_READING_ITEMS (3) and is meant to read as a single strip, so it's a
    non-wrapping flex row with horizontal scroll instead: cards flex-grow to fill the row
    (via .discover-card below) and overflow only kicks in once they've hit their min-width,
    rather than dropping extra cards to a second row. Growing to fill (instead of a fixed
@@ -3292,15 +3292,15 @@ article span {
 /* Continue Reading as compact rows (.cr-covers, desktop and mobile). Each book is a small
    cover with its title, author and progress beside it: lighter than full-size covers (the
    composer stays the page's focus) and it names the book, which a cover alone didn't.
-   Desktop lays them in one row of four; mobile in a 2x2 grid. Reuses the shared
+   Desktop lays them in one row of three; mobile in a 2x2 grid. Reuses the shared
    ContentCard / LibraryCard markup (and LibraryCard's touch-tap handling), restyled here,
    so Discover and Library are unchanged. Covers without an image get a "cloth binding" in
    their own color (--cover-cloth, see cover-cloth.ts). */
 .continue-reading__row.cr-covers,
 .continue-reading-mobile__row.cr-covers {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
   overflow: visible;
   margin: 0;
   padding: 0;
@@ -3313,7 +3313,7 @@ article span {
 .dark .cr-covers .discover-card {
   flex-direction: row;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   min-width: 0;
   max-width: none;
   overflow: visible;
@@ -3325,16 +3325,19 @@ article span {
 .cr-covers .discover-card__frame,
 .dark .cr-covers .discover-card__frame {
   flex: none;
-  width: 3.5rem;
-  height: 5.25rem;
+  width: 5.5rem;
+  height: 8.25rem;
   aspect-ratio: auto;
   overflow: visible;
   border: none;
   background: transparent;
 }
+.continue-reading-mobile__row.cr-covers .discover-card {
+  gap: 0.75rem;
+}
 .continue-reading-mobile__row.cr-covers .discover-card__frame {
-  width: 2.75rem;
-  height: 4.125rem;
+  width: 3.5rem;
+  height: 5.25rem;
 }
 .cr-covers .discover-cover,
 .cr-covers .discover-card--skeleton .discover-card__frame > * {
@@ -3404,7 +3407,7 @@ article span {
 }
 .cr-covers .discover-cover__plate-title {
   font-family: var(--font-serif);
-  font-size: 0.5rem;
+  font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.15;
   letter-spacing: 0;
@@ -3424,7 +3427,7 @@ article span {
   order: 0;
   margin: 0;
   font-family: var(--font-serif);
-  font-size: var(--text-ui-base);
+  font-size: var(--text-display-xs);
   font-weight: 500;
   line-height: 1.2;
   color: var(--foreground);
@@ -3433,8 +3436,8 @@ article span {
 }
 .cr-covers .discover-card__author {
   order: 1;
-  margin-top: 0.15rem;
-  font-size: var(--text-ui-xs);
+  margin-top: 0.2rem;
+  font-size: var(--text-ui-sm);
 }
 .cr-covers .discover-card__progress-inline,
 .dark .cr-covers .discover-card__progress-inline {
@@ -3442,9 +3445,9 @@ article span {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  margin-top: 0.45rem;
+  margin-top: 0.6rem;
   font-family: var(--font-sans);
-  font-size: var(--text-ui-2xs);
+  font-size: var(--text-ui-xs);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
@@ -3454,15 +3457,18 @@ article span {
 .cr-covers .discover-card__progress-inline::before {
   content: "";
   flex: none;
-  width: 2.5rem;
+  width: 3.5rem;
   height: 3px;
   border-radius: 999px;
   background:
     linear-gradient(90deg, var(--editorial) var(--progress, 0%), transparent 0) no-repeat,
     color-mix(in srgb, var(--border) 75%, transparent);
 }
+.continue-reading-mobile__row.cr-covers .discover-cover__plate-title {
+  font-size: 0.55rem;
+}
 .continue-reading-mobile__row.cr-covers .discover-card__title {
-  font-size: var(--text-ui-sm);
+  font-size: var(--text-ui-base);
   -webkit-line-clamp: 2;
 }
 .continue-reading-mobile__row.cr-covers .discover-card__author {

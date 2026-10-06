@@ -31,10 +31,10 @@ import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress
 import { useViewport } from "@/contexts/viewport-context"
 import type { ContentItem } from "@/lib/discover/content-data"
 
-// MAX_CONTINUE_READING_ITEMS (4) keeps the desktop row from overflowing into a horizontal
-// scrollbar -- see .continue-reading__row in index.css. MAX_MOBILE_CONTINUE_READING_ITEMS (4):
-// mobile shows the same covers smaller, up to four across, shrinking to fit the column
-// (.cr-covers in index.css). Both live in continue-reading-library.ts because its
+// MAX_CONTINUE_READING_ITEMS (3): desktop shows one row of three cover-and-text items, the
+// most that fit at a readable cover size. MAX_MOBILE_CONTINUE_READING_ITEMS (4): mobile shows
+// a 2x2 grid of smaller ones (.cr-covers in index.css). The list is built to the larger of
+// the two and each viewport takes its own count from the front. Both live in continue-reading-library.ts because its
 // pre-mount warm-up needs them to know which covers to fetch.
 
 /**
@@ -200,7 +200,12 @@ export function useLandingContinueReading({
   const items = useMemo(() => {
     if (catalog.length === 0 && booksWithCovers.length === 0) return []
     const recent = getRecentlyViewedProgress(user, RECENT_LOOKBACK_ITEMS)
-    return buildContinueReadingItems(recent, catalog, booksWithCovers, MAX_CONTINUE_READING_ITEMS)
+    return buildContinueReadingItems(
+      recent,
+      catalog,
+      booksWithCovers,
+      Math.max(MAX_CONTINUE_READING_ITEMS, MAX_MOBILE_CONTINUE_READING_ITEMS),
+    )
     // `syncVersion` isn't read above -- it's a deliberate recompute trigger so this memo
     // reruns once cloud-synced progress has landed in localStorage (see the effect above).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -301,6 +306,7 @@ export function useLandingContinueReading({
   if (items.length === 0) return { mobileRow: null, desktopRow: fallback }
 
   const mobileItems = items.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS)
+  const desktopItems = items.slice(0, MAX_CONTINUE_READING_ITEMS)
 
   // On mobile, render only mobileRow; on desktop, render only desktopRow. Viewport is detected
   // in main.jsx before React mounts to avoid first-paint flicker. This eliminates the
@@ -349,7 +355,7 @@ export function useLandingContinueReading({
       <div className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1">
         <ContinueReadingHeading />
         <div className={CONTINUE_READING_ROW_CLASS}>
-          {items.map((item) =>
+          {desktopItems.map((item) =>
             item.kind === "discover" ? (
               <ContentCard
                 key={`discover-${item.content.id}`}

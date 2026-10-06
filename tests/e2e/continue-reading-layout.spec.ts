@@ -6,7 +6,7 @@
  * entire row -- a single book's cover read as a giant full-bleed banner instead of a card
  * (see the reference screenshot on the board card). Asserts each card's rendered width stays
  * under a sane cap regardless of how many items are shown (1, 2, 3, 4). The row is now a
- * four-column grid of compact cover-and-text items (.cr-covers), so every item is one
+ * three-column grid of cover-and-text items (.cr-covers), so every item is one
  * column wide whatever the count.
  *
  * Uses tests/e2e-mocks (see its README) instead of a real Supabase project/Groq key.
@@ -66,17 +66,19 @@ for (const count of [1, 2, 3, 4]) {
     const row = page.locator(".continue-reading__row")
     await expect(row).toBeVisible()
     const cards = row.locator(".discover-card")
-    await expect(cards).toHaveCount(count)
+    // Desktop shows at most MAX_CONTINUE_READING_ITEMS (3).
+    const shown = Math.min(count, 3)
+    await expect(cards).toHaveCount(shown)
 
     const rowBox = await row.boundingBox()
     expect(rowBox).not.toBeNull()
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < shown; i++) {
       const box = await cards.nth(i).boundingBox()
       expect(box).not.toBeNull()
       // The bug: a lone/few card(s) grew via flex-grow to fill the entire ~800px row.
-      // Post-fix, each card takes one column of the four-column grid regardless of count.
-      expect(box!.width).toBeLessThan(230)
+      // Post-fix, each card takes one column of the three-column grid regardless of count.
+      expect(box!.width).toBeLessThan(300)
       expect(box!.width).toBeGreaterThan(100)
       // Never wider than the row itself (sanity check against a bad selector/empty row).
       expect(box!.width).toBeLessThanOrEqual(rowBox!.width)
