@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from "react"
 import { BookOpen, Loader2, Trash2, UploadCloud } from "lucide-react"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
+import { coverClothColor } from "@/lib/discover/cover-cloth"
 import { cn } from "@/lib/utils"
 
 /**
@@ -83,6 +84,7 @@ export function LibraryCard({
     "--cover-accent": palette.accent,
     "--cover-ink": palette.ink,
     "--cover-wash": palette.wash,
+    "--cover-cloth": coverClothColor(`${book.title}:${book.author ?? ""}`),
   } as CSSProperties
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

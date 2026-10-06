@@ -4,6 +4,7 @@ import { useState } from "react"
 import { BookOpen, Feather, FileText, Music } from "lucide-react"
 import type { CSSProperties } from "react"
 import type { ContentItem, ContentType } from "@/lib/discover/content-data"
+import { coverClothColor } from "@/lib/discover/cover-cloth"
 
 const typeIcon = {
   book: BookOpen,
@@ -81,6 +82,7 @@ export function DiscoverCoverArt({ content, className = "", eager = false }: Dis
     "--cover-accent": palette.accent,
     "--cover-ink": palette.ink,
     "--cover-wash": palette.wash,
+    "--cover-cloth": coverClothColor(`${content.title}:${content.author}`),
   } as CSSProperties
 
   return (

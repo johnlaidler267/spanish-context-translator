@@ -31,9 +31,9 @@ import { useViewport } from "@/contexts/viewport-context"
 import type { ContentItem } from "@/lib/discover/content-data"
 
 // MAX_CONTINUE_READING_ITEMS (4) keeps the desktop row from overflowing into a horizontal
-// scrollbar -- see .continue-reading__row in index.css. MAX_MOBILE_CONTINUE_READING_ITEMS (2):
-// mobile shows two reduced-height cards side by side (.continue-reading-mobile__row), the first
-// two of the same recency-ordered list. Both live in continue-reading-library.ts because its
+// scrollbar -- see .continue-reading__row in index.css. MAX_MOBILE_CONTINUE_READING_ITEMS (4):
+// mobile shows the same covers smaller, up to four across, shrinking to fit the column
+// (.cr-covers in index.css). Both live in continue-reading-library.ts because its
 // pre-mount warm-up needs them to know which covers to fetch.
 
 /**
@@ -55,7 +55,7 @@ const SETTLE_TIMEOUT_MS = 2500
  * reserved count, so a one-book reader doesn't see a portrait skeleton swap to landscape.
  */
 function continueReadingRowClass(count: number) {
-  return count === 1 ? "continue-reading__row continue-reading__row--solo" : "continue-reading__row"
+  return count === 1 ? "continue-reading__row continue-reading__row--solo" : "continue-reading__row cr-covers"
 }
 
 interface UseLandingContinueReadingOptions {
@@ -277,7 +277,7 @@ export function useLandingContinueReading({
       ? {
           mobileRow: (
             <div className="continue-reading-mobile w-full order-1" aria-busy="true">
-              <div className="continue-reading-mobile__row">
+              <div className="continue-reading-mobile__row cr-covers">
                 {placeholders(Math.min(reservedCount, MAX_MOBILE_CONTINUE_READING_ITEMS))}
               </div>
             </div>
@@ -318,7 +318,7 @@ export function useLandingContinueReading({
       // (order-2), which then separates it from the composer (order-3).
       mobileRow: (
         <div className="continue-reading-mobile w-full order-1">
-          <div className="continue-reading-mobile__row">
+          <div className="continue-reading-mobile__row cr-covers">
             {mobileItems.map((item) =>
               item.kind === "discover" ? (
                 <ContentCard

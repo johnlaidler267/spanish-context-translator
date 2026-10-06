@@ -3323,6 +3323,184 @@ article span {
   display: none;
 }
 
+/* Continue Reading as bare covers (.cr-covers, desktop strip and mobile scroller alike). The
+   cover is the object: no card box around it, the title shown once (on the cover itself),
+   and a thin progress bar + percentage underneath instead of the BOOK / "50% READ" pills.
+   Covers without an image get a "cloth binding" in their own color (--cover-cloth, see
+   cover-cloth.ts) so a row of them doesn't read as identical beige tiles. Reuses the shared
+   ContentCard / LibraryCard markup (and LibraryCard's touch-tap handling), restyled here. */
+.cr-covers .discover-card,
+.dark .cr-covers .discover-card {
+  overflow: visible;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.cr-covers .discover-card__frame,
+.dark .cr-covers .discover-card__frame {
+  aspect-ratio: 2 / 3;
+  overflow: visible;
+  border: none;
+  background: transparent;
+}
+.cr-covers .discover-cover,
+.cr-covers .discover-card--skeleton .discover-card__frame > * {
+  border-radius: 3px 6px 6px 3px;
+  box-shadow:
+    0 1px 2px rgba(76, 56, 39, 0.1),
+    0 10px 22px -12px rgba(76, 56, 39, 0.5);
+  transition: box-shadow 0.28s ease;
+}
+.dark .cr-covers .discover-cover {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 10px 22px -12px rgba(0, 0, 0, 0.8);
+}
+/* Spine: a darker strip down the left edge, over image covers and cloth alike. */
+.cr-covers .discover-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6%;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.06));
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .cr-covers .discover-card:hover,
+  .dark .cr-covers .discover-card:hover {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .cr-covers .discover-card:hover .discover-cover {
+    box-shadow:
+      0 2px 4px rgba(76, 56, 39, 0.12),
+      0 22px 34px -16px rgba(76, 56, 39, 0.6);
+  }
+  .dark .cr-covers .discover-card:hover .discover-cover {
+    box-shadow:
+      0 0 26px -8px rgba(212, 168, 150, 0.35),
+      0 22px 34px -16px rgba(0, 0, 0, 0.85);
+  }
+  .cr-covers .discover-card:hover .discover-cover__img {
+    transform: none;
+  }
+}
+.cr-covers .discover-card__type,
+.cr-covers .discover-card__progress,
+.cr-covers .discover-card__title,
+.cr-covers .discover-card__author,
+.cr-covers .discover-card__meta {
+  display: none;
+}
+/* Cloth binding: title top-left, author bottom-left, in light ink on the cover's own color. */
+.cr-covers .discover-cover--plate {
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14% 11% 11% 15%;
+  text-align: left;
+  background:
+    radial-gradient(90% 60% at 30% 0%, rgba(255, 255, 255, 0.16), transparent 70%),
+    linear-gradient(160deg, var(--cover-cloth, #8a6a2f), color-mix(in srgb, var(--cover-cloth, #8a6a2f) 68%, black));
+}
+.cr-covers .discover-cover__rule,
+.cr-covers .discover-cover__motif {
+  display: none;
+}
+.cr-covers .discover-cover__plate-title {
+  font-family: var(--font-serif);
+  font-size: var(--text-ui-lg);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: 0;
+  color: #fbf6ee;
+  -webkit-line-clamp: 4;
+}
+.cr-covers .discover-cover__plate-author {
+  margin-top: 0;
+  font-size: var(--text-label-2xs);
+  color: #fbf6ee;
+  opacity: 0.8;
+}
+/* The bar sits under the cover, not on it (the frame no longer clips, so it can hang below). */
+.cr-covers .discover-card__progress-bar,
+.dark .cr-covers .discover-card__progress-bar {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  bottom: auto;
+  left: 0;
+  right: 0;
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+}
+.cr-covers .discover-card__progress-bar > span {
+  border-radius: 999px;
+}
+.cr-covers .discover-card__body,
+.dark .cr-covers .discover-card__body {
+  display: block;
+  padding: 1.05rem 0 0;
+}
+.cr-covers .discover-card__progress-inline {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-label-2xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+/* Skeleton placeholders keep the same footprint: a cover-shaped block, one short caption line. */
+.cr-covers .discover-card--skeleton .discover-card__body > :not(:first-child) {
+  display: none;
+}
+/* Desktop: the hover lift needs no extra headroom for a card shadow now, but the cover's own
+   shadow still needs room below inside the scroll box. */
+.continue-reading__row.cr-covers {
+  gap: clamp(0.9rem, 2vw, 1.5rem);
+  padding: 0.5rem 0 1.6rem;
+  margin: -0.5rem 0 -1.4rem;
+}
+.continue-reading__row.cr-covers .discover-card {
+  min-width: 7.5rem;
+  max-width: 9.5rem;
+}
+@media (min-width: 64rem) {
+  .continue-reading__row.cr-covers .discover-card {
+    min-width: 8rem;
+    max-width: 10rem;
+  }
+}
+/* Mobile: smaller covers, up to four across. They shrink to fit the column (a 360px phone
+   still fits all four) rather than scrolling, since the row never holds more than four and a
+   strip with one cover clipped at the edge read as cut off, not as scrollable. */
+.continue-reading-mobile__row.cr-covers {
+  gap: 0.7rem;
+}
+.continue-reading-mobile__row.cr-covers .discover-card {
+  flex: 0 1 5.4rem;
+  min-width: 0;
+  max-width: none;
+  border-radius: 0;
+}
+.continue-reading-mobile__row.cr-covers .discover-card__frame {
+  aspect-ratio: 2 / 3;
+}
+.continue-reading-mobile__row.cr-covers .discover-cover--plate {
+  padding: 14% 9% 10% 14%;
+}
+.continue-reading-mobile__row.cr-covers .discover-cover__plate-title {
+  font-size: var(--text-ui-xs, 0.8rem);
+  -webkit-line-clamp: 4;
+}
+.continue-reading-mobile__row.cr-covers .discover-cover__plate-author {
+  display: none;
+}
+.continue-reading-mobile__row.cr-covers .discover-card__body {
+  padding-top: 0.85rem;
+}
+
 /** Details sheet — “How do I remember this?” loading dots (matches prototype bounce) */
 @keyframes details-memory-dot-bounce {
   0%,

@@ -1,6 +1,7 @@
 /**
  * Landing page Continue Reading cards must get the same hover effect in dark mode as in light:
- * lift, tinted border, and a deeper shadow. The bug: `.dark .discover-card` ties
+ * a lift and a deeper shadow. The row shows bare covers (.cr-covers), so the shadow lives on
+ * the cover rather than on a card box. The bug: `.dark .discover-card` ties
  * `.discover-card:hover` on specificity and comes later in index.css, so in dark mode its
  * resting box-shadow overrode the hover shadow -- the card lifted but its shadow never changed.
  *
@@ -28,7 +29,7 @@ const ITEMS = [1, 2, 3].map((n) => ({
 }))
 
 for (const theme of ["light", "dark"] as const) {
-  test(`a Continue Reading card lifts, tints and deepens its shadow on hover (${theme})`, async ({ page }) => {
+  test(`a Continue Reading cover lifts and deepens its shadow on hover (${theme})`, async ({ page }) => {
     await setupMocks(page, { discoverItems: ITEMS, restTables: { reading_progress: [] } })
     await page.addInitScript(
       ({ progressKey, themeKey, theme, userId, ids }) => {
@@ -52,15 +53,14 @@ for (const theme of ["light", "dark"] as const) {
     await expect(card).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.classList.contains("dark"))).toBe(theme === "dark")
 
-    const style = () =>
-      card.evaluate((el) => {
-        const s = getComputedStyle(el)
-        return { transform: s.transform, border: s.borderColor, shadow: s.boxShadow }
-      })
+    const cover = card.locator(".discover-cover")
+    const style = async () => ({
+      transform: await card.evaluate((el) => getComputedStyle(el).transform),
+      shadow: await cover.evaluate((el) => getComputedStyle(el).boxShadow),
+    })
     const rest = await style()
     await card.hover()
     await expect.poll(async () => (await style()).transform).toBe("matrix(1, 0, 0, 1, 0, -4)")
     await expect.poll(async () => (await style()).shadow).not.toBe(rest.shadow)
-    expect((await style()).border).not.toBe(rest.border)
   })
 }

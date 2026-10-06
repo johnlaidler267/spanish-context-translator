@@ -21,7 +21,7 @@ import { MOBILE_MEDIA_QUERY } from "@/contexts/viewport-context"
 
 /** Must match the row's caps in landing-continue-reading.tsx. */
 export const MAX_CONTINUE_READING_ITEMS = 4
-export const MAX_MOBILE_CONTINUE_READING_ITEMS = 2
+export const MAX_MOBILE_CONTINUE_READING_ITEMS = 4
 
 let listing: { userId: string; inFlight: Promise<LibraryEpub[]> | null; books: LibraryEpub[] | null } | null =
   null
