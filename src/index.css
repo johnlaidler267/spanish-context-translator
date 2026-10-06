@@ -2372,8 +2372,18 @@ article span {
   border-top-color: rgba(234, 224, 213, 0.1);
 }
 @media (hover: hover) {
+  /* Must restate the hover shadow: `.dark .discover-card` above ties `.discover-card:hover` on
+     specificity and comes later, so without this the shadow stayed at rest in dark mode. A
+     black shadow alone barely reads on the dark page, so it also gets a soft warm glow (the
+     same device .dark .discover-card--featured uses; it keeps its own stronger hover glow). */
   .dark .discover-card:hover {
     border-color: rgba(176, 107, 86, 0.5);
+  }
+  .dark .discover-card:not(.discover-card--featured):hover {
+    box-shadow:
+      0 0 26px -8px rgba(176, 107, 86, 0.32),
+      0 2px 4px rgba(0, 0, 0, 0.24),
+      0 24px 42px -22px rgba(0, 0, 0, 0.8);
   }
 }
 
