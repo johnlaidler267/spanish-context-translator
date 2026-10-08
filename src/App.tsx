@@ -1344,7 +1344,13 @@ export default function App() {
     [handleTextSubmit, findSavedBookLayout, openWithoutLoadingOverlay],
   )
 
-  const handleBack = useCallback(() => {
+  /**
+   * Tears down the reading session. "previous" (the reader's own Back arrow) returns to wherever
+   * reading was entered from; "home" (the sidebar's Home link / wordmark) stays on Home -- the URL
+   * is already "/" while reading, so there's nowhere to navigate, and history-back would wrongly
+   * land on Discover/Library when reading was opened from there.
+   */
+  const exitReading = useCallback((destination: "previous" | "home") => {
     setAppState("landing")
     setSourcePages([])
     cacheRef.current = new TranslationCache()
@@ -1363,6 +1369,7 @@ export default function App() {
     rateLimitModalSuppressedRef.current = false
     setViewMode("article")
     bump()
+    if (destination === "home") return
     // Return to wherever reading was actually entered from (Home, Discover, Library, ...)
     // rather than a fixed destination -- every entry into reading mode pushes a fresh history
     // entry for exactly this (see handleTextSubmit and handleDiscoverStartReading/
@@ -1377,6 +1384,8 @@ export default function App() {
       navigate("/")
     }
   }, [bump, navigate])
+  const handleBack = useCallback(() => exitReading("previous"), [exitReading])
+  const handleExitReadingToHome = useCallback(() => exitReading("home"), [exitReading])
 
   const totalPages = sourcePages.length
 
@@ -1910,7 +1919,7 @@ export default function App() {
                 displayName={displayName}
                 sidebarDisabled={appState === "loading"}
                 readingActive={appState === "reading"}
-                onExitReading={handleBack}
+                onExitReading={handleExitReadingToHome}
               />
             }
           >
