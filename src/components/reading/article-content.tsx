@@ -479,6 +479,9 @@ export function ArticleContent({
   const handleGlobalClick = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement
     if (target.closest("[data-app-error-modal]")) return
+    // A click whose target React already swapped out mid-click (e.g. the Save button's icon
+    // flipping) is detached by the time it bubbles here, so `closest` can't see the details box.
+    if (!target.isConnected) return
     if (
       !target.closest("[data-chunk]") &&
       !target.closest("[data-popup]") &&

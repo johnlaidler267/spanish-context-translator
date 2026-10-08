@@ -192,3 +192,33 @@ test("words saved earlier are marked in the text when you read", async ({ page }
   })
   await expect(chunks.nth(0).locator("[data-saved-word]")).toHaveCount(0)
 })
+
+test("the bookmark flips straight away, and unsaving keeps the details sheet open", async ({ page }) => {
+  await setupMocks(page, {
+    groqChatContent: JSON.stringify([
+      { c: "Hola.", m: "Hello." },
+      { c: "Adiós.", m: "Goodbye." },
+    ]),
+  })
+  const rows = await mockSavedWordsTable(page)
+  // A slow upsert: the button must not wait on it to show the word as saved.
+  await page.route("**/rest/v1/saved_words**", async (route) => {
+    if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 1500))
+    return route.fallback()
+  })
+
+  await page.goto("/")
+  await page.locator("textarea").fill("Hola. Adiós.")
+  await page.getByRole("button", { name: "Start reading" }).click()
+  await page.locator("[data-chunk]").first().click()
+
+  await page.getByRole("button", { name: "Save word" }).click()
+  await expect(page.getByRole("button", { name: "Remove from saved words" })).toBeVisible({ timeout: 500 })
+  await expect.poll(() => rows.length).toBe(1)
+
+  // The icon swaps under the pointer as this click lands; that must not read as a click outside.
+  await page.getByRole("button", { name: "Remove from saved words" }).click()
+  await expect(page.getByRole("button", { name: "Save word" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Close details" })).toBeVisible()
+  await expect.poll(() => rows.length).toBe(0)
+})

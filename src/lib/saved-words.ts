@@ -122,24 +122,49 @@ export async function saveWord(
   resetForUser(user.id)
   const word = draft.word.trim()
   if (!word) return { error: "Nothing to save." }
+  const meaning = draft.meaning?.trim() || null
+  const literal = draft.literal?.trim() || null
+  const sentence = draft.sentence ? clip(draft.sentence.trim()) : null
+  const sourceTitle = draft.sourceTitle?.trim() || null
+  // Optimistic: show the word as saved right away (the Save button flips with no network wait),
+  // then swap in the real row -- or roll back if the upsert fails.
+  const previous = getSavedWordsState(language).words
+  const pendingId = `pending:${savedWordKey(word)}`
+  const pending: SavedWord = {
+    id: pendingId,
+    user_id: user.id,
+    language,
+    word,
+    meaning,
+    literal,
+    sentence,
+    source_title: sourceTitle,
+    created_at: new Date().toISOString(),
+  }
+  setState(language, {
+    words: [pending, ...previous.filter((w) => savedWordKey(w.word) !== savedWordKey(word))],
+  })
   const { data, error } = await supabase
     .from("saved_words")
     .upsert(
       {
         language,
         word,
-        meaning: draft.meaning?.trim() || null,
-        literal: draft.literal?.trim() || null,
-        sentence: draft.sentence ? clip(draft.sentence.trim()) : null,
-        source_title: draft.sourceTitle?.trim() || null,
+        meaning,
+        literal,
+        sentence,
+        source_title: sourceTitle,
       },
       { onConflict: "user_id,language,word" },
     )
     .select(SELECT)
     .single()
-  if (error || !data) return { error: "Couldn't save this word. Try again." }
+  if (error || !data) {
+    setState(language, { words: getSavedWordsState(language).words.filter((w) => w.id !== pendingId) })
+    return { error: "Couldn't save this word. Try again." }
+  }
   const saved = data as SavedWord
-  const words = getSavedWordsState(language).words.filter((w) => w.id !== saved.id)
+  const words = getSavedWordsState(language).words.filter((w) => w.id !== saved.id && w.id !== pendingId)
   setState(language, { words: [saved, ...words] })
   return { error: null }
 }

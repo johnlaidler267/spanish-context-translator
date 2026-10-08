@@ -300,6 +300,9 @@ function SaveWordButton({ draft }: { draft: SavedWordDraft }) {
   const saved = findSaved(draft.word)
 
   const onClick = async () => {
+    // Saving/removing flips the icon instantly (optimistic store); just ignore taps until the
+    // request settles rather than greying the button out mid-tap.
+    if (busy) return
     if (!canSave) {
       openAuthModal()
       return
@@ -316,12 +319,12 @@ function SaveWordButton({ draft }: { draft: SavedWordDraft }) {
     <button
       type="button"
       onClick={() => void onClick()}
-      disabled={busy}
+      aria-busy={busy || undefined}
       aria-label={label}
       aria-pressed={Boolean(saved)}
       title={error ?? label}
       className={cn(
-        "shrink-0 rounded-full p-1.5 transition-colors hover:bg-secondary disabled:opacity-60",
+        "shrink-0 rounded-full p-1.5 transition-colors hover:bg-secondary",
         saved ? "text-reading-warm" : "text-muted-foreground hover:text-foreground",
         error && "text-destructive",
       )}
