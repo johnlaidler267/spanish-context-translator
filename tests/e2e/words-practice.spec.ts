@@ -127,6 +127,33 @@ test("accent keys type the letter at the caret without taking focus off the answ
   await expect(keys).toHaveCount(0)
 })
 
+test("on desktop, Enter in an empty answer box shows the answer", async ({ page }) => {
+  await setupMocks(page)
+  await mockSavedWords(page)
+
+  await page.goto("/words/practice")
+  await expect(page.getByText("1 of 3")).toBeVisible({ timeout: 20_000 })
+  const input = page.getByLabel("Your answer")
+  await input.press("Enter")
+  await expect(page.getByRole("status")).toContainText("The answer was")
+  // And Enter again moves on, as usual.
+  await page.keyboard.press("Enter")
+  await expect(page.getByText("2 of 3")).toBeVisible()
+})
+
+test("on a phone, Enter in an empty answer box does nothing", async ({ browser }) => {
+  const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+  const page = await context.newPage()
+  await setupMocks(page)
+  await mockSavedWords(page)
+
+  await page.goto("/words/practice")
+  await expect(page.getByText("1 of 3")).toBeVisible({ timeout: 20_000 })
+  await page.getByLabel("Your answer").press("Enter")
+  await expect(page.getByRole("status")).toHaveCount(0)
+  await context.close()
+})
+
 test("a wrong answer can be marked right, explained, and the round ends with confetti", async ({ page }) => {
   await setupMocks(page)
   const updates = await mockSavedWords(page)
