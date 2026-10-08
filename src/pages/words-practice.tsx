@@ -284,12 +284,10 @@ function PracticeCard({
     finish(checkAnswer(typed, [answer, answerText(word.word)]))
   }
 
-  // On desktop, Enter in an empty box gives up and shows the answer (Check is disabled then, so
-  // the form wouldn't submit anyway). Phones skip this: a stray tap on the keyboard's Done key
-  // shouldn't count a word as missed.
+  // Enter (or the phone keyboard's Done key) in an empty box gives up and shows the answer.
+  // Check is disabled then, so the form wouldn't submit on its own.
   const onAnswerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter" || e.repeat || e.nativeEvent.isComposing || feedback || typed.trim()) return
-    if (typeof window.matchMedia !== "function" || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return
     e.preventDefault()
     finish("wrong")
   }
