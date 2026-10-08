@@ -16,7 +16,11 @@ import { LANGUAGE_NAME, parseLanguagePair, type Language } from "../_shared/lang
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const MODEL = "openai/gpt-oss-20b"
-const MAX_TOKENS = 280
+// gpt-oss reasons before answering and those tokens count against max_tokens. At 280 the
+// reasoning could use the whole budget, leaving empty content that Groq's JSON mode rejects
+// with a 400 json_validate_failed. Keep reasoning low and leave room for it plus the answer.
+const MAX_TOKENS = 1000
+const REASONING_EFFORT = "low"
 
 /** Per target language: what counts as a verb form, and few-shot examples in that language. */
 const TARGET_GUIDANCE: Record<Language, { verbForms: string; examples: string }> = {
@@ -132,24 +136,43 @@ serveWithCors(async (req: Request) => {
     ? `Word/phrase: "${chunk}"\nFull sentence: "${sentence}"`
     : `Word/phrase: "${chunk}"`
 
-  const groqRes = await fetch(GROQ_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${groqKey}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: "system", content: buildSystemPrompt(learning, native) },
-        { role: "user",   content: userMessage },
-      ],
-      max_tokens: MAX_TOKENS,
-      temperature: 0.2,
-      // Groq validates JSON syntax; avoids invalid payloads when the model forgets to escape " inside strings.
-      response_format: { type: "json_object" },
-    }),
-  })
+  const callGroq = (jsonMode: boolean) =>
+    fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${groqKey}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: "system", content: buildSystemPrompt(learning, native) },
+          { role: "user",   content: userMessage },
+        ],
+        max_tokens: MAX_TOKENS,
+        reasoning_effort: REASONING_EFFORT,
+        temperature: 0.2,
+        // Groq validates JSON syntax; avoids invalid payloads when the model forgets to escape " inside strings.
+        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+      }),
+    })
+
+  let groqRes = await callGroq(true)
+
+  // JSON mode answers a malformed or empty generation with a 400 instead of returning it.
+  // Retry once without it; the lenient parsing below copes with imperfect JSON.
+  if (groqRes.status === 400) {
+    const text = await groqRes.text().catch(() => "")
+    if (!text.includes("json_validate_failed")) {
+      console.error(`[chunk-details] Groq error 400: ${text}`)
+      return new Response(
+        JSON.stringify({ error: "Groq error: 400" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      )
+    }
+    console.warn(`[chunk-details] JSON mode rejected the generation, retrying without it: ${text}`)
+    groqRes = await callGroq(false)
+  }
 
   if (!groqRes.ok) {
     const text = await groqRes.text().catch(() => "")
