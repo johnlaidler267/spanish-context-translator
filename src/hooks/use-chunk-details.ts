@@ -170,6 +170,13 @@ function cacheValueToDetail(cached: string): DetailState {
   return salvageLlmJsonBlob(parseChunkDetailJson(cached))
 }
 
+/** True when "prose" is really unparsed model JSON (e.g. an array of per-verb objects). */
+export function looksLikeRawJson(d: DetailState): boolean {
+  if (d.type !== "llm") return false
+  const t = d.text.trim()
+  return t.startsWith("{") || t.startsWith("[")
+}
+
 // ─── Errors ───────────────────────────────────────────────────────────────────
 
 /** A non-OK response from the chunk-details function (status kept for the user-facing message). */
@@ -207,7 +214,7 @@ export function detailsErrorMessage(err: unknown): string {
 const llmCache = new Map<string, string>()
 
 /** Grammar details: Supabase Edge Function `chunk-details` (Groq key server-side only). */
-async function fetchDetailsFromEdge(
+export async function fetchDetailsFromEdge(
   chunk: string,
   sentence: string,
   prefs: LanguageLearningPreferences,
@@ -225,7 +232,11 @@ async function fetchDetailsFromEdge(
   }
   const data = (await res.json()) as Record<string, unknown>
   if (data.kind === "verb" || data.kind === "other") {
-    return salvageLlmJsonBlob(payloadToDetail(data as unknown as LlmPayload))
+    const detail = salvageLlmJsonBlob(payloadToDetail(data as unknown as LlmPayload))
+    if (looksLikeRawJson(detail)) {
+      throw new DetailsRequestError("the details service gave an unreadable answer", 502)
+    }
+    return detail
   }
   return { type: "llm", text: "Unexpected response from details service." }
 }

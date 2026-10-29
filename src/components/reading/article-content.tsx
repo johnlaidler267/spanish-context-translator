@@ -360,12 +360,9 @@ export function ArticleContent({
 
     const onMouseLeave = (e: MouseEvent) => {
       const rt = e.relatedTarget
-      if (
-        rt instanceof Element &&
-        (rt.closest("[data-popup]") || rt.closest("[data-details-box]"))
-      ) {
-        return
-      }
+      // Moving onto the tooltip keeps it open. Moving onto the details sheet must not: the
+      // last-hovered word (often one the sheet now covers) would keep its tooltip painted on top.
+      if (rt instanceof Element && rt.closest("[data-popup]")) return
       cancelExploringLeaveTimer()
       pointerPendingRef.current = null
       pointerLastIdRef.current = null

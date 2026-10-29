@@ -76,6 +76,8 @@ Shape for non-verb tokens:
 {"kind":"other","explanation":"<2–3 short sentences in plain ${nativeName} — no bullets, under 120 words>"}
 
 Rules:
+- Describe ONLY the clicked word/phrase. The sentence is context; do not analyse its other words.
+- Respond with exactly one JSON object, never an array.
 - Correct lemma for the ${target} form.
 - JSON must be valid. Escape any double quotes inside string values, or avoid them: use single quotes for glosses instead of double quotes around foreign words.
 - No trailing commas.`
@@ -96,6 +98,22 @@ function extractOtherExplanationLenient(raw: string): string | null {
     .replace(/\\\\/g, "\\")
     .trim()
   return inner || null
+}
+
+/**
+ * Coerce a parsed reply into one of the two shapes. The model sometimes wraps the answer in an
+ * array or, worse, returns one object per verb in the sentence; anything we can't map to a
+ * single answer returns null so the caller retries instead of shipping raw JSON to the sheet.
+ */
+function normalizePayload(parsed: unknown): Record<string, unknown> | null {
+  if (Array.isArray(parsed)) return parsed.length === 1 ? normalizePayload(parsed[0]) : null
+  if (!parsed || typeof parsed !== "object") return null
+  const o = parsed as Record<string, unknown>
+  if (o.kind === "verb" || o.kind === "other") return o
+  if (typeof o.explanation === "string" && o.explanation.trim()) {
+    return { kind: "other", explanation: o.explanation }
+  }
+  return null
 }
 
 serveWithCors(async (req: Request) => {
@@ -139,7 +157,7 @@ serveWithCors(async (req: Request) => {
     ? `Word/phrase: "${chunk}"\nFull sentence: "${sentence}"`
     : `Word/phrase: "${chunk}"`
 
-  const callGroq = (jsonMode: boolean) =>
+  const callGroq = (jsonMode: boolean, correction?: string) =>
     fetch(GROQ_API_URL, {
       method: "POST",
       headers: {
@@ -151,6 +169,7 @@ serveWithCors(async (req: Request) => {
         messages: [
           { role: "system", content: buildSystemPrompt(learning, native) },
           { role: "user",   content: userMessage },
+          ...(correction ? [{ role: "user", content: correction }] : []),
         ],
         max_tokens: MAX_TOKENS,
         reasoning_effort: REASONING_EFFORT,
@@ -190,27 +209,48 @@ serveWithCors(async (req: Request) => {
     choices?: Array<{ message?: { content?: string } }>
   }
 
-  const data = (await groqRes.json()) as GroqResponse
-  const raw = data.choices?.[0]?.message?.content?.trim() ?? ""
-
-  let cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim()
-  try {
-    const parsed = JSON.parse(cleaned) as Record<string, unknown>
-    if (parsed?.kind === "verb" || parsed?.kind === "other") {
-      return new Response(JSON.stringify(parsed), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      })
-    }
-  } catch {
-    /* fall through */
+  const readContent = async (res: Response) => {
+    const data = (await res.json()) as GroqResponse
+    return data.choices?.[0]?.message?.content?.trim() ?? ""
   }
+  const tryParse = (text: string) => {
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim()
+    try {
+      return normalizePayload(JSON.parse(cleaned))
+    } catch {
+      return null
+    }
+  }
+  const ok = (payload: Record<string, unknown>) =>
+    new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
 
-  const salvaged = extractOtherExplanationLenient(cleaned)
-  const explanation = salvaged ?? (raw || "No explanation returned.")
+  let raw = await readContent(groqRes)
+  let payload = tryParse(raw)
 
+  // Valid JSON in the wrong shape (e.g. an array covering every verb in the sentence): ask once more.
+  if (!payload && !extractOtherExplanationLenient(raw)) {
+    console.warn(`[chunk-details] Unusable reply, retrying: ${raw.slice(0, 300)}`)
+    const retry = await callGroq(
+      true,
+      `Answer again about "${chunk}" only, as one JSON object in the shape described — not an array.`,
+    )
+    if (retry.ok) {
+      raw = await readContent(retry)
+      payload = tryParse(raw)
+    }
+  }
+  if (payload) return ok(payload)
+
+  const salvaged = extractOtherExplanationLenient(raw)
+  if (salvaged) return ok({ kind: "other", explanation: salvaged })
+
+  // Never pass raw model output through as prose; it shows up in the sheet as a JSON dump.
+  console.error(`[chunk-details] Unusable reply after retry: ${raw.slice(0, 300)}`)
   return new Response(
-    JSON.stringify({ kind: "other", explanation }),
-    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    JSON.stringify({ error: "The details service gave an unreadable answer" }),
+    { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
   )
 })
