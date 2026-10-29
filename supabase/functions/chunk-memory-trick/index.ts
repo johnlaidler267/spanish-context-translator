@@ -9,6 +9,7 @@
  * Set GEMINI_API_KEY in Supabase secrets. Optional: GEMINI_MEMORY_TRICK_MODEL (default gemini-2.5-flash-lite).
  */
 
+import { enforceAiRateLimit } from "../_shared/ai-rate-limit.ts"
 import { requireAuthUser, jsonError } from "../_shared/auth-user.ts"
 import { corsHeaders, serveWithCors } from "../_shared/cors.ts"
 import { LANGUAGE_NAME, parseLanguagePair, type Language } from "../_shared/languages.ts"
@@ -64,6 +65,8 @@ serveWithCors(async (req: Request) => {
 
   const auth = await requireAuthUser(req)
   if (auth instanceof Response) return auth
+  const limited = await enforceAiRateLimit(req, auth.id, "chunk-memory-trick")
+  if (limited) return limited
 
   const apiKey = Deno.env.get("GEMINI_API_KEY")
   if (!apiKey) {

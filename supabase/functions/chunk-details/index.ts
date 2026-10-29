@@ -10,6 +10,7 @@
  * Requires a valid Supabase JWT (signed-in or anonymous). Set GROQ_API_KEY in secrets.
  */
 
+import { enforceAiRateLimit } from "../_shared/ai-rate-limit.ts"
 import { requireAuthUser, jsonError } from "../_shared/auth-user.ts"
 import { corsHeaders, serveWithCors } from "../_shared/cors.ts"
 import { LANGUAGE_NAME, parseLanguagePair, type Language } from "../_shared/languages.ts"
@@ -104,6 +105,8 @@ serveWithCors(async (req: Request) => {
 
   const auth = await requireAuthUser(req)
   if (auth instanceof Response) return auth
+  const limited = await enforceAiRateLimit(req, auth.id, "chunk-details")
+  if (limited) return limited
 
   const groqKey = Deno.env.get("GROQ_API_KEY")
   if (!groqKey) {

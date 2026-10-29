@@ -29,6 +29,11 @@ function isHardQuotaOrBillingErrorText(text: string): boolean {
   )
 }
 
+/** Our own edge-function daily cap (`_shared/ai-rate-limit.ts`) — resets tomorrow, not in seconds. */
+function isDailyAppLimitText(text: string): boolean {
+  return text.toLowerCase().includes("daily usage limit")
+}
+
 /** Model id from Google quota error text, e.g. `model: gemini-2.0-flash`. */
 function geminiModelFromQuotaDetail(detail: string): string | null {
   const m = detail.match(/\bmodel:\s*([^\s,*]+)/i)
@@ -56,6 +61,7 @@ function formatRateLimitUserMessage(detail: string): string {
     lower.includes("request too large for model") ||
     lower.includes("resource exhausted")
   const alreadySelfDescribing =
+    isDailyAppLimitText(d) ||
     lower.includes("quota exceeded") ||
     lower.includes("exceeded your current quota") ||
     /\brate limit\b/.test(lower) ||
@@ -95,7 +101,7 @@ export async function fetchChatCompletion(body: object): Promise<Response> {
   if (res.status !== 429) return res
 
   const bodyText = await res.text().catch(() => "")
-  if (isHardQuotaOrBillingErrorText(bodyText)) {
+  if (isHardQuotaOrBillingErrorText(bodyText) || isDailyAppLimitText(bodyText)) {
     return new Response(bodyText, { status: 429, headers: res.headers })
   }
 

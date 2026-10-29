@@ -4,6 +4,7 @@
  * Set GEMINI_API_KEY in Supabase secrets — never expose it in the browser.
  */
 
+import { enforceAiRateLimit } from "../_shared/ai-rate-limit.ts"
 import { requireAuthUser, jsonError } from "../_shared/auth-user.ts"
 import { corsHeaders, serveWithCors } from "../_shared/cors.ts"
 
@@ -84,6 +85,8 @@ serveWithCors(async (req: Request) => {
 
   const auth = await requireAuthUser(req)
   if (auth instanceof Response) return auth
+  const limited = await enforceAiRateLimit(req, auth.id, "gemini-chat")
+  if (limited) return limited
 
   let body: {
     model?: string
