@@ -7,6 +7,18 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <meta name="description" content="Read Spanish, French, and more with confidence. Click any word to see its meaning." />
+    <!-- Link previews (LinkedIn, Slack, iMessage, X). Crawlers don't run JS, so these must
+         live in the static HTML, and og:image must be an absolute URL. No og:url/canonical:
+         every route serves this same file, so they'd mislabel deep links as the homepage. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LexaLens" />
+    <meta property="og:title" content="LexaLens: read a new language with confidence" />
+    <meta property="og:description" content="Read Spanish, French, and more with confidence. Click any word to see its meaning." />
+    <meta property="og:image" content="https://lexalens.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="LexaLens: read a new language with confidence" />
+    <meta name="twitter:card" content="summary_large_image" />
     <!-- SVG first (crisp at any size, both browser themes); PNG for Safari/older browsers -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
