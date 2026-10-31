@@ -1605,13 +1605,15 @@ export default function App() {
   ) {
     return (
       <main className="min-h-app bg-transparent flex items-center justify-center max-md:min-h-0 max-md:flex-1 max-md:overflow-hidden">
-        <div className="flex flex-col items-center gap-3 w-40">
-          {isSigningIn && (
-            <p className="text-muted-foreground font-sans text-xs tracking-wide">Logging in…</p>
-          )}
-          <div className="w-full h-[2px] rounded-full bg-border overflow-hidden">
-            <div className="auth-loading-bar-fill h-full w-1/3 rounded-full bg-primary" />
+        <div className="boot-screen" role="status">
+          <div className="boot-book" aria-hidden="true">
+            <div className="boot-book-page boot-book-page--left" />
+            <div className="boot-book-page boot-book-page--right" />
+            <div className="boot-book-page boot-book-page--flip" />
+            <div className="boot-book-page boot-book-page--flip" />
+            <div className="boot-book-page boot-book-page--flip" />
           </div>
+          <p className="boot-screen-label">{isSigningIn ? "Logging in…" : "Preparing your read…"}</p>
         </div>
       </main>
     )
