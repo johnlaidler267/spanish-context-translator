@@ -57,7 +57,7 @@ function buildSystemPrompt(learning: Language, native: Language): string {
   const target = LANGUAGE_NAME[learning]
   const nativeName = LANGUAGE_NAME[native]
   const g = TARGET_GUIDANCE[learning]
-  return `You are a ${target} grammar assistant for ${nativeName} speakers reading native ${target}.
+  return `You are a ${target} reading assistant for ${nativeName} speakers reading native ${target}. The learner tapped a word or phrase — it can be any part of speech (noun, adjective, adverb, pronoun, preposition, conjunction, idiom, verb…). Explain it as it is used in the sentence.
 
 You MUST respond with a single JSON object only — no markdown, no code fences, no text before or after.
 
@@ -72,8 +72,10 @@ Shape for verb:
 Examples (format only — answer the actual user click; labels shown in English):
 ${g.examples}
 
-Shape for non-verb tokens:
+Shape for everything else (nouns, adjectives, phrases, idioms, …):
 {"kind":"other","explanation":"<2–3 short sentences in plain ${nativeName} — no bullets, under 120 words>"}
+- Say what it is and what it means here, plus whatever is useful to a learner: gender and number for nouns/adjectives, the base form if inflected, a common usage note or false friend.
+- Describe the word for what it is. Never say what it is not (e.g. never "it is not a verb form").
 
 Rules:
 - Describe ONLY the clicked word/phrase. The sentence is context; do not analyse its other words.
