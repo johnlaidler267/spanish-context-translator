@@ -1614,7 +1614,7 @@ export default function App() {
             <div className="boot-book-page boot-book-page--flip" />
           </div>
           <div className="boot-screen-bar w-24 h-[2px] rounded-full bg-border overflow-hidden" aria-hidden="true">
-            <div className="auth-loading-bar-fill h-full w-1/3 rounded-full bg-primary" />
+            <div className="boot-screen-bar-fill h-full w-full rounded-full bg-primary" />
           </div>
           <p className="boot-screen-label">{isSigningIn ? "Logging in…" : "Preparing your read…"}</p>
         </div>

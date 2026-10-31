@@ -1945,14 +1945,16 @@ article span {
   37%       {                              filter: brightness(0.94); }
   62%, 100% { transform: rotateY(-180deg); filter: brightness(1); }
 }
-/* Indeterminate sweep under the book: linear, one-way, so it reads as a
-   continuously advancing line rather than bouncing back and forth. */
-@keyframes auth-loading-bar-sweep {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
+/* A regular left-to-right fill. Boot time is unknown, so it eases out fast
+   and then creeps, settling at 92% rather than claiming "done" -- the screen
+   is replaced the moment boot actually finishes, usually well before that. */
+@keyframes boot-screen-bar-fill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(0.92); }
 }
-.auth-loading-bar-fill {
-  animation: auth-loading-bar-sweep 1.1s linear infinite;
+.boot-screen-bar-fill {
+  transform-origin: left center;
+  animation: boot-screen-bar-fill 6s cubic-bezier(0.1, 0.75, 0.25, 1) forwards;
 }
 /* Sits a little closer to the book than the label does. */
 .boot-screen-bar { margin-top: -0.25rem; }
@@ -1966,7 +1968,6 @@ article span {
 @media (prefers-reduced-motion: reduce) {
   .boot-screen { animation: none; opacity: 1; }
   .boot-book-page--flip { animation: none; display: none; }
-  .auth-loading-bar-fill { animation-duration: 2.4s; }
 }
 
 @keyframes discover-loading-sheen {
