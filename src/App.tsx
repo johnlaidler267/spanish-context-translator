@@ -28,6 +28,7 @@ import {
   ReadMode,
   ReadingHeader,
   WhereYouLeftOffModal,
+  FirstReadTip,
   preloadReadingSurface,
 } from "@/components/reading/reading-surface-lazy"
 import { SubscriptionLapsedModal } from "@/components/subscription/subscription-lapsed-modal"
@@ -1875,6 +1876,7 @@ export default function App() {
               </div>
             ) : null}
           </div>
+          <FirstReadTip suppressed={!!whereLeftOff} />
         </main>
       </Suspense>
     )

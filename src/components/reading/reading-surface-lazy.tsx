@@ -9,7 +9,7 @@
  * though a reader can't reach any of them without first submitting text or opening a
  * book. Splitting them out takes that work off the landing page's critical path.
  *
- * They all resolve from the same module, so the four `lazyRoute` calls below share one
+ * They all resolve from the same module, so the `lazyRoute` calls below share one
  * chunk and one download: whichever loads first satisfies the rest. `lazyRoute` (rather
  * than React.lazy directly) so a tab left open across a deploy recovers from a stale
  * chunk reference instead of crashing into the error boundary — see its docstring.
@@ -28,6 +28,9 @@ export const ArticleContent = lazyRoute(() =>
 export const ReadMode = lazyRoute(() => loadReadingSurface().then((m) => ({ default: m.ReadMode })))
 export const WhereYouLeftOffModal = lazyRoute(() =>
   loadReadingSurface().then((m) => ({ default: m.WhereYouLeftOffModal })),
+)
+export const FirstReadTip = lazyRoute(() =>
+  loadReadingSurface().then((m) => ({ default: m.FirstReadTip })),
 )
 
 /**

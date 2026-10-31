@@ -355,6 +355,11 @@ export interface SetupMocksOptions {
    * and can still overwrite it.
    */
   languagePrefs?: { learning: string; native: string } | null
+  /**
+   * Show the one-time "hover/press any phrase" tip on the reading screen (first-read-tip.tsx).
+   * Default false: it's marked as already seen so it doesn't cover other specs' targets.
+   */
+  showFirstReadTip?: boolean
 }
 
 /**
@@ -379,6 +384,12 @@ export async function setupMocks(
       const key = "lector-language-learning-preferences"
       if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(prefs))
     }, languagePrefs)
+  }
+
+  if (!options.showFirstReadTip) {
+    await page.addInitScript(() => {
+      localStorage.setItem("lexa.firstReadTipSeen.v1", "1")
+    })
   }
 
   let user: MockUser | null = null
