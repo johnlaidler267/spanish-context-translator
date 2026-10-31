@@ -24,8 +24,8 @@ export default function TermsPage() {
         <p>
           You must be able to form a binding contract in your jurisdiction. You may sign in with email (magic link),
           Google, or other methods we support. You are responsible for activity under your account and for keeping
-          your credentials secure. Notify us promptly if you suspect unauthorized access, using the contact method we
-          publish in the app or on our website.
+          your credentials secure. Notify us promptly if you suspect unauthorized access, by emailing
+          lexalensapp@gmail.com.
         </p>
       </Section>
 
@@ -139,8 +139,8 @@ export default function TermsPage() {
 
       <Section title="15. Contact">
         <p>
-          For questions about these Terms, contact us using the support or contact method we provide in the Service or
-          on our website.
+          For questions about these Terms, email us at{" "}
+          <a href="mailto:lexalensapp@gmail.com" className="underline">lexalensapp@gmail.com</a>.
         </p>
       </Section>
     </LegalPageShell>

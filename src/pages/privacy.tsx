@@ -100,8 +100,8 @@ export default function PrivacyPage() {
         <p>
           Depending on your location, you may have rights to access, correct, delete, or export personal data, to object
           to or restrict certain processing, and to withdraw consent where processing is consent-based. You may also
-          have the right to lodge a complaint with a supervisory authority. To exercise these rights, contact us using
-          the method we provide in the Service or on our website. You can manage cookies through your browser settings
+          have the right to lodge a complaint with a supervisory authority. To exercise these rights, email us at
+          lexalensapp@gmail.com. You can manage cookies through your browser settings
           where applicable.
         </p>
       </Section>
@@ -138,8 +138,8 @@ export default function PrivacyPage() {
 
       <Section title="12. Contact">
         <p>
-          For privacy questions or requests, contact us using the support or contact method we provide in the Service
-          or on our website.
+          For privacy questions or requests, email us at{" "}
+          <a href="mailto:lexalensapp@gmail.com" className="underline">lexalensapp@gmail.com</a>.
         </p>
       </Section>
     </LegalPageShell>
