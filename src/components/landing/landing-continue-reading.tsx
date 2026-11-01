@@ -72,6 +72,8 @@ interface UseLandingContinueReadingOptions {
    * component owns the empty/fallback decision instead of duplicating it in the caller.
    */
   fallback: ReactNode
+  /** Mobile counterpart of `fallback`, rendered in the mobile row's slot above the composer. */
+  mobileFallback?: ReactNode
 }
 
 /**
@@ -90,6 +92,7 @@ export function useLandingContinueReading({
   onContinue,
   onOpenLibraryBook,
   fallback,
+  mobileFallback = null,
 }: UseLandingContinueReadingOptions): { mobileRow: ReactNode; desktopRow: ReactNode } {
   const { isMobile } = useViewport()
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
@@ -265,7 +268,7 @@ export function useLandingContinueReading({
   // Still answering: hold placeholders rather than show a partial, unstable answer. With no
   // remembered count there is nothing to promise, so a first-ever visit falls through to the
   // fallback below rather than flashing placeholders at a reader who may have no history.
-  if (!resolved && reservedCount === 0) return { mobileRow: null, desktopRow: fallback }
+  if (!resolved && reservedCount === 0) return isMobile ? { mobileRow: mobileFallback, desktopRow: null } : { mobileRow: null, desktopRow: fallback }
 
   if (!resolved) {
     const placeholders = (count: number) =>
@@ -300,7 +303,7 @@ export function useLandingContinueReading({
         }
   }
 
-  if (items.length === 0) return { mobileRow: null, desktopRow: fallback }
+  if (items.length === 0) return isMobile ? { mobileRow: mobileFallback, desktopRow: null } : { mobileRow: null, desktopRow: fallback }
 
   const mobileItems = items.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS)
 

@@ -27,6 +27,10 @@ import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-pr
 import type { ContentItem } from "@/lib/discover/content-data"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
 import {
+  MAX_CONTINUE_READING_ITEMS,
+  MAX_MOBILE_CONTINUE_READING_ITEMS,
+} from "@/lib/storage/continue-reading-library"
+import {
   appendTranscriptToField,
   fetchLearnRandomParagraph,
   generateRandomLearningParagraph,
@@ -124,7 +128,7 @@ export function LandingScreen({
   onContinueReading,
   onContinueLibraryBook,
 }: LandingScreenProps) {
-  const { user, isGuest, isLoading: authLoading, openAuthModal } = useAuth()
+  const { user, isGuest, isLoading: authLoading } = useAuth()
   const { status: subscriptionStatus } = useSubscription()
   const cachedSubscriptionRow = useMemo(
     () => (user?.id ? readCachedSubscriptionRow(user.id) : undefined),
@@ -375,6 +379,35 @@ export function LandingScreen({
     [featuredCatalog, langPrefs.learning],
   )
 
+  // Signed out, a first-time visitor sees a bare textbox and has no idea what the site does.
+  // Give them something to click: Discover picks, short pieces first since those open without
+  // an account (books stop at a sign-in prompt -- see handleDiscoverStartReading in App.tsx),
+  // so the first click lands in a real reading page. No catalog → the built-in sample, which
+  // needs no network. Never a bare "sign in" ask: that converted on nothing to look at.
+  const guestPicks = useMemo(
+    () =>
+      [...featuredForLearner].sort(
+        (a, b) => Number(a.type === "book") - Number(b.type === "book"),
+      ),
+    [featuredForLearner],
+  )
+  const guestPicksLabel = guestPicks[0] && guestPicks[0].type !== "book" ? "Try a short read" : "Featured reads"
+  const sampleFallback = (
+    <div className="sample-text w-full order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
+      <p className="sample-excerpt-label text-center">Sample text</p>
+      <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
+        <p className="sample-paragraph font-serif text-ui-base overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
+        <span className="mt-3 block text-center">
+          <span className="sample-link inline-flex items-center gap-2">
+            Try this sample
+            <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
+          </span>
+        </span>
+      </button>
+    </div>
+  )
+  const showGuestPicks = isGuest && guestPicks.length > 0
+
   // Continue Reading: one data fetch, two placements in the tree below (mobileRow lands above
   // the filigree divider, which separates it from the composer form; desktopRow replaces the sample-excerpt fallback
   // below the composer) -- see useLandingContinueReading for why this is a hook and not a
@@ -383,29 +416,11 @@ export function LandingScreen({
     user,
     onContinue: onContinueReading,
     onOpenLibraryBook: onContinueLibraryBook,
-    // Signed out: no reading history to speak of yet, so a generic hardcoded sample
-    // paragraph isn't really "yours". A bare "sign in" ask here converted on nothing to
-    // look at, so this shows a few Discover picks instead (same card row/handler the
-    // signed-in Continue Reading row uses) -- falls back further to the plain sign-in
-    // invite only if the catalog hasn't loaded/is empty.
-    fallback: !isGuest ? (
-      <div className="sample-text w-full order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
-        <p className="sample-excerpt-label text-center">Sample text</p>
-        <button onClick={handleTrySample} disabled={isLoading} className="sample-excerpt-btn text-left w-full group">
-          <p className="sample-paragraph font-serif text-ui-base overflow-hidden">El sol se escondía detrás de las montañas mientras María caminaba por el sendero. Los pájaros cantaban su última canción del día, y el viento susurraba secretos entre los árboles…</p>
-          <span className="mt-3 block text-center">
-            <span className="sample-link inline-flex items-center gap-2">
-              Try this sample
-              <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
-            </span>
-          </span>
-        </button>
-      </div>
-    ) : featuredForLearner.length > 0 ? (
-      <div className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
-        <p className="sample-excerpt-label text-center">Featured reads</p>
+    fallback: showGuestPicks ? (
+      <div className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1">
+        <p className="sample-excerpt-label text-center">{guestPicksLabel}</p>
         <div className="continue-reading__row">
-          {featuredForLearner.slice(0, 4).map((item) => (
+          {guestPicks.slice(0, MAX_CONTINUE_READING_ITEMS).map((item) => (
             <ContentCard
               key={`landing-featured-${item.id}`}
               content={item}
@@ -416,19 +431,22 @@ export function LandingScreen({
         </div>
       </div>
     ) : (
-      <div className="sample-text w-full order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
-        <p className="sample-excerpt-label text-center">Welcome</p>
-        <button type="button" onClick={() => openAuthModal()} className="sample-excerpt-btn text-left w-full group">
-          <p className="sample-paragraph font-serif text-ui-base overflow-hidden">Sign in to save your place in every story and pick up right where you left off, on any device.</p>
-          <span className="mt-3 block text-center">
-            <span className="sample-link inline-flex items-center gap-2">
-              Sign in
-              <span className="sample-link-arrow inline-block transition-transform ease-in-out duration-200 group-hover:translate-x-[3px]" aria-hidden>→</span>
-            </span>
-          </span>
-        </button>
-      </div>
+      sampleFallback
     ),
+    mobileFallback: showGuestPicks ? (
+      <div className="continue-reading-mobile w-full order-1">
+        <div className="continue-reading-mobile__row">
+          {guestPicks.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS).map((item) => (
+            <ContentCard
+              key={`mobile-featured-${item.id}`}
+              content={item}
+              onClick={() => onContinueReading(item)}
+              eagerCover
+            />
+          ))}
+        </div>
+      </div>
+    ) : null,
   })
 
   const heroGreeting = landingGreetingWord(langPrefs.learning)
@@ -521,7 +539,7 @@ export function LandingScreen({
               below for the greeting to introduce, so pair the art's mt-auto with mb-auto here to
               center art + greeting in the hero instead of leaving them sunk to its bottom. */}
           <h1
-            className={`wordmark font-normal text-3xl sm:text-4xl md:text-5xl shrink-0${mobileRow == null ? " max-md:mb-auto" : ""}`}
+            className={`wordmark font-normal text-3xl sm:text-4xl md:text-5xl shrink-0${mobileRow == null && !isGuest ? " max-md:mb-auto" : ""}`}
             style={{ lineHeight: "1.15" }}
           >
             <span className="hero-greeting-gradient">
@@ -536,6 +554,14 @@ export function LandingScreen({
             ,{" "}
             <span className="wordmark-ink">{heroTailPhrase}</span>
           </h1>
+          {/* Signed out: one line on what the site is for, so the textbox isn't left to explain itself. */}
+          {isGuest && (
+            <p
+              className={`mt-3 text-center text-ui-base text-muted-foreground shrink-0${mobileRow == null ? " max-md:mb-auto" : ""}`}
+            >
+              Paste anything you want to read, then tap a phrase to see what it means.
+            </p>
+          )}
         </div>
 
         {/* order-3 on mobile (md:order-2 on desktop) for this whole group relative to hero/
