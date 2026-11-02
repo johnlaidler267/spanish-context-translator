@@ -1051,6 +1051,14 @@ article span {
   border-radius: 2px;
 }
 
+/* Mouse readers hover a phrase; touch readers press one. Decided in CSS so the right
+   wording is there on first paint. */
+.landing-tagline-verb--touch { display: none; }
+@media (hover: none) {
+  .landing-tagline-verb--hover { display: none; }
+  .landing-tagline-verb--touch { display: inline; }
+}
+
 @media (max-width: 767px) {
   .landing-tagline {
     max-width: 22rem;

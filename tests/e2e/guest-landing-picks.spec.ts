@@ -13,7 +13,7 @@ test.setTimeout(45_000)
 test("desktop: short pieces come before books, with an explainer line", async ({ page }) => {
   await setupMocks(page, { signedIn: false })
   await page.goto("/")
-  await expect(page.getByText("tap a phrase to see what it means")).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText("hover over a phrase")).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText("Try a short read")).toBeVisible()
   const titles = page.locator(".continue-reading__row").getByText(/Despacito|El Principito/)
   await expect(titles).toHaveText(["Despacito", "El Principito"])
@@ -21,13 +21,15 @@ test("desktop: short pieces come before books, with an explainer line", async ({
 })
 
 test.describe("mobile", () => {
-  test.use({ viewport: { width: 390, height: 844 } })
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
   test("shows the picks row above the composer", async ({ page }) => {
     await setupMocks(page, { signedIn: false })
     await page.goto("/")
     const row = page.locator(".continue-reading-mobile__row")
     await expect(row.getByText("Despacito")).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText("touch a phrase")).toBeVisible()
+    await expect(page.getByText("hover over a phrase")).toBeHidden()
   })
 })
 

@@ -579,7 +579,12 @@ export function LandingScreen({
               className={`landing-tagline shrink-0${mobileRow == null ? " max-md:mb-auto" : ""}`}
             >
               Paste anything you want to read, then{" "}
-              <span className="landing-tagline-phrase">tap a phrase</span> to see what it means.
+              {/* The verb matches the gesture: hover with a mouse, touch on a phone (see index.css). */}
+              <span className="landing-tagline-phrase">
+                <span className="landing-tagline-verb--hover">hover over a phrase</span>
+                <span className="landing-tagline-verb--touch">touch a phrase</span>
+              </span>{" "}
+              to see what it means.
             </p>
           )}
         </div>
