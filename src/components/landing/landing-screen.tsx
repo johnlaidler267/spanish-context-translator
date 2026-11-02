@@ -22,6 +22,7 @@ import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscrip
 import { LandingQuickFillControls } from "@/components/landing/landing-quick-fill-controls"
 import { useLandingContinueReading } from "@/components/landing/landing-continue-reading"
 import { ContentCard } from "@/pages/discover/content-card"
+import { DiscoverSkeletonCard } from "@/components/discover/discover-loading-state"
 import { fetchDiscoverCatalog, itemsForLearningLanguage, readCachedDiscoverItems } from "@/lib/discover/discover-catalog"
 import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
 import type { ContentItem } from "@/lib/discover/content-data"
@@ -364,11 +365,19 @@ export function LandingScreen({
   const [featuredCatalog, setFeaturedCatalog] = useState<ContentItem[]>(
     () => readCachedDiscoverItems() ?? [],
   )
+  /** The catalog has answered (or was cached). Until then a guest's fallback can't know whether
+   *  picks are coming, and showing the sample meanwhile just swaps it out a second later. */
+  const [featuredSettled, setFeaturedSettled] = useState(() => readCachedDiscoverItems() !== null)
   useEffect(() => {
     let cancelled = false
-    void fetchDiscoverCatalog().then((result) => {
-      if (!cancelled && "items" in result) setFeaturedCatalog(result.items)
-    })
+    void fetchDiscoverCatalog()
+      .then((result) => {
+        if (!cancelled && "items" in result) setFeaturedCatalog(result.items)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setFeaturedSettled(true)
+      })
     return () => {
       cancelled = true
     }
@@ -407,6 +416,7 @@ export function LandingScreen({
     </div>
   )
   const showGuestPicks = isGuest && guestPicks.length > 0
+  const guestPicksPending = isGuest && !showGuestPicks && !featuredSettled
 
   // Continue Reading: one data fetch, two placements in the tree below (mobileRow lands above
   // the filigree divider, which separates it from the composer form; desktopRow replaces the sample-excerpt fallback
@@ -430,10 +440,19 @@ export function LandingScreen({
           ))}
         </div>
       </div>
-    ) : (
+    ) : guestPicksPending ? null : (
       sampleFallback
     ),
-    mobileFallback: showGuestPicks ? (
+    mobileFallback: guestPicksPending ? (
+      // Holds the row's place so the hero doesn't recenter when the picks arrive.
+      <div className="continue-reading-mobile w-full order-1" aria-busy="true">
+        <div className="continue-reading-mobile__row">
+          {Array.from({ length: MAX_MOBILE_CONTINUE_READING_ITEMS }, (_, i) => (
+            <DiscoverSkeletonCard key={`guest-placeholder-${i}`} compact />
+          ))}
+        </div>
+      </div>
+    ) : showGuestPicks ? (
       <div className="continue-reading-mobile w-full order-1">
         <div className="continue-reading-mobile__row">
           {guestPicks.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS).map((item) => (

@@ -37,3 +37,16 @@ test("no catalog: falls back to the built-in sample, not a sign-in ask", async (
   await expect(page.getByText("Try this sample")).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText("Welcome", { exact: true })).toHaveCount(0)
 })
+
+test("slow catalog: the sample doesn't flash in before the picks arrive", async ({ page }) => {
+  await setupMocks(page, { signedIn: false })
+  await page.route("**/rest/v1/discover_items*", async (route) => {
+    await new Promise((r) => setTimeout(r, 2500))
+    await route.fallback()
+  })
+  await page.goto("/")
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(800)
+  await expect(page.getByText("Try this sample")).toHaveCount(0)
+  await expect(page.getByText("Try a short read")).toBeVisible({ timeout: 20_000 })
+})
