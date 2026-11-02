@@ -1026,7 +1026,7 @@ article span {
    an epigraph beneath the title rather than UI copy; narrow measure so it sits inside the
    greeting's width. Off the type scale on purpose, like the wordmark it hangs from. */
 .landing-tagline {
-  max-width: 30rem;
+  max-width: 42rem;
   margin: 1.1rem auto 0;
   font-family: var(--font-reading);
   font-style: italic;
