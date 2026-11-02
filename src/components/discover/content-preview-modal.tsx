@@ -97,6 +97,7 @@ export function ContentPreviewModal({
                   <DifficultyMark level={difficulty} />
                   <span>{content.estimatedTime}</span>
                   <span>{content.wordCount.toLocaleString()} words</span>
+                  {content.isPrivate && <span>Private</span>}
                 </div>
                 {content.tags.length > 0 && (
                   <div className="discover-modal__tags">

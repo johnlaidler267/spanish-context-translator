@@ -132,6 +132,23 @@ describe("publishDiscoverResource", () => {
     expect(lastBuilder?.insert).toHaveBeenCalledWith(expect.objectContaining({ estimated_time: "9 hours" }))
   })
 
+  it("publishes public by default, and private when asked -- and maps the flag back", async () => {
+    const { publishDiscoverResource } = await import("@/lib/discover/discover-catalog")
+
+    nextResult = { data: { id: "pub", tags: [], preview: "", estimated_time: "3 min", created_at: "" }, error: null }
+    const publicResult = await publishDiscoverResource(BASE_RESOURCE)
+    expect(lastBuilder?.insert).toHaveBeenCalledWith(expect.objectContaining({ is_private: false }))
+    expect("item" in publicResult && publicResult.item.isPrivate).toBe(false)
+
+    nextResult = {
+      data: { id: "priv", tags: [], preview: "", estimated_time: "3 min", is_private: true, created_at: "" },
+      error: null,
+    }
+    const privateResult = await publishDiscoverResource({ ...BASE_RESOURCE, isPrivate: true })
+    expect(lastBuilder?.insert).toHaveBeenCalledWith(expect.objectContaining({ is_private: true }))
+    expect("item" in privateResult && privateResult.item.isPrivate).toBe(true)
+  })
+
   it("surfaces a DB/RLS error instead of throwing (e.g. a non-curator account)", async () => {
     nextResult = { data: null, error: { message: "new row violates row-level security policy" } }
     const { publishDiscoverResource } = await import("@/lib/discover/discover-catalog")

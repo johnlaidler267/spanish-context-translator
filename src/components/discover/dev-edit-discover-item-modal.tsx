@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { PrivateItemCheckbox } from "@/components/discover/private-item-checkbox"
 import type { ContentItem, ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 import { pastedImageDisplayName, readBlobAsDataUrl, readImageFileFromClipboard } from "@/lib/discover/cover-image-clipboard"
 import { discoverRowToContentItem, type DiscoverListRow } from "@/lib/discover/discover-map"
@@ -21,7 +22,7 @@ const contentTypeOptions: ContentType[] = ["book", "article", "song", "poem"]
 const difficultyOptions: DifficultyLevel[] = ["beginner", "intermediate", "advanced"]
 
 const LIST_SELECT =
-  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at"
+  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, is_private, created_at, updated_at"
 
 type DevEditDiscoverItemModalProps = {
   content: ContentItem | null
@@ -54,6 +55,7 @@ export function DevEditDiscoverItemModal({
   const [estimatedTime, setEstimatedTime] = useState("")
   const [preview, setPreview] = useState("")
   const [bodyText, setBodyText] = useState("")
+  const [isPrivate, setIsPrivate] = useState(false)
   const [rowId, setRowId] = useState<string | null>(null)
 
   const wordCount = useMemo(() => {
@@ -76,6 +78,7 @@ export function DevEditDiscoverItemModal({
     setEstimatedTime("")
     setPreview("")
     setBodyText("")
+    setIsPrivate(false)
   }
 
   useEffect(() => {
@@ -118,6 +121,7 @@ export function DevEditDiscoverItemModal({
       setEstimatedTime(row.estimated_time)
       setPreview(row.preview)
       setBodyText(row.body_text)
+      setIsPrivate(row.is_private === true)
     })()
 
     return () => {
@@ -184,6 +188,7 @@ export function DevEditDiscoverItemModal({
       preview: preview.trim().slice(0, 4000),
       estimated_time: estimatedTime.trim() || "5 min",
       body_text: bodyText.trim(),
+      is_private: isPrivate,
     }
 
     setSaving(true)
@@ -385,6 +390,8 @@ export function DevEditDiscoverItemModal({
             <p className="text-sm text-muted-foreground">
               Word count: <span className="font-semibold text-foreground">{wordCount.toLocaleString()}</span>
             </p>
+
+            <PrivateItemCheckbox id="edit-private" checked={isPrivate} onChange={setIsPrivate} />
           </div>
         )}
 

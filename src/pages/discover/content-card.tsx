@@ -114,6 +114,7 @@ export function ContentCard({
             {featured ? `${content.wordCount.toLocaleString()} words · ` : ""}
             {content.estimatedTime}
           </span>
+          {content.isPrivate && <span className="discover-card__time">· Private</span>}
         </div>
       </div>
     </div>

@@ -144,6 +144,8 @@ export type DiscoverItemRow = {
   preview: string
   estimated_time: string
   body_text: string
+  /** Visible only to discover_curators -- see 0030_discover_private_items.sql. */
+  is_private: boolean
   created_at: string
   updated_at: string
 }
@@ -264,8 +266,8 @@ export type BillingInvoiceInsert = Omit<
 
 export type DiscoverItemInsert = Omit<
   DiscoverItemRow,
-  "id" | "created_at" | "updated_at"
-> & { id?: string }
+  "id" | "created_at" | "updated_at" | "is_private"
+> & { id?: string; is_private?: boolean }
 
 /** `updated_at` is left settable (not server-generated) — the client stamps it on every upsert. */
 /** The `recap_*` columns are written on their own (see pushPageRecap in

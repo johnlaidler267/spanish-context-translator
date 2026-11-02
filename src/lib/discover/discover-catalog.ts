@@ -9,7 +9,7 @@ import {
 } from "@/lib/storage/language-learning-preferences"
 
 const LIST_SELECT =
-  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, created_at, updated_at"
+  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, is_private, created_at, updated_at"
 
 // Bumped to v2: cached rows now carry `preview` — v1 entries would open the modal blank.
 // localStorage (not sessionStorage): the catalog rarely changes day to day, so a fresh
@@ -88,6 +88,8 @@ export type DiscoverResourcePublish = {
   tags: string[]
   wordCount: number
   coverImage?: string
+  /** Keep it out of everyone else's Discover -- for copyrighted texts the curator reads alone. */
+  isPrivate?: boolean
 }
 
 /**
@@ -125,6 +127,7 @@ export async function publishDiscoverResource(
     preview,
     estimated_time: estimatedTime,
     body_text: resource.text,
+    is_private: resource.isPrivate === true,
   }
 
   const { data, error } = await supabase.from("discover_items").insert(insert).select(LIST_SELECT).single()

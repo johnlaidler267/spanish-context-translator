@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { PrivateItemCheckbox } from "@/components/discover/private-item-checkbox"
 import type { ContentType, DifficultyLevel } from "@/lib/discover/content-data"
 import {
   getStoredLanguageLearningPreferences,
@@ -151,6 +152,7 @@ export type DevResourceUpload = {
   tags: string[]
   wordCount: number
   coverImage?: string
+  isPrivate?: boolean
 }
 
 /** Prefills the form from an existing piece of text instead of a blank sheet -- used by the
@@ -182,6 +184,7 @@ export function DevUploadResourceModal({ open, onClose, onPublish, initial }: De
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("beginner")
   const [tagsText, setTagsText] = useState("")
   const [text, setText] = useState("")
+  const [isPrivate, setIsPrivate] = useState(false)
 
   const [coverImageUrl, setCoverImageUrl] = useState("")
   const [uploadedImageDataUrl, setUploadedImageDataUrl] = useState("")
@@ -232,6 +235,7 @@ export function DevUploadResourceModal({ open, onClose, onPublish, initial }: De
     setDifficulty("beginner")
     setTagsText("")
     setText("")
+    setIsPrivate(false)
     setCoverImageUrl("")
     setUploadedImageDataUrl("")
     setUploadedImageName("")
@@ -354,6 +358,7 @@ export function DevUploadResourceModal({ open, onClose, onPublish, initial }: De
       tags,
       wordCount,
       coverImage: croppedCoverJpeg ?? (uploadedImageDataUrl || coverImageUrl.trim() || undefined),
+      isPrivate,
     })
     resetForm()
     onClose()
@@ -568,6 +573,8 @@ export function DevUploadResourceModal({ open, onClose, onPublish, initial }: De
           <p className="text-sm text-muted-foreground">
             Word count: <span className="font-semibold text-foreground">{wordCount.toLocaleString()}</span>
           </p>
+
+          <PrivateItemCheckbox id="upload-private" checked={isPrivate} onChange={setIsPrivate} />
         </div>
 
         <DialogFooter className="gap-2">

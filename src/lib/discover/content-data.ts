@@ -19,6 +19,8 @@ export interface ContentItem {
    * this existed, which just means no saved layout is used until the catalog refreshes.
    */
   updatedAt?: string
+  /** Curator-only item (see 0030_discover_private_items.sql). Absent means public. */
+  isPrivate?: boolean
 }
 
 export const contentItems: ContentItem[] = [
