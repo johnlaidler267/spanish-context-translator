@@ -1022,6 +1022,42 @@ article span {
   }
 }
 
+/* Signed-out line under the hero greeting. Set in the reading face, italic, so it reads as
+   an epigraph beneath the title rather than UI copy; narrow measure so it sits inside the
+   greeting's width. Off the type scale on purpose, like the wordmark it hangs from. */
+.landing-tagline {
+  max-width: 30rem;
+  margin: 1.1rem auto 0;
+  font-family: var(--font-reading);
+  font-style: italic;
+  font-size: clamp(1.0625rem, 0.98rem + 0.35vw, 1.25rem);
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--muted-foreground);
+}
+
+/* The phrase you'd tap, marked the way a looked-up word is: a soft terracotta wash under it. */
+.landing-tagline-phrase {
+  color: var(--foreground);
+  background-image: linear-gradient(
+    transparent 58%,
+    color-mix(in srgb, var(--reading-warm) 26%, transparent) 58%,
+    color-mix(in srgb, var(--reading-warm) 26%, transparent) 92%,
+    transparent 92%
+  );
+  padding: 0 0.12em;
+  margin: 0 -0.04em;
+  border-radius: 2px;
+}
+
+@media (max-width: 767px) {
+  .landing-tagline {
+    max-width: 22rem;
+    margin-top: 0.6rem;
+  }
+}
+
 /* CTA — flat terracotta + subtle top highlight (museum light, no grain wash) */
 /* !important beats Tailwind bg-primary from <Button> */
 .btn-cta {

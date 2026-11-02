@@ -576,9 +576,10 @@ export function LandingScreen({
           {/* Signed out: one line on what the site is for, so the textbox isn't left to explain itself. */}
           {isGuest && (
             <p
-              className={`mt-3 text-center text-ui-base text-muted-foreground shrink-0${mobileRow == null ? " max-md:mb-auto" : ""}`}
+              className={`landing-tagline shrink-0${mobileRow == null ? " max-md:mb-auto" : ""}`}
             >
-              Paste anything you want to read, then tap a phrase to see what it means.
+              Paste anything you want to read, then{" "}
+              <span className="landing-tagline-phrase">tap a phrase</span> to see what it means.
             </p>
           )}
         </div>
