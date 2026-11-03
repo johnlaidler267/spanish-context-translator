@@ -22,7 +22,7 @@ const contentTypeOptions: ContentType[] = ["book", "article", "song", "poem"]
 const difficultyOptions: DifficultyLevel[] = ["beginner", "intermediate", "advanced"]
 
 const LIST_SELECT =
-  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, is_private, created_at, updated_at"
+  "id, title, author, type, difficulty, word_count, language, cover_image, tags, preview, estimated_time, is_private, open_to_guests, created_at, updated_at"
 
 type DevEditDiscoverItemModalProps = {
   content: ContentItem | null

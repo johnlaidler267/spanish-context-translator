@@ -21,6 +21,7 @@ export type DiscoverListRow = Pick<
   | "preview"
   | "estimated_time"
   | "is_private"
+  | "open_to_guests"
   | "created_at"
   | "updated_at"
 >
@@ -40,5 +41,6 @@ export function discoverRowToContentItem(row: DiscoverListRow): ContentItem {
     estimatedTime: row.estimated_time,
     updatedAt: row.updated_at,
     isPrivate: row.is_private === true,
+    openToGuests: row.open_to_guests === true,
   }
 }

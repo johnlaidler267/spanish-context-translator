@@ -1195,9 +1195,11 @@ export default function App() {
       // tap on a card looking like it hadn't registered at all. Reverted back to "landing" on
       // every early-return path below so a blocked/failed load doesn't strand the overlay up.
       // Books are for account holders: the anonymous guest session only exists to meter
-      // short pastes. ContentPreviewModal answers this with a sign-in prompt.
+      // short pastes. ContentPreviewModal answers this with a sign-in prompt. Except a book
+      // curated as open to guests (short beginner stories) -- those are the showcase a
+      // signed-out visitor should be able to read; the book page cap still applies.
       const isBook = content.type === "book"
-      if (isBook && isGuest) return { signInRequired: true as const }
+      if (isBook && isGuest && !content.openToGuests) return { signInRequired: true as const }
 
       // Opened before on this device: its pages are already saved, so there's no text to fetch
       // and nothing to paginate -- see book-layout-cache.ts.

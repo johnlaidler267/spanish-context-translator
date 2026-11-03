@@ -146,6 +146,8 @@ export type DiscoverItemRow = {
   body_text: string
   /** Visible only to discover_curators -- see 0030_discover_private_items.sql. */
   is_private: boolean
+  /** Signed-out visitors can open it even though it's a book -- see 0033_discover_open_to_guests.sql. */
+  open_to_guests: boolean
   created_at: string
   updated_at: string
 }
@@ -266,8 +268,8 @@ export type BillingInvoiceInsert = Omit<
 
 export type DiscoverItemInsert = Omit<
   DiscoverItemRow,
-  "id" | "created_at" | "updated_at" | "is_private"
-> & { id?: string; is_private?: boolean }
+  "id" | "created_at" | "updated_at" | "is_private" | "open_to_guests"
+> & { id?: string; is_private?: boolean; open_to_guests?: boolean }
 
 /** `updated_at` is left settable (not server-generated) — the client stamps it on every upsert. */
 /** The `recap_*` columns are written on their own (see pushPageRecap in

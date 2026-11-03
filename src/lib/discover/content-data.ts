@@ -21,6 +21,11 @@ export interface ContentItem {
   updatedAt?: string
   /** Curator-only item (see 0030_discover_private_items.sql). Absent means public. */
   isPrivate?: boolean
+  /**
+   * A book signed-out visitors may open anyway (see 0033_discover_open_to_guests.sql). Absent
+   * (including on a catalog cached before this existed) means books need an account, as before.
+   */
+  openToGuests?: boolean
 }
 
 export const contentItems: ContentItem[] = [

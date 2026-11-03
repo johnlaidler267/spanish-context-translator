@@ -391,16 +391,18 @@ export function LandingScreen({
   // Signed out, a first-time visitor sees a bare textbox and has no idea what the site does.
   // Give them something to click: Discover picks, short pieces first since those open without
   // an account (books stop at a sign-in prompt -- see handleDiscoverStartReading in App.tsx),
-  // so the first click lands in a real reading page. No catalog → the built-in sample, which
-  // needs no network. Never a bare "sign in" ask: that converted on nothing to look at.
-  const guestPicks = useMemo(
-    () =>
-      [...featuredForLearner].sort(
-        (a, b) => Number(a.type === "book") - Number(b.type === "book"),
-      ),
-    [featuredForLearner],
-  )
-  const guestPicksLabel = guestPicks[0] && guestPicks[0].type !== "book" ? "Try a short read" : "Featured reads"
+  // so the first click lands in a real reading page. Books curated as open to guests (short
+  // beginner stories) lead: they open without an account and show the reader at its best.
+  // No catalog → the built-in sample, which needs no network. Never a bare "sign in" ask:
+  // that converted on nothing to look at.
+  const guestPicks = useMemo(() => {
+    const rank = (item: ContentItem) => (item.type !== "book" ? 1 : item.openToGuests ? 0 : 2)
+    return [...featuredForLearner].sort((a, b) => rank(a) - rank(b))
+  }, [featuredForLearner])
+  const guestPicksLabel =
+    guestPicks[0] && (guestPicks[0].type !== "book" || guestPicks[0].openToGuests)
+      ? "Try a short read"
+      : "Featured reads"
   const sampleFallback = (
     <div className="sample-text w-full order-3 md:order-3 mt-0 md:mt-1 hidden md:block">
       <p className="sample-excerpt-label text-center">Sample text</p>
