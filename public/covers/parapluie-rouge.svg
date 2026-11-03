@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+<rect width="400" height="600" fill="#9aa7b3"/>
+<g fill="#7d8b98"><rect x="10" y="220" width="70" height="230"/><rect x="90" y="180" width="60" height="270"/><rect x="250" y="200" width="70" height="250"/><rect x="330" y="240" width="60" height="210"/></g>
+<path d="M200 40 l-8 40 h16z M200 80 l-30 370 h12 l18 -230 l18 230 h12z" fill="#6c7986"/>
+<rect x="0" y="440" width="400" height="160" fill="#5e6b78"/>
+<g stroke="#e8eef3" stroke-width="2" opacity=".7" stroke-linecap="round"><line x1="40" y1="30" x2="30" y2="60"/><line x1="120" y1="90" x2="110" y2="120"/><line x1="330" y1="40" x2="320" y2="70"/><line x1="370" y1="140" x2="360" y2="170"/><line x1="60" y1="160" x2="50" y2="190"/><line x1="300" y1="120" x2="290" y2="150"/><line x1="160" y1="30" x2="150" y2="60"/></g>
+<path d="M90 300 q110 -150 220 0 q-27 -20 -55 0 q-27 -20 -55 0 q-28 -20 -55 0 q-27 -20 -55 0z" fill="#d6322c"/>
+<path d="M200 300 v110 q0 22 -22 22 q-18 0 -18 -18" stroke="#2b2b2b" stroke-width="7" fill="none" stroke-linecap="round"/>
+<line x1="200" y1="160" x2="200" y2="146" stroke="#2b2b2b" stroke-width="5"/>
+<text x="200" y="500" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#ffffff">Le parapluie</text>
+<text x="200" y="538" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#ffffff">rouge</text>
+<text x="200" y="575" text-anchor="middle" font-family="Georgia, serif" font-size="13" letter-spacing="3" fill="#ffffff" opacity=".7">LEXALENS ORIGINALS</text></svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+<rect width="400" height="600" fill="#f3e3c3"/>
+<circle cx="310" cy="90" r="46" fill="#f2b84b"/>
+<rect x="70" y="110" width="260" height="300" rx="8" fill="#5b8fb9"/>
+<rect x="88" y="128" width="224" height="264" fill="#cfe3ef"/>
+<line x1="200" y1="128" x2="200" y2="392" stroke="#5b8fb9" stroke-width="8"/>
+<line x1="88" y1="260" x2="312" y2="260" stroke="#5b8fb9" stroke-width="8"/>
+<rect x="60" y="392" width="280" height="22" rx="4" fill="#3f6e93"/>
+<ellipse cx="200" cy="370" rx="78" ry="30" fill="#8a8f98"/>
+<circle cx="150" cy="340" r="32" fill="#8a8f98"/>
+<path d="M126 318 l6 -26 l16 20 z M158 314 l12 -24 l6 26 z" fill="#8a8f98"/>
+<path d="M138 342 q6 4 12 0 M156 342 q6 4 12 0" stroke="#3b3d42" stroke-width="3" fill="none" stroke-linecap="round"/>
+<path d="M276 372 q40 -6 30 -50" stroke="#8a8f98" stroke-width="12" fill="none" stroke-linecap="round"/>
+<circle cx="110" cy="440" r="12" fill="#d9534f"/><circle cx="140" cy="452" r="10" fill="#f0ad4e"/><circle cx="260" cy="446" r="11" fill="#d9534f"/><circle cx="290" cy="440" r="9" fill="#e78fb3"/>
+<text x="200" y="500" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#4a2c1c">El gato de la</text>
+<text x="200" y="538" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#4a2c1c">señora Rosa</text>
+<text x="200" y="575" text-anchor="middle" font-family="Georgia, serif" font-size="13" letter-spacing="3" fill="#4a2c1c" opacity=".7">LEXALENS ORIGINALS</text></svg>

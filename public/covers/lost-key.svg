@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+<rect width="400" height="600" fill="#e7edf1"/>
+<rect x="110" y="60" width="180" height="370" rx="6" fill="#2f5d7c"/>
+<rect x="130" y="80" width="140" height="150" rx="4" fill="#3a6f93"/>
+<rect x="130" y="250" width="140" height="160" rx="4" fill="#3a6f93"/>
+<text x="200" y="168" text-anchor="middle" font-family="Georgia, serif" font-size="44" fill="#e2b04a">3B</text>
+<circle cx="262" cy="250" r="10" fill="#e2b04a"/>
+<rect x="0" y="430" width="400" height="10" fill="#b8c4cc"/>
+<g transform="rotate(-25 210 360)">
+<circle cx="150" cy="360" r="30" fill="none" stroke="#e2b04a" stroke-width="12"/>
+<rect x="178" y="354" width="110" height="12" rx="3" fill="#e2b04a"/>
+<rect x="250" y="366" width="10" height="18" fill="#e2b04a"/><rect x="270" y="366" width="10" height="24" fill="#e2b04a"/>
+</g>
+<path d="M60 120 q-15 15 0 30 M340 140 q15 15 0 30" stroke="#9fb0bc" stroke-width="4" fill="none" stroke-linecap="round"/>
+<text x="200" y="500" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#1d3542">The Lost Key</text>
+<text x="200" y="575" text-anchor="middle" font-family="Georgia, serif" font-size="13" letter-spacing="3" fill="#1d3542" opacity=".7">LEXALENS ORIGINALS</text></svg>

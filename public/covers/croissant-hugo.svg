@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+<rect width="400" height="600" fill="#f4e6cf"/>
+<circle cx="200" cy="250" r="150" fill="#ead2a8"/>
+<ellipse cx="200" cy="330" rx="150" ry="26" fill="#ffffff" opacity=".8"/>
+<g stroke="#9c5a1d" stroke-width="3">
+<path d="M70 300 q-10 -40 40 -60 q30 70 -40 60z" fill="#d98c3a"/>
+<path d="M330 300 q10 -40 -40 -60 q-30 70 40 60z" fill="#d98c3a"/>
+<path d="M105 245 q20 -60 60 -60 q20 90 -10 120 q-40 0 -50 -60z" fill="#e39d47"/>
+<path d="M295 245 q-20 -60 -60 -60 q-20 90 10 120 q40 0 50 -60z" fill="#e39d47"/>
+<path d="M160 190 q40 -40 80 0 q10 70 -40 120 q-50 -50 -40 -120z" fill="#eeb25a"/>
+</g>
+<path d="M175 210 q25 -15 50 0" stroke="#fff3d6" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/>
+<g fill="#ffffff" opacity=".9"><circle cx="90" cy="110" r="3"/><circle cx="320" cy="130" r="4"/><circle cx="300" cy="80" r="2"/></g>
+<text x="200" y="500" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#4a2c1c">Le croissant</text>
+<text x="200" y="538" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#4a2c1c">de Hugo</text>
+<text x="200" y="575" text-anchor="middle" font-family="Georgia, serif" font-size="13" letter-spacing="3" fill="#4a2c1c" opacity=".7">LEXALENS ORIGINALS</text></svg>

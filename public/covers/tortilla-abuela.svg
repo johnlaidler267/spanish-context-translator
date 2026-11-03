@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+<rect width="400" height="600" fill="#f6dcc0"/>
+<path d="M0 0 h400 v420 h-400z" fill="#f6dcc0"/>
+<g fill="#e9c9a6"><rect x="0" y="0" width="50" height="420"/><rect x="100" y="0" width="50" height="420"/><rect x="200" y="0" width="50" height="420"/><rect x="300" y="0" width="50" height="420"/></g>
+<rect x="290" y="232" width="110" height="20" rx="10" fill="#3a2a1e"/>
+<circle cx="200" cy="240" r="120" fill="#2f2f33"/>
+<circle cx="200" cy="240" r="102" fill="#e8b649"/>
+<circle cx="200" cy="240" r="102" fill="none" stroke="#c98a2b" stroke-width="8"/>
+<g fill="#c98a2b" opacity=".55"><ellipse cx="165" cy="205" rx="18" ry="10"/><ellipse cx="235" cy="225" rx="14" ry="8"/><ellipse cx="190" cy="275" rx="20" ry="9"/><ellipse cx="245" cy="280" rx="10" ry="6"/></g>
+<path d="M170 110 q-12 -26 6 -50 M200 104 q-14 -30 4 -56 M230 110 q-12 -26 6 -50" stroke="#ffffff" stroke-width="5" fill="none" opacity=".7" stroke-linecap="round"/>
+<ellipse cx="200" cy="420" rx="150" ry="10" fill="#d9a77c"/>
+<text x="200" y="500" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#4a2c1c">La tortilla de</text>
+<text x="200" y="538" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#4a2c1c">la abuela</text>
+<text x="200" y="575" text-anchor="middle" font-family="Georgia, serif" font-size="13" letter-spacing="3" fill="#4a2c1c" opacity=".7">LEXALENS ORIGINALS</text></svg>
