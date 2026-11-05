@@ -54,6 +54,27 @@ function normalizeSpanishYConjunctionForTts(text: string): string {
   return text.replace(/\bY\b/g, "y")
 }
 
+/**
+ * A French chunk that is just one letter ("à", "y", "ô") gets read as the character's name
+ * ("a accent grave", "i grec") instead of the word. Swap in the plain letter whose French
+ * name sounds the same as the word: "à" and "a" are both /a/, "y" is /i/, "ô" is /o/.
+ */
+const FRENCH_SINGLE_LETTER_WORD_TTS: Record<string, string> = {
+  à: "a",
+  y: "i",
+  ô: "o",
+}
+
+function normalizeFrenchSingleLetterWordForTts(text: string): string {
+  return FRENCH_SINGLE_LETTER_WORD_TTS[text.toLowerCase()] ?? text
+}
+
+function normalizeTextForTts(text: string, learning: LearningLanguage): string {
+  if (learning === "spanish") return normalizeSpanishYConjunctionForTts(text)
+  if (learning === "french") return normalizeFrenchSingleLetterWordForTts(text)
+  return text
+}
+
 /** Mobile Safari often needs an explicit installed voice; `lang` alone can be silent. */
 export function pickVoiceForLanguage(
   voices: SpeechSynthesisVoice[],
@@ -109,7 +130,7 @@ export function speakHoverChunk(
 ): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return
   const trimmed = text.trim()
-  const t = learning === "spanish" ? normalizeSpanishYConjunctionForTts(trimmed) : trimmed
+  const t = normalizeTextForTts(trimmed, learning)
   if (!t) return
   attachVoicesChangedOnce()
   refreshSpeechVoices()

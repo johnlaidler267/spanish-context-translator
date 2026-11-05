@@ -54,4 +54,12 @@ describe("speakHoverChunk", () => {
     speakHoverChunk("Y voilà")
     expect(spoken[0]).toMatchObject({ lang: "fr-FR", text: "Y voilà" })
   })
+
+  it("says the French word à, not the letter name, when it is the whole chunk", () => {
+    const spoken = stubSpeech(VOICES, "french")
+    speakHoverChunk("à")
+    speakHoverChunk("Y")
+    speakHoverChunk("à la maison")
+    expect(spoken.map((u) => u.text)).toEqual(["a", "i", "à la maison"])
+  })
 })
