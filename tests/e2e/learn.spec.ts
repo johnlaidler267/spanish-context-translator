@@ -1,7 +1,7 @@
 /**
  * Learn page: the landing's warm-up, a conjugation round (feedback names the slip, results list
- * the misses, "Practice my misses" re-asks them), the si-clause mini lesson end to end, and the
- * Spanish-only notice. Answers are looked up in the same verb table the app grades against.
+ * the misses, "Practice my misses" re-asks them), the si-clause mini lesson end to end, French
+ * learners' lessons, and the notice for languages without content. Answers are looked up in the same verb table the app grades against.
  */
 
 import { readFileSync } from "node:fs"
@@ -154,9 +154,39 @@ test("Learn is in the sidebar", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Warm-up question" })).toBeVisible()
 })
 
-test("non-Spanish learners see a notice instead of Spanish drills", async ({ page }) => {
+test("French learners get French lessons, and no Spanish drills", async ({ page }) => {
   await setupMocks(page, { languagePrefs: { learning: "french", native: "english" } })
   await page.goto("/learn")
-  await expect(page.getByText("Learn is Spanish-only for now.")).toBeVisible()
+  await expect(page.getByRole("heading", { name: "The grammar behind what you read." })).toBeVisible()
+  await expect(page.getByRole("region", { name: "Warm-up question" })).toHaveCount(0)
+  await expect(page.getByRole("link", { name: /Conjugation practice/ })).toHaveCount(0)
+  await expect(page.getByRole("link", { name: /Mini lessons/ })).toContainText("Up next: Tu or vous")
+
+  await page.getByRole("link", { name: /Mini lessons/ }).click()
+  await expect(page.getByRole("link", { name: /Saying no/ })).toBeVisible()
+  await expect(page.getByRole("link", { name: /Ser or estar/ })).toHaveCount(0)
+
+  await page.getByRole("link", { name: /Tu or vous/ }).click()
+  await expect(page.getByRole("heading", { name: "Two ways to say “you”" })).toBeVisible()
+  await page.getByRole("button", { name: "Continue" }).click()
+  await page.getByRole("button", { name: "Continue" }).click()
+  for (const pick of ["vous", "tu", "vous", "parlez"]) {
+    await page.getByRole("button", { name: pick, exact: true }).click()
+    await expect(page.getByRole("status")).toContainText("Correct")
+    await page.getByRole("button", { name: "Continue" }).click()
+  }
+  await expect(page.getByText("4 of 4 right on the first try.")).toBeVisible()
+  await page.getByRole("button", { name: "Back to lessons" }).click()
+  await expect(page.getByRole("link", { name: /Tu or vous/ })).toContainText("Done")
+
+  // Conjugation drills are still Spanish-only.
+  await page.goto("/learn/conjugation")
+  await expect(page.getByText("This is Spanish only for now.")).toBeVisible()
+})
+
+test("learners of a language with no lessons see a notice", async ({ page }) => {
+  await setupMocks(page, { languagePrefs: { learning: "english", native: "spanish" } })
+  await page.goto("/learn")
+  await expect(page.getByText("This is Spanish and French only for now.")).toBeVisible()
   await expect(page.getByRole("region", { name: "Warm-up question" })).toHaveCount(0)
 })

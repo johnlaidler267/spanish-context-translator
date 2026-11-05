@@ -2,20 +2,23 @@
  * Mini lessons: one grammar idea, a couple of teaching screens, then practice.
  *
  * Written as data so a new lesson is just text. Inline markup in any text field:
- * `**word**` highlights a form (the thing being taught), `_phrase_` sets Spanish in italics.
+ * `**word**` highlights a form (the thing being taught), `_phrase_` sets the target language in italics.
  * Typed steps name verb + tense + person; the expected form comes from conjugation.ts.
  */
 import type { Person, TenseId } from "@/lib/learn/conjugation"
+import type { LearningLanguage } from "@/lib/storage/language-learning-preferences"
 
 export type TeachBlock =
   | { type: "text"; text: string }
   | { type: "pattern"; parts: { text: string; key?: boolean }[] }
-  | { type: "example"; label?: string; es: string; en: string }
+  /** `target` is the line in the language being learned; `en` its English meaning. */
+  | { type: "example"; label?: string; target: string; en: string }
   | { type: "note"; text: string }
 
 export type LessonStep =
   | { kind: "teach"; title: string; blocks: TeachBlock[] }
   | { kind: "choice"; text: string; options: { text: string; right?: boolean; why: string }[] }
+  /** Graded by the Spanish conjugation engine, so only Spanish lessons use typed steps. */
   | { kind: "type"; prompt: string; text: string; verb: string; tense: TenseId; person: Person }
 
 export const LESSON_LEVELS = ["beginner", "intermediate", "advanced"] as const
@@ -27,11 +30,15 @@ export const LESSON_LEVEL_NAME: Record<LessonLevel, string> = {
   advanced: "Advanced",
 }
 
+/** Languages with their own lesson list. */
+export type LessonLanguage = "spanish" | "french"
+
 export type Lesson = {
   id: string
+  language: LessonLanguage
   title: string
   level: LessonLevel
-  /** One Spanish line that shows what the lesson is about. */
+  /** One line in the lesson's language that shows what the lesson is about. */
   sample: string
   minutes: number
   steps: LessonStep[]
@@ -41,6 +48,7 @@ export type Lesson = {
 
 const SI_CLAUSES: Lesson = {
   id: "si-clauses",
+  language: "spanish",
   level: "advanced",
   title: "If I had…",
   sample: "Si tuviera tiempo, viajaría.",
@@ -55,10 +63,10 @@ const SI_CLAUSES: Lesson = {
           type: "pattern",
           parts: [{ text: "si" }, { text: "imperfect subjunctive", key: true }, { text: "conditional", key: true }],
         },
-        { type: "example", es: "Si **tuviera** más tiempo, **leería** más.", en: "If I had more time, I'd read more." },
+        { type: "example", target: "Si **tuviera** más tiempo, **leería** más.", en: "If I had more time, I'd read more." },
         {
           type: "example",
-          es: "Si **viviéramos** en Madrid, **iríamos** al Prado cada semana.",
+          target: "Si **viviéramos** en Madrid, **iríamos** al Prado cada semana.",
           en: "If we lived in Madrid, we'd go to the Prado every week.",
         },
         { type: "note", text: "The order can flip: _Leería más si tuviera tiempo._" },
@@ -69,8 +77,8 @@ const SI_CLAUSES: Lesson = {
       title: "Possible or imagined?",
       blocks: [
         { type: "text", text: "If the situation could really happen, keep it simple: present after _si_, then future or present." },
-        { type: "example", label: "Possible", es: "Si **tengo** tiempo, **leeré**.", en: "If I have time, I'll read. (I might.)" },
-        { type: "example", label: "Imagined", es: "Si **tuviera** tiempo, **leería**.", en: "If I had time, I'd read. (I don't.)" },
+        { type: "example", label: "Possible", target: "Si **tengo** tiempo, **leeré**.", en: "If I have time, I'll read. (I might.)" },
+        { type: "example", label: "Imagined", target: "Si **tuviera** tiempo, **leería**.", en: "If I had time, I'd read. (I don't.)" },
         { type: "note", text: "One rule that never bends: the conditional never comes right after _si_." },
       ],
     },
@@ -109,6 +117,7 @@ const SI_CLAUSES: Lesson = {
 
 const SER_ESTAR: Lesson = {
   id: "ser-estar",
+  language: "spanish",
   level: "beginner",
   title: "Ser or estar",
   sample: "Es aburrido / está aburrido.",
@@ -122,8 +131,8 @@ const SER_ESTAR: Lesson = {
           type: "text",
           text: "Spanish splits “to be” in two. **Ser** says what something is: identity, origin, job, time, what it's made of. **Estar** says where it is or how it is right now.",
         },
-        { type: "example", label: "Ser", es: "Mi madre **es** médica.", en: "My mother is a doctor." },
-        { type: "example", label: "Estar", es: "Mi madre **está** cansada.", en: "My mother is tired." },
+        { type: "example", label: "Ser", target: "Mi madre **es** médica.", en: "My mother is a doctor." },
+        { type: "example", label: "Estar", target: "Mi madre **está** cansada.", en: "My mother is tired." },
         { type: "note", text: "A quick test: is it what the thing is, or how it's doing?" },
       ],
     },
@@ -132,9 +141,9 @@ const SER_ESTAR: Lesson = {
       title: "Same word, different meaning",
       blocks: [
         { type: "text", text: "Some adjectives change meaning depending on which verb they follow." },
-        { type: "example", es: "La película **es** aburrida.", en: "The film is boring." },
-        { type: "example", es: "**Estoy** aburrido.", en: "I'm bored." },
-        { type: "example", es: "Juan **es** listo. / Juan **está** listo.", en: "Juan is clever. / Juan is ready." },
+        { type: "example", target: "La película **es** aburrida.", en: "The film is boring." },
+        { type: "example", target: "**Estoy** aburrido.", en: "I'm bored." },
+        { type: "example", target: "Juan **es** listo. / Juan **está** listo.", en: "Juan is clever. / Juan is ready." },
         {
           type: "note",
           text: "Two exceptions to memorize: where an event takes place uses ser (_La fiesta es en mi casa_), and _muerto_ takes estar (_El pez está muerto_).",
@@ -189,6 +198,7 @@ const SER_ESTAR: Lesson = {
 
 const PRETERITE_IMPERFECT: Lesson = {
   id: "preterite-imperfect",
+  language: "spanish",
   level: "intermediate",
   title: "Preterite or imperfect",
   sample: "Llovía cuando salí.",
@@ -202,11 +212,11 @@ const PRETERITE_IMPERFECT: Lesson = {
           type: "text",
           text: "Spanish has two simple past tenses. The **preterite** tells what happened: finished events. The **imperfect** sets the scene: what was going on, what used to happen, what things were like.",
         },
-        { type: "example", label: "Preterite", es: "Ayer **comí** paella.", en: "Yesterday I ate paella." },
+        { type: "example", label: "Preterite", target: "Ayer **comí** paella.", en: "Yesterday I ate paella." },
         {
           type: "example",
           label: "Imperfect",
-          es: "De niño **comía** paella los domingos.",
+          target: "De niño **comía** paella los domingos.",
           en: "As a kid I used to eat paella on Sundays.",
         },
         { type: "note", text: "Think of a film: the imperfect is the background, the preterite is the action." },
@@ -217,8 +227,8 @@ const PRETERITE_IMPERFECT: Lesson = {
       title: "Together in one sentence",
       blocks: [
         { type: "text", text: "They often meet: the imperfect sets up what was going on, and the preterite interrupts it." },
-        { type: "example", es: "**Llovía** cuando **salí** de casa.", en: "It was raining when I left the house." },
-        { type: "example", es: "Mientras **leía**, **sonó** el teléfono.", en: "While I was reading, the phone rang." },
+        { type: "example", target: "**Llovía** cuando **salí** de casa.", en: "It was raining when I left the house." },
+        { type: "example", target: "Mientras **leía**, **sonó** el teléfono.", en: "While I was reading, the phone rang." },
         {
           type: "note",
           text: "Clue words help: _ayer, anoche, de repente_ point to the preterite; _siempre, de niño, mientras_ to the imperfect.",
@@ -266,6 +276,7 @@ const PRETERITE_IMPERFECT: Lesson = {
 
 const POR_PARA: Lesson = {
   id: "por-para",
+  language: "spanish",
   level: "beginner",
   title: "Por or para",
   sample: "Gracias por todo. Es para ti.",
@@ -279,20 +290,20 @@ const POR_PARA: Lesson = {
           type: "text",
           text: "**Para** points ahead: a goal, a recipient, a destination, a deadline. **Por** explains why or how: a cause, an exchange, a route, a means.",
         },
-        { type: "example", label: "Para", es: "Este regalo es **para** ti.", en: "This gift is for you." },
-        { type: "example", label: "Para", es: "Estudio **para** aprender.", en: "I study (in order) to learn." },
-        { type: "example", label: "Por", es: "Gracias **por** todo.", en: "Thanks for everything." },
-        { type: "example", label: "Por", es: "Caminamos **por** el parque.", en: "We walked through the park." },
+        { type: "example", label: "Para", target: "Este regalo es **para** ti.", en: "This gift is for you." },
+        { type: "example", label: "Para", target: "Estudio **para** aprender.", en: "I study (in order) to learn." },
+        { type: "example", label: "Por", target: "Gracias **por** todo.", en: "Thanks for everything." },
+        { type: "example", label: "Por", target: "Caminamos **por** el parque.", en: "We walked through the park." },
       ],
     },
     {
       kind: "teach",
       title: "A few more of each",
       blocks: [
-        { type: "example", label: "Exchange", es: "Pagué diez euros **por** el libro.", en: "I paid ten euros for the book." },
-        { type: "example", label: "Means", es: "Te llamo **por** teléfono.", en: "I'll call you on the phone." },
-        { type: "example", label: "Deadline", es: "El informe es **para** el lunes.", en: "The report is due Monday." },
-        { type: "example", label: "Destination", es: "Mañana salgo **para** Lima.", en: "Tomorrow I leave for Lima." },
+        { type: "example", label: "Exchange", target: "Pagué diez euros **por** el libro.", en: "I paid ten euros for the book." },
+        { type: "example", label: "Means", target: "Te llamo **por** teléfono.", en: "I'll call you on the phone." },
+        { type: "example", label: "Deadline", target: "El informe es **para** el lunes.", en: "The report is due Monday." },
+        { type: "example", label: "Destination", target: "Mañana salgo **para** Lima.", en: "Tomorrow I leave for Lima." },
         { type: "note", text: "Quick check: is it pointing ahead (_para_) or explaining why or how (_por_)?" },
       ],
     },
@@ -341,6 +352,7 @@ const POR_PARA: Lesson = {
 
 const OJALA: Lesson = {
   id: "ojala",
+  language: "spanish",
   level: "intermediate",
   title: "Wishes and hopes",
   sample: "Ojalá que llueva.",
@@ -354,8 +366,8 @@ const OJALA: Lesson = {
           type: "text",
           text: "_Ojalá_ means “I hope” or “if only.” It comes from Arabic (“God willing”), it never changes form, and the verb after it is always subjunctive.",
         },
-        { type: "example", es: "Ojalá **llueva** mañana.", en: "I hope it rains tomorrow." },
-        { type: "example", es: "Ojalá que **puedas** venir.", en: "I hope you can come." },
+        { type: "example", target: "Ojalá **llueva** mañana.", en: "I hope it rains tomorrow." },
+        { type: "example", target: "Ojalá que **puedas** venir.", en: "I hope you can come." },
         { type: "note", text: "The _que_ is optional: _Ojalá venga_ and _Ojalá que venga_ mean the same." },
       ],
     },
@@ -364,8 +376,8 @@ const OJALA: Lesson = {
       title: "A hope or a wish?",
       blocks: [
         { type: "text", text: "The subjunctive's tense shows how likely you think it is." },
-        { type: "example", label: "Possible", es: "Ojalá **tenga** tiempo.", en: "I hope I have time." },
-        { type: "example", label: "Unlikely", es: "Ojalá **tuviera** tiempo.", en: "I wish I had time." },
+        { type: "example", label: "Possible", target: "Ojalá **tenga** tiempo.", en: "I hope I have time." },
+        { type: "example", label: "Unlikely", target: "Ojalá **tuviera** tiempo.", en: "I wish I had time." },
         {
           type: "note",
           text: "_Espero que_ (I hope that) works the same way for real hopes: _Espero que estés bien._",
@@ -404,24 +416,350 @@ const OJALA: Lesson = {
   },
 }
 
-/** In the order they're suggested: the "Up next" lesson is the first one not finished yet. */
-/** Suggested order: easiest first, so the list's level groups read top to bottom in this order. */
-export const LESSONS: Lesson[] = [SER_ESTAR, POR_PARA, PRETERITE_IMPERFECT, OJALA, SI_CLAUSES]
+const FR_TU_VOUS: Lesson = {
+  id: "fr-tu-vous",
+  language: "french",
+  level: "beginner",
+  title: "Tu or vous",
+  sample: "Tu viens ? / Vous venez ?",
+  minutes: 4,
+  steps: [
+    {
+      kind: "teach",
+      title: "Two ways to say “you”",
+      blocks: [
+        { type: "text", text: "French has two words for “you”, and picking one says how well you know the person." },
+        {
+          type: "text",
+          text: "Use **tu** with one person you know well: a friend, family, a child. Use **vous** with someone you don't know well, or with any group.",
+        },
+        { type: "example", target: "**Tu** as faim ?", en: "Are you hungry? (to a friend)" },
+        { type: "example", target: "**Vous** avez l'heure, s'il vous plaît ?", en: "Do you have the time, please? (to a stranger)" },
+        { type: "example", target: "Les enfants, **vous** êtes prêts ?", en: "Kids, are you ready?" },
+        { type: "note", text: "_Vous_ is also the plural: talking to a group, even of friends, always use _vous_." },
+      ],
+    },
+    {
+      kind: "teach",
+      title: "The verb changes too",
+      blocks: [
+        { type: "text", text: "The verb ending follows the pronoun, so it's a second clue to which one you need." },
+        { type: "example", target: "tu **parles** · vous **parlez**", en: "you speak" },
+        { type: "example", target: "tu **es** · vous **êtes**", en: "you are" },
+        { type: "example", target: "tu **as** · vous **avez**", en: "you have" },
+        {
+          type: "note",
+          text: "With an adult you've just met, start with _vous_. If they'd rather use _tu_, they'll say so: _On peut se tutoyer ?_",
+        },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Bonjour madame, ___ cherchez quelque chose ?",
+      options: [
+        { text: "vous", right: true, why: "A shop assistant speaks to a customer with vous, and cherchez is the vous form." },
+        { text: "tu", why: "Cherchez ends in -ez, which goes with vous. Staff also speak to customers with vous." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Maman, ___ veux un café ?",
+      options: [
+        { text: "tu", right: true, why: "Most families use tu with each other, and veux is the tu form." },
+        { text: "vous", why: "Vous would need voulez. And with one parent you normally use tu." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Paul et Marie, ___ venez ce soir ?",
+      options: [
+        { text: "vous", right: true, why: "Two people, so vous, even though they're friends." },
+        { text: "tu", why: "Tu is for one person only. Talking to Paul and Marie together takes vous." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Excusez-moi, monsieur, vous ___ anglais ?",
+      options: [
+        { text: "parlez", right: true, why: "Vous takes the -ez ending: vous parlez." },
+        { text: "parles", why: "Parles is the tu form. With vous it's parlez." },
+      ],
+    },
+  ],
+  finish: {
+    title: "You can choose between tu and vous",
+    recap: [
+      "_Tu_: one person you know well, or a child.",
+      "_Vous_: someone you don't know well, or any group.",
+      "The verb changes with it: _tu parles_, _vous parlez_.",
+    ],
+  },
+}
+
+const FR_ARTICLES: Lesson = {
+  id: "fr-articles",
+  language: "french",
+  level: "beginner",
+  title: "Le, la, les",
+  sample: "le livre, la table, les clés",
+  minutes: 4,
+  steps: [
+    {
+      kind: "teach",
+      title: "Every noun has a gender",
+      blocks: [
+        { type: "text", text: "Every French noun is masculine or feminine, and the word for “the” shows which." },
+        { type: "example", label: "Masculine", target: "**le** livre", en: "the book" },
+        { type: "example", label: "Feminine", target: "**la** table", en: "the table" },
+        { type: "example", label: "Plural", target: "**les** livres, **les** tables", en: "the books, the tables" },
+        { type: "note", text: "Before a vowel or a silent h, le and la both shorten to l': _l'ami_, _l'école_, _l'hôtel_." },
+      ],
+    },
+    {
+      kind: "teach",
+      title: "“A” and “some”",
+      blocks: [
+        { type: "text", text: "“A” follows the gender too: **un** for masculine, **une** for feminine, and **des** (“some”) for plural." },
+        { type: "example", target: "**un** chat et **une** souris", en: "a cat and a mouse" },
+        { type: "example", target: "J'ai **des** amis à Paris.", en: "I have friends in Paris." },
+        { type: "note", text: "English often leaves plurals bare, but French always puts a word in front: _des amis_." },
+        { type: "note", text: "Learn each noun with its article: not just _livre_, but _le livre_." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "J'ouvre ___ porte.",
+      options: [
+        { text: "la", right: true, why: "Porte is feminine, so “the door” is la porte." },
+        { text: "le", why: "Le is for masculine nouns. Porte is feminine." },
+        { text: "les", why: "Les is for more than one. Here it's a single door." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Il y a ___ chien dans le jardin.",
+      options: [
+        { text: "un", right: true, why: "Chien is masculine and there's one of it: un chien." },
+        { text: "une", why: "Une is for feminine nouns. Chien is masculine." },
+        { text: "des", why: "Des means “some”, for more than one. Here it's one dog." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Nous avons ___ questions.",
+      options: [
+        { text: "des", right: true, why: "More than one question, and no particular ones: des." },
+        { text: "une", why: "Une is for one thing. Questions is plural." },
+        { text: "la", why: "La is singular. Questions is plural, so it needs des (or les)." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Où sont ___ clés de la voiture ?",
+      options: [
+        { text: "les", right: true, why: "Particular keys (the car keys), and more than one: les." },
+        { text: "la", why: "La is singular. Clés is plural." },
+        { text: "des", why: "Des is “some”. These are particular keys, the car's, so it's les." },
+      ],
+    },
+  ],
+  finish: {
+    title: "You can say “the” and “a” in French",
+    recap: [
+      "_le_ (masculine), _la_ (feminine), _les_ (plural): “the”.",
+      "_un_, _une_, _des_: “a” and “some”.",
+      "Before a vowel, le and la become l': _l'ami_, _l'école_.",
+    ],
+  },
+}
+
+const FR_NEGATION: Lesson = {
+  id: "fr-negation",
+  language: "french",
+  level: "beginner",
+  title: "Saying no",
+  sample: "Je ne parle pas allemand.",
+  minutes: 4,
+  steps: [
+    {
+      kind: "teach",
+      title: "Wrap the verb",
+      blocks: [
+        { type: "text", text: "To make a sentence negative, put **ne** before the verb and **pas** after it." },
+        { type: "example", target: "Je **ne** parle **pas** allemand.", en: "I don't speak German." },
+        { type: "example", target: "Elle **n'**aime **pas** le café.", en: "She doesn't like coffee." },
+        { type: "note", text: "Ne becomes n' before a vowel: _je n'ai pas_." },
+        { type: "note", text: "After a negative, un, une and des become de: _Je n'ai pas de voiture._" },
+      ],
+    },
+    {
+      kind: "teach",
+      title: "Never, anymore, nothing",
+      blocks: [
+        { type: "text", text: "Swap pas for another word to change the meaning. Ne stays where it is." },
+        { type: "example", target: "Il **ne** mange **jamais** de viande.", en: "He never eats meat." },
+        { type: "example", target: "Je **ne** fume **plus**.", en: "I don't smoke anymore." },
+        { type: "example", target: "Nous **ne** voyons **rien**.", en: "We can't see anything." },
+        { type: "note", text: "In casual speech people often drop ne: _Je sais pas._ Keep it when you write." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Je ___ comprends pas.",
+      options: [
+        { text: "ne", right: true, why: "Pas comes after the verb, and ne goes before it." },
+        { text: "pas", why: "Pas is already after the verb. The word before it is ne." },
+        { text: "non", why: "Non answers a question on its own. Inside a sentence, use ne… pas." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "J'ai arrêté de fumer : je ne fume ___.",
+      options: [
+        { text: "plus", right: true, why: "You used to smoke and stopped: ne… plus, “not anymore”." },
+        { text: "jamais", why: "Ne… jamais means you never did. But you've just said you stopped." },
+        { text: "rien", why: "Ne… rien means “nothing”. Here you need “not anymore”." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Désolé, je n'ai pas ___ voiture.",
+      options: [
+        { text: "de", right: true, why: "After a negative, une becomes de: pas de voiture." },
+        { text: "une", why: "After pas, un and une usually become de." },
+        { text: "la", why: "La would mean a particular car. “I don't have a car” is pas de voiture." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Il fait noir, on ne voit ___.",
+      options: [
+        { text: "rien", right: true, why: "It's dark, so you see nothing: ne… rien." },
+        { text: "plus", why: "Ne… plus means “not anymore”. Possible, but the dark means you see nothing at all." },
+        { text: "pas rien", why: "Rien takes the place of pas. It's never pas rien." },
+      ],
+    },
+  ],
+  finish: {
+    title: "You can say no in French",
+    recap: [
+      "Wrap the verb: _ne_ + verb + _pas_.",
+      "Swap pas for _jamais_ (never), _plus_ (anymore), _rien_ (nothing).",
+      "After a negative, un, une and des become _de_.",
+    ],
+  },
+}
+
+const FR_AU_DU: Lesson = {
+  id: "fr-au-du",
+  language: "french",
+  level: "beginner",
+  title: "Au, du",
+  sample: "Je vais au cinéma.",
+  minutes: 4,
+  steps: [
+    {
+      kind: "teach",
+      title: "À + le = au",
+      blocks: [
+        { type: "text", text: "À (to, at) merges with le and les into one word: à + le = **au**, à + les = **aux**." },
+        { type: "example", target: "Je vais **au** cinéma.", en: "I'm going to the cinema." },
+        { type: "example", target: "Elle parle **aux** enfants.", en: "She's talking to the children." },
+        { type: "example", target: "On va **à la** plage.", en: "We're going to the beach." },
+        { type: "note", text: "Only le and les merge. _À la_ and _à l'_ never change: _à l'école_." },
+      ],
+    },
+    {
+      kind: "teach",
+      title: "De + le = du",
+      blocks: [
+        { type: "text", text: "De (of, from) follows the same rule: de + le = **du**, de + les = **des**." },
+        { type: "example", target: "Je reviens **du** marché.", en: "I'm coming back from the market." },
+        { type: "example", target: "la chambre **des** enfants", en: "the children's room" },
+        { type: "example", target: "la porte **de la** maison", en: "the door of the house" },
+        { type: "note", text: "Again, _de la_ and _de l'_ stay as they are." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Ce soir, nous allons ___ restaurant.",
+      options: [
+        { text: "au", right: true, why: "Restaurant is masculine (le restaurant), and à + le makes au." },
+        { text: "à le", why: "À le always merges into au." },
+        { text: "à la", why: "Restaurant is masculine, so it's le, and à + le makes au." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Mon frère habite ___ États-Unis.",
+      options: [
+        { text: "aux", right: true, why: "It's les États-Unis, and à + les makes aux." },
+        { text: "au", why: "Au is à + le. États-Unis is plural (les), so it's aux." },
+        { text: "à les", why: "À les always merges into aux." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Elle sort ___ bureau à six heures.",
+      options: [
+        { text: "du", right: true, why: "Bureau is masculine (le bureau), and de + le makes du." },
+        { text: "de le", why: "De le always merges into du." },
+        { text: "de la", why: "Bureau is masculine, so de + le makes du." },
+      ],
+    },
+    {
+      kind: "choice",
+      text: "Tu as le numéro ___ pharmacie ?",
+      options: [
+        { text: "de la", right: true, why: "Pharmacie is feminine. Only le and les merge, so de la stays." },
+        { text: "du", why: "Du is de + le. Pharmacie is feminine (la pharmacie)." },
+        { text: "des", why: "Des is de + les, for plural. Here it's one pharmacy." },
+      ],
+    },
+  ],
+  finish: {
+    title: "You can use au and du",
+    recap: [
+      "_à + le = au_, _à + les = aux_.",
+      "_de + le = du_, _de + les = des_.",
+      "_À la_, _à l'_, _de la_ and _de l'_ never change.",
+    ],
+  },
+}
+
+/**
+ * Per language, in suggested order: easiest first, so the list's level groups read top to
+ * bottom in this order, and the "Up next" lesson is the first one not finished yet.
+ */
+const LESSONS_BY_LANGUAGE: Record<LessonLanguage, Lesson[]> = {
+  spanish: [SER_ESTAR, POR_PARA, PRETERITE_IMPERFECT, OJALA, SI_CLAUSES],
+  french: [FR_TU_VOUS, FR_ARTICLES, FR_NEGATION, FR_AU_DU],
+}
+
+export const LESSONS: Lesson[] = Object.values(LESSONS_BY_LANGUAGE).flat()
+
+/** Learning languages that have lessons; the Learn hub and lesson list open for these. */
+export const LESSON_LANGUAGES: LearningLanguage[] = ["spanish", "french"]
+
+/** Lessons for the "I'm learning" language (none for a language without its own list). */
+export function lessonsFor(learning: LearningLanguage): Lesson[] {
+  return learning === "spanish" || learning === "french" ? LESSONS_BY_LANGUAGE[learning] : []
+}
 
 export function findLesson(id: string | undefined): Lesson | undefined {
   return LESSONS.find((l) => l.id === id)
 }
 
-export type InlineSegment = { text: string; style?: "highlight" | "spanish" }
+export type InlineSegment = { text: string; style?: "highlight" | "target" }
 
-/** Splits `**highlight**` and `_spanish_` markup into segments. */
+/** Splits `**highlight**` and `_target-language_` markup into segments. */
 export function parseInline(text: string): InlineSegment[] {
   const out: InlineSegment[] = []
   const re = /\*\*(.+?)\*\*|_(.+?)_/g
   let last = 0
   for (let m = re.exec(text); m; m = re.exec(text)) {
     if (m.index > last) out.push({ text: text.slice(last, m.index) })
-    out.push(m[1] != null ? { text: m[1], style: "highlight" } : { text: m[2], style: "spanish" })
+    out.push(m[1] != null ? { text: m[1], style: "highlight" } : { text: m[2], style: "target" })
     last = re.lastIndex
   }
   if (last < text.length) out.push({ text: text.slice(last) })

@@ -28,7 +28,7 @@ export default function LearnLessonPage() {
   }
 
   return (
-    <LearnPageShell>
+    <LearnPageShell languages={[lesson.language]}>
       <DrillTopBar value={Math.min(index, total) / total} label={lesson.title} onClose={() => navigate("/learn/lessons")} closeLabel="Leave lesson" />
       <div className="pt-8 sm:pt-10">
         {done ? (
@@ -149,7 +149,7 @@ function Block({ block }: { block: TeachBlock }) {
         <div className="border-l-2 border-border pl-4">
           {block.label && <p className="text-label-2xs font-semibold uppercase tracking-[0.14em] text-accent">{block.label}</p>}
           <p className="font-reading text-[1.3rem] leading-snug text-foreground">
-            <Inline text={block.es} />
+            <Inline text={block.target} />
           </p>
           <p className="text-sm text-muted-foreground">{block.en}</p>
         </div>
@@ -244,7 +244,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   return <p className="text-label-2xs font-semibold uppercase tracking-[0.15em] text-accent">{children}</p>
 }
 
-/** Renders `**highlight**` and `_spanish_` markup from lesson text. */
+/** Renders `**highlight**` and `_target-language_` markup from lesson text. */
 function Inline({ text }: { text: string }) {
   return (
     <>
@@ -253,7 +253,7 @@ function Inline({ text }: { text: string }) {
           <b key={i} className="font-medium text-primary">
             {seg.text}
           </b>
-        ) : seg.style === "spanish" ? (
+        ) : seg.style === "target" ? (
           <i key={i} className="font-reading text-[1.06em] text-foreground">
             {seg.text}
           </i>

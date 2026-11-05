@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { conjugate } from "@/lib/learn/conjugation"
-import { findLesson, LESSON_LEVELS, LESSONS, parseInline } from "@/lib/learn/lessons"
+import { findLesson, LESSON_LEVELS, LESSONS, lessonsFor, parseInline } from "@/lib/learn/lessons"
 
 describe("lessons", () => {
   it("every step is answerable: one blank, one right choice, typed answers that conjugate", () => {
@@ -34,8 +34,26 @@ describe("lessons", () => {
   })
 
   it("lessons run easiest first, so each level's group stays in suggested order", () => {
-    const ranks = LESSONS.map((l) => LESSON_LEVELS.indexOf(l.level))
-    expect(ranks).toEqual([...ranks].sort((a, b) => a - b))
+    for (const learning of ["spanish", "french"] as const) {
+      const ranks = lessonsFor(learning).map((l) => LESSON_LEVELS.indexOf(l.level))
+      expect(ranks, learning).toEqual([...ranks].sort((a, b) => a - b))
+    }
+  })
+
+  it("each learning language gets only its own lessons", () => {
+    expect(lessonsFor("spanish").map((l) => l.id)).toEqual(["ser-estar", "por-para", "preterite-imperfect", "ojala", "si-clauses"])
+    expect(lessonsFor("french").map((l) => l.id)).toEqual(["fr-tu-vous", "fr-articles", "fr-negation", "fr-au-du"])
+    expect(lessonsFor("english")).toEqual([])
+    for (const learning of ["spanish", "french"] as const) {
+      for (const l of lessonsFor(learning)) expect(l.language, l.id).toBe(learning)
+    }
+  })
+
+  it("French lessons never use typed steps or drills, which grade against Spanish verbs", () => {
+    for (const l of lessonsFor("french")) {
+      expect(l.steps.some((s) => s.kind === "type"), l.id).toBe(false)
+      expect(l.finish.drill, l.id).toBeUndefined()
+    }
   })
 
   it("parseInline splits highlight and Spanish markup", () => {
@@ -43,7 +61,7 @@ describe("lessons", () => {
       { text: "Si " },
       { text: "tuviera", style: "highlight" },
       { text: " tiempo, " },
-      { text: "leería", style: "spanish" },
+      { text: "leería", style: "target" },
       { text: "." },
     ])
     expect(parseInline("plain")).toEqual([{ text: "plain" }])

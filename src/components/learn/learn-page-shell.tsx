@@ -3,20 +3,23 @@ import { Link, useNavigate } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
 import { useLandingShellNewChat } from "@/components/landing/landing-shell-layout"
 import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
-import { LEARNING_LANGUAGE_LABEL } from "@/lib/storage/language-learning-preferences"
+import { LEARNING_LANGUAGE_LABEL, type LearningLanguage } from "@/lib/storage/language-learning-preferences"
 import { cn } from "@/lib/utils"
 
 /**
- * Frame shared by the Learn pages: the scroll surface, an optional back link, and the
- * Spanish-only gate (the conjugation data and lessons only exist for Spanish so far).
+ * Frame shared by the Learn pages: the scroll surface, an optional back link, and a
+ * language gate. Conjugation only exists for Spanish; lessons exist for Spanish and French.
  */
 export function LearnPageShell({
   back,
   className,
+  languages = ["spanish"],
   children,
 }: {
   back?: { to: string; label: string }
   className?: string
+  /** "I'm learning" languages this page has content for; others see a pointer to Settings. */
+  languages?: LearningLanguage[]
   children: React.ReactNode
 }) {
   const navigate = useNavigate()
@@ -48,11 +51,12 @@ export function LearnPageShell({
             <ArrowLeft className="h-4 w-4" aria-hidden /> {back.label}
           </Link>
         )}
-        {learning === "spanish" ? (
+        {languages.includes(learning) ? (
           children
         ) : (
           <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Learn is Spanish-only for now. {LEARNING_LANGUAGE_LABEL[learning]} practice is on the way. You can switch
+            This is {languages.map((l) => LEARNING_LANGUAGE_LABEL[l]).join(" and ")} only for now.{" "}
+            {LEARNING_LANGUAGE_LABEL[learning]} practice is on the way. You can switch
             the language you&apos;re learning in{" "}
             <Link to="/settings" className="text-primary underline underline-offset-2">
               Settings

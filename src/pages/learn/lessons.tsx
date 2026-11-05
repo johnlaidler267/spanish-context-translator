@@ -2,21 +2,27 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Check } from "lucide-react"
 import { LearnHeading, LearnPageShell } from "@/components/learn/learn-page-shell"
-import { LESSON_LEVEL_NAME, LESSON_LEVELS, LESSONS } from "@/lib/learn/lessons"
+import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
+import { LESSON_LANGUAGES, LESSON_LEVEL_NAME, LESSON_LEVELS, lessonsFor } from "@/lib/learn/lessons"
 import { loadCompletedLessons } from "@/lib/learn/progress-storage"
 
-/** The list of mini lessons, grouped by level in suggested order; finished ones are ticked. */
+/**
+ * The mini lessons for the language being learned, grouped by level in suggested order;
+ * finished ones are ticked.
+ */
 export default function LearnLessonsPage() {
   const [done] = useState(loadCompletedLessons)
+  const { learning } = useLanguageLearningPreferences()
+  const all = lessonsFor(learning)
   return (
-    <LearnPageShell back={{ to: "/learn", label: "Learn" }}>
+    <LearnPageShell back={{ to: "/learn", label: "Learn" }} languages={LESSON_LANGUAGES}>
       <LearnHeading
-        eyebrow="Lecciones"
+        eyebrow={learning === "french" ? "Leçons" : "Lecciones"}
         title="One idea at a time"
         lede="Each lesson takes a few minutes: a short explanation, a couple of examples, then a few chances to try it."
       />
       {LESSON_LEVELS.map((level) => {
-        const lessons = LESSONS.filter((l) => l.level === level)
+        const lessons = all.filter((l) => l.level === level)
         if (lessons.length === 0) return null
         return (
           <section key={level} aria-labelledby={`lessons-${level}`} className="mt-8 first:mt-0">

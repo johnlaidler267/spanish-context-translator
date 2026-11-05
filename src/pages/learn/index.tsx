@@ -4,10 +4,14 @@ import { LearnPageShell } from "@/components/learn/learn-page-shell"
 import { LearnChoiceCard, VerbWheel, WarmUpCard } from "@/components/learn/learn-hub-parts"
 import { listTenses } from "@/lib/learn/conjugation"
 import { buildWarmUp, weakestTense } from "@/lib/learn/drill-round"
-import { LESSONS } from "@/lib/learn/lessons"
+import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
+import { LESSON_LANGUAGES, lessonsFor } from "@/lib/learn/lessons"
 import { loadCompletedLessons, loadDrillSettings, loadTenseStats, recordTenseAnswer } from "@/lib/learn/progress-storage"
 
-/** Learn landing: a warm-up question, then the way into conjugation drills or mini lessons. */
+/**
+ * Learn landing: a warm-up question, then the way into conjugation drills or mini lessons.
+ * Warm-up and conjugation are Spanish-only, so French learners get just the lessons.
+ */
 export default function LearnPage() {
   const navigate = useNavigate()
   const [settings] = useState(loadDrillSettings)
@@ -18,7 +22,44 @@ export default function LearnPage() {
 
   const weak = weakestTense(settings.tenses, stats)
   const [completed] = useState(loadCompletedLessons)
-  const nextLesson = LESSONS.find((l) => !completed.includes(l.id))
+  const { learning } = useLanguageLearningPreferences()
+  const hasConjugation = learning === "spanish"
+  const lessons = lessonsFor(learning)
+  const nextLesson = lessons.find((l) => !completed.includes(l.id))
+
+  const lessonsCard = (
+    <LearnChoiceCard
+      to="/learn/lessons"
+      variant="lessons"
+      title="Mini lessons"
+      description="One grammar idea, explained simply, then practiced."
+      next={
+        nextLesson ? (
+          <>
+            Up next: <span className="font-medium text-foreground">{nextLesson.title}</span> · {nextLesson.minutes} min
+          </>
+        ) : (
+          <>All {lessons.length} done. Revisit any of them.</>
+        )
+      }
+      action={`${lessons.length} lessons`}
+    />
+  )
+
+  if (!hasConjugation) {
+    return (
+      <LearnPageShell className="max-w-2xl" languages={LESSON_LANGUAGES}>
+        <p className="discover-masthead__eyebrow">Apprendre</p>
+        <h1 className="text-balance font-serif text-[2rem] font-medium leading-[1.05] tracking-tight text-foreground sm:text-[2.4rem]">
+          The grammar behind what you read.
+        </h1>
+        <p className="mt-2.5 max-w-md text-[0.98rem] text-muted-foreground">
+          A few focused minutes on one idea at a time.
+        </p>
+        <div className="mt-8">{lessonsCard}</div>
+      </LearnPageShell>
+    )
+  }
 
   return (
     // Wider than the other Learn pages: on desktop the intro and warm-up sit side by side, and
@@ -68,22 +109,7 @@ export default function LearnPage() {
           }
           action="10 questions"
         />
-        <LearnChoiceCard
-          to="/learn/lessons"
-          variant="lessons"
-          title="Mini lessons"
-          description="One grammar idea, explained simply, then practiced."
-          next={
-            nextLesson ? (
-              <>
-                Up next: <span className="font-medium text-foreground">{nextLesson.title}</span> · {nextLesson.minutes} min
-              </>
-            ) : (
-              <>All {LESSONS.length} done. Revisit any of them.</>
-            )
-          }
-          action={`${LESSONS.length} lessons`}
-        />
+        {lessonsCard}
       </div>
     </LearnPageShell>
   )
