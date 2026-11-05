@@ -36,6 +36,7 @@ function libraryBook(id: string): LibraryEpub {
     author: null,
     description: null,
     storyStartOffset: 0,
+    language: null,
   }
 }
 
@@ -141,5 +142,20 @@ describe("buildContinueReadingItems", () => {
 
     const inSpanish = buildContinueReadingItems(recent, [spanish, french], library, 5, "spanish")
     expect(inSpanish.map((i) => (i.kind === "discover" ? i.content.id : i.book.id))).toEqual(["es1", "u1"])
+  })
+
+  it("hides uploads tagged with another language, but keeps ones of unknown language", () => {
+    const spanishUpload = { ...libraryBook("es-upload"), language: "spanish" as const }
+    const frenchUpload = { ...libraryBook("fr-upload"), language: "french" as const }
+    const unknownUpload = libraryBook("unknown-upload")
+    const recent = [entry("es-upload", 300), entry("fr-upload", 200), entry("unknown-upload", 100)]
+    const library = [spanishUpload, frenchUpload, unknownUpload]
+
+    const ids = (learning: "spanish" | "french") =>
+      buildContinueReadingItems(recent, [], library, 5, learning).map((i) =>
+        i.kind === "library" ? i.book.id : i.content.id,
+      )
+    expect(ids("french")).toEqual(["fr-upload", "unknown-upload"])
+    expect(ids("spanish")).toEqual(["es-upload", "unknown-upload"])
   })
 })

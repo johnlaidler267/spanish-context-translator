@@ -5,6 +5,12 @@ import { BookOpen, Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
+import {
+  LEARNING_LANGUAGE_LABEL,
+  type LearningLanguage,
+} from "@/lib/storage/language-learning-preferences"
+
+const BOOK_LANGUAGES = Object.keys(LEARNING_LANGUAGE_LABEL) as LearningLanguage[]
 
 /**
  * A tap on a library book now pauses on this before actually opening it -- reuses Discover's
@@ -27,6 +33,9 @@ interface LibraryPreviewModalProps {
   /** True while onStartReading's fetch (getUserEpubText, in App.tsx) is in flight -- swaps the
    *  CTA for a spinner so a slow connection doesn't read as the tap having done nothing. */
   isOpening: boolean
+  /** The reader correcting the book's detected language (see detect-book-language.ts). The
+   *  picker is hidden when this isn't passed. */
+  onLanguageChange?: (book: LibraryEpub, language: LearningLanguage) => void
 }
 
 export function LibraryPreviewModal({
@@ -36,6 +45,7 @@ export function LibraryPreviewModal({
   onStartReading,
   progressPercent,
   isOpening,
+  onLanguageChange,
 }: LibraryPreviewModalProps) {
   const [coverBroken, setCoverBroken] = useState(false)
 
@@ -81,6 +91,26 @@ export function LibraryPreviewModal({
                     : `${book.charCount.toLocaleString()} characters`}
                 </span>
               </p>
+              {onLanguageChange && (
+                <label className="discover-modal__meta mt-2 inline-flex items-center gap-2">
+                  <span>Language</span>
+                  <select
+                    className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                    value={book.language ?? ""}
+                    onChange={(e) => {
+                      if (e.target.value) onLanguageChange(book, e.target.value as LearningLanguage)
+                    }}
+                    aria-label="Book language"
+                  >
+                    {book.language == null && <option value="">Not set</option>}
+                    {BOOK_LANGUAGES.map((lang) => (
+                      <option key={lang} value={lang}>
+                        {LEARNING_LANGUAGE_LABEL[lang]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </DialogHeader>
           </div>
 

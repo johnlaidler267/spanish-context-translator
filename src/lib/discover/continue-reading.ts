@@ -1,7 +1,7 @@
 import type { ContentItem } from "@/lib/discover/content-data"
 import { itemsForLearningLanguage } from "@/lib/discover/discover-catalog"
 import type { LearningLanguage } from "@/lib/storage/language-learning-preferences"
-import type { LibraryEpub } from "@/lib/storage/epub-library"
+import { libraryBooksForLearningLanguage, type LibraryEpub } from "@/lib/storage/epub-library"
 import type { RecentlyViewedEntry } from "@/lib/storage/reading-progress-storage"
 
 /** Same rounding/clamp as reading-progress-storage.ts's `getReadingProgressPercent` -- kept in
@@ -44,10 +44,9 @@ export type ContinueReadingItem =
  * own progress entry. Only the most recently read copy is shown (matched by title + author),
  * so the row doesn't fill up with repeats of one book.
  *
- * Discover items are limited to the language the reader is currently learning, so switching to
- * French hides Spanish catalog books (their progress is untouched -- switching back shows them
- * again). Personal uploads aren't filtered: `user_epubs` has no language column, so there's
- * nothing to filter them on yet.
+ * Both sources are limited to the language the reader is currently learning, so switching to
+ * French hides Spanish books (their progress is untouched -- switching back shows them again).
+ * An upload whose language isn't known is shown in every language.
  */
 export function buildContinueReadingItems(
   recent: RecentlyViewedEntry[],
@@ -57,7 +56,9 @@ export function buildContinueReadingItems(
   learning: LearningLanguage,
 ): ContinueReadingItem[] {
   const byId = new Map(itemsForLearningLanguage(catalog, learning).map((item) => [item.id, item]))
-  const libraryById = new Map(libraryBooks.map((book) => [book.id, book]))
+  const libraryById = new Map(
+    libraryBooksForLearningLanguage(libraryBooks, learning).map((book) => [book.id, book]),
+  )
   const result: ContinueReadingItem[] = []
   const seenBooks = new Set<string>()
 

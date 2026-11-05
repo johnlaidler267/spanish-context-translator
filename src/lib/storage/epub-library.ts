@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase"
 import { clearReadingProgress } from "@/lib/storage/reading-progress-storage"
 import { deleteBookLayout } from "@/lib/storage/book-layout-cache"
 import { clearCachedTranslation } from "@/lib/storage/translation-cache-storage"
+import type { LearningLanguage } from "@/lib/storage/language-learning-preferences"
 
 /**
  * Personal EPUB library: lets a signed-in (including anonymous/guest) user come back to books
@@ -69,6 +70,44 @@ export interface LibraryEpub {
    *  first-ever open (i.e. only when there's no saved reading position yet) -- see
    *  supabase/migrations/0021_user_epub_story_start_offset.sql. */
   storyStartOffset: number
+  /** Language the book is written in -- detected at upload (see detect-book-language.ts), or
+   *  set by the reader in LibraryPreviewModal. The Library and Continue Reading only show books
+   *  in the language being learned (see `libraryBooksForLearningLanguage`). null = not known
+   *  (an old upload the 0034 backfill couldn't call, or a listing cached before this field
+   *  existed) -- shown in every language rather than hidden. */
+  language: LearningLanguage | null
+}
+
+const LEARNING_LANGUAGES: readonly LearningLanguage[] = ["spanish", "french", "english"]
+
+function asLearningLanguage(value: unknown): LearningLanguage | null {
+  return LEARNING_LANGUAGES.includes(value as LearningLanguage) ? (value as LearningLanguage) : null
+}
+
+/** The uploads to show while learning `learning`: books in that language, plus any whose
+ *  language isn't known yet. */
+export function libraryBooksForLearningLanguage<T extends Pick<LibraryEpub, "language">>(
+  books: T[],
+  learning: LearningLanguage,
+): T[] {
+  return books.filter((book) => (book.language ?? null) === null || book.language === learning)
+}
+
+/** True when opening `book` while learning `learning` would read it in the wrong language mode. */
+export function isOtherLanguageBook(
+  book: Pick<LibraryEpub, "language">,
+  learning: LearningLanguage,
+): book is Pick<LibraryEpub, "language"> & { language: LearningLanguage } {
+  return book.language != null && book.language !== learning
+}
+
+/**
+ * Supabase's "that column doesn't exist" error. The app can deploy before
+ * supabase/migrations/0034_user_epub_language.sql has been applied, and selecting or inserting
+ * `language` would then fail every library call -- so those calls retry without it instead.
+ */
+function isMissingLanguageColumn(error: { message: string } | null): boolean {
+  return error != null && /\blanguage\b/.test(error.message) && /column|schema cache/i.test(error.message)
 }
 
 interface UserEpubListRow {
@@ -82,6 +121,7 @@ interface UserEpubListRow {
   author: string | null
   description: string | null
   story_start_offset: number
+  language?: string | null
 }
 
 function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
@@ -96,6 +136,7 @@ function rowToLibraryEpub(row: UserEpubListRow): LibraryEpub {
     author: row.author,
     description: row.description,
     storyStartOffset: row.story_start_offset,
+    language: asLearningLanguage(row.language),
   }
 }
 
@@ -111,15 +152,17 @@ export async function listUserEpubs(
   { covers = true }: { covers?: boolean } = {},
 ): Promise<LibraryEpub[]> {
   if (!user) return []
-  const { data, error } = await supabase
-    .from("user_epubs")
-    .select(
-      covers
-        ? "id, title, file_name, char_count, created_at, updated_at, cover_image, author, description, story_start_offset"
-        : "id, title, file_name, char_count, created_at, updated_at, author, description, story_start_offset",
-    )
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
+  const columns = [
+    "id, title, file_name, char_count, created_at, updated_at",
+    covers ? "cover_image" : null,
+    "author, description, story_start_offset",
+  ]
+    .filter(Boolean)
+    .join(", ")
+  const list = (select: string) =>
+    supabase.from("user_epubs").select(select).eq("user_id", user.id).order("created_at", { ascending: false })
+  let { data, error } = await list(`${columns}, language`)
+  if (isMissingLanguageColumn(error)) ({ data, error } = await list(columns))
   if (error || !data) {
     if (error) console.warn("[epub-library] list failed:", error.message)
     return []
@@ -172,6 +215,8 @@ export async function saveEpubToLibrary(
     description?: string | null
     /** See parse-epub.ts's `ParsedEpub.storyStartOffset`. Defaults to 0 (no skip). */
     storyStartOffset?: number
+    /** See detect-book-language.ts. */
+    language?: LearningLanguage | null
   },
 ): Promise<{ id: string } | null> {
   if (!user) return null
@@ -198,21 +243,21 @@ export async function saveEpubToLibrary(
   // rather than rejecting the whole save.
   const storyStartOffset = Math.min(Math.max(epub.storyStartOffset ?? 0, 0), text.length)
 
-  const { data, error } = await supabase
-    .from("user_epubs")
-    .insert({
-      user_id: user.id,
-      title,
-      file_name: epub.fileName,
-      body_text: text,
-      char_count: text.length,
-      cover_image: coverImage,
-      author: epub.author?.trim() || null,
-      description: epub.description?.trim() || null,
-      story_start_offset: storyStartOffset,
-    })
-    .select("id")
-    .single()
+  const row = {
+    user_id: user.id,
+    title,
+    file_name: epub.fileName,
+    body_text: text,
+    char_count: text.length,
+    cover_image: coverImage,
+    author: epub.author?.trim() || null,
+    description: epub.description?.trim() || null,
+    story_start_offset: storyStartOffset,
+  }
+  const insert = (values: typeof row & { language?: LearningLanguage | null }) =>
+    supabase.from("user_epubs").insert(values).select("id").single()
+  let { data, error } = await insert({ ...row, language: epub.language ?? null })
+  if (isMissingLanguageColumn(error)) ({ data, error } = await insert(row))
 
   if (error || !data) {
     // The library-full trigger raises a Postgres exception with a reader-facing message
@@ -225,6 +270,27 @@ export async function saveEpubToLibrary(
     return null
   }
   return { id: (data as { id: string }).id }
+}
+
+/** Records the language the reader says `id` is written in (LibraryPreviewModal's picker).
+ *  Returns false on a guest, a missing book, or a swallowed failure. */
+export async function updateUserEpubLanguage(
+  user: User | null,
+  id: string,
+  language: LearningLanguage,
+): Promise<boolean> {
+  if (!user) return false
+  const { data, error } = await supabase
+    .from("user_epubs")
+    .update({ language })
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select("id")
+  if (error) {
+    console.warn("[epub-library] language update failed:", error.message)
+    return false
+  }
+  return (data?.length ?? 0) > 0
 }
 
 /** Full text of one saved book, for resuming/starting a read. null if not found, not this

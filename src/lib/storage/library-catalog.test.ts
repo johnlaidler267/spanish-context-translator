@@ -22,6 +22,7 @@ const BOOK: LibraryEpub = {
   author: "Antoine de Saint-Exupéry",
   description: null,
   storyStartOffset: 0,
+  language: "spanish",
 }
 
 describe("library-catalog", () => {

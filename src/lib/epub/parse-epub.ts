@@ -54,6 +54,9 @@ export interface ParsedEpub {
    * always reaches the front matter.
    */
   storyStartOffset: number
+  /** The OPF's `<dc:language>` tag as written ("es", "fr-FR", ...), if present -- often missing
+   *  or wrong, so it's only a fallback for detect-book-language.ts's check of the text itself. */
+  languageTag: string | null
 }
 
 function parseXml(xml: string, sourceLabel: string): Document {
@@ -176,6 +179,7 @@ async function readManifestAndSpine(
   title: string | null
   author: string | null
   description: string | null
+  languageTag: string | null
   manifestItems: ManifestItem[]
   metaCoverId: string | null
   /** Resolved path of the OPF `<guide>`'s type="text" reference, if present -- see
@@ -227,6 +231,10 @@ async function readManifestAndSpine(
   // disambiguation needed, just take it (or its unprefixed EPUB2 form) if present.
   const descriptionEl =
     doc.getElementsByTagName("dc:description")[0] ?? doc.getElementsByTagName("description")[0]
+  const languageEl =
+    doc.getElementsByTagName("dc:language")[0] ?? doc.getElementsByTagName("language")[0]
+  const languageTag = languageEl?.textContent?.trim() || null
+
   const rawDescription = descriptionEl?.textContent?.trim() || null
   // Publishers commonly embed simple HTML (<p>, <br/>, <b>, ...) in dc:description, often
   // entity-encoded (e.g. "&lt;p&gt;") so it survives the OPF's own XML parse as literal text
@@ -258,7 +266,7 @@ async function readManifestAndSpine(
     }
   }
 
-  return { spine, title, author, description, manifestItems, metaCoverId, guideTextPath }
+  return { spine, title, author, description, languageTag, manifestItems, metaCoverId, guideTextPath }
 }
 
 /**
@@ -491,7 +499,7 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
   })
 
   const opfPath = await findOpfPath(zip)
-  const { spine, title, author, description, manifestItems, metaCoverId, guideTextPath } =
+  const { spine, title, author, description, languageTag, manifestItems, metaCoverId, guideTextPath } =
     await readManifestAndSpine(zip, opfPath)
   if (spine.length === 0) {
     throw new EpubParseError("This EPUB doesn't have any readable chapters.")
@@ -525,6 +533,7 @@ export async function parseEpub(file: Blob): Promise<ParsedEpub> {
     description: description ? truncateForPreview(description, MAX_DESCRIPTION_CHARS) : null,
     coverImage,
     storyStartOffset,
+    languageTag,
   }
 }
 

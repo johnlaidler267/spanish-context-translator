@@ -210,6 +210,9 @@ export type UserEpubRow = {
    *  before this column existed) -- see
    *  supabase/migrations/0021_user_epub_story_start_offset.sql. */
   story_start_offset: number
+  /** Language the book is written in, or null when unknown -- see
+   *  supabase/migrations/0034_user_epub_language.sql. */
+  language: "spanish" | "french" | "english" | null
 }
 
 /**
@@ -294,8 +297,8 @@ export type ReadingProgressInsert = Omit<
 
 export type UserEpubInsert = Omit<
   UserEpubRow,
-  "id" | "created_at" | "updated_at"
-> & { id?: string }
+  "id" | "created_at" | "updated_at" | "language"
+> & { id?: string; language?: UserEpubRow["language"] }
 
 // ─── Update types (all fields optional except id) ──────────────────────────
 

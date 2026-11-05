@@ -20,10 +20,14 @@ import {
 import {
   deleteUserEpub,
   getUserEpubText,
+  libraryBooksForLearningLanguage,
   saveEpubToLibrary,
+  updateUserEpubLanguage,
   EpubLibraryError,
   type LibraryEpub,
 } from "@/lib/storage/epub-library"
+import { detectBookLanguage } from "@/lib/epub/detect-book-language"
+import type { LearningLanguage } from "@/lib/storage/language-learning-preferences"
 import {
   fetchLibraryCatalog,
   readCachedLibraryEpubs,
@@ -31,6 +35,7 @@ import {
 } from "@/lib/storage/library-catalog"
 import {
   fetchDiscoverCatalog,
+  itemsForLearningLanguage,
   publishDiscoverResource,
   readCachedDiscoverItems,
 } from "@/lib/discover/discover-catalog"
@@ -243,18 +248,20 @@ export default function LibraryPage({ onStartReading, onStartDiscoverReading }: 
     const lastReadAt = new Map(
       getRecentlyViewedProgress(user, MAX_PROGRESS_ENTRIES).map((p) => [p.contentId, p.updatedAt]),
     )
-    const uploads: LibraryEntry[] = books.map((book) => ({
+    // Only books in the language being learned -- the other language's books come back on
+    // switching to it. Uploads of unknown language show in every language.
+    const uploads: LibraryEntry[] = libraryBooksForLearningLanguage(books, learning).map((book) => ({
       kind: "upload",
       book,
       lastActivity: Math.max(lastReadAt.get(book.id) ?? 0, book.createdAt),
     }))
-    const started: LibraryEntry[] = discoverCatalog
+    const started: LibraryEntry[] = itemsForLearningLanguage(discoverCatalog, learning)
       .filter((item) => item.type === "book" && lastReadAt.has(item.id))
       .map((content) => ({ kind: "discover", content, lastActivity: lastReadAt.get(content.id)! }))
     return [...uploads, ...started].sort((a, b) => b.lastActivity - a.lastActivity)
     // syncedProgressVersion: recompute once cloud progress has been merged into local storage.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [books, discoverCatalog, user, syncedProgressVersion])
+  }, [books, discoverCatalog, user, syncedProgressVersion, learning])
 
   const [signInPromptOpen, setSignInPromptOpen] = useState(false)
 
@@ -281,7 +288,11 @@ export default function LibraryPage({ onStartReading, onStartDiscoverReading }: 
       // Lazy: pulls in jszip, only needed once someone actually uploads a book -- see the same
       // reasoning on the landing page's own upload (landing-screen.tsx).
       const { parseEpub } = await import("@/lib/epub/parse-epub")
-      const { text, title, author, description, coverImage, storyStartOffset } = await parseEpub(file)
+      const { text, title, author, description, coverImage, storyStartOffset, languageTag } =
+        await parseEpub(file)
+      // Judged from where the story starts: front matter (copyright page, publisher's notes) is
+      // often in English even in a Spanish or French book.
+      const language = detectBookLanguage({ text: text.slice(storyStartOffset), languageTag }, learning)
 
       // Guests browsing straight to /library may not have a Supabase session yet at all (one
       // is normally created as a side effect of a first translate -- see ensureSessionForGroq's
@@ -300,6 +311,7 @@ export default function LibraryPage({ onStartReading, onStartDiscoverReading }: 
         author,
         description,
         storyStartOffset,
+        language,
       })
       if (!saved) {
         setUploadError("Could not save this book to your library. Check your connection and try again.")
@@ -317,6 +329,7 @@ export default function LibraryPage({ onStartReading, onStartDiscoverReading }: 
         author: author?.trim() || null,
         description: description?.trim() || null,
         storyStartOffset,
+        language,
       }
       setBooks((prev) => {
         const next = [newBook, ...prev]
@@ -351,6 +364,23 @@ export default function LibraryPage({ onStartReading, onStartDiscoverReading }: 
       // isn't left stacked behind it.
       setOpeningBookId(null)
       setPreviewBook(null)
+    }
+  }
+
+  // The reader correcting a detected language from the preview popup. Optimistic, like delete;
+  // a book moved to another language drops out of this grid until the reader switches to it.
+  const handleLanguageChange = async (book: LibraryEpub, language: LearningLanguage) => {
+    const previous = books
+    const update = (list: LibraryEpub[]) => list.map((b) => (b.id === book.id ? { ...b, language } : b))
+    setBooks(update)
+    setPreviewBook((open) => (open?.id === book.id ? { ...open, language } : open))
+    if (user) writeCachedLibraryEpubs(user.id, update(previous))
+    const ok = await updateUserEpubLanguage(user, book.id, language)
+    if (!ok) {
+      setBooks(previous)
+      setPreviewBook((open) => (open?.id === book.id ? book : open))
+      if (user) writeCachedLibraryEpubs(user.id, previous)
+      setListError("Could not change that book's language. Check your connection and try again.")
     }
   }
 
@@ -530,6 +560,7 @@ export default function LibraryPage({ onStartReading, onStartDiscoverReading }: 
         open={previewBook != null}
         onClose={() => setPreviewBook(null)}
         onStartReading={(book) => void handleOpenBook(book)}
+        onLanguageChange={(book, language) => void handleLanguageChange(book, language)}
         progressPercent={previewBook ? getReadingProgressPercent(user, previewBook.id) : null}
         isOpening={previewBook != null && openingBookId === previewBook.id}
       />

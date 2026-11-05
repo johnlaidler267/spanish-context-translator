@@ -27,7 +27,7 @@ function makeMemoryStorage(): Storage {
  */
 function makeBuilder(result: { data: unknown; error: unknown }) {
   const builder: Record<string, unknown> = {}
-  for (const method of ["select", "eq", "order", "insert", "delete", "single", "maybeSingle"]) {
+  for (const method of ["select", "eq", "order", "insert", "update", "delete", "single", "maybeSingle"]) {
     builder[method] = vi.fn(() => builder)
   }
   ;(builder as { then: (resolve: (v: unknown) => void) => void }).then = (resolve) => resolve(result)
@@ -37,9 +37,13 @@ function makeBuilder(result: { data: unknown; error: unknown }) {
 }
 
 let nextResult: { data: unknown; error: unknown } = { data: null, error: null }
+/** Results for successive `from()` calls, ahead of `nextResult` -- for a call that retries. */
+let queuedResults: { data: unknown; error: unknown }[] = []
 let lastBuilder: ReturnType<typeof makeBuilder> | null = null
+const builders: ReturnType<typeof makeBuilder>[] = []
 const fromMock = vi.fn((_table: string) => {
-  lastBuilder = makeBuilder(nextResult)
+  lastBuilder = makeBuilder(queuedResults.shift() ?? nextResult)
+  builders.push(lastBuilder)
   return lastBuilder
 })
 
@@ -60,11 +64,19 @@ const LIST_ROW = {
   author: "Gabriel García Márquez",
   description: "Una saga familiar en el Macondo mítico.",
   story_start_offset: 4200,
+  language: "spanish",
+}
+
+const MISSING_LANGUAGE_COLUMN = {
+  data: null,
+  error: { message: "column user_epubs.language does not exist" },
 }
 
 describe("epub-library", () => {
   beforeEach(() => {
     nextResult = { data: null, error: null }
+    queuedResults = []
+    builders.length = 0
     lastBuilder = null
     fromMock.mockClear()
     vi.stubGlobal("window", {})
@@ -97,8 +109,19 @@ describe("epub-library", () => {
           author: "Gabriel García Márquez",
           description: "Una saga familiar en el Macondo mítico.",
           storyStartOffset: 4200,
+          language: "spanish",
         },
       ])
+    })
+
+    it("still lists books, language unknown, before the language column exists", async () => {
+      const { language: _language, ...oldRow } = LIST_ROW
+      queuedResults = [MISSING_LANGUAGE_COLUMN, { data: [oldRow], error: null }]
+      const { listUserEpubs } = await import("@/lib/storage/epub-library")
+      const result = await listUserEpubs(user)
+      expect(builders[1]!.select.mock.calls[0]![0]).not.toContain("language")
+      expect(result).toHaveLength(1)
+      expect(result[0]!.language).toBeNull()
     })
 
     it("swallows a query error and returns []", async () => {
@@ -147,7 +170,28 @@ describe("epub-library", () => {
         author: null,
         description: null,
         story_start_offset: 0,
+        language: null,
       })
+    })
+
+    it("saves the detected language", async () => {
+      nextResult = { data: { id: "new-epub-id" }, error: null }
+      const { saveEpubToLibrary } = await import("@/lib/storage/epub-library")
+      await saveEpubToLibrary(user, { title: "X", fileName: "x.epub", text: "hola", language: "spanish" })
+      expect(lastBuilder!.insert).toHaveBeenCalledWith(expect.objectContaining({ language: "spanish" }))
+    })
+
+    it("still saves the book, without a language, before the language column exists", async () => {
+      queuedResults = [MISSING_LANGUAGE_COLUMN, { data: { id: "new-epub-id" }, error: null }]
+      const { saveEpubToLibrary } = await import("@/lib/storage/epub-library")
+      const result = await saveEpubToLibrary(user, {
+        title: "X",
+        fileName: "x.epub",
+        text: "hola",
+        language: "spanish",
+      })
+      expect(result).toEqual({ id: "new-epub-id" })
+      expect(builders[1]!.insert.mock.calls[0]![0]).not.toHaveProperty("language")
     })
 
     it("passes through an extracted author", async () => {

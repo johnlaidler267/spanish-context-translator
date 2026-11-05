@@ -71,7 +71,16 @@ import { getStoredLandingDraft, setStoredLandingDraft } from "@/lib/storage/land
 import { getStoredReadingTheme, setStoredReadingTheme } from "@/lib/storage/theme-storage"
 import { isLandingArtReady, whenLandingArtReady } from "@/lib/landing-art-warmup"
 import { getReadingProgressEntry, setReadingProgress } from "@/lib/storage/reading-progress-storage"
-import { syncLanguageLearningPreferencesWithAccount } from "@/lib/storage/language-learning-account"
+import {
+  chooseLanguageLearningPreferences,
+  syncLanguageLearningPreferencesWithAccount,
+} from "@/lib/storage/language-learning-account"
+import {
+  getStoredLanguageLearningPreferences,
+  normalizeLanguageLearningPreferences,
+  type LearningLanguage,
+} from "@/lib/storage/language-learning-preferences"
+import { OtherLanguageBookDialog } from "@/components/library/other-language-book-dialog"
 import {
   ensureCloudReadingProgressPulled,
   pushReadingProgress,
@@ -99,7 +108,7 @@ import {
   UsageError,
 } from "@/lib/subscription/usage"
 import type { ContentItem } from "@/lib/discover/content-data"
-import { getUserEpubText, type LibraryEpub } from "@/lib/storage/epub-library"
+import { getUserEpubText, isOtherLanguageBook, type LibraryEpub } from "@/lib/storage/epub-library"
 import { fetchLibraryCatalog } from "@/lib/storage/library-catalog"
 import { supabase } from "@/lib/supabase"
 import { getTier } from "@/lib/subscription/tiers"
@@ -1347,6 +1356,30 @@ export default function App() {
     [handleTextSubmit, findSavedBookLayout, openWithoutLoadingOverlay],
   )
 
+  // An upload written in another language than the one being learned asks to switch first
+  // (see OtherLanguageBookDialog) rather than opening it in the wrong language mode.
+  const [otherLanguageBook, setOtherLanguageBook] = useState<
+    (LibraryEpub & { language: LearningLanguage }) | null
+  >(null)
+  const handleOpenLibraryBook = useCallback(
+    async (book: LibraryEpub) => {
+      if (isOtherLanguageBook(book, getStoredLanguageLearningPreferences().learning)) {
+        setOtherLanguageBook(book as LibraryEpub & { language: LearningLanguage })
+        return
+      }
+      await handleLibraryStartReading(book)
+    },
+    [handleLibraryStartReading],
+  )
+  const switchLanguageAndOpenBook = useCallback(() => {
+    const book = otherLanguageBook
+    if (!book) return
+    setOtherLanguageBook(null)
+    const { native } = getStoredLanguageLearningPreferences()
+    chooseLanguageLearningPreferences(normalizeLanguageLearningPreferences({ learning: book.language, native }), user)
+    void handleLibraryStartReading(book)
+  }, [otherLanguageBook, handleLibraryStartReading, user])
+
   /**
    * Tears down the reading session. "previous" (the reader's own Back arrow) returns to wherever
    * reading was entered from; "home" (the sidebar's Home link / wordmark) stays on Home -- the URL
@@ -1645,7 +1678,7 @@ export default function App() {
           theme={appTheme}
           displayName={displayName}
           onContinueReading={handleLandingDiscoverOpen}
-          onContinueLibraryBook={handleLibraryStartReading}
+          onContinueLibraryBook={handleOpenLibraryBook}
         />
       </div>
     </main>
@@ -1913,6 +1946,11 @@ export default function App() {
         />
       )}
       <GuestSignupModal open={guestSignupOpen} onClose={() => setGuestSignupOpen(false)} />
+      <OtherLanguageBookDialog
+        book={otherLanguageBook}
+        onSwitch={switchLanguageAndOpenBook}
+        onCancel={() => setOtherLanguageBook(null)}
+      />
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route path="/settings" element={<SettingsPage />} />
@@ -1941,7 +1979,7 @@ export default function App() {
               path="library"
               element={
                 <LibraryPage
-                  onStartReading={handleLibraryStartReading}
+                  onStartReading={handleOpenLibraryBook}
                   onStartDiscoverReading={handleDiscoverStartReading}
                 />
               }
