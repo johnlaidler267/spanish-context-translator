@@ -1,4 +1,6 @@
 import type { ContentItem } from "@/lib/discover/content-data"
+import { itemsForLearningLanguage } from "@/lib/discover/discover-catalog"
+import type { LearningLanguage } from "@/lib/storage/language-learning-preferences"
 import type { LibraryEpub } from "@/lib/storage/epub-library"
 import type { RecentlyViewedEntry } from "@/lib/storage/reading-progress-storage"
 
@@ -41,14 +43,20 @@ export type ContinueReadingItem =
  * `user_epubs` rows, and a library book published to Discover gets a third -- each with its
  * own progress entry. Only the most recently read copy is shown (matched by title + author),
  * so the row doesn't fill up with repeats of one book.
+ *
+ * Discover items are limited to the language the reader is currently learning, so switching to
+ * French hides Spanish catalog books (their progress is untouched -- switching back shows them
+ * again). Personal uploads aren't filtered: `user_epubs` has no language column, so there's
+ * nothing to filter them on yet.
  */
 export function buildContinueReadingItems(
   recent: RecentlyViewedEntry[],
   catalog: ContentItem[],
   libraryBooks: LibraryEpub[],
   limit: number,
+  learning: LearningLanguage,
 ): ContinueReadingItem[] {
-  const byId = new Map(catalog.map((item) => [item.id, item]))
+  const byId = new Map(itemsForLearningLanguage(catalog, learning).map((item) => [item.id, item]))
   const libraryById = new Map(libraryBooks.map((book) => [book.id, book]))
   const result: ContinueReadingItem[] = []
   const seenBooks = new Set<string>()

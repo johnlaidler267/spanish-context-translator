@@ -51,7 +51,7 @@ describe("buildContinueReadingItems", () => {
     // upload rather than a Discover item.
     const recent = [entry("u1", 2000), entry("d1", 1000)]
 
-    const items = buildContinueReadingItems(recent, catalog, library, 5)
+    const items = buildContinueReadingItems(recent, catalog, library, 5, "spanish")
 
     expect(items).toEqual([
       { kind: "library", book: library[0], percent: 30 },
@@ -71,7 +71,7 @@ describe("buildContinueReadingItems", () => {
       entry("d3", 1000),
     ]
 
-    const items = buildContinueReadingItems(recent, catalog, library, 5)
+    const items = buildContinueReadingItems(recent, catalog, library, 5, "spanish")
 
     expect(items).toHaveLength(5)
     expect(items.map((i) => (i.kind === "library" ? i.book.id : i.content.id))).toEqual([
@@ -92,7 +92,7 @@ describe("buildContinueReadingItems", () => {
       entry("d1", 1000),
     ]
 
-    const items = buildContinueReadingItems(recent, catalog, library, 5)
+    const items = buildContinueReadingItems(recent, catalog, library, 5, "spanish")
 
     expect(items.map((i) => (i.kind === "library" ? i.book.id : i.content.id))).toEqual(["u1", "d1"])
   })
@@ -101,7 +101,7 @@ describe("buildContinueReadingItems", () => {
     const library = [libraryBook("u1")]
     const recent: RecentlyViewedEntry[] = [{ contentId: "u1", pageIndex: 0, updatedAt: 1000 }]
 
-    const items = buildContinueReadingItems(recent, [], library, 5)
+    const items = buildContinueReadingItems(recent, [], library, 5, "spanish")
 
     expect(items).toEqual([{ kind: "library", book: library[0], percent: null }])
   })
@@ -122,11 +122,24 @@ describe("buildContinueReadingItems", () => {
     const catalog = [{ ...discoverItem("d1"), title: "Noces, suivi de L'été", author: "Albert Camus" }]
     const recent = [entry("u2", 4000), entry("u1", 3000), entry("d1", 2500), entry("u3", 2000)]
 
-    const items = buildContinueReadingItems(recent, catalog, library, 2)
+    const items = buildContinueReadingItems(recent, catalog, library, 2, "spanish")
 
     expect(items).toEqual([
       { kind: "library", book: library[1], percent: 30 },
       { kind: "library", book: library[2], percent: 30 },
     ])
+  })
+
+  it("hides Discover items in another language, and shows them again on switching back", () => {
+    const spanish = discoverItem("es1")
+    const french = { ...discoverItem("fr1"), language: "French" }
+    const library = [libraryBook("u1")]
+    const recent = [entry("es1", 300), entry("fr1", 200), entry("u1", 100)]
+
+    const inFrench = buildContinueReadingItems(recent, [spanish, french], library, 5, "french")
+    expect(inFrench.map((i) => (i.kind === "discover" ? i.content.id : i.book.id))).toEqual(["fr1", "u1"])
+
+    const inSpanish = buildContinueReadingItems(recent, [spanish, french], library, 5, "spanish")
+    expect(inSpanish.map((i) => (i.kind === "discover" ? i.content.id : i.book.id))).toEqual(["es1", "u1"])
   })
 })

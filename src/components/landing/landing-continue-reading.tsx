@@ -28,6 +28,7 @@ import {
 import { getRecentlyViewedProgress } from "@/lib/storage/reading-progress-storage"
 import { ensureCloudReadingProgressPulled } from "@/lib/storage/reading-progress-sync"
 import { useViewport } from "@/contexts/viewport-context"
+import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
 import type { ContentItem } from "@/lib/discover/content-data"
 
 // MAX_CONTINUE_READING_ITEMS (4) keeps the desktop row from overflowing into a horizontal
@@ -95,6 +96,7 @@ export function useLandingContinueReading({
   mobileFallback = null,
 }: UseLandingContinueReadingOptions): { mobileRow: ReactNode; desktopRow: ReactNode } {
   const { isMobile } = useViewport()
+  const { learning } = useLanguageLearningPreferences()
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
   // This session's in-memory listing (continue-reading-library.ts) wins over the localStorage
   // copy: it came from the network moments ago -- usually the pre-mount warm-up in main.jsx,
@@ -205,11 +207,11 @@ export function useLandingContinueReading({
   const items = useMemo(() => {
     if (catalog.length === 0 && booksWithCovers.length === 0) return []
     const recent = getRecentlyViewedProgress(user, RECENT_LOOKBACK_ITEMS)
-    return buildContinueReadingItems(recent, catalog, booksWithCovers, MAX_CONTINUE_READING_ITEMS)
+    return buildContinueReadingItems(recent, catalog, booksWithCovers, MAX_CONTINUE_READING_ITEMS, learning)
     // `syncVersion` isn't read above -- it's a deliberate recompute trigger so this memo
     // reruns once cloud-synced progress has landed in localStorage (see the effect above).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, booksWithCovers, user, syncVersion])
+  }, [catalog, booksWithCovers, user, syncVersion, learning])
 
   // Covers for the library books this viewport actually shows and we don't have yet -- the
   // warm-up has usually fetched them already, in which case this joins or reuses its request.
