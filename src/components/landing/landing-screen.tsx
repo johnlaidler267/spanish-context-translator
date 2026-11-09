@@ -599,15 +599,17 @@ export function LandingScreen({
                 For {languageLabel} learners<span className="max-md:hidden">, from first sentences to full novels</span>
                 <span className="md:hidden">, any level</span>
               </p>
-              <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl shrink-0" style={{ lineHeight: "1.15" }}>
-                <span className="wordmark-ink">Read real {languageLabel}.</span>
-              </h1>
-              <p className="landing-tagline landing-tagline--demo shrink-0">
-                <span className="landing-tagline-phrase">
+              <h1 className="landing-demo-title shrink-0">
+                Read real {languageLabel}.<br />
+                <em>
                   <span className="landing-tagline-verb--hover">Hover any phrase</span>
                   <span className="landing-tagline-verb--touch">Tap any phrase</span>
-                </span>{" "}
-                to see what it means, and why. You keep reading in {languageLabel}, not in English.
+                </em>{" "}
+                to see what it means<span className="max-md:hidden">, and why</span>.
+              </h1>
+              <p className="landing-demo-sub shrink-0">
+                Not a word-by-word translation. LexaLens breaks each sentence into the chunks{" "}
+                {languageLabel} speakers actually think in, so you keep reading in {languageLabel}.
               </p>
               <LandingDemo
                 language={demoLanguage}

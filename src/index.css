@@ -1078,6 +1078,30 @@ article span {
 }
 .dark .landing-eyebrow { color: #c9ad6e; }
 
+.landing-demo-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2rem, 1.1rem + 2.7vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  color: var(--foreground);
+}
+.landing-demo-title em {
+  font-style: italic;
+  color: #a3543a;
+}
+.dark .landing-demo-title em { color: #e0a084; }
+.landing-demo-sub {
+  max-width: 38rem;
+  margin: 1.1rem auto 0;
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  text-wrap: balance;
+  color: var(--muted-foreground);
+}
 .landing-demo {
   width: 100%;
   max-width: 46rem;
@@ -1157,7 +1181,9 @@ article span {
 }
 .landing-demo__chunk {
   display: inline;
-  padding: 0 0.08em;
+  /* No padding: it would push punctuation and elided words (m'a, c'était) away from the chunk.
+     The highlight bleeds past the text with a box-shadow instead. */
+  padding: 0;
   margin: 0;
   border: 0;
   border-radius: 3px;
@@ -1175,6 +1201,7 @@ article span {
 .landing-demo__chunk:hover,
 .landing-demo__chunk[aria-pressed="true"] {
   background: color-mix(in srgb, var(--reading-warm) 18%, transparent);
+  box-shadow: 0 0 0 0.1em color-mix(in srgb, var(--reading-warm) 18%, transparent);
   border-bottom-color: var(--reading-warm);
 }
 .landing-demo__details {
@@ -4159,7 +4186,8 @@ article span {
   .landing-demo__controls { flex-wrap: nowrap; gap: 0.35rem; }
   .landing-demo__segment { padding: 0 0.5rem; font-size: 0.7rem; }
   .landing-demo__passage { font-size: 1.125rem; line-height: 1.7; }
-  .landing-tagline--demo { display: none; }
+  .landing-demo-sub { display: none; }
+  .landing-demo-title { font-size: 1.6rem; line-height: 1.12; }
   .landing-eyebrow { margin-bottom: 0.5rem; }
 }
 
