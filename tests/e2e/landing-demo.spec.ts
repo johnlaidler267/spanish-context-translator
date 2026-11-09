@@ -25,14 +25,17 @@ test("a first-time visitor can explore the demo without clicking anything first"
 
   await expect(page.getByRole("heading", { name: "Read real Spanish." })).toBeVisible({ timeout: 20_000 })
   // One phrase starts explained.
-  await expect(details(page)).toContainText("that she didn't care")
+  await expect(details(page)).toContainText("she didn't care")
 
   await page.getByRole("button", { name: "puso el grito en el cielo" }).hover()
   await expect(details(page)).toContainText("she hit the roof")
   await expect(details(page)).toContainText("she put the scream in the sky")
 
   await page.getByRole("group", { name: "Level" }).getByRole("button", { name: "Beginner" }).click()
-  await expect(details(page)).toContainText("I have a coffee")
+  await expect(details(page)).toContainText("in the morning")
+  // Ordinary words are their own chunks, as in the real reader.
+  await page.getByRole("button", { name: "tomo", exact: true }).hover()
+  await expect(details(page)).toContainText("I have")
 })
 
 test("\"Read a full short story\" opens a guest-readable book at the chosen level", async ({ page }) => {

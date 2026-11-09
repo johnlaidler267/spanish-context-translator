@@ -92,7 +92,8 @@ export function LandingDemo({ language, onChangeLanguage, onReadStory }: Landing
                 onClick={() => setActive(i)}
               >
                 {c.text}
-              </button>{" "}
+              </button>
+              {c.after ?? " "}
             </span>
           ))}
         </p>
