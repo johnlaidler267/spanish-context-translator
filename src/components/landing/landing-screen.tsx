@@ -47,6 +47,8 @@ import {
   languagePrefsFromAccount,
 } from "@/lib/storage/language-learning-account"
 import { LanguagePickerModal } from "@/components/landing/language-picker-modal"
+import { LandingDemo } from "@/components/landing/landing-demo"
+import { isDemoLanguage, type DemoLanguage, type DemoLevel } from "@/lib/landing/demo-passages"
 import { VoiceInputButton } from "@/components/reading/voice-input-button"
 import { AppErrorModal } from "@/components/app-error-modal"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
@@ -424,7 +426,7 @@ export function LandingScreen({
   // the filigree divider, which separates it from the composer form; desktopRow replaces the sample-excerpt fallback
   // below the composer) -- see useLandingContinueReading for why this is a hook and not a
   // component rendered directly where it's used.
-  const { mobileRow, desktopRow } = useLandingContinueReading({
+  const { mobileRow: continueMobileRow, desktopRow, isFirstVisit } = useLandingContinueReading({
     user,
     onContinue: onContinueReading,
     onOpenLibraryBook: onContinueLibraryBook,
@@ -469,6 +471,36 @@ export function LandingScreen({
       </div>
     ) : null,
   })
+
+  // First visit (nothing read yet, Spanish or French): lead with a working demo instead of an
+  // empty textbox, and skip the language popup -- the demo has its own Spanish/French switch.
+  const showDemo = isFirstVisit && isDemoLanguage(langPrefs.learning)
+  // Phones have no room for both the demo and the picks row above the composer; the demo's
+  // "Read a full short story" button covers what the picks were there for.
+  const mobileRow = showDemo ? null : continueMobileRow
+  const demoLanguage: DemoLanguage = isDemoLanguage(langPrefs.learning) ? langPrefs.learning : "spanish"
+  const languageLabel = demoLanguage === "french" ? "French" : "Spanish"
+
+  // The story behind "Read a full short story": a book open to guests (so it reads without an
+  // account), at the level picked in the demo when there is one.
+  const storyFor = useCallback(
+    (level: DemoLevel): ContentItem | null => {
+      const open = featuredForLearner.filter((item) => item.type === "book" && item.openToGuests)
+      return open.find((item) => item.difficulty === level) ?? open[0] ?? null
+    },
+    [featuredForLearner],
+  )
+  const hasStory = featuredForLearner.some((item) => item.type === "book" && item.openToGuests)
+  const handleReadStory = useCallback(
+    (level: DemoLevel) => {
+      const item = storyFor(level)
+      if (item) onContinueReading(item)
+    },
+    [storyFor, onContinueReading],
+  )
+
+  // One line until the reader clicks in, pastes, or fills it (Random/Learn/voice).
+  const composerSlim = !text && !focused
 
   const heroGreeting = landingGreetingWord(langPrefs.learning)
   const heroTailPhrase =
@@ -537,6 +569,7 @@ export function LandingScreen({
             auto margin collapses to 0 when the hero overflows on a short phone, where
             justify-end would push the top of the art out of reach of its own scroll. */}
         <div className="hero-mark hero-mark--literary text-center relative order-1 flex flex-col flex-1 justify-center max-md:justify-start items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block pt-2 md:pt-0 pb-[clamp(0.75rem,5dvh,2.5rem)] md:pb-6">
+          {!showDemo && (
           <img
             src="/landing-hero-books.webp"
             alt=""
@@ -556,9 +589,34 @@ export function LandingScreen({
             loading="eager"
             fetchPriority="high"
           />
+          )}
           {/* With no Continue Reading row (signed out, or nothing in progress) there's nothing
               below for the greeting to introduce, so pair the art's mt-auto with mb-auto here to
               center art + greeting in the hero instead of leaving them sunk to its bottom. */}
+          {showDemo ? (
+            <>
+              <p className="landing-eyebrow">
+                For {languageLabel} learners<span className="max-md:hidden">, from first sentences to full novels</span>
+                <span className="md:hidden">, any level</span>
+              </p>
+              <h1 className="wordmark font-normal text-3xl sm:text-4xl md:text-5xl shrink-0" style={{ lineHeight: "1.15" }}>
+                <span className="wordmark-ink">Read real {languageLabel}.</span>
+              </h1>
+              <p className="landing-tagline landing-tagline--demo shrink-0">
+                <span className="landing-tagline-phrase">
+                  <span className="landing-tagline-verb--hover">Hover any phrase</span>
+                  <span className="landing-tagline-verb--touch">Tap any phrase</span>
+                </span>{" "}
+                to see what it means, and why. You keep reading in {languageLabel}, not in English.
+              </p>
+              <LandingDemo
+                language={demoLanguage}
+                onChangeLanguage={chooseFirstVisitLanguage}
+                onReadStory={hasStory ? handleReadStory : null}
+              />
+            </>
+          ) : (
+          <>
           <h1
             className={`wordmark font-normal text-3xl sm:text-4xl md:text-5xl shrink-0${mobileRow == null && !isGuest ? " max-md:mb-auto" : ""}`}
             style={{ lineHeight: "1.15" }}
@@ -589,6 +647,8 @@ export function LandingScreen({
               to see what it means.
             </p>
           )}
+          </>
+          )}
         </div>
 
         {/* order-3 on mobile (md:order-2 on desktop) for this whole group relative to hero/
@@ -613,7 +673,7 @@ export function LandingScreen({
               className="contents"
               onSubmit={handleComposerSubmit}
             >
-            <div className="textarea-wrapper w-full">
+            <div className={`textarea-wrapper w-full${composerSlim ? " textarea-wrapper--slim" : ""}`}>
               <span className="corner corner-tl" aria-hidden />
               <span className="corner corner-tr" aria-hidden />
               <span className="corner corner-bl" aria-hidden />
@@ -635,7 +695,7 @@ export function LandingScreen({
                 />
                 {!text && !focused && (
                   <span className="animated-placeholder" style={{ opacity: placeholderVisible ? 1 : 0 }}>
-                    {PLACEHOLDERS[placeholderIndex]}
+                    {showDemo ? `Paste your own ${languageLabel}…` : PLACEHOLDERS[placeholderIndex]}
                   </span>
                 )}
               </div>
@@ -737,6 +797,7 @@ export function LandingScreen({
               </div>
             </div>
             </form>
+            {showDemo && <p className="landing-free-note">Free. No account needed to start.</p>}
           </div>
         </div>
 
@@ -746,7 +807,7 @@ export function LandingScreen({
         </div>
       </div>
       </div>
-      {needsLanguagePick && (
+      {needsLanguagePick && !showDemo && (
         <LanguagePickerModal
           onChoose={chooseFirstVisitLanguage}
           onSkip={() => chooseFirstVisitLanguage("spanish")}
