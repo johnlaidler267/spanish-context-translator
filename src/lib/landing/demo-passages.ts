@@ -27,7 +27,8 @@ export interface DemoChunk {
 
 export interface DemoPassage {
   chunks: DemoChunk[]
-  /** Index of the chunk shown expanded before the visitor touches anything. */
+  /** Index of the chunk whose tooltip is open before the visitor touches anything. Keep it off
+   *  the first line: an open tooltip sits above its phrase and would cover the controls. */
   initial: number
 }
 
@@ -69,7 +70,7 @@ export const DEMO_PASSAGES: Record<DemoLanguage, Record<DemoLevel, DemoPassage>>
     // Ayer mi hermana me dijo que le daba igual dónde cenar, pero cuando llegamos al restaurante puso el
     // grito en el cielo porque estaba cerrado. Al final nos tocó pedir pizza y, la verdad, me supo a gloria.
     intermediate: {
-      initial: 6,
+      initial: 14,
       chunks: [
         { text: "Ayer", meaning: "yesterday" },
         { text: "mi", meaning: "my" },
@@ -122,7 +123,7 @@ export const DEMO_PASSAGES: Record<DemoLanguage, Record<DemoLevel, DemoPassage>>
     // Por más que le dé vueltas, no logro entender cómo se las arregló para salirse con la suya.
     // Si lo hubiera sabido, no me habría metido en este lío.
     advanced: {
-      initial: 0,
+      initial: 6,
       chunks: [
         {
           text: "Por más que",
@@ -246,7 +247,7 @@ export const DEMO_PASSAGES: Record<DemoLanguage, Record<DemoLevel, DemoPassage>>
     // J'ai beau y réfléchir, je n'arrive pas à comprendre comment il s'en est sorti.
     // Si j'avais su, je ne me serais jamais fourré dans ce pétrin.
     advanced: {
-      initial: 1,
+      initial: 12,
       chunks: [
         { text: "J'", meaning: "I", after: "" },
         {

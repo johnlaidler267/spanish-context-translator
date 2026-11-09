@@ -1144,7 +1144,6 @@ article span {
 }
 .dark .landing-demo__segment[aria-pressed="true"] { background: #2e2c29; }
 .landing-demo__segment:focus-visible,
-.landing-demo__chunk:focus-visible,
 .landing-demo__story-btn:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
@@ -1152,7 +1151,9 @@ article span {
 
 .landing-demo__card {
   position: relative;
-  padding: 1.5rem 1.75rem 1.25rem;
+  /* Extra room on top: the showcase tooltip opens above a second-line phrase and shouldn't
+     reach the controls. */
+  padding: 2.25rem 1.75rem 1.5rem;
   border-radius: 14px;
   background: #fdfbf7;
   border: 1px solid rgba(0, 0, 0, 0.088);
@@ -1178,62 +1179,6 @@ article span {
   font-size: clamp(1.25rem, 1.05rem + 0.9vw, 1.75rem);
   line-height: 1.75;
   color: var(--foreground);
-}
-.landing-demo__chunk {
-  display: inline;
-  /* No padding: it would push punctuation and elided words (m'a, c'était) away from the chunk.
-     The highlight bleeds past the text with a box-shadow instead. */
-  padding: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 3px;
-  background: transparent;
-  font: inherit;
-  line-height: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  border-bottom: 1.5px dotted color-mix(in srgb, var(--accent) 70%, transparent);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-  transition: background-color 120ms ease;
-}
-.landing-demo__chunk:hover,
-.landing-demo__chunk[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--reading-warm) 18%, transparent);
-  box-shadow: 0 0 0 0.1em color-mix(in srgb, var(--reading-warm) 18%, transparent);
-  border-bottom-color: var(--reading-warm);
-}
-.landing-demo__details {
-  margin-top: 1rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
-  min-height: 5.25rem;
-  font-family: var(--font-sans);
-}
-.landing-demo__details p { margin: 0; }
-.landing-demo__phrase {
-  font-family: var(--font-reading);
-  font-size: 1.125rem;
-  color: #a3543a;
-}
-.dark .landing-demo__phrase { color: #e0a084; }
-.landing-demo__meaning {
-  margin-top: 0.1rem !important;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  color: var(--foreground);
-}
-.landing-demo__literal {
-  margin-top: 0.2rem !important;
-  font-size: 0.9375rem;
-  color: var(--muted-foreground);
-}
-.landing-demo__note {
-  margin-top: 0.4rem !important;
-  font-size: 0.9375rem;
-  line-height: 1.45;
-  color: var(--muted-foreground);
 }
 .landing-demo__next {
   display: flex;
@@ -1276,7 +1221,6 @@ article span {
   .landing-demo { margin-top: 1rem; }
   .landing-demo__card { padding: 1rem 1.1rem 0.9rem; }
   .landing-demo__segment { padding: 0 0.6rem; font-size: 0.75rem; min-height: 32px; }
-  .landing-demo__details { min-height: 4.5rem; margin-top: 0.7rem; padding-top: 0.6rem; }
   .landing-demo__next { margin-top: 1rem; }
 }
 
