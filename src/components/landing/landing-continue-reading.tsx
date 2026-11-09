@@ -94,7 +94,7 @@ export function useLandingContinueReading({
   onOpenLibraryBook,
   fallback,
   mobileFallback = null,
-}: UseLandingContinueReadingOptions): { mobileRow: ReactNode; desktopRow: ReactNode } {
+}: UseLandingContinueReadingOptions): { mobileRow: ReactNode; desktopRow: ReactNode; isFirstVisit: boolean } {
   const { isMobile } = useViewport()
   const { learning } = useLanguageLearningPreferences()
   const [catalog, setCatalog] = useState<ContentItem[]>(() => readCachedDiscoverItems() ?? [])
@@ -267,10 +267,14 @@ export function useLandingContinueReading({
     writeCachedLibraryBooks(user, libraryBooks, covers, shownIds)
   }, [libraryLoadedFromNetwork, libraryBooks, covers, items, user])
 
+  // Nothing read yet (or, before the sources answer, nothing remembered from a last visit): the
+  // landing page shows a first-visit layout (a demo) instead of the reader's workspace.
+  const isFirstVisit = items.length === 0 && (resolved || reservedCount === 0)
+
   // Still answering: hold placeholders rather than show a partial, unstable answer. With no
   // remembered count there is nothing to promise, so a first-ever visit falls through to the
   // fallback below rather than flashing placeholders at a reader who may have no history.
-  if (!resolved && reservedCount === 0) return isMobile ? { mobileRow: mobileFallback, desktopRow: null } : { mobileRow: null, desktopRow: fallback }
+  if (!resolved && reservedCount === 0) return { ...(isMobile ? { mobileRow: mobileFallback, desktopRow: null } : { mobileRow: null, desktopRow: fallback }), isFirstVisit }
 
   if (!resolved) {
     const placeholders = (count: number) =>
@@ -280,6 +284,7 @@ export function useLandingContinueReading({
 
     return isMobile
       ? {
+          isFirstVisit,
           mobileRow: (
             <div className="continue-reading-mobile w-full order-1" aria-busy="true">
               <div className="continue-reading-mobile__row">
@@ -290,6 +295,7 @@ export function useLandingContinueReading({
           desktopRow: null,
         }
       : {
+          isFirstVisit,
           mobileRow: null,
           desktopRow: (
             <div
@@ -305,7 +311,7 @@ export function useLandingContinueReading({
         }
   }
 
-  if (items.length === 0) return isMobile ? { mobileRow: mobileFallback, desktopRow: null } : { mobileRow: null, desktopRow: fallback }
+  if (items.length === 0) return { ...(isMobile ? { mobileRow: mobileFallback, desktopRow: null } : { mobileRow: null, desktopRow: fallback }), isFirstVisit }
 
   const mobileItems = items.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS)
 
@@ -314,6 +320,7 @@ export function useLandingContinueReading({
   // duplication of rendering both rows in the DOM and hiding one with CSS.
   if (isMobile) {
     return {
+      isFirstVisit,
       // No "Continue reading" label on mobile: it stacked a second line of small caps right
       // under the greeting, and the row only ever holds the reader's own recently-opened books,
       // which they recognize on sight -- the progress bar and the percentage beside the author
@@ -350,6 +357,7 @@ export function useLandingContinueReading({
   }
 
   return {
+    isFirstVisit,
     mobileRow: null,
     // Desktop: sits where the sample excerpt normally does, below the composer.
     desktopRow: (

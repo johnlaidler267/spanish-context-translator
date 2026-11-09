@@ -1,8 +1,8 @@
 /**
- * Signed-out landing page: a first-time visitor should get something to click under the
- * composer -- Discover picks with short pieces (which open without an account) ahead of books,
- * on mobile too -- plus a one-line explainer. With no catalog, the built-in sample shows instead
- * of a bare sign-in ask.
+ * Signed-out landing page: a first-time visitor sees the demo up top, and on desktop something
+ * to click under the composer -- Discover picks with short pieces (which open without an
+ * account) ahead of books. On a phone the demo takes the picks row's place (no room for both).
+ * With no catalog, the built-in sample shows instead of a bare sign-in ask.
  */
 
 import { test, expect } from "@playwright/test"
@@ -13,9 +13,9 @@ test.setTimeout(45_000)
 test("desktop: short pieces come before books, with an explainer line", async ({ page }) => {
   await setupMocks(page, { signedIn: false })
   await page.goto("/")
-  await expect(page.getByText("hover over a phrase")).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole("heading", { name: "Read real Spanish." })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText("Try a short read")).toBeVisible()
-  const titles = page.locator(".continue-reading__row").getByText(/Despacito|El Principito/)
+  const titles = page.locator(".continue-reading__row .discover-card__title")
   await expect(titles).toHaveText(["Despacito", "El Principito"])
   await expect(page.getByText("Welcome", { exact: true })).toHaveCount(0)
 })
@@ -23,13 +23,13 @@ test("desktop: short pieces come before books, with an explainer line", async ({
 test.describe("mobile", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
-  test("shows the picks row above the composer", async ({ page }) => {
+  test("shows the demo instead of the picks row, worded for touch", async ({ page }) => {
     await setupMocks(page, { signedIn: false })
     await page.goto("/")
-    const row = page.locator(".continue-reading-mobile__row")
-    await expect(row.getByText("Despacito")).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByText("touch a phrase")).toBeVisible()
-    await expect(page.getByText("hover over a phrase")).toBeHidden()
+    await expect(page.getByRole("heading", { name: "Read real Spanish." })).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator(".landing-demo__hint").getByText("Tap any phrase")).toBeVisible()
+    await expect(page.locator(".landing-demo__hint").getByText("Hover any phrase")).toBeHidden()
+    await expect(page.locator(".continue-reading-mobile__row")).toHaveCount(0)
   })
 })
 
