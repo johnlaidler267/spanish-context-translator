@@ -17,25 +17,28 @@ const GUEST_STORIES = [
   { ...SAMPLE_DISCOVER_ITEMS[0], id: "story-intermediate", title: "La tortilla de la abuela", difficulty: "intermediate", open_to_guests: true },
 ]
 
-const details = (page: import("@playwright/test").Page) => page.locator(".landing-demo__details")
+const tooltip = (page: import("@playwright/test").Page, text: string) =>
+  page.locator("[data-popup]", { hasText: text })
+const phrase = (page: import("@playwright/test").Page, text: string) =>
+  page.locator(".landing-demo [data-chunk]").filter({ hasText: new RegExp(`^${text}$`) })
 
 test("a first-time visitor can explore the demo without clicking anything first", async ({ page }) => {
   await setupMocks(page, { signedIn: false, discoverItems: [...SAMPLE_DISCOVER_ITEMS, ...GUEST_STORIES] })
   await page.goto("/")
 
   await expect(page.getByRole("heading", { name: "Read real Spanish." })).toBeVisible({ timeout: 20_000 })
-  // One phrase starts explained.
-  await expect(details(page)).toContainText("she didn't care")
+  // One phrase starts with the reader's tooltip open.
+  await expect(tooltip(page, "she hit the roof")).toBeVisible()
 
-  await page.getByRole("button", { name: "puso el grito en el cielo" }).hover()
-  await expect(details(page)).toContainText("she hit the roof")
-  await expect(details(page)).toContainText("she put the scream in the sky")
+  await phrase(page, "le daba igual").hover()
+  await expect(tooltip(page, "she didn't care")).toBeVisible()
+  await expect(tooltip(page, "she didn't care")).toContainText("to her it gave equal")
 
   await page.getByRole("group", { name: "Level" }).getByRole("button", { name: "Beginner" }).click()
-  await expect(details(page)).toContainText("in the morning")
+  await expect(tooltip(page, "in the morning")).toBeVisible()
   // Ordinary words are their own chunks, as in the real reader.
-  await page.getByRole("button", { name: "tomo", exact: true }).hover()
-  await expect(details(page)).toContainText("I have")
+  await phrase(page, "tomo").hover()
+  await expect(tooltip(page, "I have")).toBeVisible()
 })
 
 test("\"Read a full short story\" opens a guest-readable book at the chosen level", async ({ page }) => {
@@ -89,4 +92,16 @@ test("a returning reader gets their workspace, not the demo", async ({ page }) =
   await expect(page.getByText("Continue reading")).toBeVisible({ timeout: 20_000 })
   await expect(page.locator(".landing-demo")).toHaveCount(0)
   await expect(page.locator(".textarea-wrapper")).toHaveClass(/textarea-wrapper--slim/)
+})
+
+test.describe("phone", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  test("touching a phrase shows its tooltip", async ({ page }) => {
+    await setupMocks(page, { signedIn: false })
+    await page.goto("/")
+    await expect(tooltip(page, "she hit the roof")).toBeVisible({ timeout: 20_000 })
+    await phrase(page, "le daba igual").tap()
+    await expect(tooltip(page, "she didn't care")).toBeVisible()
+  })
 })

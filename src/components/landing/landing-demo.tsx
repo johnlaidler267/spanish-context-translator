@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useSyncExternalStore } from "react"
+import { TextChunk } from "@/components/reading/text-chunk"
 import {
   DEFAULT_DEMO_LEVEL,
   DEMO_LEVELS,
@@ -28,21 +29,26 @@ const LANG_ATTR: Record<DemoLanguage, string> = { spanish: "es", french: "fr" }
  * tap) before doing anything else -- so the first thing they see is the reader working, not an
  * empty textbox. Passages are stored (lib/landing/demo-passages.ts): instant, no AI call.
  *
- * One phrase starts expanded so the idea lands even for someone who never moves the mouse.
- * The explanation lives in a panel under the passage rather than a floating tooltip: it reads
- * the same on a phone (tap) and on desktop (hover), and can't run off the edge of the screen.
+ * Phrases are the reader's own TextChunk, so the tooltip looks and behaves exactly like it does
+ * on a real reading page (hover on desktop, touch on a phone). One phrase starts with its tooltip
+ * open so the idea lands even for someone who never moves the mouse; after the visitor's first
+ * hover or tap the passage behaves like the reader (a tooltip only while on a phrase).
  */
 export function LandingDemo({ language, onChangeLanguage, onReadStory }: LandingDemoProps) {
   const [level, setLevel] = useState<DemoLevel>(DEFAULT_DEMO_LEVEL)
   const passage = DEMO_PASSAGES[language][level]
-  // The picked phrase belongs to one passage: a new language or level starts on that passage's
-  // own showcase phrase.
+  // The showcase phrase stays open until the visitor first touches the passage, and a new
+  // language or level reopens that passage's own showcase phrase.
   const passageKey = `${language}-${level}`
-  const [picked, setPicked] = useState<{ key: string; index: number } | null>(null)
-  const active = picked?.key === passageKey ? picked.index : passage.initial
-  const setActive = (index: number) => setPicked({ key: passageKey, index })
-
-  const chunk = passage.chunks[active] ?? passage.chunks[0]
+  const [touchedKey, setTouchedKey] = useState<string | null>(null)
+  const [hovered, setHovered] = useState<number | null>(null)
+  const active = hovered ?? (touchedKey === passageKey ? null : passage.initial)
+  const activate = (index: number) => {
+    setTouchedKey(passageKey)
+    setHovered(index)
+  }
+  const deactivate = (index: number) => setHovered((h) => (h === index ? null : h))
+  const isCoarsePointer = useCoarsePointer()
 
   return (
     <section className="landing-demo" aria-label="Try it">
@@ -80,31 +86,31 @@ export function LandingDemo({ language, onChangeLanguage, onReadStory }: Landing
           <span className="landing-tagline-verb--hover">Hover any phrase</span>
           <span className="landing-tagline-verb--touch">Tap any phrase</span>
         </p>
-        <p className="landing-demo__passage" lang={LANG_ATTR[language]}>
+        <p
+          className="landing-demo__passage"
+          lang={LANG_ATTR[language]}
+          // Touch: the reader tracks the finger at the page level (its chunks don't open on a
+          // plain tap), so do the same here -- whichever phrase is under the finger shows its
+          // tooltip, and it stays up after the finger lifts.
+          onTouchStart={(e) => chunkUnderTouch(e.touches[0], activate)}
+          onTouchMove={(e) => chunkUnderTouch(e.touches[0], activate)}
+        >
           {passage.chunks.map((c, i) => (
-            <span key={`${language}-${level}-${i}`}>
-              <button
-                type="button"
-                className="landing-demo__chunk"
-                aria-pressed={i === active}
-                onMouseEnter={() => setActive(i)}
-                onFocus={() => setActive(i)}
-                onClick={() => setActive(i)}
-              >
-                {c.text}
-              </button>
+            <span key={`${passageKey}-${i}`}>
+              <TextChunk
+                chunk={{ id: i, text: c.text, meaning: c.meaning, literal: c.literal, grammar: c.note }}
+                popupChunkId={active}
+                isTouchHighlight={active === i}
+                isPinned={false}
+                onActivate={() => activate(i)}
+                onDeactivate={() => deactivate(i)}
+                variant="read"
+                isCoarsePointer={isCoarsePointer}
+              />
               {c.after ?? " "}
             </span>
           ))}
         </p>
-        <div className="landing-demo__details" aria-live="polite">
-          <p className="landing-demo__phrase" lang={LANG_ATTR[language]}>
-            {chunk.text}
-          </p>
-          <p className="landing-demo__meaning">{chunk.meaning}</p>
-          {chunk.literal && <p className="landing-demo__literal">Literally: “{chunk.literal}”</p>}
-          {chunk.note && <p className="landing-demo__note">{chunk.note}</p>}
-        </div>
       </div>
 
       {onReadStory && (
@@ -119,4 +125,27 @@ export function LandingDemo({ language, onChangeLanguage, onReadStory }: Landing
       )}
     </section>
   )
+}
+
+/** Phone/tablet (coarse pointer): the reader places tooltips above the finger. */
+const COARSE_QUERY = "(pointer: coarse)"
+function subscribeCoarse(onChange: () => void) {
+  if (typeof window.matchMedia !== "function") return () => {}
+  const mq = window.matchMedia(COARSE_QUERY)
+  mq.addEventListener("change", onChange)
+  return () => mq.removeEventListener("change", onChange)
+}
+function useCoarsePointer(): boolean {
+  return useSyncExternalStore(
+    subscribeCoarse,
+    () => typeof window.matchMedia === "function" && window.matchMedia(COARSE_QUERY).matches,
+    () => false,
+  )
+}
+
+function chunkUnderTouch(touch: { clientX: number; clientY: number } | undefined, activate: (i: number) => void) {
+  if (!touch) return
+  const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest(".landing-demo [data-chunk-id]")
+  const id = el?.getAttribute("data-chunk-id")
+  if (id != null) activate(Number(id))
 }
