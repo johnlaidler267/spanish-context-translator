@@ -12,6 +12,7 @@ import {
 import type { User } from "@supabase/supabase-js"
 import { supabase, getCachedSupabaseUser } from "@/lib/supabase"
 import { clearGuestUses } from "@/lib/subscription/guest-usage"
+import { recordSignupSource } from "@/lib/signup-source"
 import { invalidateLibraryCache } from "@/lib/storage/library-catalog"
 import { invalidateContinueReadingLibrary } from "@/lib/storage/continue-reading-library"
 
@@ -174,6 +175,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (nextUser) {
+          // Marketing attribution (guest or real account). Deferred: GoTrue calls made inside
+          // this callback deadlock on its lock, and a DB write needs the session token.
+          const userId = nextUser.id
+          window.setTimeout(() => void recordSignupSource(userId), 0)
           // Signed-in session (initial restore, OAuth return, or sign-in) — clear guest tries, close modal
           if (nextUser.is_anonymous !== true) {
             clearGuestUses()

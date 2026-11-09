@@ -1,6 +1,6 @@
 /**
  * TypeScript types mirroring the Supabase database schema.
- * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql, 0024_reading_progress_recap.sql, 0026_shared_translation_cache.sql, 0027_saved_words.sql, 0028_saved_words_practice.sql).
+ * Keep in sync with supabase/migrations (e.g. 0001_subscription_management.sql, 0012_discover_catalog.sql, 0016_reading_progress.sql, 0022_reading_progress_sentence_index.sql, 0024_reading_progress_recap.sql, 0026_shared_translation_cache.sql, 0027_saved_words.sql, 0028_saved_words_practice.sql, 0035_signup_sources.sql).
  *
  * Usage with the Supabase client:
  *   import { createClient } from '@supabase/supabase-js'
@@ -309,6 +309,18 @@ export type DiscoverItemUpdate     = Partial<Omit<DiscoverItemInsert, "id">>
 export type ReadingProgressUpdate  = Partial<Omit<ReadingProgressInsert, "id">>
 export type UserEpubUpdate         = Partial<Omit<UserEpubInsert, "id">>
 
+/** Row from `public.signup_sources` (supabase/migrations/0035_signup_sources.sql); see src/lib/signup-source.ts. */
+export type SignupSourceRow = {
+  user_id:       string
+  source:        string
+  utm_medium:    string | null
+  utm_campaign:  string | null
+  landing_path:  string | null
+  referrer:      string | null
+  first_seen_at: string | null
+  created_at:    string
+}
+
 /** Row from `public.saved_words` (supabase/migrations/0027_saved_words.sql). */
 export type SavedWordRow = {
   id: string
@@ -393,6 +405,12 @@ export interface Database {
         Row:    SavedWordRow & Omit<SavedWordReviewRow, "id">
         Insert: SavedWordInsert
         Update: Partial<SavedWordInsert>
+        Relationships: []
+      }
+      signup_sources: {
+        Row:    SignupSourceRow
+        Insert: Omit<SignupSourceRow, "created_at"> & { created_at?: string }
+        Update: Partial<Omit<SignupSourceRow, "user_id" | "created_at">>
         Relationships: []
       }
       beta_pro_grants: {
