@@ -42,13 +42,26 @@ export function LandingDemo({ language, onChangeLanguage, onReadStory }: Landing
   const passageKey = `${language}-${level}`
   const [touchedKey, setTouchedKey] = useState<string | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
+  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null)
   const active = hovered ?? (touchedKey === passageKey ? null : passage.initial)
-  const activate = (index: number) => {
-    setTouchedKey(passageKey)
-    setHovered(index)
-  }
-  const deactivate = (index: number) => setHovered((h) => (h === index ? null : h))
   const isCoarsePointer = useCoarsePointer()
+
+  // Pointer tracking lives here, on the passage, the way the reader does it (read-mode.tsx):
+  // the open tooltip follows the pointer with no easing, and moving across the gap between two
+  // phrases keeps the current tooltip up instead of closing and reopening it -- otherwise each
+  // phrase opened its own tooltip and slid it to the pointer, which read as a bounce.
+  const track = (clientX: number, clientY: number) => {
+    const el = document.elementFromPoint(clientX, clientY)?.closest(".landing-demo [data-chunk-id]")
+    const id = el?.getAttribute("data-chunk-id")
+    if (id == null) return
+    setTouchedKey(passageKey)
+    setHovered(Number(id))
+    setPointer({ x: clientX, y: clientY })
+  }
+  const release = () => {
+    setHovered(null)
+    setPointer(null)
+  }
 
   return (
     <section className="landing-demo" aria-label="Try it">
@@ -89,11 +102,12 @@ export function LandingDemo({ language, onChangeLanguage, onReadStory }: Landing
         <p
           className="landing-demo__passage"
           lang={LANG_ATTR[language]}
-          // Touch: the reader tracks the finger at the page level (its chunks don't open on a
-          // plain tap), so do the same here -- whichever phrase is under the finger shows its
-          // tooltip, and it stays up after the finger lifts.
-          onTouchStart={(e) => chunkUnderTouch(e.touches[0], activate)}
-          onTouchMove={(e) => chunkUnderTouch(e.touches[0], activate)}
+          onMouseMove={(e) => track(e.clientX, e.clientY)}
+          onMouseLeave={release}
+          // Touch: whichever phrase is under the finger shows its tooltip, and it stays up after
+          // the finger lifts (a plain tap on a reader chunk doesn't open it by itself).
+          onTouchStart={(e) => e.touches[0] && track(e.touches[0].clientX, e.touches[0].clientY)}
+          onTouchMove={(e) => e.touches[0] && track(e.touches[0].clientX, e.touches[0].clientY)}
         >
           {passage.chunks.map((c, i) => (
             <span key={`${passageKey}-${i}`}>
@@ -102,10 +116,12 @@ export function LandingDemo({ language, onChangeLanguage, onReadStory }: Landing
                 popupChunkId={active}
                 isTouchHighlight={active === i}
                 isPinned={false}
-                onActivate={() => activate(i)}
-                onDeactivate={() => deactivate(i)}
+                onActivate={() => {}}
+                onDeactivate={() => {}}
                 variant="read"
                 isCoarsePointer={isCoarsePointer}
+                delegatePointerHover
+                followPointerClient={active === i ? pointer : null}
               />
               {c.after ?? " "}
             </span>
@@ -143,9 +159,3 @@ function useCoarsePointer(): boolean {
   )
 }
 
-function chunkUnderTouch(touch: { clientX: number; clientY: number } | undefined, activate: (i: number) => void) {
-  if (!touch) return
-  const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest(".landing-demo [data-chunk-id]")
-  const id = el?.getAttribute("data-chunk-id")
-  if (id != null) activate(Number(id))
-}
