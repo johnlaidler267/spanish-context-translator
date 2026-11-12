@@ -1,3 +1,8 @@
 {
+  "redirects": [
+    { "source": "/ig", "destination": "/?utm_source=instagram", "permanent": false },
+    { "source": "/tt", "destination": "/?utm_source=tiktok", "permanent": false },
+    { "source": "/yt", "destination": "/?utm_source=youtube", "permanent": false }
+  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
