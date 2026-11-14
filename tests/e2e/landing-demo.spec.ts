@@ -1,8 +1,8 @@
 /**
  * First-visit landing demo (src/components/landing/landing-demo.tsx): a stored passage a new
- * visitor can hover or tap before doing anything else, with a level and language switch, a
- * "Read a full short story" button that opens a guest-readable book at the chosen level, and a
- * one-line composer that opens up when clicked into. Returning readers (anything read before)
+ * visitor can hover or tap before doing anything else, with a level and language switch (the
+ * level also orders the short reads under it), and a one-line composer that opens up when
+ * clicked into. Returning readers (anything read before)
  * get their workspace instead -- no demo.
  */
 
@@ -41,22 +41,17 @@ test("a first-time visitor can explore the demo without clicking anything first"
   await expect(tooltip(page, "I have")).toBeVisible()
 })
 
-test("\"Read a full short story\" opens a guest-readable book at the chosen level", async ({ page }) => {
+test("the short reads under the demo lead with a story at the level just tried", async ({ page }) => {
   await setupMocks(page, { signedIn: false, discoverItems: [...SAMPLE_DISCOVER_ITEMS, ...GUEST_STORIES] })
   await page.goto("/")
   await expect(page.getByRole("heading", { name: "Read real Spanish." })).toBeVisible({ timeout: 20_000 })
+  const firstTitle = page.locator(".continue-reading__row .discover-card__title").first()
+  await expect(firstTitle).toHaveText("La tortilla de la abuela") // demo starts at Intermediate
 
   await page.getByRole("group", { name: "Level" }).getByRole("button", { name: "Beginner" }).click()
-  await page.getByRole("button", { name: "Read a full short story" }).click()
-  await expect(page.getByText("Historia Fácil").first()).toBeVisible({ timeout: 20_000 })
-  await expect(page.getByRole("heading", { name: "Read real Spanish." })).toHaveCount(0)
-})
-
-test("no guest-readable story: the story button is hidden", async ({ page }) => {
-  await setupMocks(page, { signedIn: false })
-  await page.goto("/")
-  await expect(page.getByRole("heading", { name: "Read real Spanish." })).toBeVisible({ timeout: 20_000 })
-  await expect(page.getByRole("button", { name: "Read a full short story" })).toHaveCount(0)
+  await expect(firstTitle).toHaveText("Historia Fácil")
+  // No divider between the composer and the picks on a first visit: one flow.
+  await expect(page.locator(".filigree-divider")).toHaveCount(0)
 })
 
 test("the composer is one line until clicked into", async ({ page }) => {
@@ -96,6 +91,14 @@ test("a returning reader gets their workspace, not the demo", async ({ page }) =
 
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  test("short phone: the demo keeps the room, the picks row steps aside", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 })
+    await setupMocks(page, { signedIn: false })
+    await page.goto("/")
+    await expect(tooltip(page, "she hit the roof")).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator(".landing-guest-picks-mobile")).toBeHidden()
+  })
 
   test("touching a phrase shows its tooltip", async ({ page }) => {
     await setupMocks(page, { signedIn: false })

@@ -3,7 +3,6 @@
 import { useState, useSyncExternalStore } from "react"
 import { TextChunk } from "@/components/reading/text-chunk"
 import {
-  DEFAULT_DEMO_LEVEL,
   DEMO_LEVELS,
   DEMO_PASSAGES,
   type DemoLanguage,
@@ -13,8 +12,9 @@ import {
 interface LandingDemoProps {
   language: DemoLanguage
   onChangeLanguage: (language: DemoLanguage) => void
-  /** Called with the chosen level when the visitor wants a full story. Hidden when null. */
-  onReadStory: ((level: DemoLevel) => void) | null
+  /** Lifted to the landing page: it also orders the short-read picks under the composer. */
+  level: DemoLevel
+  onChangeLevel: (level: DemoLevel) => void
 }
 
 const LANGUAGE_OPTIONS: { id: DemoLanguage; label: string }[] = [
@@ -34,8 +34,7 @@ const LANG_ATTR: Record<DemoLanguage, string> = { spanish: "es", french: "fr" }
  * open so the idea lands even for someone who never moves the mouse; after the visitor's first
  * hover or tap the passage behaves like the reader (a tooltip only while on a phrase).
  */
-export function LandingDemo({ language, onChangeLanguage, onReadStory }: LandingDemoProps) {
-  const [level, setLevel] = useState<DemoLevel>(DEFAULT_DEMO_LEVEL)
+export function LandingDemo({ language, onChangeLanguage, level, onChangeLevel }: LandingDemoProps) {
   const passage = DEMO_PASSAGES[language][level]
   // The showcase phrase stays open until the visitor first touches the passage, and a new
   // language or level reopens that passage's own showcase phrase.
@@ -86,7 +85,7 @@ export function LandingDemo({ language, onChangeLanguage, onReadStory }: Landing
               type="button"
               aria-pressed={level === opt.id}
               className="landing-demo__segment"
-              onClick={() => setLevel(opt.id)}
+              onClick={() => onChangeLevel(opt.id)}
             >
               {opt.label}
             </button>
@@ -129,16 +128,6 @@ export function LandingDemo({ language, onChangeLanguage, onReadStory }: Landing
         </p>
       </div>
 
-      {onReadStory && (
-        <div className="landing-demo__next">
-          <button type="button" className="landing-demo__story-btn" onClick={() => onReadStory(level)}>
-            Read a full short story
-          </button>
-          <span className="landing-demo__or" aria-hidden="true">
-            or paste your own below
-          </span>
-        </div>
-      )}
     </section>
   )
 }
