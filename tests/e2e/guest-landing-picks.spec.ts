@@ -1,7 +1,7 @@
 /**
- * Signed-out landing page: a first-time visitor sees the demo up top, and on desktop something
- * to click under the composer -- Discover picks with short pieces (which open without an
- * account) ahead of books. On a phone the demo takes the picks row's place (no room for both).
+ * Signed-out landing page: a first-time visitor sees the demo up top and something to click
+ * near the composer -- Discover picks with short pieces (which open without an account) ahead
+ * of books. On a short phone the picks row steps aside for the demo (landing-demo.spec.ts).
  * With no catalog, the built-in sample shows instead of a bare sign-in ask.
  */
 
@@ -23,13 +23,13 @@ test("desktop: short pieces come before books, with an explainer line", async ({
 test.describe("mobile", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
-  test("shows the demo instead of the picks row, worded for touch", async ({ page }) => {
+  test("shows the demo with the picks row under it, worded for touch", async ({ page }) => {
     await setupMocks(page, { signedIn: false })
     await page.goto("/")
     await expect(page.getByRole("heading", { name: "Read real Spanish." })).toBeVisible({ timeout: 20_000 })
     await expect(page.locator(".landing-demo__hint").getByText("Tap any phrase")).toBeVisible()
     await expect(page.locator(".landing-demo__hint").getByText("Hover any phrase")).toBeHidden()
-    await expect(page.locator(".continue-reading-mobile__row")).toHaveCount(0)
+    await expect(page.locator(".continue-reading-mobile__row").getByText("Despacito").first()).toBeVisible()
   })
 })
 

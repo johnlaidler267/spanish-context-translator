@@ -48,7 +48,7 @@ import {
 } from "@/lib/storage/language-learning-account"
 import { LanguagePickerModal } from "@/components/landing/language-picker-modal"
 import { LandingDemo } from "@/components/landing/landing-demo"
-import { isDemoLanguage, type DemoLanguage, type DemoLevel } from "@/lib/landing/demo-passages"
+import { DEFAULT_DEMO_LEVEL, isDemoLanguage, type DemoLanguage, type DemoLevel } from "@/lib/landing/demo-passages"
 import { VoiceInputButton } from "@/components/reading/voice-input-button"
 import { AppErrorModal } from "@/components/app-error-modal"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
@@ -397,10 +397,14 @@ export function LandingScreen({
   // beginner stories) lead: they open without an account and show the reader at its best.
   // No catalog → the built-in sample, which needs no network. Never a bare "sign in" ask:
   // that converted on nothing to look at.
+  // The level picked in the first-visit demo also orders the picks: open-to-guests stories at
+  // that level lead, so "try one" right after the demo lands at the level they just tried.
+  const [demoLevel, setDemoLevel] = useState<DemoLevel>(DEFAULT_DEMO_LEVEL)
   const guestPicks = useMemo(() => {
-    const rank = (item: ContentItem) => (item.type !== "book" ? 1 : item.openToGuests ? 0 : 2)
+    const rank = (item: ContentItem) =>
+      item.type !== "book" ? 2 : item.openToGuests ? (item.difficulty === demoLevel ? 0 : 1) : 3
     return [...featuredForLearner].sort((a, b) => rank(a) - rank(b))
-  }, [featuredForLearner])
+  }, [featuredForLearner, demoLevel])
   const guestPicksLabel =
     guestPicks[0] && (guestPicks[0].type !== "book" || guestPicks[0].openToGuests)
       ? "Try a short read"
@@ -457,7 +461,8 @@ export function LandingScreen({
         </div>
       </div>
     ) : showGuestPicks ? (
-      <div className="continue-reading-mobile w-full order-1">
+      <div className="continue-reading-mobile landing-guest-picks-mobile w-full order-1">
+        <p className="sample-excerpt-label text-center landing-picks-label--mobile">{guestPicksLabel}</p>
         <div className="continue-reading-mobile__row">
           {guestPicks.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS).map((item) => (
             <ContentCard
@@ -475,29 +480,9 @@ export function LandingScreen({
   // First visit (nothing read yet, Spanish or French): lead with a working demo instead of an
   // empty textbox, and skip the language popup -- the demo has its own Spanish/French switch.
   const showDemo = isFirstVisit && isDemoLanguage(langPrefs.learning)
-  // Phones have no room for both the demo and the picks row above the composer; the demo's
-  // "Read a full short story" button covers what the picks were there for.
-  const mobileRow = showDemo ? null : continueMobileRow
+  const mobileRow = continueMobileRow
   const demoLanguage: DemoLanguage = isDemoLanguage(langPrefs.learning) ? langPrefs.learning : "spanish"
   const languageLabel = demoLanguage === "french" ? "French" : "Spanish"
-
-  // The story behind "Read a full short story": a book open to guests (so it reads without an
-  // account), at the level picked in the demo when there is one.
-  const storyFor = useCallback(
-    (level: DemoLevel): ContentItem | null => {
-      const open = featuredForLearner.filter((item) => item.type === "book" && item.openToGuests)
-      return open.find((item) => item.difficulty === level) ?? open[0] ?? null
-    },
-    [featuredForLearner],
-  )
-  const hasStory = featuredForLearner.some((item) => item.type === "book" && item.openToGuests)
-  const handleReadStory = useCallback(
-    (level: DemoLevel) => {
-      const item = storyFor(level)
-      if (item) onContinueReading(item)
-    },
-    [storyFor, onContinueReading],
-  )
 
   // One line until the reader clicks in, pastes, or fills it (Random/Learn/voice).
   const composerSlim = !text && !focused
@@ -611,10 +596,12 @@ export function LandingScreen({
                 Not a word-by-word translation. LexaLens breaks each sentence into the chunks{" "}
                 {languageLabel} speakers actually think in, so you keep reading in {languageLabel}.
               </p>
+              <p className="landing-free-note landing-free-note--hero">Free · No account needed</p>
               <LandingDemo
                 language={demoLanguage}
                 onChangeLanguage={chooseFirstVisitLanguage}
-                onReadStory={hasStory ? handleReadStory : null}
+                level={demoLevel}
+                onChangeLevel={setDemoLevel}
               />
             </>
           ) : (
@@ -662,12 +649,15 @@ export function LandingScreen({
             never renders the mobile row, and there the composer is md:order-1, so the
             divider's order-2 still lands it below the textarea, above the sample/row. */}
         <div className="order-3 md:order-2 flex flex-col gap-2 w-full shrink-0 md:mt-0 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] md:pb-0">
-          <img
-            src="/filigree-divider.svg"
-            alt=""
-            className="filigree-divider order-2 mx-auto shrink-0"
-            aria-hidden
-          />
+          {/* First visit: demo, bar and short reads read as one flow, so no divider. */}
+          {!showDemo && (
+            <img
+              src="/filigree-divider.svg"
+              alt=""
+              className="filigree-divider order-2 mx-auto shrink-0"
+              aria-hidden
+            />
+          )}
           {mobileRow}
           <div className="order-3 md:order-1 flex flex-col gap-2 w-full">
             <form
@@ -799,7 +789,6 @@ export function LandingScreen({
               </div>
             </div>
             </form>
-            {showDemo && <p className="landing-free-note">Free. No account needed to start.</p>}
           </div>
         </div>
 
