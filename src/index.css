@@ -1200,9 +1200,35 @@ article span {
   letter-spacing: 0.02em;
 }
 .landing-picks-label--mobile { margin: 0 0 0.35rem; }
-/* Short phones (SE-size): the demo needs the room more than the picks row does. */
+/* Short phones (SE-size): the demo needs the room more than the picks row does, so the row
+   becomes one line linking to the first pick. */
+.landing-guest-pick-line { display: none; }
 @media (max-width: 767px) and (max-height: 720px) {
   .landing-guest-picks-mobile { display: none; }
+  .landing-guest-pick-line {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto 0.15rem;
+    padding: 0.55rem 1rem;
+    min-height: 44px;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--foreground) 5%, transparent);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+  .landing-guest-pick-line__title {
+    font-family: var(--font-reading);
+    font-style: italic;
+    font-size: 0.9375rem;
+    color: var(--foreground);
+  }
 }
 @media (max-width: 767px) {
   .landing-demo { margin-top: 0.85rem; }

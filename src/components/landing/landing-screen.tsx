@@ -461,19 +461,32 @@ export function LandingScreen({
         </div>
       </div>
     ) : showGuestPicks ? (
-      <div className="continue-reading-mobile landing-guest-picks-mobile w-full order-1">
-        <p className="sample-excerpt-label text-center landing-picks-label--mobile">{guestPicksLabel}</p>
-        <div className="continue-reading-mobile__row">
-          {guestPicks.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS).map((item) => (
-            <ContentCard
-              key={`mobile-featured-${item.id}`}
-              content={item}
-              onClick={() => onContinueReading(item)}
-              eagerCover
-            />
-          ))}
+      <>
+        <div className="continue-reading-mobile landing-guest-picks-mobile w-full order-1">
+          <p className="sample-excerpt-label text-center landing-picks-label--mobile">{guestPicksLabel}</p>
+          <div className="continue-reading-mobile__row">
+            {guestPicks.slice(0, MAX_MOBILE_CONTINUE_READING_ITEMS).map((item) => (
+              <ContentCard
+                key={`mobile-featured-${item.id}`}
+                content={item}
+                onClick={() => onContinueReading(item)}
+                eagerCover
+              />
+            ))}
+          </div>
         </div>
-      </div>
+        {/* Short phones hide the row above to leave the demo room; keep a one-tap way into a
+            story anyway -- the first pick is a guest-readable story at the demo's level. */}
+        <button
+          type="button"
+          className="landing-guest-pick-line order-1"
+          onClick={() => onContinueReading(guestPicks[0])}
+        >
+          <span className="landing-guest-pick-line__label">Try a short read:</span>{" "}
+          <span className="landing-guest-pick-line__title">{guestPicks[0].title}</span>
+          <span aria-hidden="true"> →</span>
+        </button>
+      </>
     ) : null,
   })
 
