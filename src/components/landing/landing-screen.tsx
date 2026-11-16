@@ -22,7 +22,6 @@ import { pricingUiPlanIdFromRow, type SubscriptionRowLike } from "@/lib/subscrip
 import { LandingQuickFillControls } from "@/components/landing/landing-quick-fill-controls"
 import { useLandingContinueReading } from "@/components/landing/landing-continue-reading"
 import { ContentCard } from "@/pages/discover/content-card"
-import { DiscoverSkeletonCard } from "@/components/discover/discover-loading-state"
 import { fetchDiscoverCatalog, itemsForLearningLanguage, readCachedDiscoverItems } from "@/lib/discover/discover-catalog"
 import { useLanguageLearningPreferences } from "@/hooks/use-language-learning-preferences"
 import type { ContentItem } from "@/lib/discover/content-data"
@@ -120,6 +119,21 @@ const PLACEHOLDERS = [
   "Try something from the news…",
   "Paste a conversation…",
 ]
+
+/** Stand-in for a guest pick while the catalog loads: rendered invisibly to reserve the row. */
+const PICK_PLACEHOLDER: ContentItem = {
+  id: "guest-pick-placeholder",
+  title: "\u00a0",
+  author: "\u00a0",
+  type: "book",
+  difficulty: "beginner",
+  wordCount: 0,
+  language: "Spanish",
+  coverImage: "",
+  tags: [],
+  preview: "",
+  estimatedTime: "",
+}
 
 export function LandingScreen({
   draftText: text,
@@ -452,11 +466,21 @@ export function LandingScreen({
       sampleFallback
     ),
     mobileFallback: guestPicksPending ? (
-      // Holds the row's place so the hero doesn't recenter when the picks arrive.
-      <div className="continue-reading-mobile w-full order-1" aria-busy="true">
-        <div className="continue-reading-mobile__row">
+      // Holds the row's exact place (label included) so nothing moves when the picks arrive, but
+      // shows nothing: on a first visit grey skeletons under the demo read as "still loading"
+      // and pull the eye off it. The picks fade in (index.css). Same small-phone rule as the
+      // real row, which collapses to one line there.
+      <div
+        className="continue-reading-mobile landing-guest-picks-mobile landing-guest-picks--pending w-full order-1"
+        aria-busy="true"
+      >
+        <p className="sample-excerpt-label text-center landing-picks-label--mobile" aria-hidden="true">
+          {guestPicksLabel}
+        </p>
+        <div className="continue-reading-mobile__row" aria-hidden="true" inert>
+          {/* Real cards (invisible, inert) so the reserved height matches the loaded row exactly. */}
           {Array.from({ length: MAX_MOBILE_CONTINUE_READING_ITEMS }, (_, i) => (
-            <DiscoverSkeletonCard key={`guest-placeholder-${i}`} compact />
+            <ContentCard key={`guest-placeholder-${i}`} content={PICK_PLACEHOLDER} onClick={() => {}} />
           ))}
         </div>
       </div>

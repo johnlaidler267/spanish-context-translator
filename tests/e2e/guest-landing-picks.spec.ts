@@ -52,3 +52,30 @@ test("slow catalog: the sample doesn't flash in before the picks arrive", async 
   await expect(page.getByText("Try this sample")).toHaveCount(0)
   await expect(page.getByText("Try a short read")).toBeVisible({ timeout: 20_000 })
 })
+
+test.describe("phone, slow catalog", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  test("no grey skeletons while the picks load, and nothing moves when they arrive", async ({ page }) => {
+    await setupMocks(page, { signedIn: false })
+    await page.route("**/rest/v1/discover_items*", async (route) => {
+      await new Promise((r) => setTimeout(r, 2500))
+      await route.fallback()
+    })
+    await page.goto("/")
+    const pending = page.locator(".landing-guest-picks--pending")
+    await expect(pending).toBeAttached({ timeout: 20_000 })
+    await expect(pending).toBeHidden() // reserved, but not drawn
+    await expect(page.locator(".discover-card--skeleton")).toHaveCount(0)
+    const reserved = await pending.evaluate((el) => el.getBoundingClientRect().toJSON())
+
+    const row = page.locator(".landing-guest-picks-mobile:not(.landing-guest-picks--pending)")
+    await expect(row.getByText("Despacito").first()).toBeVisible({ timeout: 20_000 })
+    // Measure after the fade-in, whose 4px rise would otherwise skew the position.
+    await row.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
+    const loaded = await row.evaluate((el) => el.getBoundingClientRect().toJSON())
+    // Within a couple of sub-pixel px (the placeholder used to be 28px short of the real row).
+    expect(Math.abs(loaded.top - reserved.top)).toBeLessThanOrEqual(2)
+    expect(Math.abs(loaded.height - reserved.height)).toBeLessThanOrEqual(2)
+  })
+})

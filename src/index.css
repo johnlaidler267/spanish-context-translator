@@ -1200,6 +1200,21 @@ article span {
   letter-spacing: 0.02em;
 }
 .landing-picks-label--mobile { margin: 0 0 0.35rem; }
+/* Guest picks on a phone: the placeholder keeps the row's size but is invisible, and the real
+   row fades in, so a first visit never shows grey skeletons under the demo. */
+.landing-guest-picks--pending { visibility: hidden; }
+.landing-guest-picks-mobile:not(.landing-guest-picks--pending),
+.landing-guest-pick-line {
+  animation: landing-picks-in 320ms ease-out both;
+}
+@keyframes landing-picks-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-guest-picks-mobile:not(.landing-guest-picks--pending),
+  .landing-guest-pick-line { animation: none; }
+}
 /* Short phones (SE-size): the demo needs the room more than the picks row does, so the row
    becomes one line linking to the first pick. */
 .landing-guest-pick-line { display: none; }
