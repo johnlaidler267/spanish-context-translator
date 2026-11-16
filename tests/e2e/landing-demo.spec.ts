@@ -92,12 +92,16 @@ test("a returning reader gets their workspace, not the demo", async ({ page }) =
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
-  test("short phone: the demo keeps the room, the picks row steps aside", async ({ page }) => {
+  test("short phone: the demo keeps the room, the picks row becomes one line", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
     await setupMocks(page, { signedIn: false })
     await page.goto("/")
     await expect(tooltip(page, "she hit the roof")).toBeVisible({ timeout: 20_000 })
     await expect(page.locator(".landing-guest-picks-mobile")).toBeHidden()
+    // ...but there's still one tap into a story.
+    const line = page.locator(".landing-guest-pick-line")
+    await expect(line).toBeVisible()
+    await expect(line).toContainText("Try a short read:")
   })
 
   test("touching a phrase shows its tooltip", async ({ page }) => {
