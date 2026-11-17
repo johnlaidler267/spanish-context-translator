@@ -2,27 +2,26 @@
 
 import { useRef, useState, useSyncExternalStore } from "react"
 import { TextChunk } from "@/components/reading/text-chunk"
-import {
-  DEMO_LEVELS,
-  DEMO_PASSAGES,
-  type DemoLanguage,
-  type DemoLevel,
-} from "@/lib/landing/demo-passages"
+import { DEMO_LEVELS, demoPassage, type DemoLanguage, type DemoLevel } from "@/lib/landing/demo-passages"
+import type { DemoCopy } from "@/lib/landing/demo-copy"
+import type { LanguageLearningPreferences, NativeLanguage } from "@/lib/storage/language-learning-preferences"
 
 interface LandingDemoProps {
   language: DemoLanguage
-  onChangeLanguage: (language: DemoLanguage) => void
+  /** The reader's own language: an English passage is explained in it. */
+  native: NativeLanguage
+  /** The two language buttons (see demoLanguageOptions). */
+  languageOptions: LanguageLearningPreferences[]
+  onChangeLanguage: (prefs: LanguageLearningPreferences) => void
   /** Lifted to the landing page: it also orders the short-read picks under the composer. */
   level: DemoLevel
   onChangeLevel: (level: DemoLevel) => void
+  copy: DemoCopy
 }
 
-const LANGUAGE_OPTIONS: { id: DemoLanguage; label: string }[] = [
-  { id: "spanish", label: "Spanish" },
-  { id: "french", label: "French" },
-]
+const LANG_ATTR: Record<DemoLanguage, string> = { spanish: "es", french: "fr", english: "en" }
 
-const LANG_ATTR: Record<DemoLanguage, string> = { spanish: "es", french: "fr" }
+const capitalize = (s: string) => s.charAt(0).toLocaleUpperCase() + s.slice(1)
 
 /**
  * First-visit demo: a short passage, already broken into phrases, that a visitor can hover (or
@@ -35,11 +34,19 @@ const LANG_ATTR: Record<DemoLanguage, string> = { spanish: "es", french: "fr" }
  * hover or touch the passage behaves like the reader (a tooltip only while on a phrase / while the
  * finger is down).
  */
-export function LandingDemo({ language, onChangeLanguage, level, onChangeLevel }: LandingDemoProps) {
-  const passage = DEMO_PASSAGES[language][level]
+export function LandingDemo({
+  language,
+  native,
+  languageOptions,
+  onChangeLanguage,
+  level,
+  onChangeLevel,
+  copy,
+}: LandingDemoProps) {
+  const passage = demoPassage(language, native, level)
   // The showcase phrase stays open until the visitor first touches the passage, and a new
   // language or level reopens that passage's own showcase phrase.
-  const passageKey = `${language}-${level}`
+  const passageKey = `${language}-${native}-${level}`
   const [touchedKey, setTouchedKey] = useState<string | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null)
@@ -72,22 +79,22 @@ export function LandingDemo({ language, onChangeLanguage, level, onChangeLevel }
   const isEmulatedMouse = () => Date.now() - lastTouchAt.current < 1000
 
   return (
-    <section className="landing-demo" aria-label="Try it">
+    <section className="landing-demo" aria-label={copy.tryIt} lang={copy.lang}>
       <div className="landing-demo__controls">
-        <div className="landing-demo__segmented" role="group" aria-label="Language">
-          {LANGUAGE_OPTIONS.map((opt) => (
+        <div className="landing-demo__segmented" role="group" aria-label={copy.languageGroup}>
+          {languageOptions.map((opt) => (
             <button
-              key={opt.id}
+              key={opt.learning}
               type="button"
-              aria-pressed={language === opt.id}
+              aria-pressed={language === opt.learning}
               className="landing-demo__segment"
-              onClick={() => onChangeLanguage(opt.id)}
+              onClick={() => onChangeLanguage(opt)}
             >
-              {opt.label}
+              {capitalize(copy.languageName[opt.learning])}
             </button>
           ))}
         </div>
-        <div className="landing-demo__segmented" role="group" aria-label="Level">
+        <div className="landing-demo__segmented" role="group" aria-label={copy.levelGroup}>
           {DEMO_LEVELS.map((opt) => (
             <button
               key={opt.id}
@@ -96,7 +103,7 @@ export function LandingDemo({ language, onChangeLanguage, level, onChangeLevel }
               className="landing-demo__segment"
               onClick={() => onChangeLevel(opt.id)}
             >
-              {opt.label}
+              {copy.levels[opt.id]}
             </button>
           ))}
         </div>
@@ -104,8 +111,8 @@ export function LandingDemo({ language, onChangeLanguage, level, onChangeLevel }
 
       <div className="landing-demo__card">
         <p className="landing-demo__hint">
-          <span className="landing-tagline-verb--hover">Hover any phrase</span>
-          <span className="landing-tagline-verb--touch">Tap any phrase</span>
+          <span className="landing-tagline-verb--hover">{copy.hoverVerb}</span>
+          <span className="landing-tagline-verb--touch">{copy.tapVerb}</span>
         </p>
         <p
           translate="no"

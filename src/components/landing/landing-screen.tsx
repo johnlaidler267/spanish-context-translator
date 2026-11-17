@@ -36,11 +36,12 @@ import {
   generateRandomLearningParagraph,
 } from "@/lib/translate"
 import {
+  browserNativeLanguage,
   defaultLanguageLearningPreferences,
   hasStoredLanguageLearningPreferences,
   landingGreetingWord,
   normalizeLanguageLearningPreferences,
-  type LearningLanguage,
+  type LanguageLearningPreferences,
 } from "@/lib/storage/language-learning-preferences"
 import {
   chooseLanguageLearningPreferences,
@@ -49,6 +50,7 @@ import {
 import { LanguagePickerModal } from "@/components/landing/language-picker-modal"
 import { LandingDemo } from "@/components/landing/landing-demo"
 import { DEFAULT_DEMO_LEVEL, isDemoLanguage, type DemoLanguage, type DemoLevel } from "@/lib/landing/demo-passages"
+import { demoCopyFor, demoLanguageOptions } from "@/lib/landing/demo-copy"
 import { VoiceInputButton } from "@/components/reading/voice-input-button"
 import { AppErrorModal } from "@/components/app-error-modal"
 import type { ReadingTheme } from "@/components/reading/theme-toggle"
@@ -179,8 +181,8 @@ export function LandingScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- langPrefs changes when storage does
     [authLoading, user, langPrefs],
   )
-  const chooseFirstVisitLanguage = (learning: LearningLanguage) =>
-    chooseLanguageLearningPreferences(normalizeLanguageLearningPreferences({ learning }), user)
+  const chooseFirstVisitLanguage = (prefs: LanguageLearningPreferences) =>
+    chooseLanguageLearningPreferences(normalizeLanguageLearningPreferences(prefs), user)
 
   useEffect(() => {
     if (!user) {
@@ -521,12 +523,14 @@ export function LandingScreen({
     ) : null,
   })
 
-  // First visit (nothing read yet, Spanish or French): lead with a working demo instead of an
-  // empty textbox, and skip the language popup -- the demo has its own Spanish/French switch.
+  // First visit (nothing read yet): lead with a working demo instead of an empty textbox, and
+  // skip the language popup -- the demo has its own language switch. Its text is in the reader's
+  // own language, so a Spanish speaker learning English reads Spanish around an English passage.
   const showDemo = isFirstVisit && isDemoLanguage(langPrefs.learning)
   const mobileRow = continueMobileRow
   const demoLanguage: DemoLanguage = isDemoLanguage(langPrefs.learning) ? langPrefs.learning : "spanish"
-  const languageLabel = demoLanguage === "french" ? "French" : "Spanish"
+  const demoCopy = demoCopyFor(langPrefs)
+  const demoOptions = demoLanguageOptions(langPrefs, browserNativeLanguage())
 
   // One line until the reader clicks in, pastes, or fills it (Random/Learn/voice).
   const composerSlim = !text && !focused
@@ -624,28 +628,35 @@ export function LandingScreen({
               center art + greeting in the hero instead of leaving them sunk to its bottom. */}
           {showDemo ? (
             <>
-              <p className="landing-eyebrow">
-                For {languageLabel} learners<span className="max-md:hidden">, from first sentences to full novels</span>
-                <span className="md:hidden">, any level</span>
+              <p className="landing-eyebrow" lang={demoCopy.lang}>
+                {demoCopy.eyebrow(demoLanguage)}
+                <span className="max-md:hidden">{demoCopy.eyebrowDesktopTail}</span>
+                <span className="md:hidden">{demoCopy.eyebrowMobileTail}</span>
               </p>
-              <h1 className="landing-demo-title shrink-0">
-                Read real {languageLabel}.<br />
+              <h1 className="landing-demo-title shrink-0" lang={demoCopy.lang}>
+                {demoCopy.readReal(demoLanguage)}
+                <br />
                 <em>
-                  <span className="landing-tagline-verb--hover">Hover any phrase</span>
-                  <span className="landing-tagline-verb--touch">Tap any phrase</span>
+                  <span className="landing-tagline-verb--hover">{demoCopy.hoverVerb}</span>
+                  <span className="landing-tagline-verb--touch">{demoCopy.tapVerb}</span>
                 </em>{" "}
-                to see what it means<span className="max-md:hidden">, and why</span>.
+                {demoCopy.seeMeaning}
+                <span className="max-md:hidden">{demoCopy.andWhy}</span>.
               </h1>
-              <p className="landing-demo-sub shrink-0">
-                Not a word-by-word translation. LexaLens breaks each sentence into the chunks{" "}
-                {languageLabel} speakers actually think in, so you keep reading in {languageLabel}.
+              <p className="landing-demo-sub shrink-0" lang={demoCopy.lang}>
+                {demoCopy.sub(demoLanguage)}
               </p>
-              <p className="landing-free-note landing-free-note--hero">Free · No account needed</p>
+              <p className="landing-free-note landing-free-note--hero" lang={demoCopy.lang}>
+                {demoCopy.freeNote}
+              </p>
               <LandingDemo
                 language={demoLanguage}
+                native={langPrefs.native}
+                languageOptions={demoOptions}
                 onChangeLanguage={chooseFirstVisitLanguage}
                 level={demoLevel}
                 onChangeLevel={setDemoLevel}
+                copy={demoCopy}
               />
             </>
           ) : (
@@ -731,7 +742,7 @@ export function LandingScreen({
                 />
                 {!text && !focused && (
                   <span className="animated-placeholder" style={{ opacity: placeholderVisible ? 1 : 0 }}>
-                    {showDemo ? `Paste your own ${languageLabel}…` : PLACEHOLDERS[placeholderIndex]}
+                    {showDemo ? demoCopy.pasteOwn(demoLanguage) : PLACEHOLDERS[placeholderIndex]}
                   </span>
                 )}
               </div>

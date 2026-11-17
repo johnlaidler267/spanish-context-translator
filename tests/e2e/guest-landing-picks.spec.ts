@@ -97,7 +97,8 @@ test("English learner with nothing read yet: English picks, never the Spanish sa
     ],
   })
   await page.goto("/")
-  await expect(page.getByText("listo para leer?")).toBeVisible({ timeout: 20_000 })
+  // Nothing read yet, so the first-visit demo -- in English, explained in Spanish.
+  await expect(page.getByRole("heading", { name: /Lee inglés de verdad/ })).toBeVisible({ timeout: 20_000 })
   await expect(page.locator(".continue-reading__row .discover-card__title")).toHaveText(["The Little Prince"])
   await expect(page.getByText("Try this sample")).toHaveCount(0)
 })

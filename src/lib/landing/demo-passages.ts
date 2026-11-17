@@ -9,13 +9,19 @@
  * demo shows exactly what the reader will.
  */
 
-export type DemoLanguage = "spanish" | "french"
+import type { NativeLanguage } from "@/lib/storage/language-learning-preferences"
+
+export type DemoLanguage = "spanish" | "french" | "english"
+/** Languages whose passages are glossed in English (the Spanish and French demos). */
+type EnglishGlossedDemoLanguage = Exclude<DemoLanguage, "english">
+/** The languages an English passage is glossed in: an English learner's native language. */
+export type EnglishDemoNative = Exclude<NativeLanguage, "english">
 export type DemoLevel = "beginner" | "intermediate" | "advanced"
 
 export interface DemoChunk {
   /** The words as they appear in the passage (no surrounding punctuation). */
   text: string
-  /** What it means in English. */
+  /** What it means in the reader's language (English for the Spanish/French passages). */
   meaning: string
   /** Word-for-word rendering, when it differs enough to be worth showing. */
   literal?: string
@@ -40,7 +46,7 @@ export const DEMO_LEVELS: { id: DemoLevel; label: string }[] = [
 
 export const DEFAULT_DEMO_LEVEL: DemoLevel = "intermediate"
 
-export const DEMO_PASSAGES: Record<DemoLanguage, Record<DemoLevel, DemoPassage>> = {
+export const DEMO_PASSAGES: Record<EnglishGlossedDemoLanguage, Record<DemoLevel, DemoPassage>> = {
   spanish: {
     // Hola, me llamo Ana. Vivo en Madrid con mi gato. Por la mañana tomo un café y después voy al trabajo en metro.
     beginner: {
@@ -284,6 +290,201 @@ export const DEMO_PASSAGES: Record<DemoLanguage, Record<DemoLevel, DemoPassage>>
   },
 }
 
+type Gloss = Pick<DemoChunk, "meaning" | "literal" | "note">
+
+/** An English phrase with its meaning in each language an English learner can have as native. */
+interface EnglishDemoChunk {
+  text: string
+  es: Gloss
+  fr: Gloss
+  after?: string
+}
+
+interface EnglishDemoPassage {
+  chunks: EnglishDemoChunk[]
+  initial: number
+}
+
+/**
+ * English passages for Spanish- and French-speaking learners, glossed in their own language.
+ * Same stories and levels as the Spanish passages above, written as natural English rather than
+ * translated word for word, and chunked by the same rules.
+ */
+export const ENGLISH_DEMO_PASSAGES: Record<DemoLevel, EnglishDemoPassage> = {
+  // Hi, my name is Sam. I live in Chicago with my dog. In the morning I have a coffee, and then I
+  // take the bus to work.
+  beginner: {
+    initial: 10,
+    chunks: [
+      { text: "Hi", es: { meaning: "hola" }, fr: { meaning: "salut" }, after: ", " },
+      {
+        text: "my name is",
+        es: { meaning: "me llamo", literal: "mi nombre es" },
+        fr: { meaning: "je m'appelle", literal: "mon nom est" },
+      },
+      { text: "Sam", es: { meaning: "Sam" }, fr: { meaning: "Sam" }, after: ". " },
+      {
+        text: "I live",
+        es: { meaning: "vivo", literal: "yo vivo", note: "en inglés el sujeto (I) nunca se omite" },
+        fr: { meaning: "j'habite", literal: "je vis" },
+      },
+      { text: "in", es: { meaning: "en" }, fr: { meaning: "à" } },
+      { text: "Chicago", es: { meaning: "Chicago" }, fr: { meaning: "Chicago" } },
+      { text: "with", es: { meaning: "con" }, fr: { meaning: "avec" } },
+      { text: "my", es: { meaning: "mi" }, fr: { meaning: "mon" } },
+      { text: "dog", es: { meaning: "perro" }, fr: { meaning: "chien" }, after: ". " },
+      {
+        text: "In the morning",
+        es: { meaning: "por la mañana", literal: "en la mañana" },
+        fr: { meaning: "le matin", literal: "dans le matin" },
+      },
+      {
+        text: "I have",
+        es: { meaning: "tomo", literal: "tengo", note: "have se usa para comidas y bebidas: have breakfast, have a coffee" },
+        fr: { meaning: "je bois", literal: "j'ai", note: "have s'utilise pour les repas et les boissons : have lunch, have a coffee" },
+      },
+      { text: "a", es: { meaning: "un" }, fr: { meaning: "un" } },
+      { text: "coffee", es: { meaning: "café" }, fr: { meaning: "café" }, after: ", " },
+      { text: "and then", es: { meaning: "y luego" }, fr: { meaning: "et ensuite" } },
+      { text: "I take", es: { meaning: "tomo" }, fr: { meaning: "je prends" } },
+      { text: "the bus", es: { meaning: "el autobús" }, fr: { meaning: "le bus" } },
+      {
+        text: "to work",
+        es: { meaning: "al trabajo", note: "sin artículo: go to work, at work" },
+        fr: { meaning: "au travail", note: "sans article : go to work, at work" },
+        after: ".",
+      },
+    ],
+  },
+  // Yesterday my sister told me she didn't mind where we ate, but when we got to the restaurant she
+  // hit the roof because it was closed. In the end we had to order pizza, and honestly, it hit the spot.
+  intermediate: {
+    initial: 14,
+    chunks: [
+      { text: "Yesterday", es: { meaning: "ayer" }, fr: { meaning: "hier" } },
+      { text: "my", es: { meaning: "mi" }, fr: { meaning: "ma" } },
+      { text: "sister", es: { meaning: "hermana" }, fr: { meaning: "sœur" } },
+      {
+        text: "told me",
+        es: { meaning: "me dijo", note: "tell + persona, sin «to»: tell me, tell her" },
+        fr: { meaning: "m'a dit", note: "tell + personne, sans « to » : tell me, tell her" },
+      },
+      {
+        text: "she",
+        es: { meaning: "(ella)", note: "en inglés el sujeto nunca se omite" },
+        fr: { meaning: "elle" },
+      },
+      {
+        text: "didn't mind",
+        es: { meaning: "le daba igual", literal: "no le molestaba", note: "mind = importar, molestar; I don't mind = me da igual" },
+        fr: { meaning: "ça lui était égal", literal: "ne la dérangeait pas", note: "mind = déranger ; I don't mind = ça m'est égal" },
+      },
+      { text: "where", es: { meaning: "dónde" }, fr: { meaning: "où" } },
+      {
+        text: "we ate",
+        es: { meaning: "comíamos", note: "pasado irregular de eat: eat, ate, eaten" },
+        fr: { meaning: "on mangeait", note: "passé irrégulier de eat : eat, ate, eaten" },
+        after: ", ",
+      },
+      { text: "but", es: { meaning: "pero" }, fr: { meaning: "mais" } },
+      { text: "when", es: { meaning: "cuando" }, fr: { meaning: "quand" } },
+      {
+        text: "we got to",
+        es: { meaning: "llegamos a", note: "get to + lugar = llegar a" },
+        fr: { meaning: "on est arrivés à", note: "get to + lieu = arriver à" },
+      },
+      { text: "the", es: { meaning: "el" }, fr: { meaning: "le" } },
+      { text: "restaurant", es: { meaning: "restaurante" }, fr: { meaning: "restaurant" } },
+      { text: "she", es: { meaning: "(ella)" }, fr: { meaning: "elle" } },
+      {
+        text: "hit the roof",
+        es: { meaning: "puso el grito en el cielo", literal: "golpeó el techo", note: "expresión: enfadarse muchísimo" },
+        fr: { meaning: "a piqué une crise", literal: "a frappé le plafond", note: "expression : se mettre très en colère" },
+      },
+      { text: "because", es: { meaning: "porque" }, fr: { meaning: "parce que" } },
+      { text: "it was", es: { meaning: "estaba" }, fr: { meaning: "c'était" } },
+      { text: "closed", es: { meaning: "cerrado" }, fr: { meaning: "fermé" }, after: ". " },
+      { text: "In the end", es: { meaning: "al final" }, fr: { meaning: "finalement", literal: "à la fin" } },
+      {
+        text: "we had to",
+        es: { meaning: "tuvimos que", note: "have to = tener que" },
+        fr: { meaning: "on a dû", note: "have to = devoir" },
+      },
+      { text: "order", es: { meaning: "pedir" }, fr: { meaning: "commander" } },
+      { text: "pizza", es: { meaning: "pizza" }, fr: { meaning: "une pizza" }, after: ", " },
+      { text: "and", es: { meaning: "y" }, fr: { meaning: "et" } },
+      { text: "honestly", es: { meaning: "la verdad", literal: "honestamente" }, fr: { meaning: "franchement", literal: "honnêtement" }, after: ", " },
+      {
+        text: "it hit the spot",
+        es: { meaning: "me supo a gloria", literal: "dio en el punto", note: "expresión: justo lo que necesitabas, sobre todo comida o bebida" },
+        fr: { meaning: "c'était parfait", literal: "ça a touché l'endroit", note: "expression : exactement ce qu'il fallait, surtout pour un repas" },
+        after: ".",
+      },
+    ],
+  },
+  // No matter how much I mull it over, I can't figure out how he got away with it. Had I known, I'd
+  // never have gotten myself into this mess.
+  advanced: {
+    initial: 6,
+    chunks: [
+      {
+        text: "No matter how much",
+        es: { meaning: "por más que", literal: "no importa cuánto", note: "no matter how / what / where = da igual cómo / qué / dónde" },
+        fr: { meaning: "j'ai beau", literal: "peu importe combien", note: "no matter how / what / where = peu importe comment / quoi / où" },
+      },
+      {
+        text: "I mull it over",
+        es: { meaning: "le doy vueltas", literal: "lo rumio", note: "mull over = darle vueltas a algo; el pronombre va en medio" },
+        fr: { meaning: "j'y réfléchis", literal: "je le rumine", note: "mull over = ressasser ; le pronom se place au milieu" },
+        after: ", ",
+      },
+      {
+        text: "I can't",
+        es: { meaning: "no logro", literal: "no puedo" },
+        fr: { meaning: "je n'arrive pas à", literal: "je ne peux pas" },
+      },
+      {
+        text: "figure out",
+        es: { meaning: "entender", note: "phrasal verb: figure out = descifrar, llegar a entender" },
+        fr: { meaning: "comprendre", note: "verbe à particule : figure out = comprendre, déchiffrer" },
+      },
+      { text: "how", es: { meaning: "cómo" }, fr: { meaning: "comment" } },
+      { text: "he", es: { meaning: "(él)" }, fr: { meaning: "il" } },
+      {
+        text: "got away with",
+        es: { meaning: "se salió con la suya", literal: "se escapó con", note: "get away with something = librarse de las consecuencias" },
+        fr: { meaning: "s'en est tiré", literal: "s'est échappé avec", note: "get away with something = s'en tirer sans conséquences" },
+      },
+      { text: "it", es: { meaning: "(eso)" }, fr: { meaning: "(ça)" }, after: ". " },
+      {
+        text: "Had I known",
+        es: { meaning: "si lo hubiera sabido", literal: "hubiera yo sabido", note: "inversión formal de «If I had known»" },
+        fr: { meaning: "si j'avais su", literal: "avais-je su", note: "inversion soutenue de « If I had known »" },
+        after: ", ",
+      },
+      {
+        text: "I'd never have gotten myself",
+        es: { meaning: "nunca me habría metido", note: "I'd = I would; get yourself into = meterse en" },
+        fr: { meaning: "je ne me serais jamais fourré", note: "I'd = I would ; get yourself into = se fourrer dans" },
+      },
+      { text: "into", es: { meaning: "en" }, fr: { meaning: "dans" } },
+      { text: "this", es: { meaning: "este" }, fr: { meaning: "ce" } },
+      { text: "mess", es: { meaning: "lío" }, fr: { meaning: "pétrin" }, after: "." },
+    ],
+  },
+}
+
+/** The passage to show: Spanish/French glossed in English, English glossed in the reader's language. */
+export function demoPassage(language: DemoLanguage, native: NativeLanguage, level: DemoLevel): DemoPassage {
+  if (language !== "english") return DEMO_PASSAGES[language][level]
+  const source = ENGLISH_DEMO_PASSAGES[level]
+  const key = native === "french" ? "fr" : "es"
+  return {
+    initial: source.initial,
+    chunks: source.chunks.map(({ text, after, [key]: gloss }) => ({ text, after, ...gloss })),
+  }
+}
+
 export function isDemoLanguage(lang: string): lang is DemoLanguage {
-  return lang === "spanish" || lang === "french"
+  return lang === "spanish" || lang === "french" || lang === "english"
 }
