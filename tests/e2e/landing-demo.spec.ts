@@ -104,11 +104,29 @@ test.describe("phone", () => {
     await expect(line).toContainText("Try a short read:")
   })
 
-  test("touching a phrase shows its tooltip", async ({ page }) => {
+  test("touching a phrase shows its tooltip, and lifting the finger hides it", async ({ page }) => {
     await setupMocks(page, { signedIn: false })
     await page.goto("/")
     await expect(tooltip(page, "she hit the roof")).toBeVisible({ timeout: 20_000 })
-    await phrase(page, "le daba igual").tap()
+    const box = (await phrase(page, "le daba igual").boundingBox())!
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2
+    const cdp = await page.context().newCDPSession(page)
+    const touch = (type: string, points: { x: number; y: number }[]) =>
+      cdp.send("Input.dispatchTouchEvent", { type, touchPoints: points })
+
+    // Finger down on the phrase: its tooltip shows while it's held.
+    await touch("touchStart", [{ x, y }])
     await expect(tooltip(page, "she didn't care")).toBeVisible()
+    // Finger lifted: the tooltip goes away (it used to stay stuck open).
+    await touch("touchEnd", [])
+    // (A closed tooltip fades to opacity 0 before it unmounts.)
+    await expect(tooltip(page, "she didn't care")).toHaveCSS("opacity", "0")
+    await expect(tooltip(page, "she hit the roof")).toHaveCSS("opacity", "0")
+
+    // A plain tap (which also fires the browser's emulated mouse events) doesn't leave one up.
+    await phrase(page, "le daba igual").tap()
+    await page.waitForTimeout(300)
+    for (const popup of await page.locator("[data-popup]").all()) await expect(popup).toHaveCSS("opacity", "0")
   })
 })
