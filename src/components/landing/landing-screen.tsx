@@ -36,6 +36,7 @@ import {
   generateRandomLearningParagraph,
 } from "@/lib/translate"
 import {
+  defaultLanguageLearningPreferences,
   hasStoredLanguageLearningPreferences,
   landingGreetingWord,
   normalizeLanguageLearningPreferences,
@@ -837,8 +838,8 @@ export function LandingScreen({
       </div>
       {needsLanguagePick && !showDemo && (
         <LanguagePickerModal
-          onChoose={chooseFirstVisitLanguage}
-          onSkip={() => chooseFirstVisitLanguage("spanish")}
+          onChoose={(prefs) => chooseLanguageLearningPreferences(prefs, user)}
+          onSkip={() => chooseLanguageLearningPreferences(defaultLanguageLearningPreferences(), user)}
         />
       )}
       {learnError && (

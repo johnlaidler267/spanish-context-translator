@@ -63,13 +63,44 @@ export function hasStoredLanguageLearningPreferences(): boolean {
   }
 }
 
+/**
+ * The visitor's own language, read from the browser/phone settings: the first of Spanish, French
+ * or English in their language list. Anything else (or no browser) counts as English.
+ */
+export function browserNativeLanguage(languages?: readonly string[]): NativeLanguage {
+  let list: readonly string[] = languages ?? []
+  if (!languages && typeof navigator !== "undefined") {
+    list = navigator.languages?.length ? navigator.languages : [navigator.language]
+  }
+  for (const tag of list) {
+    const base = tag?.toLowerCase().split("-")[0]
+    if (base === "es") return "spanish"
+    if (base === "fr") return "french"
+    if (base === "en") return "english"
+  }
+  return "english"
+}
+
+/**
+ * Before the reader has chosen anything: a Spanish- or French-language browser most likely
+ * belongs to someone learning English, so start them there with explanations in their language.
+ * Everyone else starts on Spanish, as before.
+ */
+export function defaultLanguageLearningPreferences(
+  languages?: readonly string[],
+): LanguageLearningPreferences {
+  const native = browserNativeLanguage(languages)
+  if (native === "english") return { ...DEFAULT }
+  return { learning: "english", native }
+}
+
 export function getStoredLanguageLearningPreferences(): LanguageLearningPreferences {
   if (typeof window === "undefined") return { ...DEFAULT }
   try {
     const raw = localStorage.getItem(LANGUAGE_LEARNING_PREFERENCES_KEY)
-    if (!raw?.trim()) return { ...DEFAULT }
+    if (!raw?.trim()) return defaultLanguageLearningPreferences()
     const parsed = JSON.parse(raw) as unknown
-    if (parsed == null || typeof parsed !== "object") return { ...DEFAULT }
+    if (parsed == null || typeof parsed !== "object") return defaultLanguageLearningPreferences()
     return normalizeLanguageLearningPreferences(parsed as Partial<LanguageLearningPreferences>)
   } catch {
     return { ...DEFAULT }
