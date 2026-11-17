@@ -438,8 +438,13 @@ export function LandingScreen({
       </button>
     </div>
   )
-  const showGuestPicks = isGuest && guestPicks.length > 0
-  const guestPicksPending = isGuest && !showGuestPicks && !featuredSettled
+  // Desktop: anyone with nothing read yet (guest, or a signed-in reader new to this language)
+  // gets the picks row -- a signed-in reader used to fall through to the old sample paragraph.
+  // Phones keep the picks guest-only; a signed-in phone layout has no slot reserved for them.
+  const showDesktopPicks = guestPicks.length > 0
+  const desktopPicksPending = !showDesktopPicks && !featuredSettled
+  const showGuestPicks = isGuest && showDesktopPicks
+  const guestPicksPending = isGuest && desktopPicksPending
 
   // Continue Reading: one data fetch, two placements in the tree below (mobileRow lands above
   // the filigree divider, which separates it from the composer form; desktopRow replaces the sample-excerpt fallback
@@ -449,7 +454,7 @@ export function LandingScreen({
     user,
     onContinue: onContinueReading,
     onOpenLibraryBook: onContinueLibraryBook,
-    fallback: showGuestPicks ? (
+    fallback: showDesktopPicks ? (
       <div className="continue-reading w-full order-3 md:order-3 mt-0 md:mt-1">
         <p className="sample-excerpt-label text-center">{guestPicksLabel}</p>
         <div className="continue-reading__row">
@@ -463,7 +468,8 @@ export function LandingScreen({
           ))}
         </div>
       </div>
-    ) : guestPicksPending ? null : (
+    ) : desktopPicksPending || langPrefs.learning !== "spanish" ? null : (
+      // The sample paragraph is Spanish; it's no help to someone learning another language.
       sampleFallback
     ),
     mobileFallback: guestPicksPending ? (

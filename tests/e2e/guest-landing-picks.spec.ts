@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from "@playwright/test"
-import { setupMocks } from "../e2e-mocks/supabase-mock"
+import { setupMocks, SAMPLE_DISCOVER_ITEMS } from "../e2e-mocks/supabase-mock"
 
 test.setTimeout(45_000)
 
@@ -78,4 +78,26 @@ test.describe("phone, slow catalog", () => {
     expect(Math.abs(loaded.top - reserved.top)).toBeLessThanOrEqual(2)
     expect(Math.abs(loaded.height - reserved.height)).toBeLessThanOrEqual(2)
   })
+})
+
+test("signed in with nothing read yet: Discover picks, not the built-in sample", async ({ page }) => {
+  await setupMocks(page, { signedIn: true })
+  await page.goto("/")
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator(".continue-reading__row .discover-card__title").first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText("Try this sample")).toHaveCount(0)
+})
+
+test("English learner with nothing read yet: English picks, never the Spanish sample", async ({ page }) => {
+  await setupMocks(page, {
+    signedIn: true,
+    languagePrefs: { learning: "english", native: "spanish" },
+    discoverItems: [
+      { ...SAMPLE_DISCOVER_ITEMS[0], id: "en-1", title: "The Little Prince", language: "English" },
+    ],
+  })
+  await page.goto("/")
+  await expect(page.getByText("listo para leer?")).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator(".continue-reading__row .discover-card__title")).toHaveText(["The Little Prince"])
+  await expect(page.getByText("Try this sample")).toHaveCount(0)
 })
