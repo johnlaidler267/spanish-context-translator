@@ -108,6 +108,7 @@ export function LandingDemo({ language, onChangeLanguage, level, onChangeLevel }
           <span className="landing-tagline-verb--touch">Tap any phrase</span>
         </p>
         <p
+          translate="no"
           className="landing-demo__passage"
           lang={LANG_ATTR[language]}
           onMouseMove={(e) => !isEmulatedMouse() && track(e.clientX, e.clientY)}

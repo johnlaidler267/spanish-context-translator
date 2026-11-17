@@ -609,7 +609,7 @@ export function ArticleContent({
           // full flat `items` array here).
           const renderFlowItem = (item: ArticleFlowItem, key: string, prev: ReconciledItem | null) => {
             if (item.type === "text") {
-              return <span key={key}>{item.text}</span>
+              return <span key={key} translate="no">{item.text}</span>
             }
             const gap = prev?.type === "chunk" ? gapBetweenReconciledChunks(prev, item) : ""
             const id = chunkId++

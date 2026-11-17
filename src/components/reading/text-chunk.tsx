@@ -775,6 +775,10 @@ export function TextChunk({
       <span
         ref={chunkRef}
         data-chunk
+        // The phrase is the language being learned: browser auto-translate (Chrome on a Spanish
+        // phone) would otherwise swap it for the reader's own language, and rewriting text nodes
+        // React owns can crash the page. The tooltip stays translatable.
+        translate="no"
         data-chunk-id={chunk.id}
         onClick={() => {
           if (Date.now() < suppressClickAfterTouchGestureUntilRef.current) return

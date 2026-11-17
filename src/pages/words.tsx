@@ -114,7 +114,7 @@ function WordRow({
           className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 rounded-lg py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[minmax(0,10rem)_minmax(0,9rem)_minmax(0,1fr)_auto] sm:gap-x-4"
         >
           <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 sm:contents">
-            <span className="min-w-0 break-words font-serif text-lg leading-snug text-foreground">{word.word}</span>
+            <span translate="no" className="min-w-0 break-words font-serif text-lg leading-snug text-foreground">{word.word}</span>
             <span className="min-w-0 break-words text-sm text-foreground/80">{word.meaning}</span>
           </span>
           <span
@@ -128,6 +128,7 @@ function WordRow({
           <span className="col-span-2 min-w-0 sm:col-span-1">
             {word.sentence && (
               <span
+                translate="no"
                 className={cn(
                   "block text-sm italic leading-relaxed text-muted-foreground",
                   !open && "line-clamp-2 sm:line-clamp-1",

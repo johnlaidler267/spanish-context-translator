@@ -342,6 +342,7 @@ function PracticeCard({
   )
   const revealed = (
     <span
+      translate="no"
       className={cn(
         "rounded px-1 font-semibold",
         right ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-700 dark:text-red-300",
@@ -369,7 +370,7 @@ function PracticeCard({
           </p>
         )}
         {cloze ? (
-          <p className="font-serif text-lg leading-relaxed text-foreground sm:text-2xl" data-testid="practice-sentence">
+          <p translate="no" className="font-serif text-lg leading-relaxed text-foreground sm:text-2xl" data-testid="practice-sentence">
             {cloze.before}
             {feedback
               ? revealed
@@ -553,7 +554,7 @@ function RoundSummary({
               ) : (
                 <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" aria-label="Right" />
               )}
-              <span className="font-serif text-lg text-foreground">{answerText(word.word)}</span>
+              <span translate="no" className="font-serif text-lg text-foreground">{answerText(word.word)}</span>
               {word.meaning && <span className="min-w-0 truncate text-sm text-muted-foreground">{word.meaning}</span>}
             </li>
           ))}
