@@ -130,3 +130,34 @@ test.describe("phone", () => {
     for (const popup of await page.locator("[data-popup]").all()) await expect(popup).toHaveCSS("opacity", "0")
   })
 })
+
+test.describe("phone workspace", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  // The slim composer frees a lot of height on a phone. It all used to pile up above the
+  // illustration, sinking the art, greeting and Continue Reading card toward the composer.
+  test("the art, greeting and Continue Reading card stay vertically centered", async ({ page }) => {
+    await page.addInitScript(
+      ({ key, userId }) => {
+        window.localStorage.setItem(
+          key,
+          JSON.stringify({ [userId]: { "mock-item-1": { pageIndex: 1, totalPages: 4, updatedAt: Date.now() } } }),
+        )
+      },
+      { key: READING_PROGRESS_STORAGE_KEY, userId: DEFAULT_MOCK_USER.id },
+    )
+    await setupMocks(page, { restTables: { reading_progress: [] } })
+    await page.goto("/")
+    await expect(page.getByRole("heading", { name: /ready to read/ })).toBeVisible({ timeout: 20_000 })
+    await page.waitForTimeout(600) // let the art finish loading and the card settle
+
+    const box = async (selector: string) => (await page.locator(selector).first().boundingBox())!
+    const header = await box("header, [role=banner]")
+    const art = await box(".landing-hero-art")
+    const divider = await box(".filigree-divider")
+    const composer = await box(".textarea-wrapper")
+    const above = art.y - (header.y + header.height)
+    const below = composer.y - (divider.y + divider.height)
+    expect(Math.abs(above - below)).toBeLessThan(60)
+  })
+})

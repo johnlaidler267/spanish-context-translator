@@ -532,6 +532,12 @@ export function LandingScreen({
   const demoCopy = demoCopyFor(langPrefs)
   const demoOptions = demoLanguageOptions(langPrefs, browserNativeLanguage())
 
+  // Phone workspace with a Continue Reading row: the slim composer leaves a lot of spare height.
+  // The hero puts its share above the art (art + greeting stay snug against the cards), so on its
+  // own all of it piled up above the art and sank the whole group toward the composer. Split it:
+  // half above the art, half between the cards and the composer, which keeps the group centered.
+  const splitSlack = !showDemo && mobileRow != null
+
   // One line until the reader clicks in, pastes, or fills it (Random/Learn/voice).
   const composerSlim = !text && !focused
 
@@ -601,7 +607,7 @@ export function LandingScreen({
             the Continue Reading cards it introduces. mt-auto rather than justify-end because an
             auto margin collapses to 0 when the hero overflows on a short phone, where
             justify-end would push the top of the art out of reach of its own scroll. */}
-        <div className="hero-mark hero-mark--literary text-center relative order-1 flex flex-col flex-1 justify-center max-md:justify-start items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block pt-2 md:pt-0 pb-[clamp(0.75rem,5dvh,2.5rem)] md:pb-6">
+        <div className={`hero-mark hero-mark--literary text-center relative order-1 flex flex-col ${splitSlack ? "max-md:flex-[1_1_auto] md:flex-1" : "flex-1"} justify-center max-md:justify-start items-center min-h-0 max-md:overflow-y-auto md:flex-none md:overflow-visible md:block pt-2 md:pt-0 pb-[clamp(0.75rem,5dvh,2.5rem)] md:pb-6`}>
           {!showDemo && (
           <img
             src="/landing-hero-books.webp"
@@ -703,7 +709,7 @@ export function LandingScreen({
             greeting instead and left the cards looking like part of the composer. Desktop
             never renders the mobile row, and there the composer is md:order-1, so the
             divider's order-2 still lands it below the textarea, above the sample/row. */}
-        <div className="order-3 md:order-2 flex flex-col gap-2 w-full shrink-0 md:mt-0 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] md:pb-0">
+        <div className={`order-3 md:order-2 flex flex-col gap-2 w-full shrink-0${splitSlack ? " max-md:grow" : ""} md:mt-0 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] md:pb-0`}>
           {/* First visit: demo, bar and short reads read as one flow, so no divider. */}
           {!showDemo && (
             <img
@@ -714,7 +720,7 @@ export function LandingScreen({
             />
           )}
           {mobileRow}
-          <div className="order-3 md:order-1 flex flex-col gap-2 w-full">
+          <div className={`order-3 md:order-1 flex flex-col gap-2 w-full${splitSlack ? " max-md:mt-auto" : ""}`}>
             <form
               ref={composerFormRef}
               className="contents"
