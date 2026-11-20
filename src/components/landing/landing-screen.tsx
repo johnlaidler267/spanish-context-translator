@@ -652,9 +652,13 @@ export function LandingScreen({
               <p className="landing-demo-sub shrink-0" lang={demoCopy.lang}>
                 {demoCopy.sub(demoLanguage)}
               </p>
-              <p className="landing-free-note landing-free-note--hero" lang={demoCopy.lang}>
-                {demoCopy.freeNote}
-              </p>
+              {/* "No account needed" is a pitch to visitors; a signed-in reader new to a language
+                  still gets the demo, just not a line telling them they don't need the account they have. */}
+              {isGuest && (
+                <p className="landing-free-note landing-free-note--hero" lang={demoCopy.lang}>
+                  {demoCopy.freeNote}
+                </p>
+              )}
               <LandingDemo
                 language={demoLanguage}
                 native={langPrefs.native}

@@ -161,3 +161,17 @@ test.describe("phone workspace", () => {
     expect(Math.abs(above - below)).toBeLessThan(60)
   })
 })
+
+test("signed in with nothing read yet: still the demo, without the 'No account needed' badge", async ({ page }) => {
+  await setupMocks(page, { signedIn: true })
+  await page.goto("/")
+  await expect(page.getByRole("heading", { name: "Read real Spanish." })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText("No account needed")).toHaveCount(0)
+})
+
+test("signed out: the 'No account needed' badge stays", async ({ page }) => {
+  await setupMocks(page, { signedIn: false })
+  await page.goto("/")
+  await expect(page.getByRole("heading", { name: "Read real Spanish." })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText("Free · No account needed")).toBeVisible()
+})
