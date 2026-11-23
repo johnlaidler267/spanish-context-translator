@@ -29,10 +29,11 @@ const capitalize = (s: string) => s.charAt(0).toLocaleUpperCase() + s.slice(1)
  * empty textbox. Passages are stored (lib/landing/demo-passages.ts): instant, no AI call.
  *
  * Phrases are the reader's own TextChunk, so the tooltip looks and behaves exactly like it does
- * on a real reading page (hover on desktop, touch on a phone). One phrase starts with its tooltip
- * open so the idea lands even for someone who never moves the mouse; after the visitor's first
- * hover or touch the passage behaves like the reader (a tooltip only while on a phrase / while the
- * finger is down).
+ * on a real reading page (hover on desktop, touch on a phone). On desktop one phrase starts with
+ * its tooltip open so the idea lands even for someone who never moves the mouse. On a phone a
+ * tooltip nobody tapped for reads as a glitch, so that phrase pulses instead and the first
+ * tooltip opens on the visitor's own tap. After the first hover or touch the passage behaves like
+ * the reader (a tooltip only while on a phrase / while the finger is down).
  */
 export function LandingDemo({
   language,
@@ -50,8 +51,10 @@ export function LandingDemo({
   const [touchedKey, setTouchedKey] = useState<string | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null)
-  const active = hovered ?? (touchedKey === passageKey ? null : passage.initial)
   const isCoarsePointer = useCoarsePointer()
+  const showcasePending = touchedKey !== passageKey
+  const active = hovered ?? (showcasePending && !isCoarsePointer ? passage.initial : null)
+  const nudged = showcasePending && isCoarsePointer ? passage.initial : null
 
   // Pointer tracking lives here, on the passage, the way the reader does it (read-mode.tsx):
   // the open tooltip follows the pointer with no easing, and moving across the gap between two
@@ -140,7 +143,7 @@ export function LandingDemo({
           }}
         >
           {passage.chunks.map((c, i) => (
-            <span key={`${passageKey}-${i}`}>
+            <span key={`${passageKey}-${i}`} className={nudged === i ? "landing-demo__nudge" : undefined}>
               <TextChunk
                 chunk={{ id: i, text: c.text, meaning: c.meaning, literal: c.literal, grammar: c.note }}
                 popupChunkId={active}

@@ -96,7 +96,7 @@ test.describe("phone", () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await setupMocks(page, { signedIn: false })
     await page.goto("/")
-    await expect(tooltip(page, "she hit the roof")).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator(".landing-demo__nudge")).toBeVisible({ timeout: 20_000 })
     await expect(page.locator(".landing-guest-picks-mobile")).toBeHidden()
     // ...but there's still one tap into a story.
     const line = page.locator(".landing-guest-pick-line")
@@ -104,10 +104,21 @@ test.describe("phone", () => {
     await expect(line).toContainText("Try a short read:")
   })
 
+  test("no tooltip opens on its own; the showcase phrase pulses until the first tap", async ({ page }) => {
+    await setupMocks(page, { signedIn: false })
+    await page.goto("/")
+    const nudge = page.locator(".landing-demo__nudge")
+    await expect(nudge).toContainText("puso el grito en el cielo", { timeout: 20_000 })
+    await page.waitForTimeout(500)
+    for (const popup of await page.locator("[data-popup]").all()) await expect(popup).toHaveCSS("opacity", "0")
+    await phrase(page, "puso el grito en el cielo").tap()
+    await expect(nudge).toHaveCount(0)
+  })
+
   test("touching a phrase shows its tooltip, and lifting the finger hides it", async ({ page }) => {
     await setupMocks(page, { signedIn: false })
     await page.goto("/")
-    await expect(tooltip(page, "she hit the roof")).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator(".landing-demo__nudge")).toBeVisible({ timeout: 20_000 })
     const box = (await phrase(page, "le daba igual").boundingBox())!
     const x = box.x + box.width / 2
     const y = box.y + box.height / 2
@@ -122,7 +133,6 @@ test.describe("phone", () => {
     await touch("touchEnd", [])
     // (A closed tooltip fades to opacity 0 before it unmounts.)
     await expect(tooltip(page, "she didn't care")).toHaveCSS("opacity", "0")
-    await expect(tooltip(page, "she hit the roof")).toHaveCSS("opacity", "0")
 
     // A plain tap (which also fires the browser's emulated mouse events) doesn't leave one up.
     await phrase(page, "le daba igual").tap()

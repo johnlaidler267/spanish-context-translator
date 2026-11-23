@@ -1172,6 +1172,19 @@ article span {
   color: #8a6f33;
 }
 .dark .landing-demo__hint { color: #c9ad6e; }
+/* Phone: the showcase phrase pulses until the first tap (no tooltip opens on its own there).
+   Only the phrase itself is tinted, not the space after it. */
+.landing-demo__nudge > :first-child {
+  border-radius: 0.3em;
+  animation: landing-demo-nudge 1.8s ease-in-out infinite;
+}
+@keyframes landing-demo-nudge {
+  0%, 100% { background-color: rgb(138 111 51 / 0.06); box-shadow: 0 0 0 0 rgb(138 111 51 / 0); }
+  50% { background-color: rgb(138 111 51 / 0.2); box-shadow: 0 0 0 3px rgb(138 111 51 / 0.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-demo__nudge > :first-child { animation: none; background-color: rgb(138 111 51 / 0.16); }
+}
 .landing-demo__passage {
   margin: 0;
   font-family: var(--font-reading);
